@@ -296,6 +296,16 @@ para cima.
 - `sem-identidade.test.ts`: nome fora do mapa e aridade errada lançam antes
   de conectar (URL de porta fechada).
 - `politicas.test.ts` ganha: gestor pendente não insere nem altera, e lê.
+  E a transição do primeiro acesso: o mesmo gestor, na **mesma sessão**,
+  depois de `senha_trocar`, volta a inserir e alterar. `pode_escrever()`
+  consulta a coluna a cada instrução, então não precisa de nova sessão nem
+  de novo `comoUsuario`.
+- Duas barreiras contra inativo, cada uma provada isolada, para saber qual
+  quebrou se uma quebrar: (a) em `funcoes-autenticacao.test.ts`, desativar
+  como dona com sessão viva e provar que `sessao_atual` devolve zero linhas,
+  sem passar por `comoUsuario`; (b) em `politicas.test.ts`, já existe:
+  `comoUsuario` de um inativo não lê nem a si, sem passar por sessão. Os
+  dois testes nomeiam a barreira que cobrem.
 - `seed.test.ts` ganha: credencial criada, pendente verdadeiro, senha
   devolvida entra no login.
 - `runner.test.ts` ganha os negativos da seção 5.
