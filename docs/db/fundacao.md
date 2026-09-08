@@ -41,8 +41,9 @@ parâmetro comum, então a mesma chamada troca o papel.
 
 `RESET ALL` não restaura `role`: o Postgres marca esse parâmetro com
 `GUC_NO_RESET_ALL`, assim como `session_authorization`. Por isso o `RESET ROLE`
-explícito. O teste `tests/integracao/identidade.test.ts` tem o controle
-negativo que demonstra isso.
+explícito. Confirmado em 2026-09-08 contra Postgres 17: o controle negativo em
+`tests/integracao/identidade.test.ts` faz `SET ROLE` sem `LOCAL`, `RESET ALL`,
+e o papel continua trocado; só `RESET ROLE` devolve.
 
 Do lado do banco, `usuario_atual()` lê `current_setting('app.usuario_id')`. É
 a única função que sabe de onde a identidade vem. Trocar o mecanismo um dia é
@@ -98,6 +99,70 @@ transação: `BEGIN`, corpo, `INSERT INTO _migracao`, `COMMIT`. Assim o schema
 muda e o registro grava juntos, ou nada acontece. A soma gravada é a do arquivo
 em disco, não do corpo transformado.
 
+## TLS na Railway
+
+Verificado em 2026-09-08 contra o banco novo da Railway.
+
+**O que a Railway oferece.** O proxy público (`*.proxy.rlwy.net`) repassa o
+certificado do próprio Postgres, que é autoassinado e gerado junto com o banco:
+
+```
+subject: CN=localhost
+issuer:  CN=root-ca (autoassinado)
+SAN:     DNS:localhost, DNS:postgres.railway.internal
+```
+
+`PG_SSL=verify` sem CA falha com `SELF_SIGNED_CERT_IN_CHAIN`. Com o CA pinado
+mas sem nome, falha com `ERR_TLS_CERT_ALTNAME_INVALID`, porque o host público
+não está no SAN. Ou seja, a Railway não oferece TLS verificável pelo host
+público sem ajuda.
+
+**O que fazemos.** Pinar o CA e o nome interno. Em `.env.railway.local`:
+
+```
+PG_SSL=verify
+PG_SSL_CA=./railway-ca.pem
+PG_SSL_NOME_SERVIDOR=postgres.railway.internal
+```
+
+O Node valida a cadeia contra o `root-ca` pinado e o nome contra
+`postgres.railway.internal` (via `checkServerIdentity`, porque o `pg`
+sobrescreve `servername` com o host). Um atacante no meio precisaria da chave
+privada desse `root-ca`. Se a Railway rotacionar o certificado, a conexão falha
+alto, que é o comportamento certo. Nunca desligar a verificação para conexão
+remota.
+
+**Como reextrair o CA** (`railway-ca.pem` fica fora do repositório; o
+`.gitignore` ignora `*.pem`):
+
+```bash
+openssl s_client -connect <host>.proxy.rlwy.net:<porta> -starttls postgres -showcerts </dev/null 2>/dev/null \
+  | awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' \
+  | awk 'BEGIN{n=0} /BEGIN CERTIFICATE/{n++} n==2{print}' > railway-ca.pem
+openssl x509 -in railway-ca.pem -noout -fingerprint -sha256 -subject -dates
+```
+
+O segundo certificado da cadeia é o `root-ca`. Compare o fingerprint com o
+registrado aqui antes de confiar:
+
+```
+sha256 Fingerprint=16:BF:BC:9C:50:04:BE:A0:BD:E9:34:65:A9:A5:BE:17:AE:25:A3:89:57:7A:F1:45:54:2B:17:9D:BB:EF:44:90
+subject=CN=root-ca
+notBefore=Sep  8 15:34:59 2026 GMT
+notAfter=Dec  6 15:34:59 2028 GMT
+```
+
+Se o fingerprint mudou sem você ter recriado o banco, pare e investigue antes
+de atualizar o arquivo.
+
+**Limitação: trust-on-first-use.** O CA veio do próprio servidor na primeira
+conexão. Não há canal independente da Railway para conferir que aquele
+`root-ca` é o legítimo. O fingerprint acima protege contra mudança futura, não
+contra a primeira extração ter sido interceptada. O caminho forte é não
+atravessar a internet até o banco: aplicação e migrações rodando dentro da
+rede da Railway, conectando por `postgres.railway.internal`, onde o nome bate
+com o SAN sem pinagem. Fica para quando a infraestrutura permitir.
+
 ## Registrado para a fatia de login
 
 - Schema `autenticacao` com `credencial` e `sessao`, ambas com FK para
@@ -116,3 +181,5 @@ em disco, não do corpo transformado.
 - `criado_por` anulável, sem CHECK, para o seed do primeiro gestor.
 - `usuario_publico` (view com id e nome) fica fora até ter consumidor.
 - Aplicação na Railway é manual.
+- TLS até a Railway é trust-on-first-use (seção acima). O caminho forte é
+  rodar dentro da rede da Railway.

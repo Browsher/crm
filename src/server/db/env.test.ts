@@ -22,6 +22,12 @@ describe('lerEnv', () => {
     expect(() => exigir(env, 'DATABASE_URL_ADMIN')).toThrow(/DATABASE_URL_ADMIN/)
   })
 
+  test('PG_SSL_NOME_SERVIDOR é opcional e vazio vira ausente', () => {
+    expect(lerEnv({}).PG_SSL_NOME_SERVIDOR).toBeUndefined()
+    expect(lerEnv({ PG_SSL_NOME_SERVIDOR: '' }).PG_SSL_NOME_SERVIDOR).toBeUndefined()
+    expect(lerEnv({ PG_SSL_NOME_SERVIDOR: 'postgres.railway.internal' }).PG_SSL_NOME_SERVIDOR).toBe('postgres.railway.internal')
+  })
+
   test('string vazia conta como ausente', () => {
     expect(() => exigir(lerEnv({ DATABASE_URL: '' }), 'DATABASE_URL')).toThrow(/DATABASE_URL/)
   })

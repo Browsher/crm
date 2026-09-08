@@ -11,6 +11,9 @@ const esquema = z.object({
   DATABASE_URL_CONFERENCIA: vazioViraUndefined,
   PG_SSL: z.enum(['off', 'verify']).default('verify'),
   PG_SSL_CA: vazioViraUndefined,
+  // Nome esperado no certificado quando o host de conexão não bate com o SAN
+  // (proxy da Railway). Só faz sentido junto com PG_SSL_CA pinado.
+  PG_SSL_NOME_SERVIDOR: vazioViraUndefined,
 })
 
 export type EnvBanco = z.infer<typeof esquema>

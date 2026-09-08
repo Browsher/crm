@@ -72,6 +72,7 @@ Fronteira do projeto: `features/` não importa de outra `features/`. O que é co
 | `DATABASE_URL_CONFERENCIA` | CI, passo de leitura contra a Railway. Secret do GitHub. | `app_conferencia`, só `SELECT` em `_migracao` |
 | `PG_SSL` | pool e runner | `off` (container local) ou `verify` (padrão) |
 | `PG_SSL_CA` | pool e runner | caminho ou conteúdo PEM do CA, quando o servidor não usa CA pública |
+| `PG_SSL_NOME_SERVIDOR` | pool e runner | nome que o certificado precisa ter, quando o host de conexão não está no SAN (proxy da Railway). Exige `PG_SSL_CA`. |
 
 Validação com Zod, preguiçosa: na primeira chamada, não na avaliação do módulo, porque `next build` avalia módulos sem env. O CI roda `next build` sem nenhuma env de propósito. Exceção registrada: se um dia entrar variável `NEXT_PUBLIC_*`, ela valida na avaliação do módulo, porque build sem ela produz artefato quebrado em vez de erro.
 
@@ -91,7 +92,7 @@ SELECT r.rolsuper, r.rolbypassrls FROM pg_roles r WHERE r.rolname = current_user
 
 Se qualquer um for verdadeiro, lança e derruba a aplicação. Um pool conectado como superusuário ignora toda política e nenhum teste de RLS pega isso.
 
-TLS: `PG_SSL=off` desliga. `PG_SSL=verify` valida contra CAs do sistema, ou contra `PG_SSL_CA` quando informado. Ponto a verificar no plano: se o proxy público da Railway não validar contra CA pública nem oferecer CA para baixar, a solução é `PG_SSL_CA`, nunca desligar verificação em conexão remota.
+TLS: `PG_SSL=off` desliga. `PG_SSL=verify` valida contra CAs do sistema, ou contra `PG_SSL_CA` quando informado. `PG_SSL_NOME_SERVIDOR` pina o nome conferido no certificado via `checkServerIdentity`, porque o `pg` sobrescreve `servername` com o host. Verificado em 2026-09-08: o proxy público da Railway repassa o certificado interno do Postgres (`CN=localhost`, SAN `postgres.railway.internal`, emitido por um `root-ca` autoassinado). A conexão verificada exige CA pinado e nome pinado. Detalhes, comando de reextração e fingerprint em `docs/db/fundacao.md`. Nunca desligar verificação em conexão remota.
 
 ## 6. Identidade por transação
 
@@ -126,7 +127,7 @@ function comoUsuario<T>(usuarioId: string, trabalho: (executar: Executar) => Pro
 
 `RESET ALL` não restaura `role`: o parâmetro é marcado no Postgres com `GUC_NO_RESET_ALL`, assim como `session_authorization`. O `RESET ALL` do `crm-ch` nunca protegeu o papel; não deu problema porque `SET LOCAL ROLE` já voltava sozinho. O cinto e suspensório de verdade é `RESET ROLE` explícito.
 
-Isso é hipótese até o teste confirmar contra o container. Se o teste contradisser, esta seção muda, não o teste.
+Confirmado em 2026-09-08 contra Postgres 17 pelo controle negativo em `tests/integracao/identidade.test.ts`: após `SET ROLE` sem `LOCAL` e `RESET ALL`, o papel continua trocado; só `RESET ROLE` devolve.
 
 ### 6.5 Do lado do banco
 
@@ -389,5 +390,4 @@ Registrado para a fatia de login:
 - `usuario_publico` fora até ter consumidor.
 - Aplicação na Railway manual.
 - Sem teste de corrida nesta fatia: não há operação concorrente ainda. Entra com a primeira fila.
-- Comportamento de `RESET ALL` sobre `role` é hipótese até o teste confirmar (seção 6.4).
-- TLS contra a Railway: `verify` pode exigir `PG_SSL_CA`. Verificar no plano.
+- TLS até a Railway é trust-on-first-use: o CA veio do próprio servidor, sem canal independente de verificação. O fingerprint registrado em `docs/db/fundacao.md` protege contra mudança futura, não contra a primeira extração. O caminho forte é rodar aplicação e migrações dentro da rede da Railway, por `postgres.railway.internal`, quando a infraestrutura permitir.
