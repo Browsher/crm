@@ -30,7 +30,11 @@ quando doer. Ao resolver, apagar daqui.
   repetir o padrão no seed com senha.
 - Harness grava senha `'teste'` em `app_conexao`, papel global do cluster.
   Se `.env.test.local` apontar para a Railway, roda lá. Nenhuma conferência
-  de host.
+  de host. Consequência concreta, vista em 2026-09-08: toda rodada de
+  integração troca a senha de `app_conexao` do container, e a `DATABASE_URL`
+  do `.env.local` para de funcionar até rodar `npm run db:senha` de novo.
+  Caminho provável: harness com papel próprio (`app_conexao_teste`) ou senha
+  do harness igual à do `.env.local`.
 - Não existe primitiva de conexão sem identidade; `obterPool` e
   `conectarVerificado` são exportados. A fronteira `comoUsuario` é convenção,
   sem lint.
@@ -49,6 +53,27 @@ quando doer. Ao resolver, apagar daqui.
   primeira tela do gestor, ou quando `tentativa_login` passar de 50 mil
   linhas, o que vier primeiro. Conferir com
   `SELECT count(*) FROM autenticacao.tentativa_login` na Railway.
+
+## Fatia 0b: verificado à mão, sem teste de render
+
+Os formulários de `app/login` e `app/trocar-senha` não têm teste de render
+(decisão da spec, seção 3). O que garante a passagem do `<form>` para a
+action é a verificação manual abaixo, feita em 2026-09-08 pelo usuário no
+navegador contra o container local, depois de `db:aplicar` e
+`db:seed:gestor`. Refazer quando mexer em qualquer arquivo de `app/`.
+
+| Caminho | Verificado |
+|---|---|
+| rota protegida sem cookie redireciona para /login | sim |
+| senha errada mostra "E-mail ou senha não conferem." | sim |
+| primeiro acesso com provisória cai em /trocar-senha e obriga a troca | sim |
+| depois da troca, / mostra nome e papel | sim |
+| sair volta para /login e / redireciona de novo | sim |
+| bloqueio na 10ª falha mostra "Muitas tentativas…" e a senha certa em seguida também é recusada | sim |
+
+- `npm run db:seed:gestor` sem `-s` deixa o banner do npm no stdout antes da
+  senha provisória. Documentado em `fundacao.md`. Se doer, o script pode
+  gravar a senha num arquivo `0600` em vez de stdout.
 
 ## Ferramental
 
