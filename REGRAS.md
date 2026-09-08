@@ -93,4 +93,19 @@ percent-encoded (@ = %40, / = %2F, # = %23, % = %25).
 Tipo: bilhete
 
 
+## R-010 — No PG 16+, NOINHERIT no papel não muda grant existente
+
+O que aconteceu: a auditoria da fundação propôs `ALTER ROLE app_conexao NOINHERIT`
+para app_conexao parar de herdar app_usuario. Verificado no container: o grant
+continuou com `inherit_option = t` e a leitura sem SET ROLE seguiu funcionando.
+Desde o PG 16 a herança mora no grant; o atributo do papel só define o padrão
+de grants futuros.
+A regra: herança se revoga no grant, com
+`REVOKE INHERIT OPTION FOR <papel> FROM <membro>`. Conferir em
+`pg_auth_members.inherit_option`, não em `pg_roles.rolinherit`.
+Tipo: catraca
+Onde: invariante em src/server/db/migracoes/invariantes.ts
+
+---
+
 <!-- próximas regras aqui -->
