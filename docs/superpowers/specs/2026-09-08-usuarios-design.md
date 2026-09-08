@@ -138,6 +138,16 @@ que a 0010 não congelou (o congelamento é no `WITH CHECK` de
 `usuario_alterar`), e `credencial_definir` sobe a marca de qualquer jeito. Os
 dois concordam; o teste confirma o estado final.
 
+Por que `credencial_definir` não falha por permissão depois de o `INSERT`
+passar: `usuario_criar` é `pode_escrever() AND eh_gestor()`, e a função
+confere as mesmas duas mais `p_usuario_id <> usuario_atual()`, que nunca
+falha para id recém-gerado. Mesma transação, mesmo GUC. A única divergência
+possível é outra transação desativar ou rebaixar este gestor entre as duas
+instruções e dar `COMMIT` (`READ COMMITTED` faz a segunda instrução ver o
+novo estado). Aí a função levanta `42501`, o rollback desfaz o `INSERT`, e o
+repositório devolve `sem_permissao`. Nada foi criado e o chamador de fato
+não é mais gestor: o motivo está certo.
+
 Tradução de erro, no repositório:
 
 | Sinal | Motivo |
