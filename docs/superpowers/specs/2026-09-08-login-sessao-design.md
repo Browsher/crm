@@ -37,7 +37,7 @@ de login têm limite. Nada além disso.
 | Acerto zera | só as falhas do e-mail, nunca da origem | conta válida não pode zerar o contador de varredura |
 | Mensagem de bloqueio | explícita, com tempo restante | legítimo precisa entender; atacante já sabe pelo comportamento. **Decidido, não acidental.** |
 | Existência de e-mail | indistinguível por mensagem, tempo e bloqueio | mesma mensagem; `HASH_DESCARTAVEL` iguala o tempo; contagem por string de e-mail, exista ou não |
-| Proxy | só presença do cookie | autoridade fica na resolução de sessão, uma ida por requisição via `cache()` |
+| Proxy | só presença do cookie, e só para proteger rota | autoridade fica na resolução de sessão, uma ida por requisição via `cache()`; página não pode apagar cookie, então o proxy não pode mandar `/login` para `/` |
 | Conexão sem identidade | `chamar(nome, args)` com mapa fechado; sem `executar` genérico | restrição por construção no tipo e no GRANT, não por convenção |
 | `credencial_definir` | fora desta fatia | chamável por `app_conexao` sem verificação trocaria a senha de qualquer um; entra na fatia de usuários com `eh_gestor()` por dentro |
 | `senha_trocar` | deriva o usuário do `token_hash` da sessão | só troca a senha de quem tem a sessão em mãos; Node exige a senha atual antes |
@@ -109,7 +109,7 @@ comentário no `.sql`; o porquê fica em `docs/db/0009.md`.
 | `bloqueio_login(p_email text, p_origem text)` | STABLE | `bloqueado boolean, segundos_restantes int` | conta falhas na janela por e-mail e por origem; só lê |
 | `registrar_tentativa_login(p_email text, p_origem text, p_sucesso boolean)` | VOLATILE | o mesmo par | insere; acerto apaga falhas **do e-mail**; devolve o bloqueio já contando esta |
 | `sessao_criar(p_usuario_id uuid, p_token_hash text, p_expira_em timestamptz)` | VOLATILE | `void` | insere |
-| `sessao_atual(p_token_hash text)` | STABLE | `usuario_id, nome, email, papel, ativo, senha_provisoria_pendente, expira_em` | join com `usuario`; zero linhas se expirada ou inativo |
+| `sessao_atual(p_token_hash text)` | STABLE | `usuario_id, nome, email, papel, senha_provisoria_pendente, expira_em` | join com `usuario`; zero linhas se expirada ou inativo (por isso não devolve `ativo`: seria sempre verdadeiro) |
 | `sessao_encerrar(p_token_hash text)` | VOLATILE | `void` | apaga |
 | `senha_trocar(p_token_hash text, p_hash_novo text)` | VOLATILE | `uuid` | deriva usuário da sessão viva; grava hash; zera a marca; apaga as outras sessões; nulo se não há sessão viva |
 
@@ -189,8 +189,10 @@ está pedindo a coisa errada.
   ninguém mandar um megabyte para o `scrypt`.
 - `gerarSenhaProvisoria`: três blocos de quatro, alfabeto sem `0 O 1 l I`,
   `randomInt`.
-- `HASH_DESCARTAVEL`: hash real de uma senha aleatória, gerado uma vez e fixo
-  no código. Verificado quando o e-mail não existe, para o tempo ser o mesmo.
+- `hashDescartavel()`: hash real de uma senha aleatória, gerado uma vez por
+  processo, preguiçoso, e reusado. Verificado quando o e-mail não existe, para
+  o tempo ser o mesmo. Não é constante colada no código: nada "secreto"
+  versionado e nenhum placeholder no plano.
 - `verificarSenha` com `timingSafeEqual`; devolve `boolean`.
 
 ### 6.3 Sessão e cookie
@@ -231,8 +233,11 @@ se zero linhas. `usuarioAtual()` lê o cookie, chama `lerSessao`, dentro de
 | pendente | `sessao` | ok |
 | não gestor | `gestor` | `so_gestor`, destino `/` |
 
-`exigirX` chama `redirect(destino)`. Cookie presente com sessão nula é apagado
-antes do redirect, senão o proxy manda de volta para `/`.
+`exigir(exigencia)` chama `redirect(destino)`. Cookie presente com sessão
+nula **não** é apagado na guarda: `cookies().delete()` só funciona em server
+action e route handler, e em render de página lança. O cookie inválido fica
+até o próximo login sobrescrever ou `/sair` apagar. Isso só é seguro porque o
+proxy não redireciona `/login` para `/` (abaixo); senão seria loop.
 
 **Troca**, `trocarSenha({ token, senhaAtual, senhaNova })`:
 
@@ -247,9 +252,11 @@ antes do redirect, senão o proxy manda de volta para `/`.
 **Logout**: `POST /sair` → `sessao_encerrar`, apaga cookie, redireciona para
 `/login`. POST para link de terceiro não deslogar ninguém.
 
-**Proxy**: sem cookie e rota não pública → `/login`. Com cookie em `/login`
-→ `/`. Públicas: `/login`. Matcher exclui `_next/`, `favicon.ico` e
-estáticos.
+**Proxy**: sem cookie e rota não pública → `/login`. Só isso. Públicas:
+`/login`. Matcher exclui `_next/`, `favicon.ico` e estáticos. Quem manda
+usuário logado embora de `/login` é a própria página de login, que resolve a
+sessão e faz `redirect('/')` se ela for válida: uma ida ao banco só nessa
+página, e cookie inválido não vira loop.
 
 **Seed**: `criarPrimeiroGestor` gera provisória, insere `usuario` com
 `senha_provisoria_pendente = true` e `credencial` na mesma transação admin,
