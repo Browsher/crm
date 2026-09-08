@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { conectarVerificado } from '@/src/server/db/pool'
+import { FUNCOES } from '@/src/server/db/sem-identidade'
 import { criarBancoDeTeste, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -37,6 +38,39 @@ describe('schema autenticacao', () => {
                 has_table_privilege('app_conexao', 'autenticacao.${tabela}', 'INSERT, UPDATE, DELETE') AS escreve`,
       )
       expect(r[0]).toEqual({ le: false, escreve: false })
+    }
+  })
+
+  test('as três listas são uma: chaves de FUNCOES = funções com EXECUTE para app_conexao = todas as funções do schema', async () => {
+    const funcoes = await banco.sql<{ nome: string; conexao: boolean; usuario: boolean; conferencia: boolean }>(`
+      SELECT p.proname AS nome,
+             has_function_privilege('app_conexao', p.oid, 'EXECUTE') AS conexao,
+             has_function_privilege('app_usuario', p.oid, 'EXECUTE') AS usuario,
+             has_function_privilege('app_conferencia', p.oid, 'EXECUTE') AS conferencia
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'autenticacao' ORDER BY 1`)
+    const noBanco = funcoes.map((f) => f.nome)
+    const noMapa = Object.keys(FUNCOES).sort()
+    expect(noBanco).toEqual(noMapa)
+    expect(funcoes.filter((f) => f.conexao).map((f) => f.nome)).toEqual(noMapa)
+    expect(funcoes.filter((f) => f.usuario || f.conferencia)).toEqual([])
+  })
+
+  test('controle negativo: uma função a mais no schema, ou EXECUTE a mais, aparece na mesma consulta', async () => {
+    await banco.sql("CREATE FUNCTION autenticacao.intrusa() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT 1'")
+    await banco.sql('GRANT EXECUTE ON FUNCTION autenticacao.sessao_atual(text) TO app_usuario')
+    try {
+      const funcoes = await banco.sql<{ nome: string; usuario: boolean }>(`
+        SELECT p.proname AS nome, has_function_privilege('app_usuario', p.oid, 'EXECUTE') AS usuario
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'autenticacao' ORDER BY 1`)
+      expect(funcoes.map((f) => f.nome)).not.toEqual(Object.keys(FUNCOES).sort())
+      // Função nova nasce com EXECUTE para PUBLIC. Sem REVOKE, app_usuario executa
+      // `intrusa` também: é o esquecimento que o teste principal acusaria.
+      expect(funcoes.filter((f) => f.usuario).map((f) => f.nome)).toEqual(['intrusa', 'sessao_atual'])
+    } finally {
+      await banco.sql('DROP FUNCTION autenticacao.intrusa()')
+      await banco.sql('REVOKE EXECUTE ON FUNCTION autenticacao.sessao_atual(text) FROM app_usuario')
     }
   })
 

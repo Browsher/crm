@@ -127,6 +127,15 @@ migração é imutável. `npm run db:senha -- <papel> <senha>` faz o
 `npm run db:checar` confere as regras estáticas sem banco. O runner confere as
 invariantes de schema depois de aplicar (`src/server/db/migracoes/invariantes.ts`).
 
+**Sobre `FORCE ROW LEVEL SECURITY`, corrigindo a spec da fundação.** A spec
+dizia que `FORCE` em `usuario` causaria recursão infinita nas funções de
+acesso. Verificado em 2026-09-08 (`docs/db/0010.md`): com dona superusuária,
+que é o caso de `postgres` no container e na Railway, `FORCE` não muda nada.
+Com dona comum, as funções definidoras passam a estar sujeitas a RLS, não há
+política para a dona, e elas devolvem nulo: tudo é negado para todo mundo.
+Bloqueio total, não recursão. A invariante que barra `FORCE` continua valendo,
+pelo motivo certo.
+
 ## Como o runner aplica
 
 O arquivo tem `BEGIN;`/`COMMIT;` para ser atômico também quando rodado à mão
