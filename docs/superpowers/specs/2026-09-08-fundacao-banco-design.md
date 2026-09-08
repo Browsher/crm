@@ -216,7 +216,7 @@ Função `definir_auditoria()` e trigger `BEFORE INSERT OR UPDATE ON usuario`:
 
 | Política | Comando | Expressão |
 |---|---|---|
-| `usuario_ler` | SELECT | USING `id = usuario_atual() OR eh_gestor()` |
+| `usuario_ler` | SELECT | USING `pode_ler() AND (id = usuario_atual() OR eh_gestor())` |
 | `usuario_criar` | INSERT | WITH CHECK `eh_gestor()` |
 | `usuario_alterar` | UPDATE | USING e WITH CHECK `eh_gestor() AND id <> usuario_atual()` |
 
@@ -284,7 +284,7 @@ DDL é transacional no Postgres: ou schema mudou e registro gravou, ou nada acon
 | `db:pendentes` | Mesma leitura, sem escrever. Sai com 1 se há divergência de soma. Sai com 0 se há pendentes, imprimindo quais. Funciona com `DATABASE_URL_CONFERENCIA`. |
 | `db:checar` | Estático, sem banco. Ver 9.6. |
 | `db:seed:gestor` | Cria o primeiro gestor com `DATABASE_URL_ADMIN` via `admin.ts`, nunca pelo `pool.ts`. `criado_por` nulo. Recusa se já existe gestor ativo. |
-| `db:senha-app`, `db:senha-conferencia` | `ALTER ROLE ... LOGIN PASSWORD`, à mão, uma vez por ambiente. |
+| `db:senha -- <app_conexao\|app_conferencia> <senha>` | `ALTER ROLE ... LOGIN PASSWORD`, à mão, uma vez por ambiente. Um comando com argumento, para não duplicar código. |
 | `db:subir`, `db:derrubar` | `docker compose up -d` e `down` do Postgres local. |
 
 Aplicar na Railway é manual, com `DATABASE_URL_ADMIN` da máquina do dev. Migrar para o CI aplicar quando entrar mais gente no projeto.
