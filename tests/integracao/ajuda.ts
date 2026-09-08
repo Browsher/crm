@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { comAdmin, comBanco } from '@/src/server/db/admin'
+import { comoUsuario as comoUsuarioReal, type Executar } from '@/src/server/db/como-usuario'
 import { exigir, lerEnv } from '@/src/server/db/env'
 import { aplicar } from '@/src/server/db/migracoes/aplicar'
 import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
@@ -9,7 +10,10 @@ export type BancoDeTeste = {
   nome: string
   urlAdmin: string
   urlApp: string
+  // Como dono: RLS ignorada. Para preparar cenário e para controles negativos.
   sql: <T>(texto: string, params?: unknown[]) => Promise<T[]>
+  // O módulo real, como app_conexao: RLS vale.
+  comoUsuario: <T>(usuarioId: string, trabalho: (executar: Executar) => Promise<T>) => Promise<T>
   derrubar: () => Promise<void>
 }
 
@@ -45,10 +49,24 @@ export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTes
     urlApp,
     sql: async <T,>(texto: string, params?: unknown[]) =>
       comAdmin(urlAdmin, async (c) => (await c.query(texto, params)).rows as T[]),
+    comoUsuario: (usuarioId, trabalho) => comoUsuarioReal(usuarioId, trabalho, urlApp),
     derrubar: async () => {
       await fecharPool(urlApp)
       // WITH (FORCE) derruba conexões pendentes no fim do arquivo de teste.
       await comAdmin(urlServidor, (c) => c.query(`DROP DATABASE IF EXISTS ${nome} WITH (FORCE)`))
     },
   }
+}
+
+// Cria usuário como dono, sem identidade: criado_por fica nulo, como no seed.
+export async function criarUsuario(
+  banco: BancoDeTeste,
+  papel: 'vendedor' | 'gestor',
+  apelido: string,
+): Promise<string> {
+  const [{ id }] = await banco.sql<{ id: string }>(
+    'INSERT INTO usuario (nome, email, papel) VALUES ($1, $2, $3) RETURNING id',
+    [apelido, `${apelido.toLowerCase()}@teste.local`, papel],
+  )
+  return id
 }
