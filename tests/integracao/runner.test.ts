@@ -1,0 +1,155 @@
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { aplicar, situacao } from '@/src/server/db/migracoes/aplicar'
+import { conferirInvariantes } from '@/src/server/db/migracoes/invariantes'
+import { criarBancoDeTeste, type BancoDeTeste } from './ajuda'
+
+const arq = (corpo: string) => `-- teste\nBEGIN;\n${corpo}\nCOMMIT;\n`
+const tabela = (nome: string) => `CREATE TABLE ${nome} (id uuid PRIMARY KEY DEFAULT gen_random_uuid());`
+
+async function pastaCom(arquivos: Record<string, string>): Promise<string> {
+  const pasta = await mkdtemp(join(tmpdir(), 'migracoes-'))
+  for (const [nome, conteudo] of Object.entries(arquivos)) await writeFile(join(pasta, nome), conteudo)
+  return pasta
+}
+
+let banco: BancoDeTeste
+beforeAll(async () => {
+  banco = await criarBancoDeTeste()
+})
+afterAll(async () => {
+  await banco.derrubar()
+})
+
+describe('aplicar', () => {
+  test('aplica do zero e registra a soma do arquivo em disco', async () => {
+    const pasta = await pastaCom({ '0000_a.sql': arq(tabela('a')) })
+    const r = await aplicar(banco.urlAdmin, pasta)
+    expect(r).toEqual({ ok: true, aplicadas: ['0000_a.sql'] })
+    const linhas = await banco.sql<{ nome: string; soma: string }>(
+      "SELECT nome, soma FROM _migracao WHERE nome = '0000_a.sql'",
+    )
+    expect(linhas).toHaveLength(1)
+    expect(linhas[0].soma).toMatch(/^[0-9a-f]{64}$/)
+    const tabelas = await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_tables WHERE tablename = 'a'")
+    expect(tabelas[0].n).toBe(1)
+  })
+
+  test('segunda execução não faz nada', async () => {
+    const pasta = await pastaCom({ '0000_a.sql': arq(tabela('a')) })
+    const r = await aplicar(banco.urlAdmin, pasta)
+    expect(r).toEqual({ ok: true, aplicadas: [] })
+  })
+
+  test('arquivo alterado é recusado e nenhuma pendente é aplicada', async () => {
+    const pasta = await pastaCom({
+      '0000_a.sql': arq('CREATE TABLE a (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), x int);'),
+      '0001_b.sql': arq(tabela('b')),
+    })
+    const r = await aplicar(banco.urlAdmin, pasta)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.divergentes?.map((d) => d.nome)).toEqual(['0000_a.sql'])
+    const b = await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_tables WHERE tablename = 'b'")
+    expect(b[0].n).toBe(0)
+  })
+
+  test('falha na última instrução deixa schema e _migracao intactos', async () => {
+    const pasta = await pastaCom({
+      '0000_a.sql': arq(tabela('a')),
+      '0001_c.sql': arq(`${tabela('c')}\nSELECT 1/0;`),
+    })
+    await expect(aplicar(banco.urlAdmin, pasta)).rejects.toThrow(/division by zero/)
+    const c = await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_tables WHERE tablename = 'c'")
+    expect(c[0].n).toBe(0)
+    const reg = await banco.sql<{ nome: string }>(
+      "SELECT nome FROM _migracao WHERE nome IN ('0000_a.sql', '0001_c.sql') ORDER BY nome",
+    )
+    expect(reg.map((r) => r.nome)).toEqual(['0000_a.sql'])
+  })
+
+  test('para no primeiro arquivo que falha e não segue para o seguinte', async () => {
+    const pasta = await pastaCom({
+      '0000_a.sql': arq(tabela('a')),
+      '0001_c.sql': arq('SELECT 1/0;'),
+      '0002_d.sql': arq(tabela('d')),
+    })
+    await expect(aplicar(banco.urlAdmin, pasta)).rejects.toThrow()
+    const d = await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_tables WHERE tablename = 'd'")
+    expect(d[0].n).toBe(0)
+  })
+
+  test('checador reprovado recusa antes de tocar no banco', async () => {
+    const pasta = await pastaCom({ '0000_a.sql': 'CREATE TABLE z (id int);' })
+    const r = await aplicar(banco.urlAdmin, pasta)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.problemas?.length).toBeGreaterThan(0)
+  })
+})
+
+describe('situacao', () => {
+  test('lista aplicadas, pendentes e divergentes sem escrever', async () => {
+    const pasta = await pastaCom({ '0000_a.sql': arq(tabela('a')), '0001_e.sql': arq(tabela('e')) })
+    const antes = await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM _migracao')
+    const s = await situacao(banco.urlAdmin, pasta)
+    expect(s.aplicadas).toEqual(['0000_a.sql'])
+    expect(s.pendentes).toEqual(['0001_e.sql'])
+    expect(s.divergentes).toEqual([])
+    const depois = await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM _migracao')
+    expect(depois[0].n).toBe(antes[0].n)
+  })
+
+  test('banco sem _migracao: tudo pendente', async () => {
+    const outro = await criarBancoDeTeste({ semMigracoes: true })
+    try {
+      const pasta = await pastaCom({ '0000_a.sql': arq('SELECT 1;') })
+      const s = await situacao(outro.urlAdmin, pasta)
+      expect(s).toEqual({ aplicadas: [], pendentes: ['0000_a.sql'], divergentes: [] })
+    } finally {
+      await outro.derrubar()
+    }
+  })
+})
+
+describe('_migracao', () => {
+  test('inalcançável pelos papéis da aplicação e legível por app_conferencia', async () => {
+    const priv = await banco.sql<{ papel: string; le: boolean }>(`
+      SELECT r.rolname AS papel, has_table_privilege(r.rolname, '_migracao', 'SELECT') AS le
+      FROM pg_roles r WHERE r.rolname IN ('app_conexao', 'app_usuario', 'app_conferencia') ORDER BY 1`)
+    expect(priv).toEqual([
+      { papel: 'app_conexao', le: false },
+      { papel: 'app_conferencia', le: true },
+      { papel: 'app_usuario', le: false },
+    ])
+  })
+})
+
+describe('conferirInvariantes', () => {
+  test('nomeia tabela de public sem RLS, exceto _migracao', async () => {
+    await banco.sql('CREATE TABLE IF NOT EXISTS sem_rls (id uuid PRIMARY KEY DEFAULT gen_random_uuid())')
+    const r = await conferirInvariantes(banco.urlAdmin)
+    expect(r.ok).toBe(false)
+    if (!r.ok) {
+      expect(r.violacoes.join()).toMatch(/sem_rls/)
+      expect(r.violacoes.join()).not.toMatch(/_migracao/)
+    }
+  })
+
+  test('nomeia tabela com FORCE ROW LEVEL SECURITY', async () => {
+    await banco.sql('ALTER TABLE sem_rls ENABLE ROW LEVEL SECURITY')
+    await banco.sql('ALTER TABLE sem_rls FORCE ROW LEVEL SECURITY')
+    const r = await conferirInvariantes(banco.urlAdmin)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.violacoes.join()).toMatch(/FORCE.*sem_rls/)
+    await banco.sql('ALTER TABLE sem_rls NO FORCE ROW LEVEL SECURITY')
+  })
+
+  test('nomeia _migracao alcançável por papel da aplicação (controle negativo)', async () => {
+    await banco.sql('GRANT SELECT ON _migracao TO app_usuario')
+    const r = await conferirInvariantes(banco.urlAdmin)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.violacoes.join()).toMatch(/_migracao.*app_usuario/)
+    await banco.sql('REVOKE ALL ON _migracao FROM app_usuario')
+  })
+})

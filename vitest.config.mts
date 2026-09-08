@@ -1,10 +1,30 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('.', import.meta.url)) },
+  },
   test: {
-    environment: 'jsdom',
-    globals: true,
+    projects: [
+      {
+        test: {
+          name: 'unitario',
+          environment: 'node',
+          include: ['src/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'integracao',
+          environment: 'node',
+          include: ['tests/integracao/**/*.test.ts'],
+          setupFiles: ['tests/setup-env.ts'],
+          fileParallelism: false,
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
+        },
+      },
+    ],
   },
 })

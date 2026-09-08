@@ -1,0 +1,7 @@
+-- ver docs/db/0000.md
+BEGIN;
+DO $$ BEGIN CREATE ROLE app_usuario NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE app_conexao NOLOGIN NOBYPASSRLS NOSUPERUSER NOCREATEDB NOCREATEROLE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+GRANT app_usuario TO app_conexao;
+GRANT USAGE ON SCHEMA public TO app_usuario;
+COMMIT;

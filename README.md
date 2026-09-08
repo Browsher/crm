@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CRM
 
-## Getting Started
+CRM para uma equipe de cinco vendedores por telefone. Next.js, TypeScript,
+Postgres com RLS. A autoridade sobre quem vê o quê está no banco, não no código.
 
-First, run the development server:
+## Subir
 
 ```bash
+npm ci
+npm run db:subir                      # Postgres 17 em Docker
+cp .env.example .env.local            # e ajuste a senha local
+npm run db:aplicar                    # migrações + invariantes
+npm run db:senha -- app_conexao <senha-local>
+npm run db:seed:gestor -- "Seu Nome" voce@dominio
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Testar
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test                # unitário + integração (precisa do container)
+npm run test:unit
+npm run test:integracao
+npm run db:checar       # convenções das migrações, sem banco
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Os testes de integração criam um banco por arquivo no container e o derrubam
+no fim. O CI faz o mesmo com `services: postgres`.
 
-## Learn More
+## Banco na Railway
 
-To learn more about Next.js, take a look at the following resources:
+Aplicar migração em produção é manual, da sua máquina, com
+`.env.railway.local` (ignorado pelo git):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+ALVO=railway npm run db:pendentes     # só lê
+ALVO=railway npm run db:aplicar
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+O PR roda a conferência somente-leitura contra a Railway e falha se uma
+migração aplicada foi alterada.
 
-## Deploy on Vercel
+## Por quê
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`docs/db/fundacao.md` explica a fundação: papéis, identidade por transação,
+regras de migração, TLS até a Railway. Cada migração tem seu
+`docs/db/NNNN.md`. A spec completa está em `docs/superpowers/specs/`.
