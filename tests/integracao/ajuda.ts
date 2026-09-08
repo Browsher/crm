@@ -76,6 +76,18 @@ export async function criarUsuario(
   return id
 }
 
+// gerarHash custa ~800ms. Testes que não são sobre senha reusam a mesma senha;
+// memoizar por senha paga uma vez por processo e o hash continua real.
+const hashes = new Map<string, Promise<string>>()
+function hashMemoizado(senha: string): Promise<string> {
+  let h = hashes.get(senha)
+  if (!h) {
+    h = gerarHash(senha)
+    hashes.set(senha, h)
+  }
+  return h
+}
+
 // Usuário com credencial, criado como dona. Para testes de login e troca.
 export async function criarUsuarioComSenha(
   banco: BancoDeTeste,
@@ -89,6 +101,6 @@ export async function criarUsuarioComSenha(
     'INSERT INTO usuario (nome, email, papel, senha_provisoria_pendente) VALUES ($1, $2, $3, $4) RETURNING id',
     [apelido, email, papel, opcoes.pendente ?? false],
   )
-  await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, await gerarHash(senha)])
+  await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, await hashMemoizado(senha)])
   return { id, email }
 }

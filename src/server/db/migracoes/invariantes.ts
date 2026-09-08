@@ -4,7 +4,7 @@ import { PAPEIS_APLICACAO } from './aplicar'
 
 export type ResultadoInvariantes = { ok: true } | { ok: false; violacoes: string[] }
 
-export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever'] as const
+export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'] as const
 
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.
@@ -90,7 +90,11 @@ export function avaliar(e: Estado): string[] {
   for (const t of e.tabelas) {
     const nome = `${t.schema}.${t.nome}`
     if (!t.rls && t.nome !== '_migracao') v.push(`tabela sem RLS: ${nome}`)
-    if (t.force) v.push(`tabela com FORCE ROW LEVEL SECURITY: ${nome} (recursão nas funções de acesso)`)
+    if (t.force) {
+      v.push(
+        `tabela com FORCE ROW LEVEL SECURITY: ${nome} (com dona comum, as funções de acesso ficam sujeitas a RLS sem política e negam tudo: bloqueio total)`,
+      )
+    }
   }
 
   for (const f of e.funcoesDefinidoras) {

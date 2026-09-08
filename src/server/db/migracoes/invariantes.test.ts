@@ -12,8 +12,9 @@ const sao = (): Estado => ({
     { schema: 'public', nome: 'pode_ler', temSearchPath: true },
     { schema: 'public', nome: 'eh_gestor', temSearchPath: true },
     { schema: 'public', nome: 'pode_escrever', temSearchPath: true },
+    { schema: 'public', nome: 'senha_provisoria_de', temSearchPath: true },
   ],
-  funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever'],
+  funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'],
   papeis: ['app_conexao', 'app_usuario'],
   conexao: { rolsuper: false, rolbypassrls: false, rolconnlimit: 20, dona: 0, herdaDe: [] },
   migracaoAlcancavelPor: [],
@@ -38,10 +39,10 @@ describe('avaliar', () => {
     umaViolacao(e, /sem RLS: autenticacao\.credencial/)
   })
 
-  test('tabela com FORCE', () => {
+  test('tabela com FORCE: a mensagem diz o efeito real, bloqueio, não recursão', () => {
     const e = sao()
     e.tabelas[1].force = true
-    umaViolacao(e, /FORCE.*public\.usuario/)
+    umaViolacao(e, /FORCE.*public\.usuario.*bloqueio/)
   })
 
   test('função SECURITY DEFINER sem search_path, em qualquer schema', () => {
@@ -65,7 +66,7 @@ describe('avaliar', () => {
 
   test('função de acesso ausente é violação, não verde', () => {
     const e = sao()
-    e.funcoesDeAcesso = ['usuario_atual', 'eh_gestor', 'pode_escrever']
+    e.funcoesDeAcesso = ['usuario_atual', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de']
     umaViolacao(e, /função de acesso ausente: pode_ler/)
   })
 
@@ -83,7 +84,7 @@ describe('avaliar', () => {
 
   test('pode_escrever ausente é violação', () => {
     const e = sao()
-    e.funcoesDeAcesso = ['usuario_atual', 'pode_ler', 'eh_gestor']
+    e.funcoesDeAcesso = ['usuario_atual', 'pode_ler', 'eh_gestor', 'senha_provisoria_de']
     umaViolacao(e, /função de acesso ausente: pode_escrever/)
   })
 

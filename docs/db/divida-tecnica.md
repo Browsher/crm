@@ -75,6 +75,80 @@ navegador contra o container local, depois de `db:aplicar` e
   senha provisória. Documentado em `fundacao.md`. Se doer, o script pode
   gravar a senha num arquivo `0600` em vez de stdout.
 
+## Fatia 0b: auditoria de 2026-09-08
+
+Do que a auditoria da 0b apontou, a 0b.1 resolveu: marca provisória
+congelada para o gestor, teste das três listas de funções, hash memoizado no
+harness. O resto está aqui.
+
+### Invariantes sem teste
+
+- Bloqueio para e-mail inexistente: 10 falhas num e-mail que não existe
+  devem dar `bloqueado`, e a tentativa deve ser registrada. Sem teste.
+- Restrição "no tipo" de `chamar`: só a checagem em runtime tem teste. Um
+  `@ts-expect-error` provaria que o TypeScript recusa aridade e nome errados.
+- `sem-identidade` não exporta `executar`: sem teste de exports.
+- `cookie.ts` inteiro: `httpOnly`, `sameSite`, `secure` fora de dev, `expires`.
+- `segundos_restantes` nunca negativo; segundos no bloqueio só por origem.
+- Fronteira "só `cookie`, `rota`, `guarda`, `proxy` e `app/**` importam
+  `next/*`": convenção sem lint.
+- Troca de senha de usuário sem pendência só coberta indiretamente.
+
+### Código sem cobertura
+
+- `guarda.ts` inteiro; `proxy.ts` (o embrulho e o `matcher`); `cookie.ts`;
+  `app/**` inteiro; `scripts/db/seed-gestor.mts`. Só manual.
+- `trocarSenhaAcao` sem cookie e com `sem_sessao` no meio: nem manual.
+- `verificarSenha`: o `catch` quando o `scrypt` lança (`N=3`).
+- `mensagens.ts`: textos de `maximo` e `so_espaco`, junção com três faltas.
+- `trocar-senha.ts`: `sem_sessao` final, por corrida.
+- `sem-identidade.ts`: `release` quando a função lança no banco.
+
+### Atacante só com navegador
+
+- CPU sem teto: cada tentativa custa um `scrypt` (~800ms, 128 MiB), inclusive
+  e-mail inexistente. Limite é por e-mail e por origem; com muitos IPs e
+  e-mails inventados, não há limite global.
+- `tentativa_login` cresce 30 linhas por IP a cada 15 minutos até o bloqueio.
+  Já tem gatilho de faxina acima.
+- Quem divide IP com a equipe (CGNAT, escritório) bloqueia a origem da equipe
+  com 30 falhas, sem conhecer senha.
+- `x-forwarded-for` confiável só se o host sobrescrever. A Vercel sobrescreve;
+  não foi verificado nesta fatia. Em dev e em outro host, o cliente forja a
+  origem: escapa do limite por origem e bloqueia o IP que quiser.
+- Sem CSP nem `frame-ancestors`: o login pode ser emoldurado.
+- Primeira tentativa com e-mail inexistente num processo novo custa dois
+  `scrypt` (`hashDescartavel` gera na hora). Sinal fraco em cold start.
+
+### Sessão roubada
+
+- Vale por até 30 dias, sem vínculo a IP ou navegador, sem lista de
+  dispositivos, sem "sair de todos". Só a troca de senha derruba.
+- Sessão de gestor roubada é gestor. Na fatia de usuários isso passa a
+  significar criar e alterar qualquer um.
+
+### Acesso à aplicação
+
+- Documentado: cunha sessão de qualquer um, lê hashes por e-mail, desbloqueia
+  com `registrar_tentativa_login(..., true)`, `RESET ROLE` chega às funções.
+
+### Herança para a fatia de usuários
+
+- **`credencial_definir` com `eh_gestor()` por dentro não funciona via
+  `chamar`**: `chamar` roda sem identidade, `usuario_atual()` é nulo. A função
+  precisa rodar dentro de `comoUsuario`, mas `app_usuario` não tem `USAGE`
+  em `autenticacao`. Caminho provável: função em `public`, `GRANT EXECUTE TO
+  app_usuario`, tocando `autenticacao` por dentro como definidora. Decidir no
+  brainstorm da fatia.
+- `chamar<'nome', Linha>` não amarra o tipo de retorno ao nome. Um mapa nome
+  → linha fecharia.
+- `senhaAtual` sem limite de tamanho em `trocarSenha`.
+- `exigir('gestor')` existe e nenhuma página usa.
+- Matcher do proxy exclui por extensão: `/relatorio.csv` não passa pelo
+  proxy. Route handler sem `exigir` fica aberta.
+- `atualizado_por` nulo quando o sistema altera `usuario`: seed e
+  `senha_trocar` ficam indistinguíveis de bug na auditoria.
+
 ## Ferramental
 
 - Sem projeto Vitest para React. `jsdom` e plugin instalados, não

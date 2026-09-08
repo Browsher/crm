@@ -107,6 +107,21 @@ describe('senha provisória pendente', () => {
     expect(altera.afetadas).toBe(0)
   })
 
+  test('marca congelada: gestor não zera a senha_provisoria_pendente de outro (42501), mas altera o resto da linha', async () => {
+    const id = await criarUsuario(banco, 'vendedor', 'Marcado')
+    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [id])
+    await expect(
+      banco.comoUsuario(gestor, (e) => e('UPDATE usuario SET senha_provisoria_pendente = false WHERE id = $1', [id])),
+    ).rejects.toMatchObject({ code: '42501' })
+    await expect(
+      banco.comoUsuario(gestor, (e) => e('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [vendedor])),
+    ).rejects.toMatchObject({ code: '42501' })
+    const nome = await banco.comoUsuario(gestor, (e) => e("UPDATE usuario SET nome = 'Marcado2' WHERE id = $1", [id]))
+    expect(nome.afetadas).toBe(1)
+    const [l] = await banco.sql<{ p: boolean }>('SELECT senha_provisoria_pendente AS p FROM usuario WHERE id = $1', [id])
+    expect(l.p).toBe(true)
+  })
+
   test('transição do primeiro acesso: depois de senha_trocar, o mesmo gestor volta a escrever sem nova sessão', async () => {
     const id = await criarUsuario(banco, 'gestor', 'Primeiro')
     await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [id])
