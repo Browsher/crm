@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { chamar } from '@/src/server/db/sem-identidade'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -104,6 +105,21 @@ describe('senha provisória pendente', () => {
     ).rejects.toMatchObject({ code: '42501' })
     const altera = await banco.comoUsuario(id, (e) => e("UPDATE usuario SET nome = 'X' WHERE id = $1", [vendedor]))
     expect(altera.afetadas).toBe(0)
+  })
+
+  test('transição do primeiro acesso: depois de senha_trocar, o mesmo gestor volta a escrever sem nova sessão', async () => {
+    const id = await criarUsuario(banco, 'gestor', 'Primeiro')
+    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [id])
+    await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, 'provisoria'])
+    await chamar('sessao_criar', [id, 'h-primeiro', new Date(Date.now() + 60_000)])
+    await expect(
+      banco.comoUsuario(id, (e) => e(inserir('Antes', 'antes@teste.local', 'vendedor'))),
+    ).rejects.toMatchObject({ code: '42501' })
+    await chamar('senha_trocar', ['h-primeiro', 'definitiva'])
+    const depois = await banco.comoUsuario(id, (e) => e(inserir('Depois', 'depois@teste.local', 'vendedor')))
+    expect(depois.afetadas).toBe(1)
+    const altera = await banco.comoUsuario(id, (e) => e("UPDATE usuario SET nome = 'Alterado' WHERE id = $1", [vendedor]))
+    expect(altera.afetadas).toBe(1)
   })
 })
 
