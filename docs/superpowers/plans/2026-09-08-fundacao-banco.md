@@ -1796,6 +1796,23 @@ describe('desfecho da transação', () => {
   })
 })
 
+describe('herança de papel não vaza acesso', () => {
+  test('app_conexao consultando usuario fora de comoUsuario recebe zero linhas ou erro, nunca dados', async () => {
+    const { conectarVerificado } = await import('@/src/server/db/pool')
+    const c = await conectarVerificado(banco.urlApp)
+    try {
+      const r = await c.query('SELECT id FROM usuario').catch((e: unknown) => e as Error)
+      if (r instanceof Error) {
+        expect((r as Error & { code?: string }).code).toBe('42501')
+      } else {
+        expect(r.rowCount).toBe(0)
+      }
+    } finally {
+      c.release()
+    }
+  })
+})
+
 describe('vazamento do lado JavaScript', () => {
   test('executar guardado lança ExecutarForaDaTransacao depois do retorno', async () => {
     let guardado: Executar | undefined
