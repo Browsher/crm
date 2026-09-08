@@ -11,11 +11,14 @@ const sao = (): Estado => ({
     { schema: 'public', nome: 'usuario_atual', temSearchPath: true },
     { schema: 'public', nome: 'pode_ler', temSearchPath: true },
     { schema: 'public', nome: 'eh_gestor', temSearchPath: true },
+    { schema: 'public', nome: 'pode_escrever', temSearchPath: true },
   ],
-  funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor'],
+  funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever'],
   papeis: ['app_conexao', 'app_usuario'],
   conexao: { rolsuper: false, rolbypassrls: false, rolconnlimit: 20, dona: 0, herdaDe: [] },
   migracaoAlcancavelPor: [],
+  privilegiosDeConexaoEmAutenticacao: [],
+  politicasEmAutenticacao: [],
 })
 
 const umaViolacao = (estado: Estado, padrao: RegExp) => {
@@ -62,7 +65,7 @@ describe('avaliar', () => {
 
   test('função de acesso ausente é violação, não verde', () => {
     const e = sao()
-    e.funcoesDeAcesso = ['usuario_atual', 'eh_gestor']
+    e.funcoesDeAcesso = ['usuario_atual', 'eh_gestor', 'pode_escrever']
     umaViolacao(e, /função de acesso ausente: pode_ler/)
   })
 
@@ -76,6 +79,24 @@ describe('avaliar', () => {
     const e = sao()
     e.conexao = { ...e.conexao!, ...mudanca }
     umaViolacao(e, padrao)
+  })
+
+  test('pode_escrever ausente é violação', () => {
+    const e = sao()
+    e.funcoesDeAcesso = ['usuario_atual', 'pode_ler', 'eh_gestor']
+    umaViolacao(e, /função de acesso ausente: pode_escrever/)
+  })
+
+  test('app_conexao com privilégio de tabela em autenticacao', () => {
+    const e = sao()
+    e.privilegiosDeConexaoEmAutenticacao = ['sessao']
+    umaViolacao(e, /app_conexao alcança autenticacao\.sessao/)
+  })
+
+  test('política em tabela de autenticacao', () => {
+    const e = sao()
+    e.politicasEmAutenticacao = ['sessao_ler']
+    umaViolacao(e, /política em autenticacao: sessao_ler/)
   })
 
   test('_migracao alcançável por papel da aplicação', () => {

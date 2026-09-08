@@ -169,6 +169,28 @@ describe('conferirInvariantes', () => {
     }
   })
 
+  test('nomeia app_conexao com privilégio de tabela em autenticacao (controle negativo)', async () => {
+    await banco.sql('GRANT SELECT ON autenticacao.sessao TO app_conexao')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/app_conexao alcança autenticacao\.sessao/)
+    } finally {
+      await banco.sql('REVOKE ALL ON autenticacao.sessao FROM app_conexao')
+    }
+  })
+
+  test('nomeia política em tabela de autenticacao (controle negativo)', async () => {
+    await banco.sql('CREATE POLICY aberta ON autenticacao.sessao FOR SELECT TO app_conexao USING (true)')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/política em autenticacao: aberta/)
+    } finally {
+      await banco.sql('DROP POLICY aberta ON autenticacao.sessao')
+    }
+  })
+
   test('nomeia _migracao alcançável por papel da aplicação (controle negativo)', async () => {
     await banco.sql('GRANT SELECT ON _migracao TO app_usuario')
     const r = await conferirInvariantes(banco.urlAdmin)

@@ -17,7 +17,7 @@ describe('migrações reais', () => {
     expect(checarMigracoes(await lerMigracoes(PASTA_MIGRACOES))).toEqual({ ok: true })
   })
 
-  test('as sete estão registradas', async () => {
+  test('as dez estão registradas', async () => {
     const r = await banco.sql<{ nome: string }>('SELECT nome FROM _migracao ORDER BY nome')
     expect(r.map((x) => x.nome)).toEqual([
       '0000_papeis.sql',
@@ -27,6 +27,9 @@ describe('migrações reais', () => {
       '0004_habilitar_rls.sql',
       '0005_politicas_usuario.sql',
       '0006_conexao_sem_heranca.sql',
+      '0007_autenticacao.sql',
+      '0008_senha_provisoria.sql',
+      '0009_funcoes_autenticacao.sql',
     ])
   })
 
@@ -66,7 +69,7 @@ describe('migrações reais', () => {
 
   test('funções de acesso: PUBLIC não executa, app_usuario executa', async () => {
     // app_conferencia representa "qualquer outro papel": se PUBLIC tivesse EXECUTE, ele teria.
-    for (const f of ['usuario_atual()', 'pode_ler()', 'eh_gestor()']) {
+    for (const f of ['usuario_atual()', 'pode_ler()', 'eh_gestor()', 'pode_escrever()']) {
       const r = await banco.sql<{ pub: boolean; app: boolean }>(
         `SELECT has_function_privilege('app_usuario', '${f}', 'EXECUTE') AS app,
                 has_function_privilege('app_conferencia', '${f}', 'EXECUTE') AS pub`,

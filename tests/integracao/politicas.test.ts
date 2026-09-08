@@ -93,6 +93,20 @@ describe('desativação tem efeito imediato', () => {
   })
 })
 
+describe('senha provisória pendente', () => {
+  test('gestor pendente lê normalmente e não insere nem altera: barreira do banco', async () => {
+    const id = await criarUsuario(banco, 'gestor', 'Pendente')
+    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [id])
+    const le = await banco.comoUsuario(id, (e) => e('SELECT id FROM usuario'))
+    expect(le.afetadas).toBeGreaterThan(1)
+    await expect(
+      banco.comoUsuario(id, (e) => e(inserir('P', 'p@teste.local', 'vendedor'))),
+    ).rejects.toMatchObject({ code: '42501' })
+    const altera = await banco.comoUsuario(id, (e) => e("UPDATE usuario SET nome = 'X' WHERE id = $1", [vendedor]))
+    expect(altera.afetadas).toBe(0)
+  })
+})
+
 describe('controle negativo', () => {
   test('como dono, RLS é ignorada e todos aparecem', async () => {
     const r = await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM usuario')
