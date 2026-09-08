@@ -120,19 +120,37 @@ describe('desfecho da transação', () => {
   })
 })
 
-describe('herança de papel não vaza acesso', () => {
-  test('app_conexao consultando usuario fora de comoUsuario recebe zero linhas ou erro, nunca dados', async () => {
+describe('app_conexao sem herança', () => {
+  test('consultar usuario fora de comoUsuario é permission denied, não zero linhas', async () => {
     const c = await conectarVerificado(banco.urlApp)
     try {
-      const r = await c.query('SELECT id FROM usuario').catch((e: unknown) => e as Error & { code?: string })
-      if (r instanceof Error) {
-        expect(r.code).toBe('42501')
-      } else {
-        expect(r.rowCount).toBe(0)
-      }
+      await expect(c.query('SELECT id FROM usuario')).rejects.toMatchObject({ code: '42501' })
     } finally {
       c.release()
     }
+  })
+
+  test('sem privilégio na tabela e sem herança no grant; só assumindo app_usuario', async () => {
+    const r = await banco.sql<{ le: boolean; herda: boolean; assume: boolean }>(`
+      SELECT has_table_privilege('app_conexao', 'usuario', 'SELECT') AS le,
+             m.inherit_option AS herda, m.set_option AS assume
+      FROM pg_auth_members m
+      WHERE m.roleid = 'app_usuario'::regrole AND m.member = 'app_conexao'::regrole`)
+    expect(r).toEqual([{ le: false, herda: false, assume: true }])
+  })
+})
+
+describe('conexão encerrada pelo servidor', () => {
+  test('transação ociosa: comoUsuario rejeita com o erro do servidor, o processo continua e a próxima chamada funciona', async () => {
+    await expect(
+      banco.comoUsuario(vendedorA, async (e) => {
+        await e("SET LOCAL idle_in_transaction_session_timeout = '200ms'")
+        await new Promise((r) => setTimeout(r, 600))
+        await e('SELECT 1')
+      }),
+    ).rejects.toMatchObject({ code: '25P03' })
+    const r = await banco.comoUsuario(vendedorB, quemSou)
+    expect(r).toEqual({ id: vendedorB, papel: 'app_usuario' })
   })
 })
 

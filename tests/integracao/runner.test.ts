@@ -145,6 +145,30 @@ describe('conferirInvariantes', () => {
     await banco.sql('ALTER TABLE sem_rls NO FORCE ROW LEVEL SECURITY')
   })
 
+  test('nomeia tabela sem RLS fora de public', async () => {
+    await banco.sql('CREATE SCHEMA IF NOT EXISTS outro')
+    await banco.sql('CREATE TABLE IF NOT EXISTS outro.aberta (id uuid PRIMARY KEY DEFAULT gen_random_uuid())')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/sem RLS: outro\.aberta/)
+    } finally {
+      await banco.sql('DROP TABLE outro.aberta')
+    }
+  })
+
+  test('nomeia função SECURITY DEFINER sem search_path, em qualquer schema', async () => {
+    await banco.sql('CREATE SCHEMA IF NOT EXISTS outro')
+    await banco.sql("CREATE FUNCTION outro.perigosa() RETURNS int LANGUAGE sql SECURITY DEFINER AS 'SELECT 1'")
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/outro\.perigosa sem search_path/)
+    } finally {
+      await banco.sql('DROP FUNCTION outro.perigosa()')
+    }
+  })
+
   test('nomeia _migracao alcançável por papel da aplicação (controle negativo)', async () => {
     await banco.sql('GRANT SELECT ON _migracao TO app_usuario')
     const r = await conferirInvariantes(banco.urlAdmin)

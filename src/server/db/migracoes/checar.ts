@@ -21,6 +21,9 @@ function checarUm(arq: Arquivo): string[] {
   const p: string[] = []
   const pre = (m: string) => `${arq.nome}: ${m}`
   if (!NOME.test(arq.nome)) p.push(pre('nome fora do padrão NNNN_nome_com_underscore.sql'))
+  // A soma registrada é do byte em disco. Um checkout em CRLF muda a soma sem
+  // mudar uma letra de SQL (R-011). O .gitattributes previne; isto confere.
+  if (arq.conteudo.includes('\r')) p.push(pre('fim de linha CRLF; migração precisa ser LF'))
 
   const ls = linhas(arq.conteudo)
   let inicio = 0

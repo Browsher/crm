@@ -35,6 +35,17 @@ export async function comoUsuario<T>(
   const cliente = await conectarVerificado(url)
   let encerrada = false
   let conexaoSuja = false
+  let erroDaConexao: Error | undefined
+
+  // Cliente fora do pool não tem ouvinte de `error`. Se o servidor encerrar a
+  // sessão enquanto não há consulta ativa (idle_in_transaction_session_timeout,
+  // pg_terminate_backend, failover), o pg emite `error` e sem ouvinte o Node
+  // derruba o processo. Guardamos o erro original para relançar com o código.
+  const aoFalhar = (erro: Error) => {
+    erroDaConexao ??= erro
+    conexaoSuja = true
+  }
+  cliente.on('error', aoFalhar)
 
   const executar: Executar = async (sql, parametros) => {
     if (encerrada) throw new ExecutarForaDaTransacao()
@@ -54,20 +65,29 @@ export async function comoUsuario<T>(
     await cliente.query('COMMIT')
     return resultado
   } catch (erro) {
-    try {
-      await cliente.query('ROLLBACK')
-    } catch {
-      conexaoSuja = true
+    if (!conexaoSuja) {
+      try {
+        await cliente.query('ROLLBACK')
+      } catch {
+        conexaoSuja = true
+      }
     }
-    throw erro
+    throw erroDaConexao ?? erro
   } finally {
     encerrada = true
+    cliente.removeListener('error', aoFalhar)
+    if (!conexaoSuja) {
+      try {
+        // RESET ALL não restaura `role` (GUC_NO_RESET_ALL); por isso o RESET ROLE explícito.
+        await cliente.query('RESET ROLE')
+        await cliente.query('RESET ALL')
+      } catch {
+        conexaoSuja = true
+      }
+    }
     if (conexaoSuja) {
-      cliente.release(new Error('rollback falhou; conexão descartada'))
+      cliente.release(erroDaConexao ?? new Error('conexão descartada: estado da sessão não pôde ser restaurado'))
     } else {
-      // RESET ALL não restaura `role` (GUC_NO_RESET_ALL); por isso o RESET ROLE explícito.
-      await cliente.query('RESET ROLE')
-      await cliente.query('RESET ALL')
       cliente.release()
     }
   }

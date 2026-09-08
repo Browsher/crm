@@ -79,6 +79,15 @@ describe('checarMigracoes', () => {
     expect(pk('codigo text PRIMARY KEY')).toBe(true)
   })
 
+  test('fim de linha CRLF é recusado: a soma é do byte em disco (R-011)', () => {
+    const crlf = { nome: '0000_a.sql', conteudo: '-- ver docs/db/0000.md\r\nBEGIN;\r\nSELECT 1;\r\nCOMMIT;\r\n' }
+    const r = checarMigracoes([crlf])
+    expect(r.ok).toBe(false)
+    expect(problemasDe(r)).toMatch(/CRLF/)
+    const umSo = { nome: '0000_a.sql', conteudo: '-- ver docs/db/0000.md\nBEGIN;\nSELECT 1;\r\nCOMMIT;\n' }
+    expect(checarMigracoes([umSo]).ok).toBe(false)
+  })
+
   test('comentário: só uma linha, só no topo, só --, até 120 caracteres', () => {
     expect(checarMigracoes([ok('0000_a.sql', 'SELECT 1; -- inline')]).ok).toBe(false)
     expect(checarMigracoes([ok('0000_a.sql', '/* bloco */ SELECT 1;')]).ok).toBe(false)
