@@ -108,4 +108,23 @@ Onde: invariante em src/server/db/migracoes/invariantes.ts
 
 ---
 
+## R-011 — Fim de linha muda a soma de migração; o .gitattributes vem antes da primeira migração
+
+O que aconteceu: `db:pendentes` local acusou as seis migrações da fatia 0a como
+alteradas na Railway. Diagnóstico inicial errado: "a normalização mudou a soma
+na Railway". Conferindo soma a soma, a Railway e o índice do git estavam em
+LF, iguais ao CI. Quem divergia era o disco local: `core.autocrlf=true` no
+Windows fez o checkout em CRLF antes de o `.gitattributes` existir, e o runner
+calcula a soma do byte em disco. Quase custou um `DROP SCHEMA` desnecessário.
+A regra: (a) `.gitattributes` com `eol=lf` explícito para `db/migracoes/*.sql`
+existe antes da primeira migração, nunca depois; (b) antes de concluir que a
+soma mudou "no banco", comparar a soma gravada com o sha256 do índice
+(`git show HEAD:arquivo`) e do disco, e ler `git ls-files --eol`; (c) disco em
+CRLF se corrige apagando o arquivo e refazendo o checkout, não com migração
+nova nem re-registro de soma.
+Tipo: bilhete
+Onde: `.gitattributes`
+
+---
+
 <!-- próximas regras aqui -->
