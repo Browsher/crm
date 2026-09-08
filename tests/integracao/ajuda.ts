@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { gerarHash } from '@/src/server/autenticacao/senha'
 import { comAdmin, comBanco } from '@/src/server/db/admin'
 import { comoUsuario as comoUsuarioReal, type Executar } from '@/src/server/db/como-usuario'
 import { exigir, lerEnv } from '@/src/server/db/env'
@@ -73,4 +74,21 @@ export async function criarUsuario(
     [apelido, `${apelido.toLowerCase()}@teste.local`, papel],
   )
   return id
+}
+
+// Usuário com credencial, criado como dona. Para testes de login e troca.
+export async function criarUsuarioComSenha(
+  banco: BancoDeTeste,
+  papel: 'vendedor' | 'gestor',
+  apelido: string,
+  senha: string,
+  opcoes: { pendente?: boolean } = {},
+): Promise<{ id: string; email: string }> {
+  const email = `${apelido.toLowerCase()}@teste.local`
+  const [{ id }] = await banco.sql<{ id: string }>(
+    'INSERT INTO usuario (nome, email, papel, senha_provisoria_pendente) VALUES ($1, $2, $3, $4) RETURNING id',
+    [apelido, email, papel, opcoes.pendente ?? false],
+  )
+  await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, await gerarHash(senha)])
+  return { id, email }
 }
