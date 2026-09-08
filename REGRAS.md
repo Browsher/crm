@@ -65,4 +65,32 @@ Tipo: bilhete
 
 ---
 
+## R-007 — RESET ALL não restaura o papel no Postgres
+
+O que aconteceu: o crm-ch usava RESET ALL no finally achando que devolvia o
+papel. O parâmetro `role` é marcado com GUC_NO_RESET_ALL. Ficou seguro por
+acidente porque SET LOCAL ROLE já volta sozinho no fim da transação.
+A regra: RESET ROLE explícito, sempre, além do RESET ALL.
+Tipo: catraca
+Onde: teste de controle negativo em tests/integracao/identidade.test.ts
+
+---
+
+## R-008 — tsx trata .ts como CommonJS sem "type": "module"
+
+O que aconteceu: os CLIs com await no topo do arquivo falharam.
+A regra: script com top-level await usa extensão .mts.
+Tipo: bilhete
+
+---
+
+## R-009 — senha dentro de URL não pode ter caractere de delimitação
+
+O que aconteceu: senha gerada em Base64 tinha "/" e quebrou o parser de URL
+do Node no CI, com "Invalid URL".
+A regra: senha que vai em connection string é alfanumérica, ou
+percent-encoded (@ = %40, / = %2F, # = %23, % = %25).
+Tipo: bilhete
+
+
 <!-- próximas regras aqui -->
