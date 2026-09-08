@@ -51,6 +51,23 @@ Efeito colateral desejado: `RESET ROLE` dentro de `comoUsuario` volta a
 contra SQL, não só contra GRANT errado. Fica exposto só o que a 0b conceder
 a `app_conexao` em `autenticacao`.
 
+### 2.1 Descoberto na implementação: ouvinte de `error` em `comoUsuario`
+
+O timeout dispara quando a sessão está sem consulta ativa. Nesse caso o `pg`
+não tem consulta para rejeitar e emite `error` no cliente. Cliente retirado do
+pool não tem ouvinte (o pool remove o dele no checkout), e `emit('error')` sem
+ouvinte derruba o processo Node. Provado em 2026-09-08 com script
+descartável: sem ouvinte, `UNCAUGHT: terminating connection due to
+idle-in-transaction timeout`; com ouvinte, o `25P03` chega e as consultas
+seguintes falham de forma controlada.
+
+Ou seja, a migração sozinha criaria um caminho de crash. `comoUsuario` passa a
+instalar um ouvinte enquanto segura o cliente, guardar o primeiro erro, pular
+`ROLLBACK` e `RESET` quando a conexão já morreu, relançar o erro original com o
+código do servidor, e descartar a conexão com `release(erro)`. O `RESET` no
+`finally` também ganha `try/catch`: se falhar, a conexão é descartada em vez
+de vazar sem `release`.
+
 ## 3. `invariantes.ts`
 
 Dividido em `lerEstado(cliente)`, que consulta o catálogo, e `avaliar(estado)`,

@@ -45,6 +45,18 @@ explícito. Confirmado em 2026-09-08 contra Postgres 17: o controle negativo em
 `tests/integracao/identidade.test.ts` faz `SET ROLE` sem `LOCAL`, `RESET ALL`,
 e o papel continua trocado; só `RESET ROLE` devolve.
 
+Herança é revogada no grant, não no papel: no PG 16+ `ALTER ROLE NOINHERIT`
+não muda grant existente (R-010, `docs/db/0006.md`). Por isso `RESET ROLE`
+dentro da transação, que é sempre permitido, volta para um `app_conexao` que
+não alcança nada de domínio.
+
+Enquanto segura o cliente, `comoUsuario` instala um ouvinte de `error`.
+Cliente fora do pool não tem ouvinte, e se o servidor encerrar a sessão sem
+consulta ativa (timeout de transação ociosa, `pg_terminate_backend`,
+failover), o `pg` emite `error` e o Node derrubaria o processo. Com o
+ouvinte, `comoUsuario` rejeita com o erro original do servidor (por exemplo
+`25P03`), descarta a conexão com `release(erro)` e o pool abre outra.
+
 Do lado do banco, `usuario_atual()` lê `current_setting('app.usuario_id')`. É
 a única função que sabe de onde a identidade vem. Trocar o mecanismo um dia é
 trocar essa função.
@@ -65,7 +77,7 @@ Falha de infraestrutura (conexão, timeout) lança e não é traduzida.
 
 | Papel | Atributos | Para quê |
 |---|---|---|
-| `app_conexao` | `LOGIN`, `NOBYPASSRLS`, dono de nada | está na `DATABASE_URL`. Herda `app_usuario`. |
+| `app_conexao` | `LOGIN`, `NOBYPASSRLS`, `NOINHERIT`, `CONNECTION LIMIT 20`, `idle_in_transaction_session_timeout = 30s`, dono de nada | está na `DATABASE_URL`. Membro de `app_usuario` **sem herança**: só tem os privilégios ao assumir o papel. Fora de `comoUsuario`, `usuario` dá `42501`. |
 | `app_usuario` | `NOLOGIN` | recebe os GRANTs. Alvo do `set_config('role', ...)`. |
 | `app_conferencia` | `NOLOGIN`, criado pelo runner | `SELECT` só em `_migracao`. Usado pelo CI para conferir a Railway. |
 
