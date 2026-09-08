@@ -61,6 +61,30 @@ Do lado do banco, `usuario_atual()` lê `current_setting('app.usuario_id')`. É
 a única função que sabe de onde a identidade vem. Trocar o mecanismo um dia é
 trocar essa função.
 
+## Como o login chega ao banco
+
+Antes de haver identidade, a aplicação fala com o banco por
+`chamar(nome, args)` em `src/server/db/sem-identidade.ts`: um mapa fechado
+com as sete funções `SECURITY DEFINER` de `autenticacao`, que `app_conexao`
+chama sem trocar de papel. Não existe `executar` ali. No banco, `app_conexao`
+tem `USAGE` no schema e `EXECUTE` nas sete, e nenhum privilégio de tabela.
+As duas listas são a mesma, e a invariante confere a do banco.
+
+Verificação de senha é no Node (`scrypt`), então `credencial_por_email` é o
+único ponto onde hash sai do banco, e `sessao_criar` confia no `usuario_id`
+que o Node verificou. Quem tem a `DATABASE_URL` cunha sessão de qualquer um,
+do mesmo modo que afirma identidade em `comoUsuario`. É o limite do desenho.
+
+Sessão: token de 32 bytes no cookie `crm_sessao`, `sha256` no banco, 30 dias
+fixos. `sessao_atual` recusa expirada e inativo. Troca de senha derruba as
+outras sessões. Limite de login: 10 falhas por e-mail, 30 por origem, 15
+minutos, temporário. Tudo em `docs/db/0007.md`, `0008.md`, `0009.md` e na
+spec `docs/superpowers/specs/2026-09-08-login-sessao-design.md`.
+
+Primeiro gestor: `npm run -s db:seed:gestor -- "Nome" email`. O `-s` importa:
+a senha provisória sai sozinha no stdout do script, mas sem `-s` o próprio npm
+imprime o banner do comando antes dela, e um redirecionamento leva os dois.
+
 ## Contrato de erro para os repositórios
 
 `comoUsuario` não traduz erro. Quem traduz para `{ ok, motivo }` é o
@@ -175,16 +199,19 @@ atravessar a internet até o banco: aplicação e migrações rodando dentro da
 rede da Railway, conectando por `postgres.railway.internal`, onde o nome bate
 com o SAN sem pinagem. Fica para quando a infraestrutura permitir.
 
-## Registrado para a fatia de login
+## Feito na fatia 0b (login e sessão)
 
-- Schema `autenticacao` com `credencial` e `sessao`, ambas com FK para
-  `usuario`, não o inverso.
-- `senha_provisoria_pendente` em `usuario`, junto com `pode_escrever()` e
-  `ALTER POLICY` nas políticas de escrita.
-- Função de consulta sem identidade, restrita a `SECURITY DEFINER`, para login
-  e resolução de sessão. `app_conexao` alcança `autenticacao`, `app_usuario`
-  não.
-- Limite de tentativas de login. Papel anônimo só se houver requisição anônima.
+O que a fundação tinha reservado para o login, e onde ficou:
+
+- Schema `autenticacao` com `credencial` e `sessao`, FK para `usuario`: 0007.
+- `senha_provisoria_pendente`, `pode_escrever()` e `ALTER POLICY`: 0008.
+- Funções `SECURITY DEFINER` para login e sessão, só `app_conexao`: 0009 e
+  `chamar` em `sem-identidade.ts`.
+- Limite de tentativas: `bloqueio_login` e `registrar_tentativa_login`. Sem
+  papel anônimo, porque não houve requisição anônima.
+
+Fica para a fatia de usuários: `credencial_definir` com `eh_gestor()` por
+dentro, para o gestor criar vendedor com senha provisória.
 
 ## Limitações conhecidas
 

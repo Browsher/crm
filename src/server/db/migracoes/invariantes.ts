@@ -4,7 +4,7 @@ import { PAPEIS_APLICACAO } from './aplicar'
 
 export type ResultadoInvariantes = { ok: true } | { ok: false; violacoes: string[] }
 
-export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor'] as const
+export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever'] as const
 
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.
@@ -15,6 +15,8 @@ export type Estado = {
   papeis: string[]
   conexao: { rolsuper: boolean; rolbypassrls: boolean; rolconnlimit: number; dona: number; herdaDe: string[] } | null
   migracaoAlcancavelPor: string[]
+  privilegiosDeConexaoEmAutenticacao: string[]
+  politicasEmAutenticacao: string[]
 }
 
 // Schemas de aplicação: tudo que não é do Postgres.
@@ -54,6 +56,18 @@ export async function lerEstado(c: Client): Promise<Estado> {
     [[...PAPEIS_APLICACAO]],
   )
 
+  const privilegios = conexao.rows[0]
+    ? await c.query<{ nome: string }>(`
+        SELECT c.relname AS nome FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'autenticacao' AND c.relkind = 'r'
+          AND (has_table_privilege('app_conexao', c.oid, 'SELECT') OR has_table_privilege('app_conexao', c.oid, 'INSERT')
+            OR has_table_privilege('app_conexao', c.oid, 'UPDATE') OR has_table_privilege('app_conexao', c.oid, 'DELETE'))
+        ORDER BY 1`)
+    : { rows: [] as { nome: string }[] }
+  const politicas = await c.query<{ nome: string }>(
+    "SELECT policyname AS nome FROM pg_policies WHERE schemaname = 'autenticacao' ORDER BY 1",
+  )
+
   return {
     tabelas: tabelas.rows,
     funcoesDefinidoras: definidoras.rows.map((f) => ({
@@ -65,6 +79,8 @@ export async function lerEstado(c: Client): Promise<Estado> {
     papeis: papeis.rows.map((r) => r.nome),
     conexao: conexao.rows[0] ?? null,
     migracaoAlcancavelPor: migracao.rows.map((r) => r.nome),
+    privilegiosDeConexaoEmAutenticacao: privilegios.rows.map((r) => r.nome),
+    politicasEmAutenticacao: politicas.rows.map((r) => r.nome),
   }
 }
 
@@ -98,6 +114,13 @@ export function avaliar(e: Estado): string[] {
   }
 
   for (const papel of e.migracaoAlcancavelPor) v.push(`_migracao alcançável por ${papel}`)
+
+  for (const t of e.privilegiosDeConexaoEmAutenticacao) {
+    v.push(`app_conexao alcança autenticacao.${t} direto; só função definidora pode tocar a tabela`)
+  }
+  for (const p of e.politicasEmAutenticacao) {
+    v.push(`política em autenticacao: ${p} (tabela de autenticacao não tem política; alguém abriu para um papel)`)
+  }
 
   return v
 }
