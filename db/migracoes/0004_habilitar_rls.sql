@@ -1,0 +1,4 @@
+-- ver docs/db/0004.md
+BEGIN;
+ALTER TABLE usuario ENABLE ROW LEVEL SECURITY;
+COMMIT;

@@ -18,11 +18,6 @@ async function pastaCom(arquivos: Record<string, string>): Promise<string> {
 let banco: BancoDeTeste
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
-  // Papéis são globais no cluster e nascem na migração 0000 real. Aqui, com
-  // fixtures, criamos os dois de forma idempotente para exercitar o REVOKE.
-  for (const papel of ['app_conexao', 'app_usuario']) {
-    await banco.sql(`DO $$ BEGIN CREATE ROLE ${papel} NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$`)
-  }
 })
 afterAll(async () => {
   await banco.derrubar()
@@ -33,7 +28,9 @@ describe('aplicar', () => {
     const pasta = await pastaCom({ '0000_a.sql': arq(tabela('a')) })
     const r = await aplicar(banco.urlAdmin, pasta)
     expect(r).toEqual({ ok: true, aplicadas: ['0000_a.sql'] })
-    const linhas = await banco.sql<{ nome: string; soma: string }>('SELECT nome, soma FROM _migracao')
+    const linhas = await banco.sql<{ nome: string; soma: string }>(
+      "SELECT nome, soma FROM _migracao WHERE nome = '0000_a.sql'",
+    )
     expect(linhas).toHaveLength(1)
     expect(linhas[0].soma).toMatch(/^[0-9a-f]{64}$/)
     const tabelas = await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_tables WHERE tablename = 'a'")
@@ -104,7 +101,7 @@ describe('situacao', () => {
   })
 
   test('banco sem _migracao: tudo pendente', async () => {
-    const outro = await criarBancoDeTeste()
+    const outro = await criarBancoDeTeste({ semMigracoes: true })
     try {
       const pasta = await pastaCom({ '0000_a.sql': arq('SELECT 1;') })
       const s = await situacao(outro.urlAdmin, pasta)
