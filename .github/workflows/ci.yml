@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   pull_request:
@@ -8,12 +8,28 @@ on:
 jobs:
   catraca:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
+    env:
+      DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/postgres
+      PG_SSL: 'off'
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -24,5 +40,47 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Testes
-        run: npm test
+      - name: Convenções de migração
+        run: npm run db:checar
+
+      - name: Testes unitários
+        run: npm run test:unit
+
+      - name: Testes de integração
+        run: npm run test:integracao
+
+      - name: Build sem env (validação precisa ser preguiçosa)
+        run: npm run build
+        env:
+          DATABASE_URL_ADMIN: ''
+          PG_SSL: ''
+
+      # Conferência somente-leitura contra a Railway. Regra:
+      # - PR de fork: não recebe secret. Pula, com nota no resumo do job.
+      # - PR do próprio repositório sem secret: falha. Só acontece se o secret sumiu.
+      # O CA da Railway é público e vai numa variable, não em secret.
+      - name: Conferência de migrações na Railway
+        if: github.event_name == 'pull_request'
+        env:
+          DATABASE_URL_CONFERENCIA: ${{ secrets.DATABASE_URL_CONFERENCIA }}
+          PG_SSL: verify
+          PG_SSL_CA: ${{ vars.PG_SSL_CA_RAILWAY }}
+          PG_SSL_NOME_SERVIDOR: postgres.railway.internal
+          EH_FORK: ${{ github.event.pull_request.head.repo.fork }}
+        run: |
+          if [ -z "$DATABASE_URL_CONFERENCIA" ]; then
+            if [ "$EH_FORK" = "true" ]; then
+              {
+                echo "### Migrações na Railway"
+                echo "- conferência **não rodou**: PR de fork não recebe o secret"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::error::DATABASE_URL_CONFERENCIA ausente em PR do próprio repositório. O secret sumiu ou expirou."
+            exit 1
+          fi
+          if [ -z "$PG_SSL_CA" ]; then
+            echo "::error::variable PG_SSL_CA_RAILWAY ausente. Sem o CA pinado a conexão verificada não sobe."
+            exit 1
+          fi
+          npm run db:pendentes
