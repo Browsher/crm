@@ -4,8 +4,11 @@ import { AridadeInvalida, chamar, FUNCOES, FuncaoDesconhecida } from './sem-iden
 // Sem DATABASE_URL no ambiente unitário: se a validação não vier antes da
 // conexão, o teste falha com "Variável de ambiente ausente" em vez do erro nomeado.
 
+// Quem furar o tipo (JS puro, `any`) ainda bate na checagem em runtime.
+const chamarSolto = chamar as unknown as (nome: string, args: unknown[]) => Promise<unknown[]>
+
 test('nome fora do mapa lança antes de tocar no banco', async () => {
-  await expect(chamar('drop_tudo' as never, [] as never)).rejects.toBeInstanceOf(FuncaoDesconhecida)
+  await expect(chamarSolto('drop_tudo', [])).rejects.toBeInstanceOf(FuncaoDesconhecida)
 })
 
 test('aridade errada lança antes de tocar no banco', async () => {
