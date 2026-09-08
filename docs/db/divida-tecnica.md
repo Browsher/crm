@@ -41,6 +41,15 @@ quando doer. Ao resolver, apagar daqui.
 - Catálogo (`pg_proc.prosrc`, `pg_policies`) legível por qualquer papel.
   Normal no Postgres; registrado como reconhecimento possível.
 
+## Fora de escopo com gatilho
+
+- **Faxina de `autenticacao.tentativa_login` e de sessões expiradas.** As
+  duas tabelas crescem sem teto: nada apaga tentativa antiga nem sessão
+  vencida (a fatia 0b só as ignora na consulta). Gatilho: quando entrar a
+  primeira tela do gestor, ou quando `tentativa_login` passar de 50 mil
+  linhas, o que vier primeiro. Conferir com
+  `SELECT count(*) FROM autenticacao.tentativa_login` na Railway.
+
 ## Ferramental
 
 - Sem projeto Vitest para React. `jsdom` e plugin instalados, não
