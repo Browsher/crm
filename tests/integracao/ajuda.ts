@@ -42,6 +42,9 @@ export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTes
   u.username = 'app_conexao'
   u.password = SENHA_APP_TESTE
   const urlApp = u.toString()
+  // `chamar` e o pool usam o caminho padrão (DATABASE_URL). Definir aqui
+  // exercita o caminho que a aplicação usa; `derrubar` limpa.
+  process.env.DATABASE_URL = urlApp
 
   return {
     nome,
@@ -51,6 +54,7 @@ export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTes
       comAdmin(urlAdmin, async (c) => (await c.query(texto, params)).rows as T[]),
     comoUsuario: (usuarioId, trabalho) => comoUsuarioReal(usuarioId, trabalho, urlApp),
     derrubar: async () => {
+      delete process.env.DATABASE_URL
       await fecharPool(urlApp)
       // WITH (FORCE) derruba conexões pendentes no fim do arquivo de teste.
       await comAdmin(urlServidor, (c) => c.query(`DROP DATABASE IF EXISTS ${nome} WITH (FORCE)`))
