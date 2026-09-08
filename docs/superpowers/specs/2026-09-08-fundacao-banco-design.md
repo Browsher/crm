@@ -52,13 +52,14 @@ src/server/db/ssl.ts                monta config TLS a partir de PG_SSL e PG_SSL
 src/server/db/pool.ts               pool pg, singleton em globalThis, guarda de papel
 src/server/db/como-usuario.ts       transação com identidade
 src/server/db/migracoes/            runner como módulo testável: aplicar, pendentes, checar, invariantes
+src/server/db/admin.ts              cliente pg direto para DATABASE_URL_ADMIN: runner, seed, harness. Sem pool, sem guarda de papel
 scripts/db/*.mjs                    CLIs finos que chamam o módulo
 tests/integracao/                   contra Postgres real
 docker-compose.yml                  postgres:17 local
 .env.test                           versionado, só valores do container local
 ```
 
-`server/` e não `lib/` porque nada disso pode ser importado por componente cliente. O runner não depende de Next, para rodar em Node puro. Os `.mjs` só fazem parse de argumentos.
+`server/` e não `lib/` porque nada disso pode ser importado por componente cliente. `pool.ts` é só da aplicação e conecta sempre como `app_conexao`. Runner, seed e harness de teste conectam como admin por `admin.ts`, um `pg.Client` direto por operação: a guarda de papel do `pool.ts` derrubaria qualquer processo conectado como superusuário, e é isso que ela deve fazer. O runner não depende de Next, para rodar em Node puro. Os `.mjs` só fazem parse de argumentos.
 
 Fronteira do projeto: `features/` não importa de outra `features/`. O que é comum sobe para `lib/` ou `server/`.
 
@@ -196,7 +197,7 @@ Todas `LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''`, `REVOKE EXECU
 
 Sem `pode_escrever()`: sem a marca de senha provisória seria idêntica a `pode_ler()`. A fatia de login cria a função e faz `ALTER POLICY` nas políticas de escrita.
 
-Por que assim: `SECURITY DEFINER` roda como dono de `usuario`, para quem RLS não vale, evitando recursão de política que consulta a própria tabela. `STABLE` evita reavaliação por linha. `search_path = ''` obriga qualificar `public.usuario` e fecha sequestro de esquema. `COALESCE(..., false)` porque NULL em política não nega. Precondição: `usuario` nunca recebe `FORCE ROW LEVEL SECURITY`, sob pena de recursão infinita.
+Por que assim: `SECURITY DEFINER` roda como dono de `usuario`, para quem RLS não vale, evitando recursão de política que consulta a própria tabela. `STABLE` evita reavaliação por linha. `search_path = ''` obriga qualificar `public.usuario` e fecha sequestro de esquema. `COALESCE(..., false)` porque NULL em política não nega. Precondição: `usuario` nunca recebe `FORCE ROW LEVEL SECURITY`, sob pena de recursão infinita. É invariante automatizada em 9.7.
 
 ### 8.2 Auditoria
 
@@ -282,7 +283,7 @@ DDL é transacional no Postgres: ou schema mudou e registro gravou, ou nada acon
 | `db:aplicar` | Compara com `_migracao`. Qualquer aplicada com soma diferente: lista e sai com 1 sem aplicar nada. Pendentes em ordem, atômicas. Falha em um arquivo para tudo ali. Ao fim, roda as invariantes. |
 | `db:pendentes` | Mesma leitura, sem escrever. Sai com 1 se há divergência de soma. Sai com 0 se há pendentes, imprimindo quais. Funciona com `DATABASE_URL_CONFERENCIA`. |
 | `db:checar` | Estático, sem banco. Ver 9.6. |
-| `db:seed:gestor` | Cria o primeiro gestor com `DATABASE_URL_ADMIN`, `criado_por` nulo. Recusa se já existe gestor ativo. |
+| `db:seed:gestor` | Cria o primeiro gestor com `DATABASE_URL_ADMIN` via `admin.ts`, nunca pelo `pool.ts`. `criado_por` nulo. Recusa se já existe gestor ativo. |
 | `db:senha-app`, `db:senha-conferencia` | `ALTER ROLE ... LOGIN PASSWORD`, à mão, uma vez por ambiente. |
 | `db:subir`, `db:derrubar` | `docker compose up -d` e `down` do Postgres local. |
 
@@ -304,6 +305,7 @@ Aplicar na Railway é manual, com `DATABASE_URL_ADMIN` da máquina do dev. Migra
 Módulo único, chamado pelo fim do `db:aplicar` e pelo teste de schema:
 
 - toda tabela de `public` exceto `_migracao` tem `relrowsecurity`
+- nenhuma tabela tem `relforcerowsecurity`: `FORCE ROW LEVEL SECURITY` em `usuario` causa recursão infinita nas funções de acesso (seção 8.1), e isso quebra em produção, não no lint
 - `_migracao` inalcançável por `app_conexao` e `app_usuario`
 - `app_conexao` existe, sem `rolsuper`, sem `rolbypassrls`, dono de nenhuma tabela
 - funções de acesso com `prosecdef` e `search_path` vazio em `proconfig`
