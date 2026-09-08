@@ -122,8 +122,9 @@ soma mudou "no banco", comparar a soma gravada com o sha256 do índice
 (`git show HEAD:arquivo`) e do disco, e ler `git ls-files --eol`; (c) disco em
 CRLF se corrige apagando o arquivo e refazendo o checkout, não com migração
 nova nem re-registro de soma.
-Tipo: bilhete
-Onde: `.gitattributes`
+Tipo: catraca
+Onde: `.gitattributes` previne; `db:checar` recusa `\r` em migração
+(src/server/db/migracoes/checar.ts), e o CI roda o checador.
 
 ---
 
