@@ -18,15 +18,20 @@ export type EstadoImportar = {
   inseridas: number | null
 }
 
-export const IMPORTAR_INICIAL: EstadoImportar = { erro: null, relatorio: null, inseridas: null }
+// NÃO exportar: arquivo com 'use server' só exporta função. Exportado, o Next
+// transforma a constante numa referência de servidor e o cliente recebe uma
+// função no lugar do objeto — foi o bug do estado inicial desta tela. O valor
+// inicial vive no componente cliente, como em app/usuarios/formulario-criar.tsx.
+// A catraca está em src/server/diretivas.test.ts.
+const INICIAL: EstadoImportar = { erro: null, relatorio: null, inseridas: null }
 
 export async function importarAcao(_anterior: EstadoImportar, form: FormData): Promise<EstadoImportar> {
   const eu = await exigir('gestor')
-  if (form.get('limpar')) return IMPORTAR_INICIAL
+  if (form.get('limpar')) return INICIAL
 
   const arquivo = form.get('arquivo')
   if (!(arquivo instanceof File) || arquivo.size === 0) {
-    return { ...IMPORTAR_INICIAL, erro: 'Escolha um arquivo CSV.' }
+    return { ...INICIAL, erro: 'Escolha um arquivo CSV.' }
   }
 
   const bytes = new Uint8Array(await arquivo.arrayBuffer())
@@ -41,12 +46,12 @@ export async function importarAcao(_anterior: EstadoImportar, form: FormData): P
   // servidor entre a conferência e a gravação: nada a expirar, nada a limpar.
   if (form.get('confirmar') !== null) {
     const r = await importar(repo, bytes)
-    if (!r.ok) return { ...IMPORTAR_INICIAL, erro: aoFalhar(r) }
+    if (!r.ok) return { ...INICIAL, erro: aoFalhar(r) }
     return { erro: null, relatorio: r.relatorio, inseridas: r.inseridas }
   }
 
   const r = await analisar(repo, bytes)
-  if (!r.ok) return { ...IMPORTAR_INICIAL, erro: aoFalhar(r) }
+  if (!r.ok) return { ...INICIAL, erro: aoFalhar(r) }
   return { erro: null, relatorio: r.relatorio, inseridas: null }
 }
 

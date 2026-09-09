@@ -2,10 +2,16 @@
 
 import { useActionState } from 'react'
 import { textoDaRecusa } from '@/src/features/empresas/mensagens'
-import { importarAcao, IMPORTAR_INICIAL } from './acao'
+import { importarAcao, type EstadoImportar } from './acao'
+
+// Aqui, e não em acao.ts: arquivo com 'use server' só exporta função, senão o
+// Next transforma a constante numa referência de servidor e este componente
+// recebe uma função no lugar do objeto. O tipo pode vir de lá porque tipo é
+// apagado na compilação. Mesmo desenho de app/usuarios/formulario-criar.tsx.
+const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null }
 
 export function FormularioImportar() {
-  const [estado, acao, pendente] = useActionState(importarAcao, IMPORTAR_INICIAL)
+  const [estado, acao, pendente] = useActionState(importarAcao, inicial)
   const r = estado.relatorio
 
   // Terceiro estado: gravado. Só aqui a base mudou.
