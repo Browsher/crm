@@ -215,13 +215,13 @@ describe('conferirInvariantes', () => {
   })
 
   test('nomeia função registrada sem EXECUTE para app_usuario (controle negativo)', async () => {
-    await banco.sql('REVOKE EXECUTE ON FUNCTION sessoes_encerrar_de(uuid) FROM app_usuario')
+    await banco.sql('REVOKE EXECUTE ON FUNCTION credencial_definir(uuid, text) FROM app_usuario')
     try {
       const r = await conferirInvariantes(banco.urlAdmin)
       expect(r.ok).toBe(false)
-      if (!r.ok) expect(r.violacoes.join()).toMatch(/sem EXECUTE para app_usuario: sessoes_encerrar_de/)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/sem EXECUTE para app_usuario: credencial_definir/)
     } finally {
-      await banco.sql('GRANT EXECUTE ON FUNCTION sessoes_encerrar_de(uuid) TO app_usuario')
+      await banco.sql('GRANT EXECUTE ON FUNCTION credencial_definir(uuid, text) TO app_usuario')
     }
   })
 })

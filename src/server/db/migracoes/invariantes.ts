@@ -11,7 +11,7 @@ export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor', 'pod
 // daqui ausente ou sem EXECUTE. app_usuario não tem USAGE em autenticacao, e
 // estas são a única forma de ele chegar lá; a lista existe para essa forma
 // não crescer sem alguém decidir.
-export const FUNCOES_DE_USUARIO_EM_AUTENTICACAO = ['credencial_definir', 'sessoes_encerrar_de'] as const
+export const FUNCOES_DE_USUARIO_EM_AUTENTICACAO = ['credencial_definir'] as const
 
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.

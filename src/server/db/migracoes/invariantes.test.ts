@@ -15,6 +15,7 @@ const sao = (): Estado => ({
     { schema: 'public', nome: 'senha_provisoria_de', temSearchPath: true },
     { schema: 'public', nome: 'credencial_definir', temSearchPath: true },
     { schema: 'public', nome: 'sessoes_encerrar_de', temSearchPath: true },
+    { schema: 'public', nome: 'usuario_situacao_definir', temSearchPath: true },
   ],
   funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'],
   papeis: ['app_conexao', 'app_usuario'],
@@ -22,10 +23,7 @@ const sao = (): Estado => ({
   migracaoAlcancavelPor: [],
   privilegiosDeConexaoEmAutenticacao: [],
   politicasEmAutenticacao: [],
-  funcoesDeUsuarioEmAutenticacao: [
-    { nome: 'credencial_definir', executaAppUsuario: true },
-    { nome: 'sessoes_encerrar_de', executaAppUsuario: true },
-  ],
+  funcoesDeUsuarioEmAutenticacao: [{ nome: 'credencial_definir', executaAppUsuario: true }],
 })
 
 const umaViolacao = (estado: Estado, padrao: RegExp) => {
@@ -126,13 +124,13 @@ describe('avaliar', () => {
 
   test('função registrada ausente é violação, não verde', () => {
     const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao = [{ nome: 'credencial_definir', executaAppUsuario: true }]
-    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: sessoes_encerrar_de/)
+    e.funcoesDeUsuarioEmAutenticacao = []
+    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: credencial_definir/)
   })
 
   test('função registrada sem EXECUTE é violação', () => {
     const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao[1].executaAppUsuario = false
-    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: sessoes_encerrar_de/)
+    e.funcoesDeUsuarioEmAutenticacao[0].executaAppUsuario = false
+    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: credencial_definir/)
   })
 })
