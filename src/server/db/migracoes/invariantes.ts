@@ -6,6 +6,13 @@ export type ResultadoInvariantes = { ok: true } | { ok: false; violacoes: string
 
 export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'] as const
 
+// Funções definidoras de public que tocam autenticacao e app_usuario executa.
+// Lista fechada: a invariante acusa qualquer outra no banco, e qualquer uma
+// daqui ausente ou sem EXECUTE. app_usuario não tem USAGE em autenticacao, e
+// estas são a única forma de ele chegar lá; a lista existe para essa forma
+// não crescer sem alguém decidir.
+export const FUNCOES_DE_USUARIO_EM_AUTENTICACAO = ['credencial_definir', 'sessoes_encerrar_de'] as const
+
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.
 export type Estado = {
@@ -17,6 +24,7 @@ export type Estado = {
   migracaoAlcancavelPor: string[]
   privilegiosDeConexaoEmAutenticacao: string[]
   politicasEmAutenticacao: string[]
+  funcoesDeUsuarioEmAutenticacao: { nome: string; executaAppUsuario: boolean }[]
 }
 
 // Schemas de aplicação: tudo que não é do Postgres.
@@ -68,6 +76,17 @@ export async function lerEstado(c: Client): Promise<Estado> {
     "SELECT policyname AS nome FROM pg_policies WHERE schemaname = 'autenticacao' ORDER BY 1",
   )
 
+  // has_function_privilege lança se o papel não existe; sem app_usuario a
+  // violação certa é "papel ausente", que já é avaliada.
+  const temAppUsuario = papeis.rows.some((r) => r.nome === 'app_usuario')
+  const usuarioEmAutenticacao = temAppUsuario
+    ? await c.query<{ nome: string; executaAppUsuario: boolean }>(`
+        SELECT p.proname AS nome, has_function_privilege('app_usuario', p.oid, 'EXECUTE') AS "executaAppUsuario"
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND p.prosecdef AND p.prosrc LIKE '%autenticacao.%'
+        ORDER BY 1`)
+    : { rows: [] as { nome: string; executaAppUsuario: boolean }[] }
+
   return {
     tabelas: tabelas.rows,
     funcoesDefinidoras: definidoras.rows.map((f) => ({
@@ -81,6 +100,7 @@ export async function lerEstado(c: Client): Promise<Estado> {
     migracaoAlcancavelPor: migracao.rows.map((r) => r.nome),
     privilegiosDeConexaoEmAutenticacao: privilegios.rows.map((r) => r.nome),
     politicasEmAutenticacao: politicas.rows.map((r) => r.nome),
+    funcoesDeUsuarioEmAutenticacao: usuarioEmAutenticacao.rows,
   }
 }
 
@@ -124,6 +144,17 @@ export function avaliar(e: Estado): string[] {
   }
   for (const p of e.politicasEmAutenticacao) {
     v.push(`política em autenticacao: ${p} (tabela de autenticacao não tem política; alguém abriu para um papel)`)
+  }
+
+  const registradas = new Set<string>(FUNCOES_DE_USUARIO_EM_AUTENTICACAO)
+  for (const f of e.funcoesDeUsuarioEmAutenticacao) {
+    if (f.executaAppUsuario && !registradas.has(f.nome)) {
+      v.push(`função definidora de public toca autenticacao com EXECUTE para app_usuario e não está registrada: ${f.nome}`)
+    }
+  }
+  for (const nome of FUNCOES_DE_USUARIO_EM_AUTENTICACAO) {
+    const f = e.funcoesDeUsuarioEmAutenticacao.find((x) => x.nome === nome)
+    if (!f?.executaAppUsuario) v.push(`função de usuário registrada e ausente ou sem EXECUTE para app_usuario: ${nome}`)
   }
 
   return v

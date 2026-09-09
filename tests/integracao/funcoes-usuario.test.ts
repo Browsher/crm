@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { entrar } from '@/src/server/autenticacao/entrar'
 import { gerarHash } from '@/src/server/autenticacao/senha'
 import { criarSessao, lerSessao } from '@/src/server/autenticacao/sessao'
+import { FUNCOES_DE_USUARIO_EM_AUTENTICACAO } from '@/src/server/db/migracoes/invariantes'
 import { criarBancoDeTeste, criarUsuario, criarUsuarioComSenha, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -122,5 +123,13 @@ describe('lista fechada', () => {
       { nome: 'credencial_definir', usuario: true, conexao: false, conferencia: false },
       { nome: 'sessoes_encerrar_de', usuario: true, conexao: false, conferencia: false },
     ])
+  })
+
+  test('as listas são uma: constante = definidoras de public que tocam autenticacao com EXECUTE para app_usuario', async () => {
+    const r = await banco.sql<{ nome: string }>(`
+      SELECT p.proname AS nome FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.prosecdef AND p.prosrc LIKE '%autenticacao.%'
+        AND has_function_privilege('app_usuario', p.oid, 'EXECUTE') ORDER BY 1`)
+    expect(r.map((f) => f.nome)).toEqual([...FUNCOES_DE_USUARIO_EM_AUTENTICACAO].sort())
   })
 })
