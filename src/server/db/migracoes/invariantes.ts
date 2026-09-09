@@ -40,7 +40,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
 // WITH CHECK irrestrito (escrita) não é olhado. É catraca contra descuido e
 // cópia, não contra quem quer burlar — mesma classe de limite da busca por
 // prosrc. Está escrito para a lista não parecer mais forte do que é.
-export const POLITICAS_DE_LEITURA_IRRESTRITA = [] as readonly string[]
+export const POLITICAS_DE_LEITURA_IRRESTRITA = ['public.cep.cep_leitura'] as readonly string[]
 
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.
