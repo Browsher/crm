@@ -130,6 +130,58 @@ describe('fase 1: duplicata dentro do arquivo', () => {
     ])
   })
 
+  // O nome que sai no relatorio e o da COLUNA DA PLANILHA, nao o do campo em
+  // TypeScript. Quem le procura pelo nome que digitou no cabecalho: ver
+  // 'razaoSocial' num relatorio sobre um arquivo cuja coluna se chama
+  // 'razao_social' manda a pessoa procurar o que nao existe.
+  test('o nome e o da coluna da planilha, nao o do campo', () => {
+    const outra = VALIDA.replace('Aurora Comercio LTDA', 'Aurora Comercio ME')
+    const a = ok(analisarPlanilha(comCabecalho(VALIDA, outra)))
+    expect(a.recusadas.map((r) => (r.tipo === 'repetido' ? r.divergencia : null))).toEqual([
+      'razao_social',
+      'razao_social',
+    ])
+  })
+
+  test('nome_fantasia e contato_nome tambem saem com o nome da coluna', () => {
+    const semFantasia = VALIDA.replace(',Aurora,Jose,', ',Aurora Luz,Jose,')
+    const a = ok(analisarPlanilha(comCabecalho(VALIDA, semFantasia)))
+    expect(a.recusadas.map((r) => (r.tipo === 'repetido' ? r.divergencia : null))).toEqual([
+      'nome_fantasia',
+      'nome_fantasia',
+    ])
+  })
+
+  // Catraca contra deriva: nome de coluna no relatorio que nao existe no
+  // cabecalho manda o gestor procurar o que nao ha.
+  test('todo nome de coluna do relatorio existe no CABECALHO', () => {
+    const colunas = new Set(CABECALHO.split(','))
+    const pares: [string, string][] = [
+      ['razao_social', 'Aurora Comercio ME'],
+      ['nome_fantasia', 'Aurora Luz'],
+      ['contato_nome', 'Maria'],
+      ['telefone', '11999998888'],
+      ['email', 'outro@aurora.com.br'],
+      ['cep', '69900001'],
+    ]
+    const trocas: [string, string][] = [
+      ['Aurora Comercio LTDA', 'Aurora Comercio ME'],
+      [',Aurora,', ',Aurora Luz,'],
+      [',Jose,', ',Maria,'],
+      ['11987654321', '11999998888'],
+      ['contato@aurora.com.br', 'outro@aurora.com.br'],
+      ['01310100', '69900001'],
+    ]
+    for (const [i, [esperado]] of pares.entries()) {
+      const [de, para] = trocas[i]
+      const a = ok(analisarPlanilha(comCabecalho(VALIDA, VALIDA.replace(de, para))))
+      const primeira = a.recusadas[0]
+      const nome = primeira.tipo === 'repetido' ? primeira.divergencia : null
+      expect(nome).toBe(esperado)
+      expect(colunas.has(nome as string)).toBe(true)
+    }
+  })
+
   test('linha valida no meio de duas repetidas sobrevive', () => {
     const outra = '11444777000161,Bela Luz LTDA,,,1134567890,,'
     const a = ok(analisarPlanilha(comCabecalho(VALIDA, outra, VALIDA)))

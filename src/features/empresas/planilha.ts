@@ -112,14 +112,29 @@ function analisarLinha(campos: string[], linha: number): LinhaAceita | Campo {
   }
 }
 
-const COMPARAVEIS = ['razaoSocial', 'nomeFantasia', 'contatoNome', 'telefone', 'email', 'cep'] as const
+// Campo aqui dentro → nome da COLUNA da planilha. O relatório fala a língua do
+// arquivo, não a do código: quem lê procura pelo nome que digitou no cabeçalho,
+// e "razaoSocial" num relatório sobre um arquivo cuja coluna se chama
+// "razao_social" manda a pessoa procurar o que não existe.
+//
+// Os dois lados no mesmo par de propósito: separados, o dia que uma coluna for
+// renomeada só um dos dois muda. O teste confere que todo nome daqui está no
+// CABECALHO.
+const COMPARAVEIS: readonly (readonly [keyof LinhaAceita, string])[] = [
+  ['razaoSocial', 'razao_social'],
+  ['nomeFantasia', 'nome_fantasia'],
+  ['contatoNome', 'contato_nome'],
+  ['telefone', 'telefone'],
+  ['email', 'email'],
+  ['cep', 'cep'],
+]
 
 // Duplicata idêntica é copiar e colar sem querer, e dá para apagar uma sem
-// pensar. Divergente exige alguém decidir qual está certa — sem o nome do campo
-// o gestor apaga a errada sem saber que estava escolhendo.
+// pensar. Divergente exige alguém decidir qual está certa — sem o nome da
+// coluna o gestor apaga a errada sem saber que estava escolhendo.
 function divergenciaEntre(a: LinhaAceita, b: LinhaAceita): string | null {
-  for (const campo of COMPARAVEIS) {
-    if (a[campo] !== b[campo]) return campo
+  for (const [campo, coluna] of COMPARAVEIS) {
+    if (a[campo] !== b[campo]) return coluna
   }
   return null
 }

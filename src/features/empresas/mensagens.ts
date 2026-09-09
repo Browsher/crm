@@ -34,7 +34,7 @@ export function textoDaRecusa(r: Recusa): string {
   const fim =
     r.divergencia === null
       ? 'as duas linhas são iguais, então apague uma.'
-      : `as duas divergem em ${r.divergencia}, então alguém precisa decidir qual está certa.`
+      : `as duas divergem na coluna ${r.divergencia}, então alguém precisa decidir qual está certa.`
   return `Linha ${r.linha}: CNPJ ${r.cnpj} repetido na linha ${r.par} — ${fim}`
 }
 

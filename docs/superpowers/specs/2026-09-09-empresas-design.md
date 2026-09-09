@@ -430,7 +430,7 @@ dor, erra para tarde** — que é o padrão aceito da dívida técnica (R-016).
 O mesmo CNPJ em duas linhas **recusa as duas**. Escolher uma seria chutar qual
 está certa, e o chute ficaria gravado como identidade.
 
-O relatório diz **se as linhas são idênticas ou se divergem, e em qual campo**:
+O relatório diz **se as linhas são idênticas ou se divergem, e em qual coluna**:
 *"linhas 41 e 902: mesmo CNPJ, telefone diferente"*. Duplicata idêntica é copiar
 e colar sem querer, e dá para apagar uma sem pensar. Duplicata divergente exige
 alguém decidir qual está certa — e sem essa informação o gestor apaga a errada
