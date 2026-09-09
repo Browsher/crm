@@ -3,7 +3,7 @@ import { escaparLike, lerConsulta, POR_PAGINA, totalDePaginas } from './consulta
 
 describe('lerConsulta', () => {
   test('sem parâmetro nenhum: termo vazio, página 1', () => {
-    expect(lerConsulta({})).toEqual({ termo: '', padrao: '', cnpj: null, pagina: 1 })
+    expect(lerConsulta({})).toEqual({ termo: '', padrao: '', cnpjPrefixo: null, pagina: 1 })
   })
 
   test('apara o termo', () => {
@@ -26,18 +26,36 @@ describe('lerConsulta', () => {
     expect(lerConsulta({ pagina: p }).pagina).toBe(1)
   })
 
-  // Busca por CNPJ é exata e é condição separada no WHERE. Só CNPJ inteiro
-  // vira condição: pedaço nenhum casa nada.
-  test('CNPJ com máscara vira busca exata', () => {
-    expect(lerConsulta({ q: '11.222.333/0001-81' }).cnpj).toBe('11222333000181')
+  // As oito primeiras posições do CNPJ são a RAIZ: identificam a empresa. As
+  // quatro seguintes são o estabelecimento (matriz 0001, filiais 0002…) e as
+  // duas últimas são os dígitos verificadores. Digitar a raiz não é procurar
+  // "pedaço de CNPJ": é procurar a empresa e esperar os estabelecimentos dela.
+  test('CNPJ com máscara vira prefixo completo', () => {
+    expect(lerConsulta({ q: '11.222.333/0001-81' }).cnpjPrefixo).toBe('11222333000181')
   })
 
-  test('pedaço de CNPJ não vira busca exata', () => {
-    expect(lerConsulta({ q: '1122' }).cnpj).toBeNull()
+  test('a raiz de oito dígitos vira prefixo', () => {
+    expect(lerConsulta({ q: '11222333' }).cnpjPrefixo).toBe('11222333')
   })
 
-  test('texto comum não vira busca exata', () => {
-    expect(lerConsulta({ q: 'São João' }).cnpj).toBeNull()
+  test('raiz com pontuação também vira prefixo', () => {
+    expect(lerConsulta({ q: '11.222.333' }).cnpjPrefixo).toBe('11222333')
+  })
+
+  test('abaixo da raiz não vira prefixo: sete dígitos não identificam empresa', () => {
+    expect(lerConsulta({ q: '1122233' }).cnpjPrefixo).toBeNull()
+  })
+
+  test('pedaço curto de CNPJ não vira prefixo', () => {
+    expect(lerConsulta({ q: '1122' }).cnpjPrefixo).toBeNull()
+  })
+
+  test('acima de 14 não vira prefixo', () => {
+    expect(lerConsulta({ q: '112223330001811' }).cnpjPrefixo).toBeNull()
+  })
+
+  test('texto com acento não vira prefixo', () => {
+    expect(lerConsulta({ q: 'São João' }).cnpjPrefixo).toBeNull()
   })
 })
 

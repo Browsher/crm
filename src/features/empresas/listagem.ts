@@ -52,6 +52,18 @@ type LinhaCrua = {
 // casa qualquer caractere (medido: o teste do `_` falha, o do `%` passa por
 // acaso, porque `%100%%` ainda só acha quem tem "100").
 //
+// O CNPJ é PREFIXO ANCORADO (`cnpj LIKE $2 || '%'`), nunca substring, e nunca
+// dentro de `busca`. A distinção é o que a spec quis dizer com "exata": o medo
+// dela era `'1122'` casando pedaço de CNPJ de empresa nenhuma a ver, contaminado
+// pelo nome fantasia da vizinha. Ancorado na própria coluna e a partir da raiz
+// de oito, `44555666` acha os estabelecimentos de UMA empresa — que é a
+// pergunta que quem digita a raiz está fazendo.
+//
+// `$2` já vem filtrado para [0-9A-Z] por prefixoCnpj, então nenhum
+// metacaractere de LIKE chega aqui e ele não precisa de escape. Nulo vira
+// `NULL || '%'` = NULL, que nunca é verdadeiro: sem termo de CNPJ, a condição
+// simplesmente não existe.
+//
 // O corte é no banco, não no Node: com milhares de linhas, trazer tudo para
 // filtrar em memória é o erro que a paginação existe para não cometer.
 const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e.email, e.cep,
@@ -60,7 +72,7 @@ const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e
                LEFT JOIN cep c ON c.cep = e.cep
               WHERE $1::text = ''
                  OR e.busca LIKE '%' || sem_acento($1::text) || '%' ESCAPE '\\'
-                 OR e.cnpj = $2::text
+                 OR e.cnpj LIKE $2::text || '%'
               ORDER BY e.razao_social, e.id
               LIMIT $3 OFFSET $4`
 
@@ -69,7 +81,7 @@ export async function listarEmpresas(gestorId: string, consulta: Consulta): Prom
     return await comoUsuario(gestorId, async (executar) => {
       const r = await executar<LinhaCrua>(SQL, [
         consulta.padrao,
-        consulta.cnpj,
+        consulta.cnpjPrefixo,
         POR_PAGINA,
         (consulta.pagina - 1) * POR_PAGINA,
       ])

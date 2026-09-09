@@ -619,8 +619,9 @@ em `app/empresas/**`.
 | 1 | `/empresas` como vendedor | redireciona para `/` | |
 | 2 | buscar `sao` numa base com "Iluminação São João" | acha | |
 | 3 | buscar `LAMPADAS` em caixa alta, com a empresa cadastrada como `LÂMPADAS` | acha | |
-| 4 | buscar o CNPJ com máscara | acha exatamente aquela | |
-| 5 | buscar quatro dígitos que existem dentro de um CNPJ | não acha nada | |
+| 4 | buscar o CNPJ com máscara | acha exatamente aquele estabelecimento | sim |
+| 4b | buscar a **raiz** (8 dígitos, sem pontuação) | acha todos os estabelecimentos daquela empresa | **reprovado em 2026-09-09; corrigido na mesma fatia** — ver a seção abaixo |
+| 5 | buscar quatro dígitos que existem dentro de um CNPJ | não acha nada | sim |
 | 6 | buscar `%` | não traz a base inteira | |
 | 7 | importar mais de 50 empresas e virar a página | a segunda página não repete nem pula, e a contagem continua a mesma | |
 | 8 | buscar um termo e virar a página | o termo continua no campo e no resultado | |
@@ -632,6 +633,57 @@ em `app/empresas/**`.
 **Antes de subir o `next dev`, rode a suíte** — o harness de integração
 reescreve a senha de `app_conexao` e derruba a `DATABASE_URL` do dev. Se já
 subiu, `npm run db:senha` refaz.
+
+### A busca por raiz de CNPJ não achava nada
+
+Reprovado na verificação manual, corrigido na mesma fatia. Medido pelo usuário
+contra o container local:
+
+| Digitado | Antes | Depois |
+|---|---|---|
+| `11222333` (a raiz, só dígitos) | **0 empresas**, com quatro na base começando assim | acha as quatro |
+| `11.222.333/0099-95` (formatado, como aparece na tela) | acha | acha, só aquela |
+
+**A causa não era a que o sintoma sugeria.** Não havia comparação contra texto
+formatado em lugar nenhum — `formatarCnpj` só desenha tela e nunca toca
+consulta. O formatado funcionava **porque** `normalizarCnpj` tirava a pontuação
+e devolvia um CNPJ de 14 caracteres, que casava na igualdade. O de oito dígitos
+falhava porque `normalizarCnpj` **exige** os 14, devolvia `null`, e
+`cnpj = NULL` nunca é verdadeiro — enquanto `busca` não contém o CNPJ, de
+propósito. Ou seja: **a única condição sobre `cnpj` era igualdade com um CNPJ
+inteiro; busca por prefixo não existia.**
+
+**Duas perguntas coladas numa função só.** `normalizarCnpj` valida identidade
+para gravar, e por isso exige os 14 — está certa. Buscar é outra pergunta.
+Reusá-la para as duas foi o que produziu o defeito, e o conserto é
+`prefixoCnpj`, ao lado dela, com o piso na raiz.
+
+**A raiz é a unidade certa, e não um número escolhido por gosto.** As oito
+primeiras posições do CNPJ identificam a **empresa**; as quatro seguintes, o
+estabelecimento (matriz `0001`, filiais `0002`…); as duas últimas são os
+dígitos verificadores. Foi exatamente por isso que quatro linhas começavam
+igual. Abaixo de oito o termo não identifica empresa nenhuma — então `'1122'`
+continua não achando nada, como antes.
+
+**O que a spec quis dizer com "exata", e o que meu teste tinha entendido.** A
+spec diz *"busca por CNPJ é exata e é condição separada no `WHERE`, nunca `LIKE`
+dentro de `busca`"*, e o argumento dela é contra **substring não ancorada**:
+`'1122'` casando pedaço do CNPJ de empresa nenhuma a ver, de forma diferente
+conforme o nome fantasia da vizinha. Prefixo **ancorado na própria coluna
+`cnpj`** não é esse caso.
+
+O teste `pedaço de CNPJ não acha ninguém` codificou a **letra** da spec —
+"exata" — em vez do **argumento** dela, e por isso passava verde enquanto o
+caminho que o gestor mais usa estava quebrado. Teste que fixa a palavra da spec
+em vez da razão dela protege a frase, não o usuário. O teste continua existindo,
+renomeado para `pedaço curto`, porque a coisa que ele protege — substring solta
+não achar — continua valendo.
+
+**O passo não estava na tabela de conferência.** Havia "buscar o CNPJ com
+máscara" e "buscar quatro dígitos", e nenhum dos dois é o caminho real: quem
+procura uma empresa específica digita o que tem à mão, que é a raiz. A tabela
+ganhou o passo 4b. Uma tabela de conferência que só percorre os caminhos que o
+implementador já pensou testa a implementação, não o uso.
 
 ### O que os testes desta fatia NÃO provam, medido
 
@@ -646,6 +698,12 @@ porque são a classe de erro que a R-017 registra: afirmação com cara de prova
 - **O teste do `%` passa por acaso.** Sem escape, `100%` vira o padrão `%100%%`,
   que ainda só acha quem tem "100" na razão social. A regressão real é pega pelo
   teste do `_`.
+- **Os totais da paginação eram somados à mão.** `POR_PAGINA + 8` acoplava o
+  `describe` de paginação à quantidade de fixtures dos outros: acrescentar três
+  linhas noutro bloco quebrou dois testes que não tinham nada a ver com a
+  mudança. Agora a contagem sai de um `count(*)` no próprio `beforeAll`, que é
+  o que o teste queria dizer — a janela do `count(*) OVER ()` concorda com a
+  tabela inteira.
 - **O desempate `ORDER BY ..., e.id` não é cobrado por teste nenhum.** Medido:
   removido o `, e.id`, os 14 continuam passando — com esta tabela e este plano
   de consulta o Postgres devolve ordem estável por acaso. O desempate fica
