@@ -85,15 +85,46 @@ Primeiro gestor: `npm run -s db:seed:gestor -- "Nome" email`. O `-s` importa:
 a senha provisória sai sozinha no stdout do script, mas sem `-s` o próprio npm
 imprime o banner do comando antes dela, e um redirecionamento leva os dois.
 
+## Como o gestor define senha
+
+`credencial_definir(usuario_id, hash)` e `sessoes_encerrar_de(usuario_id)`
+são funções `SECURITY DEFINER` em `public` com `EXECUTE` só para
+`app_usuario`, chamadas de dentro de `comoUsuario`. Por dentro, `eh_gestor()`
+e `pode_escrever()` valem porque o GUC `app.usuario_id` é da transação, não
+do papel. Assim criar vendedor é uma transação só: `INSERT` em `usuario` pela
+política e credencial pela função. `app_usuario` continua sem `USAGE` em
+`autenticacao`; a função toca as tabelas de lá como dona.
+
+A lista dessas funções é fechada: `FUNCOES_DE_USUARIO_EM_AUTENTICACAO` em
+`invariantes.ts`. Função definidora em `public` que mencione `autenticacao.`
+com `EXECUTE` para `app_usuario` fora da lista derruba `db:aplicar` e o CI.
+
+Nova senha provisória e desativar apagam as sessões do alvo. Mudar papel não
+mexe em sessão: `sessao_atual` lê `papel` a cada requisição.
+
+**Zero gestores ativos.** Não há proteção no banco. A tela avisa quando o
+gestor ativo é um só. Se acontecer (corrida entre dois gestores, ou o único
+perdeu a senha), `npm run -s db:seed:gestor` cria um gestor novo: ele só
+recusa quando há gestor ativo.
+
+Detalhes em `docs/db/0011.md` e na spec
+`docs/superpowers/specs/2026-09-08-usuarios-design.md`.
+
 ## Contrato de erro para os repositórios
 
 `comoUsuario` não traduz erro. Quem traduz para `{ ok, motivo }` é o
-repositório da feature. Dois casos que ele precisa distinguir:
+repositório da feature. Três casos que ele precisa distinguir:
 
 - `INSERT` ou `WITH CHECK` recusado pela política: erro do Postgres com código
-  `42501`.
+  `42501`. Uma função definidora que recusa por permissão levanta o mesmo
+  código de propósito, para o repositório traduzir um só.
 - `UPDATE` que não encontra a linha por causa do `USING`: `afetadas: 0`, sem
   erro.
+- Restrição única violada: código `23505`, com o nome da restrição em
+  `constraint` (por exemplo `usuario_email_key`). Conferir o nome, não só o
+  código: outra restrição única daria o mesmo código com outro significado.
+
+`src/features/usuarios/repositorio.ts` é o exemplo dos três juntos.
 
 Falha de infraestrutura (conexão, timeout) lança e não é traduzida.
 
@@ -219,8 +250,8 @@ O que a fundação tinha reservado para o login, e onde ficou:
 - Limite de tentativas: `bloqueio_login` e `registrar_tentativa_login`. Sem
   papel anônimo, porque não houve requisição anônima.
 
-Fica para a fatia de usuários: `credencial_definir` com `eh_gestor()` por
-dentro, para o gestor criar vendedor com senha provisória.
+Feito na fatia 0c (usuários): `credencial_definir` e `sessoes_encerrar_de`
+(0011), e a tela `/usuarios`.
 
 ## Limitações conhecidas
 

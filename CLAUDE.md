@@ -18,7 +18,17 @@ houve conflito.
 
 ## Contexto de domínio
 
-Ainda vazio. Cresce conforme as features entram.
+- Dois papéis: `gestor` e `vendedor`. Gestor cria usuário, gera senha
+  provisória, muda papel, desativa e reativa, por `/usuarios`. Vendedor não
+  administra ninguém.
+- Senha provisória: gerada pelo sistema, mostrada uma vez, nunca guardada.
+  Quem a recebe é obrigado a trocar no primeiro acesso; até trocar, o banco
+  nega escrita (`pode_escrever()`). Perdeu: o gestor gera outra, que derruba
+  a anterior e as sessões da pessoa.
+- Ninguém edita a própria linha em `usuario` (política). Gestor não se
+  rebaixa nem se desativa; outro gestor pode.
+- A autoridade é do banco (RLS e funções definidoras), não do TypeScript.
+  Ver `docs/db/fundacao.md`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
