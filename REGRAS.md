@@ -203,4 +203,48 @@ mudou e apontando o doc novo. O doc novo, por sua vez, lista os objetos que
 tocou fora do próprio escopo, com o motivo de cada um.
 Tipo: bilhete (nada confere que o ponteiro existe)
 
+---
+
+## R-016 — Gatilho nasce com o tipo e o lado do erro escritos
+
+O que aconteceu: a faxina de `tentativa_login` foi registrada com o gatilho
+"a primeira tela do gestor, **ou** 50 mil linhas". A primeira tela do gestor
+entrou na 0c, o gatilho disparou e a fatia entrou na fila. Medindo a Railway
+antes de desenhar: zero linhas nas duas tabelas, um usuário, o gestor semeado.
+O banco de produção nunca tinha recebido um login. As duas condições não eram
+do mesmo tipo — "50 mil linhas" contava a coisa; "primeira tela do gestor" era
+palpite sobre quando a coisa apareceria. Revisando os outros gatilhos, o mesmo
+erro estava escrito de novo em "a primeira entidade com volume real não pode
+copiar este repositório", que dispararia na fatia seguinte, `empresas`, também
+sem volume nenhum.
+
+A regra: gatilho registrado diz **de que tipo é** e, se for proxy, **para que
+lado erra**. Antes de agir sobre um gatilho que disparou, medir a coisa que ele
+representa; se a medição desmentir, o gatilho estava errado, não o problema.
+
+| Tipo | Erra para | O que custa | Precisa de vigilância? |
+|---|---|---|---|
+| evento observável no diff | — | nada | **não**: a condição aparece sozinha na revisão |
+| medição: conta o que importa | — | nada | sim, mas só a conta: alguém tem que rodar o `count(*)` |
+| proxy de uso | cedo | dispara sem problema, e gatilho que dispara sem problema treina a ignorar gatilho | sim, relendo |
+| proxy de complexidade | nunca | fica mudo e a dívida cresce calada | sim, relendo |
+| proxy de dor | tarde | a dor chega depois do estrago; é o padrão aceito da dívida técnica | sim, relendo |
+
+Só a primeira linha se cobra sozinha. Medição é confiável mas muda: não avisa
+quando cruza o número, e o proxy que erra para "nunca" também não avisa —
+a diferença é que a medição responde quando perguntada, e o proxy nem isso.
+As três de proxy precisam ser **relidas** de tempos em tempos, não esperadas.
+
+Proxy de uso em produto sem uso medido não vale como gatilho: ele mede a
+existência de uma tela, não a existência do problema. Trocar por contagem
+("mil linhas na tabela", "10 mil em `tentativa_login`") ou amarrar à fatia que
+resolve a causa junto.
+
+Não dá para automatizar: o catálogo não sabe distinguir contagem de palpite.
+O que dá é exigir as duas palavras no momento de escrever o gatilho, quando o
+motivo ainda está fresco.
+Tipo: bilhete
+Onde: seção "Gatilhos" de `docs/db/divida-tecnica.md`, com a tabela de todos
+os gatilhos vivos classificados
+
 <!-- próximas regras aqui -->
