@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import type { LinhaAceita } from '@/src/features/empresas/planilha'
 import { repositorioPostgres } from '@/src/features/empresas/repositorio'
+import { analisar } from '@/src/features/empresas/servico'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -40,11 +41,11 @@ describe('preparar', () => {
   test('devolve a data da base, os cnpjs ja cadastrados e os enderecos', async () => {
     const repo = repositorioPostgres(gestor)
     await repo.gravar([linha(2, '11222333000181')])
-    const p = await repo.preparar(['11222333000181', '11444777000161'], ['01310100', '99999999'])
+    const p = await repo.preparar(['11222333000181', '11444777000161'], ['01310100', '00000000'])
     if ('motivo' in p) throw new Error(p.motivo)
     expect([...p.jaCadastrados]).toEqual(['11222333000181'])
     expect(p.enderecos.get('01310100')?.localidade).toBe('São Paulo')
-    expect(p.enderecos.has('99999999')).toBe(false)
+    expect(p.enderecos.has('00000000')).toBe(false)
     expect(p.basePublicadaEm).toBe('2024-07-08')
   })
 
@@ -122,5 +123,40 @@ describe('preparar: base de CEP nunca carregada', () => {
         )
       }
     }
+  })
+})
+
+// O caso misto contra o banco de verdade: um CEP que existe e um que nao
+// existe no MESMO arquivo. O teste de servico cobre isso com repositorio de
+// mentira, onde o mapa de enderecos e escrito a mao; aqui quem responde e a
+// consulta SQL.
+//
+// Ele nasce de um falso alarme na verificacao manual de 2026-09-09: o passo 10
+// usava '99999999' como "CEP inexistente", e 99999999 EXISTE — e Sarandi/PR, e
+// e o maior CEP da base. O relatorio estava certo e o dado de teste errado.
+// '00000000' e seguro por construcao: o menor CEP existente e 01001000, e CEP
+// todo zero nao e atribuivel.
+describe('analisar: contagem de CEP contra o banco', () => {
+  const CABECALHO_CSV = 'cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep'
+  const csv = (...linhas: string[]) => new TextEncoder().encode([CABECALHO_CSV, ...linhas].join('\n'))
+
+  test('um CEP presente e um ausente: conta exatamente um nao encontrado', async () => {
+    const r = await analisar(
+      repositorioPostgres(gestor),
+      csv(
+        '11666777000106,Presente LTDA,,,1134567890,,01310100',
+        '11777777000183,Ausente LTDA,,,1134567891,,00000000',
+      ),
+    )
+    if (!r.ok) throw new Error('esperava ok')
+    expect(r.relatorio.cepsPedidos).toBe(2)
+    expect(r.relatorio.cepsNaoEncontrados).toBe(1)
+    expect(r.relatorio.basePublicadaEm).toBe('2024-07-08')
+  })
+
+  test('so CEP presente: nenhum nao encontrado', async () => {
+    const r = await analisar(repositorioPostgres(gestor), csv('11666777000106,Presente LTDA,,,1134567890,,01310100'))
+    if (!r.ok) throw new Error('esperava ok')
+    expect(r.relatorio.cepsNaoEncontrados).toBe(0)
   })
 })

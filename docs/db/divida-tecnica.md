@@ -482,8 +482,8 @@ gatilho na revisão de 2026-09-09. Estão aqui porque foi aqui que nasceram.
 Mesma regra da 0b e da 0c: action fina e JSX sem teste automático — com a
 exceção nova do primeiro render, que agora tem
 `app/empresas/importar/formulario.test.tsx`. Verificação manual feita em
-AAAA-MM-DD pelo usuário no navegador contra o container local, com a 0014
-aplicada. Refazer quando mexer em `app/empresas/**`.
+**2026-09-09** pelo usuário no navegador contra o container local, com a 0014
+aplicada e a base de CEP carregada. Refazer quando mexer em `app/empresas/**`.
 
 **O passo 8 é o que justificou o corte desta fatia.** Modelo e tela ficaram na
 primeira fatia, e não na `empresas.1`, porque a armadilha do Excel é a única
@@ -492,21 +492,45 @@ Se ele não produzir a mensagem que explica a causa, a fatia não está pronta.
 
 | # | Caminho | Esperado | Verificado |
 |---|---|---|---|
-| 0 | `/empresas/importar` como gestor, sem importar nada | mostra o campo de arquivo e o botão "Conferir" — **não** "empresas importadas" | |
-| 1 | `/empresas/importar` como vendedor | redireciona para `/`, não mostra a tela | |
-| 2 | baixar o modelo pelo link da própria tela | abre no Excel; CEP na linha 2 é `01310100`, com o zero | |
-| 3 | preencher 3 empresas e salvar como **CSV UTF-8 (delimitado por vírgulas)** | — | |
-| 4 | enviar e conferir | "3 novas · 0 já cadastradas · 0 recusadas"; nada foi gravado ainda | |
-| 5 | confirmar | "3 empresas importadas", **com o número na frente** | |
-| 6 | enviar o **mesmo arquivo** de novo | "0 novas · 3 já cadastradas"; o botão de importar não aparece | |
-| 7 | salvar de novo como **CSV** comum (não UTF-8), com acento na razão social | mensagem citando "CSV UTF-8" | |
-| 8 | abrir o CSV com **duplo-clique**, salvar por cima, reenviar | mensagem de notação científica **ou** de CEP com 7 dígitos, dizendo para formatar a coluna como Texto | |
-| 9 | duplicar uma linha mudando só o telefone | recusa **as duas**, nomeando `telefone` | |
-| 10 | uma linha com CEP `99999999` | a empresa entra; o relatório diz "1 CEP não encontrado na base de 2024-07-08" | |
-| 11 | arquivo com o cabeçalho fora de ordem | mensagem mostrando o cabeçalho que veio | |
+| 0 | `/empresas/importar` como gestor, sem importar nada | mostra o campo de arquivo e o botão "Conferir" — **não** "empresas importadas" | sim, depois da correção |
+| 1 | `/empresas/importar` como vendedor | redireciona para `/`, não mostra a tela | sim |
+| 2 | baixar o modelo pelo link da própria tela | abre no Excel com 7 colunas; CEP na linha 2 é `01310100`, com o zero | sim |
+| 3 | preencher 3 empresas e salvar como **CSV UTF-8 (delimitado por vírgulas)** | — | sim |
+| 4 | enviar e conferir | "3 novas · 0 já cadastradas · 0 recusadas"; nada foi gravado ainda | sim |
+| 5 | confirmar | "3 empresas importadas", **com o número na frente** | sim |
+| 6 | enviar o **mesmo arquivo** de novo | "0 novas · 3 já cadastradas"; o botão de importar não aparece | sim |
+| 7 | salvar de novo como **CSV** comum (não UTF-8), com acento na razão social | mensagem citando "CSV UTF-8" | sim |
+| 8 | abrir o CSV com **duplo-clique**, salvar por cima, reenviar | mensagem de notação científica **ou** de CEP com 7 dígitos, dizendo para formatar a coluna como Texto | sim: CNPJ em notação científica, com a causa e o conserto |
+| 9 | duplicar uma linha mudando só o telefone | recusa **as duas**, nomeando a coluna divergente | sim, e rendeu duas correções — ver abaixo |
+| 10 | uma linha com CEP `00000000` (**não** `99999999`: existe, é Sarandi/PR) | a empresa entra; o relatório diz "1 CEP não encontrado na base de 2024-07-08" | sim, na segunda tentativa — ver abaixo |
+| 11 | arquivo com o cabeçalho fora de ordem | mensagem mostrando o cabeçalho que veio | **não rodado** |
 
-Anotar no lugar do "Verificado": `sim`, ou o que apareceu de diferente. Linha
-que falhar vira item nesta página, não correção silenciosa.
+**O passo 11 não foi rodado.** Fica em aberto, e não vale como passado. O
+caminho tem teste de unidade (`planilha.test.ts`, `cabecalho_diferente`), então
+o que falta é a conferência de que a mensagem chega à tela — não a lógica.
+
+**Três achados, todos de passos que "passaram".** É o argumento a favor desta
+tabela existir, e vale mais que as dez linhas de `sim`:
+
+- **Passo 0 não existia no plano.** Foi acrescentado depois que a tela abriu no
+  terceiro estado ("empresas importadas", sem número) antes de qualquer
+  importação. Causa em "o estado inicial da tela de importar", abaixo.
+- **Passo 9 passou e ainda assim rendeu duas correções.** A recusa da duplicata
+  funcionava, mas a mensagem dizia `razaoSocial` — o nome do campo em
+  TypeScript, não o da coluna que a pessoa digitou no cabeçalho. Quem lê o
+  relatório está com a planilha aberta do lado e procura o nome que não existe.
+- **Passo 10 passou por acidente na primeira rodada.** O relatório disse "1 CEP
+  não encontrado", e parecia certo — mas a base de CEP estava vazia (recriação
+  do banco de dev), então *todos* os CEPs eram não encontrados e o "1" era a
+  Avenida Paulista. Na segunda rodada, com a base carregada, apareceu o oposto:
+  nada foi reportado, porque `99999999` **existe** — é Sarandi/PR, o maior CEP
+  da base. O valor veio de uma frase errada da spec da `cep`, corrigida lá.
+  Rodou de verdade com `00000000`.
+
+Nenhum dos três seria pego por teste automático: o primeiro porque a diretiva
+`'use server'` é inerte no Vitest, o segundo porque a mensagem estava
+"funcionando", o terceiro porque todo teste cria banco novo e popula o que
+precisa.
 
 **O que a tabela não cobre, e é escolha:** o limite de 5.000 linhas e o de 2 MB
 do transporte. Os dois têm teste de unidade (`planilha.test.ts`), e produzir um

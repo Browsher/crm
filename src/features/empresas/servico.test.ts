@@ -37,7 +37,10 @@ function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } =
 const bytes = (...linhas: string[]) => new TextEncoder().encode([CABECALHO, ...linhas].join('\n'))
 const AURORA = '11222333000181,Aurora Comercio LTDA,,,11987654321,,01310100'
 const BELA = '11444777000161,Bela Luz LTDA,,,1134567890,,'
-const SEM_CEP_NA_BASE = '11555777000139,Nova LTDA,,,1134567891,,99999999'
+// 00000000 e o CEP ausente canonico do projeto: o menor existente e 01001000,
+// entao CEP todo zero nunca sera atribuido. '99999999' NAO serve — existe, e
+// Sarandi/PR. Ver a correcao em 2026-09-09-cep-design.md.
+const SEM_CEP_NA_BASE = '11555777000139,Nova LTDA,,,1134567891,,00000000'
 
 describe('analisar', () => {
   test('conta novas, ja cadastradas e ceps nao encontrados', async () => {

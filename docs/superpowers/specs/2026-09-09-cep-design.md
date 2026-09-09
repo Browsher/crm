@@ -53,8 +53,16 @@ Decidimos o contrário — a empresa entra mesmo sem endereço resolvido, porque
 prospecção começa por telefone. Sem FK, a resolução é `LEFT JOIN` e o não
 encontrado vira endereço nulo, que é o comportamento desenhado.
 
-O que se perde, e é escolha: nada impede `empresa.cep` guardar `'99999999'`, um
-CEP que nunca existiu. A defesa é o `CHECK` de oito dígitos mais a validação na
+O que se perde, e é escolha: nada impede `empresa.cep` guardar `'00000000'`, um
+CEP que nunca existiu.
+
+**Correção de 2026-09-09:** esta frase dizia `'99999999'`, e estava errada.
+`99999999` **existe** — é Sarandi/PR, e é o **maior CEP da base**, o último dos
+1.209.313. O exemplo foi escolhido por parecer obviamente falso, sem consulta, e
+de lá foi copiado para o passo 10 da verificação manual da fatia `empresas`, que
+passou a esperar um "não encontrado" impossível de acontecer. `00000000` é
+seguro por construção e não por sorte: o menor CEP existente é `01001000`, e CEP
+todo zero não é atribuível — nenhuma base futura vai criá-lo. A defesa é o `CHECK` de oito dígitos mais a validação na
 importação — **forma garantida pelo banco, existência não**. Tem que ser assim: a
 base tem dois anos e a empresa real existe mesmo assim.
 
