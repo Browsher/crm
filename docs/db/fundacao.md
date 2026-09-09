@@ -87,28 +87,66 @@ imprime o banner do comando antes dela, e um redirecionamento leva os dois.
 
 ## Como o gestor define senha
 
-`credencial_definir(usuario_id, hash)` e `sessoes_encerrar_de(usuario_id)`
-são funções `SECURITY DEFINER` em `public` com `EXECUTE` só para
-`app_usuario`, chamadas de dentro de `comoUsuario`. Por dentro, `eh_gestor()`
-e `pode_escrever()` valem porque o GUC `app.usuario_id` é da transação, não
-do papel. Assim criar vendedor é uma transação só: `INSERT` em `usuario` pela
-política e credencial pela função. `app_usuario` continua sem `USAGE` em
-`autenticacao`; a função toca as tabelas de lá como dona.
+`credencial_definir(usuario_id, hash)` e
+`usuario_situacao_definir(usuario_id, ativo)` são funções `SECURITY DEFINER`
+em `public` com `EXECUTE` só para `app_usuario`, chamadas de dentro de
+`comoUsuario`. Por dentro, `eh_gestor()` e `pode_escrever()` valem porque o
+GUC `app.usuario_id` é da transação, não do papel. Assim criar vendedor é uma
+transação só: `INSERT` em `usuario` pela política e credencial pela função.
+`app_usuario` continua sem `USAGE` em `autenticacao`; a função toca as tabelas
+de lá como dona.
 
-A lista dessas funções é fechada: `FUNCOES_DE_USUARIO_EM_AUTENTICACAO` em
-`invariantes.ts`. Função definidora em `public` que mencione `autenticacao.`
-com `EXECUTE` para `app_usuario` fora da lista derruba `db:aplicar` e o CI.
+`sessoes_encerrar_de(usuario_id)` é interna: sem `GRANT`, chamada só por
+dentro das duas acima. Perdeu o `GRANT` na 0c.1 junto com o último chamador da
+aplicação, pela regra de que função exposta sem consumidor não fica (R-014).
+
+Quem redefiniu a senha fica em `autenticacao.credencial.atualizado_por`, não
+em `usuario`: igual ao `usuario_id` é troca própria, diferente é o gestor que
+redefiniu, nulo é o sistema.
+
+A conferência de permissão mora em `exigir_gestor(p_alvo)`, chamada pelas três
+funções: gestor ativo, sem senha provisória pendente, e o alvo não é ele
+mesmo. Ela não é definidora e não tem `GRANT`, porque só roda por dentro de
+quem já é.
+
+**Duas listas fechadas em `invariantes.ts`, com perguntas diferentes:**
+
+| Constante | Responde |
+|---|---|
+| `FUNCOES_DE_ACESSO_OBRIGATORIAS` | quais funções têm que existir |
+| `FUNCOES_CONCEDIDAS_A_APP_USUARIO` | quais podem ter `GRANT` para `app_usuario` |
+
+As cinco de acesso aparecem nas duas: são definidoras concedidas como
+qualquer outra, e "de acesso" é nome nosso, não do banco. Definidora concedida
+fora da lista derruba `db:aplicar` e o CI, em qualquer schema, toque ou não
+`autenticacao`. Uma segunda invariante barra função de schema de aplicação
+executável por `PUBLIC`, que é o padrão do Postgres para função nova e por isso
+exige `REVOKE` explícito em toda migração.
 
 Nova senha provisória e desativar apagam as sessões do alvo. Mudar papel não
 mexe em sessão: `sessao_atual` lê `papel` a cada requisição.
+
+**Desativar e reativar não passam pela política.** `usuario_situacao_definir`
+é definidora, e dentro de definidora com dona isenta de RLS a política não é
+avaliada. A conferência de dentro é a autoridade; `usuario_alterar` continua
+valendo como rede de segurança para `UPDATE` direto. Quem procurar na política
+a regra de desativar não vai achar. A isenção vem de dois caminhos, dona
+superusuária e dona da tabela sem `FORCE`, e `docs/db/0010.md` tem a tabela
+verificada.
+
+**Transição sem sentido é recusada, com motivo próprio.** Definir senha para
+inativo, desativar quem já está inativo e reativar quem já está ativo devolvem
+`alvo_inativo` ou `ja_nesse_estado`, não `nao_encontrado`. As funções de
+escrita devolvem texto de vocabulário fixo, e o TypeScript lança em valor fora
+do vocabulário, porque isso é defeito nosso e não estado de negócio.
 
 **Zero gestores ativos.** Não há proteção no banco. A tela avisa quando o
 gestor ativo é um só. Se acontecer (corrida entre dois gestores, ou o único
 perdeu a senha), `npm run -s db:seed:gestor` cria um gestor novo: ele só
 recusa quando há gestor ativo.
 
-Detalhes em `docs/db/0011.md` e na spec
-`docs/superpowers/specs/2026-09-08-usuarios-design.md`.
+Detalhes em `docs/db/0011.md`, `docs/db/0012.md` e nas specs
+`2026-09-08-usuarios-design.md` e `2026-09-09-usuarios-correcoes-design.md`.
 
 ## Contrato de erro para os repositórios
 
@@ -251,7 +289,9 @@ O que a fundação tinha reservado para o login, e onde ficou:
   papel anônimo, porque não houve requisição anônima.
 
 Feito na fatia 0c (usuários): `credencial_definir` e `sessoes_encerrar_de`
-(0011), e a tela `/usuarios`.
+(0011), e a tela `/usuarios`. Corrigido na 0c.1: `exigir_gestor`,
+`usuario_situacao_definir`, auditoria em `credencial` e as duas invariantes
+novas (0012).
 
 ## Limitações conhecidas
 
