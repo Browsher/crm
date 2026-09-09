@@ -13,8 +13,15 @@ Esta spec cobre **duas fatias**, e o corte entre elas tem um critério.
 CSV, a importação em três fases, o relatório, **o arquivo-modelo** e **a tela
 `/empresas/importar`**.
 
-**`empresas.1`** — migração `0015`, a listagem `/empresas` com busca e
+**`empresas.1`** — três correções da auditoria, sem migração: numeração de
+linha, simetria de colunas e tradução de `23505`/`22021`. Ver "O que a
+`empresas.1` corrigiu", no fim.
+
+**`empresas.2`** — migração `0015`, a listagem `/empresas` com busca e
 paginação, e a maquinaria de busca sem acento que só ela consome.
+
+A numeração segue a **ordem de execução**, não o escopo: `empresas.1` é o que
+vem depois de `empresas`, seja qual for o assunto.
 
 **O critério é o que dá para verificar à mão.** O modelo e a tela de importar
 ficam na primeira **porque sem eles a primeira fatia só existe em teste de
@@ -25,7 +32,7 @@ fatia cuja parte mais arriscada só é verificável na fatia seguinte está cort
 no lugar errado.
 
 **Pela mesma lógica, ao contrário:** `unaccent`, `sem_acento` e a coluna `busca`
-ficam na `empresas.1`, não na `0014`. Elas existem só para a busca. Criar um
+ficam na `empresas.2`, não na `0014`. Elas existem só para a busca. Criar um
 schema, uma extensão, cinco `REVOKE` e uma promessa de `IMMUTABLE` que nenhuma
 tela usa é a R-014 — o mesmo argumento com que a spec de `cep` segurou o `GRANT`
 em `cep_carga` até existir o relatório que o consome.
@@ -190,7 +197,7 @@ fazer com o valor.
 **`vendedor_id`, `reservado_por_id`, `reservado_ate`, `quarentena_ate`,
 `bloqueada_em`**: fatia da fila.
 
-## Busca sem acento — fatia `empresas.1`
+## Busca sem acento — fatia `empresas.2`
 
 `razao_social` e `nome_fantasia` têm acento, e a busca precisa achar "São"
 digitando "sao". O `crm-ch` usava `unaccent`, e o caminho óbvio não funciona.
@@ -508,7 +515,7 @@ cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep
 acima: escolher o arquivo, ver o relatório, confirmar. Gestor-só. É ela, com o
 modelo, que torna a primeira fatia verificável à mão.
 
-**`/empresas`** — fatia `empresas.1`. Listagem com busca e paginação, gestor-só.
+**`/empresas`** — fatia `empresas.2`. Listagem com busca e paginação, gestor-só.
 
 **Repositório novo, não cópia do `listar()` de usuários.** O `listar()` existente
 traz tudo, sem paginação nem busca, e foi escrito para cinco linhas. A
@@ -582,7 +589,7 @@ TDD, vermelho primeiro em cada um.
   recusadas e CEP não encontrado no mesmo arquivo.
 - `cep_carga` legível pelo gestor e ilegível pelo vendedor.
 
-**Integração, fatia `empresas.1`:**
+**Integração, fatia `empresas.2`:**
 
 - A `0015` aplica e as invariantes passam — incluindo a de PUBLIC, que só passa
   se os `REVOKE` estiverem lá, cobrindo as cinco funções.
@@ -627,6 +634,41 @@ Parte do trabalho, não extra:
 - `docs/db/divida-tecnica.md` recebe os gatilhos da tabela acima e a verificação
   manual, cada um na fatia que o cria.
 - `REGRAS.md` só ganha regra se houver tropeço real durante a execução.
+
+## O que a `empresas.1` corrigiu
+
+Três achados da auditoria, todos de erro que chega ao gestor. Sem migração.
+
+**Numeração de linha.** `lerCsv` passou a devolver `{ numero, campos }`, com o
+número **do arquivo**. Antes, linha em branco no meio saía da lista e deslocava
+todas as seguintes: uma recusa da linha 4 era reportada como linha 3, e a
+mensagem parecia autoritativa. Era o pior dos três, porque mandava corrigir a
+linha errada — e seria herdado por qualquer relatório futuro que apontasse para
+o arquivo.
+
+**Simetria de colunas.** `campos.length !== COLUNAS.length`, no lugar de `<`.
+Faltar coluna sempre recusou; sobrar entrava em silêncio, com o excedente
+descartado. Linha com contagem diferente está desalinhada, e ler os sete
+primeiros campos de uma linha desalinhada grava dado trocado de coluna.
+
+> **Mudança de comportamento observável:** linha terminada em separador —
+> `...,01310100,` — produz um oitavo campo vazio e **passa a ser recusada**.
+> Antes entrava. É decisão, não efeito colateral: o Excel não grava separador
+> sobrando, então a linha veio de edição manual ou de outra ferramenta, e nos
+> dois casos o alinhamento é suspeito. Se aparecer num arquivo real, a causa
+> está aqui.
+
+**`23505` e `22021` traduzidos.** Os dois viravam 500 em vez de mensagem. A
+corrida entre duas abas é cenário real mesmo com um gestor só: o CNPJ não
+existia quando ele conferiu. `23505` vira `cnpj_ja_gravado`, a transação inteira
+desfaz e o contrato de tudo-ou-nada continua valendo — `ON CONFLICT DO NOTHING`
+foi recusado justamente por criar sucesso parcial, que é um estado novo na tela
+e uma invariante a menos.
+
+O **byte NUL** é pego na **fase 1**, não traduzido do banco: ` ` é UTF-8
+válido e só o Postgres recusa. Pego na fase 1, o gestor recebe a linha e a
+coluna; traduzido, receberia mensagem sem localização nenhuma. `22021` continua
+traduzido como rede, com texto vago de propósito.
 
 ## O que a fatia da fila herda
 

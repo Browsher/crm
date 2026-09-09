@@ -2,7 +2,7 @@ import { resolverCeps, type Endereco } from '../../server/cep/resolver'
 import { comoUsuario, type Executar } from '../../server/db/como-usuario'
 import type { LinhaAceita } from './planilha'
 
-export type Motivo = 'sem_permissao'
+export type Motivo = 'sem_permissao' | 'cnpj_ja_gravado' | 'texto_invalido'
 export type Falha = { ok: false; motivo: Motivo }
 
 export type Preparo = {
@@ -16,9 +16,23 @@ export interface RepositorioEmpresas {
   gravar(linhas: LinhaAceita[]): Promise<{ ok: true; inseridas: number } | Falha>
 }
 
-// Só o sinal que a política produz. O resto é infraestrutura e sobe como exceção.
+// Três sinais, e nenhum é infraestrutura:
+//
+// 42501: a política negou.
+// 23505: corrida — outra importação gravou este CNPJ entre a conferência e a
+//   gravação. Não dá para prevenir na fase 1: o CNPJ não existia quando o
+//   gestor conferiu. A transação inteira desfaz, e a mensagem manda conferir de
+//   novo; o contrato de tudo-ou-nada continua valendo.
+// 22021: byte inválido. A fase 1 pega o NUL antes, com o número da linha; isto
+//   é rede para o que ela não previr, e por isso a mensagem é vaga de propósito.
+//
+// O resto é infraestrutura e sobe como exceção.
 function traduzir(erro: unknown): Falha | null {
-  return (erro as { code?: string })?.code === '42501' ? { ok: false, motivo: 'sem_permissao' } : null
+  const e = erro as { code?: string; constraint?: string }
+  if (e?.code === '42501') return { ok: false, motivo: 'sem_permissao' }
+  if (e?.code === '23505' && e.constraint === 'empresa_cnpj_key') return { ok: false, motivo: 'cnpj_ja_gravado' }
+  if (e?.code === '22021') return { ok: false, motivo: 'texto_invalido' }
+  return null
 }
 
 async function tentar<T>(gestorId: string, trabalho: (executar: Executar) => Promise<T>): Promise<T | Falha> {

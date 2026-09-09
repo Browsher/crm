@@ -159,6 +159,24 @@ Tipo: catraca, ligada em 2026-09-09
 Onde: branch protection da `main` (`enforce_admins: true`, `strict: true`,
 check obrigatório `catraca`)
 
+
+**Complemento de 2026-09-09, e ele corrige a segunda parte acima.** O mesmo
+tropeço aconteceu de novo, idêntico: o PR da fatia `empresas` foi mergeado
+enquanto o assistente trabalhava, o `checkout main` + `pull` veio de fora, e o
+commit seguinte foi na `main`. A conferência que esta regra prescreve **estava
+lá** — o plano mandava rodar `git branch --show-current` antes de cada commit,
+e ela rodou. Imprimiu `main`. O commit passou assim mesmo, porque estava
+encadeada com `&&`: a checagem informa, não barra.
+
+Então a segunda parte desta regra vale como hábito de quem lê, e **não** como
+mecanismo. Automatizada desse jeito ela vira **bilhete com aparência de
+catraca**, que é pior que nada: ocupa o lugar da proteção real e dá confiança
+que não corresponde a nada. Foi removida do plano da fatia `empresas`.
+
+O que de fato barrou o estrago nas duas vezes foi o servidor. Aqui, o push nem
+chegou a ser tentado; o commit foi movido para uma branch e a `main` local
+voltou para `origin/main`.
+
 ## R-014 — Função exposta sem consumidor não fica
 
 O que aconteceu: três vezes. `AUTH_SECRET` no `.env` sem ninguém lendo,
