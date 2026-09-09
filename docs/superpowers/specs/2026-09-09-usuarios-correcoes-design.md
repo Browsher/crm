@@ -163,16 +163,23 @@ dono**, que vale para quem é dono da tabela sem `FORCE`, e também para
 superusuário sempre. Hoje as duas valem ao mesmo tempo, no container e na
 Railway. Trocar a dona por um papel comum, sozinho, não muda nada.
 
-O único jeito de a política voltar a valer por dentro da definidora é ligar
-`FORCE`. E aí o efeito não é "a política passa a decidir": é o bloqueio total
-que a 0b.1 documentou em `docs/db/0010.md`, porque não existe política para a
-dona e as funções de acesso passam a devolver nulo. A invariante que barra
-`FORCE` continua sendo a prevenção, e agora tem um segundo motivo além do que
-a 0010 registrou.
+**Os dois caminhos são independentes, e isso limita o que dá para detectar.**
+Verificado em 2026-09-09 contra o banco local, cuja dona é `postgres`: ligar
+`FORCE` sozinho **não muda nada**, porque superusuário ignora RLS sempre.
+`FORCE` remove só a isenção de dono. A política só voltaria a valer por dentro
+da definidora se os dois caminhos caíssem juntos, dona comum **e** `FORCE`, que
+é o cenário de bloqueio total de `docs/db/0010.md`: não existe política para a
+dona, as funções de acesso devolvem nulo, e tudo é negado para todos.
 
-**Detecção, não só documentação** (seção 6): um teste prova a isenção pelo
-lado de dentro, para o dia em que ela sumir ser um teste vermelho e não um
-bloqueio em produção.
+A invariante que barra `FORCE` continua sendo a prevenção, pelo motivo que a
+0010 registrou. O que esta fatia acrescenta não é um segundo motivo para
+barrar `FORCE`; é o registro de que a autoridade de `usuario_situacao_definir`
+repousa nessa isenção.
+
+**Detecção parcial, e assumida** (seção 6): o teste prende a suposição pelo
+lado de dentro, mas fica vermelho só quando os dois caminhos caem juntos, ou
+quando a função deixa de ser definidora. É menos sensível do que parece, e
+está no plano assim mesmo, com o limite escrito no próprio teste.
 
 ## 5. Código
 
@@ -309,9 +316,9 @@ escondida do vendedor, a segunda que a definidora a alcança mesmo assim.
 `senha_provisoria_de` serve de sonda porque já é definidora e já tem `GRANT`
 para `app_usuario`; nenhuma função nova é criada para o teste.
 
-**Diagnóstico, para o dia em que falhar:** a causa provável é `FORCE ROW LEVEL
-SECURITY` ligado ou a dona ter deixado de ser dona, e a consequência esperada
-é a da `0010.md`, bloqueio geral e não degradação.
+**Diagnóstico, para o dia em que falhar:** dona virou papel comum **e**
+`FORCE` foi ligado, ou a função deixou de ser `SECURITY DEFINER`. `FORCE`
+sozinho, com a dona atual, não derruba este teste (seção 4).
 
 ### 6.3 Controles negativos das invariantes
 

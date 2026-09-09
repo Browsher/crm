@@ -138,6 +138,38 @@ describe('senha provisória pendente', () => {
   })
 })
 
+describe('isenção de dono', () => {
+  // A autoridade de usuario_situacao_definir depende desta suposição: dentro
+  // de uma definidora, a política de usuario não é avaliada, porque a dona é
+  // isenta de RLS. A isenção vem por DOIS caminhos independentes, e hoje os
+  // dois valem: a dona é superusuária, e é dona da tabela sem FORCE.
+  //
+  // Verificado em 2026-09-09: com dona superusuária, ligar FORCE sozinho NÃO
+  // muda este resultado, porque superusuário ignora RLS sempre. FORCE remove
+  // só a isenção de dono. Então este teste fica vermelho apenas quando os
+  // dois caminhos caem juntos: dona vira papel comum E FORCE ligado, que é o
+  // cenário de bloqueio geral de docs/db/0010.md. Ou se a função deixar de
+  // ser SECURITY DEFINER.
+  //
+  // É menos sensível do que parece à primeira vista, e está aqui assim
+  // mesmo: prende a suposição em vez de deixá-la só na prosa.
+  test('definidora lê linha que a política esconde do chamador', async () => {
+    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [gestor])
+    try {
+      const direto = await banco.comoUsuario(vendedor, (e) =>
+        e('SELECT senha_provisoria_pendente FROM usuario WHERE id = $1', [gestor]),
+      )
+      expect(direto.afetadas).toBe(0)
+      const pelaDefinidora = await banco.comoUsuario(vendedor, (e) =>
+        e<{ senha_provisoria_de: boolean | null }>('SELECT senha_provisoria_de($1)', [gestor]),
+      )
+      expect(pelaDefinidora.linhas[0].senha_provisoria_de).toBe(true)
+    } finally {
+      await banco.sql('UPDATE usuario SET senha_provisoria_pendente = false WHERE id = $1', [gestor])
+    }
+  })
+})
+
 describe('controle negativo', () => {
   test('como dono, RLS é ignorada e todos aparecem', async () => {
     const r = await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM usuario')
