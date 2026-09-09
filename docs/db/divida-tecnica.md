@@ -503,11 +503,14 @@ Se ele não produzir a mensagem que explica a causa, a fatia não está pronta.
 | 8 | abrir o CSV com **duplo-clique**, salvar por cima, reenviar | mensagem de notação científica **ou** de CEP com 7 dígitos, dizendo para formatar a coluna como Texto | sim: CNPJ em notação científica, com a causa e o conserto |
 | 9 | duplicar uma linha mudando só o telefone | recusa **as duas**, nomeando a coluna divergente | sim, e rendeu duas correções — ver abaixo |
 | 10 | uma linha com CEP `00000000` (**não** `99999999`: existe, é Sarandi/PR) | a empresa entra; o relatório diz "1 CEP não encontrado na base de 2024-07-08" | sim, na segunda tentativa — ver abaixo |
-| 11 | arquivo com o cabeçalho fora de ordem | mensagem mostrando o cabeçalho que veio | **não rodado** |
+| 11 | arquivo com o cabeçalho fora de ordem | mensagem mostrando o cabeçalho que veio, **sem contagem nenhuma** | sim, na `empresas.1` |
 
-**O passo 11 não foi rodado.** Fica em aberto, e não vale como passado. O
-caminho tem teste de unidade (`planilha.test.ts`, `cabecalho_diferente`), então
-o que falta é a conferência de que a mensagem chega à tela — não a lógica.
+**Os doze passos rodaram.** O 11 ficou em aberto ao fim da fatia `empresas` e
+foi fechado durante a `empresas.1`, com um arquivo de cabeçalho fora de ordem —
+as sete colunas certas, só a ordem trocada. A conferência que importava era
+negativa: o arquivo é recusado na **fase 0**, então nenhuma contagem podia
+aparecer, e nenhuma apareceu. As duas linhas de dados do arquivo eram válidas de
+propósito.
 
 **Três achados, todos de passos que "passaram".** É o argumento a favor desta
 tabela existir, e vale mais que as dez linhas de `sim`:
@@ -535,6 +538,32 @@ precisa.
 **O que a tabela não cobre, e é escolha:** o limite de 5.000 linhas e o de 2 MB
 do transporte. Os dois têm teste de unidade (`planilha.test.ts`), e produzir um
 CSV de 5.001 linhas à mão para conferir uma mensagem não paga o trabalho.
+
+## Fatia empresas.1: verificado à mão
+
+Verificação manual feita em 2026-09-09 pelo usuário, contra o container local.
+Refazer quando mexer em `src/features/empresas/csv.ts` ou `planilha.ts`.
+
+Os quatro arquivos foram gerados e **rodados contra a fase 1 antes de serem
+entregues**, e a saída prevista na conversa era saída medida, não palpite — a
+R-019 aplicada a quem escreve o caso de teste, que era exatamente onde ela tinha
+falhado três vezes.
+
+| Arquivo | O que exercita | Esperado | Verificado |
+|---|---|---|---|
+| `1-linha-em-branco.csv` | linha em branco na 3, recusa na 4 | recusa reportada como **Linha 4**, não 3 | sim |
+| `2-colunas-erradas.csv` | coluna a mais, e linha terminada em separador | **as duas** recusadas, com "8 colunas; o modelo tem 7" | sim |
+| `3-byte-nul.csv` | NUL em `razao_social` (linha 3) e em `email` (linha 4) | nomeia **colunas diferentes** nas duas linhas | sim |
+| `4-cabecalho-fora-de-ordem.csv` | as sete colunas certas, ordem trocada | só a mensagem com o cabeçalho que veio, **sem contagem** | sim |
+
+O terceiro só vale enviado direto pela tela: abrir no Excel destrói o byte NUL e
+o arquivo perde a graça. Confirmado antes da entrega que os dois bytes NUL estavam
+fisicamente no arquivo, nos offsets 143 e 231.
+
+**O que a `empresas.1` NÃO verificou à mão:** a corrida que produz `23505`. Ela
+exige duas importações simultâneas do mesmo CNPJ, e reproduzir isso na tela é
+mais frágil que o teste de integração que já existe — `gravar` duas vezes, a
+segunda devolvendo `cnpj_ja_gravado` e o segundo CNPJ do lote não entrando.
 
 ## Fatia empresas: auditoria
 
@@ -580,18 +609,18 @@ Com **sessão de gestor**, o interessante é o que ele consegue sem querer:
 
 - Gravar arquivo não conferido, trocando-o no disco entre conferir e confirmar.
 - **Corrida entre duas abas:** `gravar` não tem `ON CONFLICT`; `23505` não é
-  traduzido e vira 500. **Vai para a 0d.1.**
-- **Byte NUL** (` `) é UTF-8 válido, passa a fase 1 e o Postgres recusa com
-  `22021`, também não traduzido. **Vai para a 0d.1.**
+  traduzido e vira 500. **Corrigido na `empresas.1`.**
+- **Byte NUL** (`U+0000`) é UTF-8 válido, passa a fase 1 e o Postgres recusa com
+  `22021`, também não traduzido. **Corrigido na `empresas.1`.**
 
 Com **CSV malicioso**:
 
 - **Numeração de linha erra quando há linha em branco no meio.** Demonstrado:
   linha vazia na 3 faz a recusa da linha 4 ser reportada como linha 3.
   `lerCsv` descarta vazias e `analisarPlanilha` numera pelo índice do array
-  filtrado. **Vai para a 0d.1.**
+  filtrado. **Corrigido na `empresas.1`.**
 - **Colunas a mais entram em silêncio.** Demonstrado: linha com 9 campos é
-  aceita e as duas extras somem. Faltar recusa, sobrar não. **Vai para a 0d.1.**
+  aceita e as duas extras somem. Faltar recusa, sobrar não. **Corrigido na `empresas.1`.**
 - O limite de 5.000 linhas é conferido **depois** de parsear o arquivo inteiro.
   Limitado pelos 2 MB, então é desperdício e não vetor.
 - Fórmula em campo de texto (`=cmd|...`) é guardada como veio. Inofensivo hoje
