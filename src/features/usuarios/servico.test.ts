@@ -7,8 +7,8 @@ const nuncaChamado: RepositorioUsuarios = {
   listar: () => Promise.reject(new Error('não devia chamar')),
   criar: () => Promise.reject(new Error('não devia chamar')),
   definirCredencial: () => Promise.reject(new Error('não devia chamar')),
-  alterar: () => Promise.reject(new Error('não devia chamar')),
-  desativar: () => Promise.reject(new Error('não devia chamar')),
+  mudarPapel: () => Promise.reject(new Error('não devia chamar')),
+  definirSituacao: () => Promise.reject(new Error('não devia chamar')),
 }
 
 describe('criarUsuario', () => {

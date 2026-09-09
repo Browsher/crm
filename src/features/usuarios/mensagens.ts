@@ -10,6 +10,8 @@ const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
   sem_permissao: 'Você não tem permissão para isso.',
   nao_encontrado: 'Usuário não encontrado. Recarregue a lista.',
   email_em_uso: 'Já existe usuário com esse e-mail.',
+  alvo_inativo: 'Não dá para definir senha de um usuário desativado. Reative antes.',
+  ja_nesse_estado: 'Esse usuário já está nesse estado. Recarregue a lista.',
 }
 
 const TEXTO_DA_FALTA: Record<FaltaNovoUsuario, string> = {

@@ -57,26 +57,26 @@ describe('repositorioPostgres', () => {
     expect(await repositorioPostgres(vendedor).definirCredencial(gestor, hash)).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 
-  test('alterar papel e ativo; inexistente é nao_encontrado; vendedor não altera', async () => {
+  test('mudarPapel; inexistente é nao_encontrado; vendedor não altera', async () => {
     const repo = repositorioPostgres(gestor)
-    expect(await repo.alterar(vendedor, { papel: 'gestor' })).toEqual({ ok: true })
+    expect(await repo.mudarPapel(vendedor, 'gestor')).toEqual({ ok: true })
     const [a] = await banco.sql<{ papel: string }>('SELECT papel FROM usuario WHERE id = $1', [vendedor])
     expect(a.papel).toBe('gestor')
-    expect(await repo.alterar(vendedor, { papel: 'vendedor' })).toEqual({ ok: true })
-    expect(await repo.alterar(NADA, { ativo: true })).toEqual({ ok: false, motivo: 'nao_encontrado' })
-    expect(await repositorioPostgres(vendedor).alterar(gestor, { ativo: false })).toEqual({ ok: false, motivo: 'nao_encontrado' })
+    expect(await repo.mudarPapel(vendedor, 'vendedor')).toEqual({ ok: true })
+    expect(await repo.mudarPapel(NADA, 'vendedor')).toEqual({ ok: false, motivo: 'nao_encontrado' })
+    expect(await repositorioPostgres(vendedor).mudarPapel(gestor, 'vendedor')).toEqual({ ok: false, motivo: 'nao_encontrado' })
   })
 
   test('desativar apaga as sessões na mesma transação; reativar não as traz de volta', async () => {
     const alvo = await criarNaTabela(banco, 'vendedor', 'Alvo')
     const { token } = await criarSessao(alvo)
     const repo = repositorioPostgres(gestor)
-    expect(await repo.desativar(alvo)).toEqual({ ok: true })
+    expect(await repo.definirSituacao(alvo, false)).toEqual({ ok: true })
     const [{ n }] = await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM autenticacao.sessao WHERE usuario_id = $1', [alvo])
     expect(n).toBe(0)
-    expect(await repo.alterar(alvo, { ativo: true })).toEqual({ ok: true })
+    expect(await repo.definirSituacao(alvo, true)).toEqual({ ok: true })
     expect(await lerSessao(token)).toBeNull()
-    expect(await repo.desativar(NADA)).toEqual({ ok: false, motivo: 'nao_encontrado' })
+    expect(await repo.definirSituacao(NADA, false)).toEqual({ ok: false, motivo: 'nao_encontrado' })
   })
 
   test('listar: gestor vê todos, ativos primeiro, por nome; vendedor vê só a si', async () => {
@@ -139,12 +139,22 @@ describe('serviço com repositório real', () => {
     expect(v.ativo).toBe(true)
   })
 
+  test('definirSituacao recusa transição sem sentido, com motivo próprio', async () => {
+    const repo = repositorioPostgres(gestor)
+    const alvo = await criarNaTabela(banco, 'vendedor', 'Transicao')
+    expect(await repo.definirSituacao(alvo, false)).toEqual({ ok: true })
+    expect(await repo.definirSituacao(alvo, false)).toEqual({ ok: false, motivo: 'ja_nesse_estado' })
+    expect(await repo.definirCredencial(alvo, hash)).toEqual({ ok: false, motivo: 'alvo_inativo' })
+    expect(await repo.definirSituacao(alvo, true)).toEqual({ ok: true })
+    expect(await repo.definirSituacao(alvo, true)).toEqual({ ok: false, motivo: 'ja_nesse_estado' })
+  })
+
   test('vendedor em qualquer operação: sem_permissao ou nao_encontrado; inexistente: nao_encontrado', async () => {
     const repo = repositorioPostgres(vendedor)
     expect(await criarUsuario(repo, { nome: 'F', email: 'f@teste.local', papel: 'vendedor' })).toEqual({ ok: false, motivo: 'sem_permissao' })
     expect(await novaSenhaProvisoria(repo, gestor)).toEqual({ ok: false, motivo: 'sem_permissao' })
     expect(await mudarPapel(repo, gestor, 'vendedor')).toEqual({ ok: false, motivo: 'nao_encontrado' })
-    expect(await desativar(repo, gestor)).toEqual({ ok: false, motivo: 'nao_encontrado' })
+    expect(await desativar(repo, gestor)).toEqual({ ok: false, motivo: 'sem_permissao' })
     expect(await reativar(repositorioPostgres(gestor), NADA)).toEqual({ ok: false, motivo: 'nao_encontrado' })
   })
 })

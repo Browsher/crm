@@ -159,4 +159,48 @@ Tipo: catraca, ligada em 2026-09-09
 Onde: branch protection da `main` (`enforce_admins: true`, `strict: true`,
 check obrigatório `catraca`)
 
+## R-014 — Função exposta sem consumidor não fica
+
+O que aconteceu: três vezes. `AUTH_SECRET` no `.env` sem ninguém lendo,
+`usuario_publico` como view sem consumidor, e `sessoes_encerrar_de` com `GRANT`
+para `app_usuario` depois que `usuario_situacao_definir` absorveu o único
+chamador. Superfície concedida sem uso não é neutra: ninguém a testa, ninguém
+lembra por que existe, e ela continua chamável.
+A regra: se o consumidor sumiu, o `GRANT` sai junto. Se voltar a precisar,
+volta com o consumidor na mesma mudança.
+
+Metade catraca, metade bilhete, e a diferença importa:
+
+| Situação | Quem pega |
+|---|---|
+| função de schema de aplicação executável por `PUBLIC` | catraca |
+| definidora com `GRANT` para `app_usuario` fora da lista fechada | catraca |
+| função **não** definidora com `GRANT` para `app_usuario` | bilhete, por decisão |
+| função concedida que ninguém chama | **bilhete** |
+
+A última linha é o buraco: desuso não é observável no catálogo, exigiria
+cruzar o SQL com o TypeScript que chama. A catraca cobre exposição indevida,
+não desuso. A terceira é escolha: função não definidora roda como quem chama,
+sujeita a RLS e aos mesmos privilégios, então não escala nada.
+
+Atenção ao padrão do Postgres: **função nova nasce com `EXECUTE` para
+`PUBLIC`**. Sem `REVOKE` explícito na migração, ela é chamável por todo papel.
+Foi assim que `definir_auditoria` ficou aberta da 0003 até a 0012.
+Tipo: catraca para exposição, bilhete para desuso
+Onde: `FUNCOES_CONCEDIDAS_A_APP_USUARIO` e a invariante de `PUBLIC` em
+`src/server/db/migracoes/invariantes.ts`
+
+---
+
+## R-015 — Doc de migração alterada depois ganha ponteiro de encaminhamento
+
+O que aconteceu: a 0012 mudou objetos criados pela 0003, 0009 e 0011. Migração
+é imutável, mas o doc que a explica passa a descrever um comportamento que não
+é mais o do banco. Quem ler `0009.md` daqui a três meses precisa saber que
+existe um capítulo depois.
+A regra: uma linha no topo do doc antigo, logo abaixo do título, dizendo o que
+mudou e apontando o doc novo. O doc novo, por sua vez, lista os objetos que
+tocou fora do próprio escopo, com o motivo de cada um.
+Tipo: bilhete (nada confere que o ponteiro existe)
+
 <!-- próximas regras aqui -->

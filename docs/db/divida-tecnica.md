@@ -172,10 +172,19 @@ local, com a 0011 aplicada. Refazer quando mexer em `app/usuarios/**` ou em
 | desativar deixa só "Reativar"; reativar traz as três ações de volta | sim |
 | mudar papel: o alvo vê o papel novo na próxima página, sem relogar | sim |
 | aviso de único gestor aparece com um e some ao promover outro; gestor pendente em `/usuarios` vai para `/trocar-senha` | sim |
+| **0c.1 (2026-09-09):** criar, nova senha, desativar, reativar e mudar papel refeitos contra o servidor da 0012, sem nenhuma mensagem de transição inválida | sim |
 
 Sobre a linha do `sessoes_encerrar_de`: `sessao_atual` já recusaria o
 inativo, então a tela cairia no `/login` mesmo sem o delete. Quem prova o
 delete é `funcoes-usuario.test.ts`, contando linhas em `sessao` como dona.
+
+Sobre a linha da 0c.1: nenhum arquivo de `app/` mudou naquela fatia, mas o
+servidor por baixo mudou (funções novas, retorno em texto, transição
+recusada). O critério da conferência era negativo: se a tela mostrasse
+"Esse usuário já está nesse estado" ou "Não dá para definir senha de um
+usuário desativado" num fluxo normal, seria bug, porque `acoesDe` não deveria
+oferecer a ação naquele estado. Nenhuma apareceu. As duas mensagens existem
+para requisição forjada e para corrida entre duas abas.
 
 **Gatilho para jsdom:** primeiro componente cliente que decide algo sozinho
 no cliente. `useActionState` devolvendo estado da action não conta.
@@ -185,39 +194,17 @@ no cliente. `useActionState` devolvendo estado da action não conta.
 Achados marcados **(verificado)** foram rodados contra o Postgres 17 local,
 em transação com `ROLLBACK`. O resto é leitura de código.
 
-### Vai para a 0c.1
+### Resolvido na 0c.1
 
-- **`atualizado_por` mente na segunda redefinição de senha (verificado).** O
-  `AND NOT senha_provisoria_pendente` no `UPDATE` de `credencial_definir`
-  evita carimbo à toa no caminho de criar, mas quando o alvo já está pendente
-  o `UPDATE` afeta zero linhas, o gatilho não roda, e `atualizado_por`
-  continua apontando para quem redefiniu da primeira vez. Provado com dois
-  gestores em sequência: o segundo trocou o hash e a linha seguiu nomeando o
-  primeiro. Como `autenticacao.credencial` não guarda quem, não existe
-  registro nenhum. Decisão: `credencial` ganha `atualizado_por`; quem
-  redefiniu senha não é informação que `usuario` deva carregar.
-- **A máquina de estados não é enforçada por ninguém.** `acoesDe` decide o
-  que a tela mostra e o servidor nunca reconfere. Verificado: definir senha
-  provisória para usuário **inativo** funciona e sobe a marca; desativar quem
-  já está inativo dá `UPDATE 1`; reativar quem já está ativo dá `UPDATE 1`.
-  A autorização é enforçada pelo banco, a transição não. Decisão: recusar
-  transição sem sentido, com motivo próprio, não `nao_encontrado`.
-- **Conferência de permissão duplicada verbatim nas duas funções SQL.** A
-  terceira copia de novo. Decisão: `exigir_gestor()` compartilhada.
-- **A invariante da lista fechada só varre `public` (verificado no código).**
-  Definidora em outro schema, com `EXECUTE` para `app_usuario`, tocando
-  `autenticacao`, escapa. Decisão: varrer todos os schemas.
+`atualizado_por` mentindo na segunda redefinição, máquina de estados sem
+enforcement, conferência duplicada e escopo da invariante. Ver `docs/db/0012.md`
+e a spec `2026-09-09-usuarios-correcoes-design.md`.
 
 ### Invariantes sem teste
 
-- `sessoes_encerrar_de` com gestor pendente e com gestor inativo.
-  `credencial_definir` tem os dois; a irmã só tem vendedor e gestor-sobre-si.
 - `app_conexao` tentando **executar** as duas: só há conferência de catálogo
   (`has_function_privilege`), não uma chamada real devolvendo `42501`, como a
   0b fez para as tabelas.
-- Alvo inativo em `credencial_definir`: nenhum teste diz qual é o esperado.
-- O `AND NOT senha_provisoria_pendente`: nenhum teste cobre duas redefinições
-  seguidas.
 - Erro de infraestrutura atravessando `traduzir`: nada prova que erro
   desconhecido sobe em vez de virar `{ ok: false }`.
 - `gestorUnico` com lista vazia (o teste de "zero gestores" usa lista com um
@@ -231,12 +218,6 @@ em transação com `ROLLBACK`. O resto é leitura de código.
   Três ramos que nem o teste nem a verificação manual tocaram: `limpar` em
   `criarUsuarioAcao`, `'Ação desconhecida.'` em `agirNaLinhaAcao`, e a
   coerção do `papel` vindo do formulário.
-- `repositorio.ts`: **o retorno de `credencial_definir` é ignorado dentro de
-  `criar`**. Hoje inalcançável (id recém-nascido). Se um dia for `false`,
-  `criar` devolve `{ ok: true }` com usuário sem credencial, que não entra e
-  só se conserta gerando nova senha.
-- `alterar(id, {})` (verificado): faz `UPDATE 1`, dispara o gatilho e carimba
-  auditoria sem nada ter mudado. A interface permite; o serviço nunca chama.
 - `servico.ts` com repositório falso: só `criarUsuario`. As outras quatro só
   aparecem no teste de integração.
 - `mensagens.ts`: `junta` com **duas** faltas (o teste cobre uma e três).
@@ -255,7 +236,6 @@ e o banco recusa, duas barreiras independentes. Com gestor:
 - Redefinir senha de outro gestor e entrar como ele: escalada total e
   silenciosa. Aceito como limitação; ganha rastro com o `atualizado_por` da
   0c.1.
-- Os três estados sem sentido da seção da 0c.1.
 
 Com acesso à aplicação não há poder novo além do que a 0b registrou, mas o
 caminho ficou mais curto: afirmar o id de qualquer gestor ativo no GUC e
@@ -279,9 +259,18 @@ chamar `credencial_definir`, em vez de forjar sessão e chamar `senha_trocar`.
   automático. Reconsiderar a condição, não só esperar por ela.
 - Zero gestores ativos por corrida entre dois gestores. Recuperação:
   `db:seed:gestor`.
-- A invariante procura `autenticacao.` no texto da função (`prosrc`): função
-  que chega lá por outra função, ou por SQL dinâmico, escapa. A 0c.1 amplia o
-  escopo de schemas, não esse limite.
+- A invariante cataloga só definidoras. Função **não** definidora com `GRANT`
+  para `app_usuario` fica fora, por decisão: roda como quem chama, sujeita a
+  RLS e aos mesmos privilégios, então não escala nada.
+- Continua sem catraca o desuso: "concedida e ninguém chama" exigiria cruzar
+  o catálogo com o TypeScript.
+- A conferência de permissão é redundante entre `usuario_situacao_definir` e
+  `sessoes_encerrar_de`: quatro leituras de `usuario` por desativação onde
+  duas bastariam, todas por chave primária. Escolha, não descuido
+  (`docs/db/0012.md`).
+- O teste da isenção de dono detecta menos do que parece: fica vermelho só se
+  a dona virar papel comum **e** `FORCE` for ligado, ou se a função deixar de
+  ser definidora. Com dona superusuária, `FORCE` sozinho não muda nada.
 
 ## Ferramental
 

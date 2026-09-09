@@ -4,14 +4,31 @@ import { PAPEIS_APLICACAO } from './aplicar'
 
 export type ResultadoInvariantes = { ok: true } | { ok: false; violacoes: string[] }
 
-export const FUNCOES_DE_ACESSO = ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'] as const
+// Duas listas, duas perguntas diferentes sobre o mesmo conjunto.
 
-// Funções definidoras de public que tocam autenticacao e app_usuario executa.
-// Lista fechada: a invariante acusa qualquer outra no banco, e qualquer uma
-// daqui ausente ou sem EXECUTE. app_usuario não tem USAGE em autenticacao, e
-// estas são a única forma de ele chegar lá; a lista existe para essa forma
-// não crescer sem alguém decidir.
-export const FUNCOES_DE_USUARIO_EM_AUTENTICACAO = ['credencial_definir', 'sessoes_encerrar_de'] as const
+// Pergunta 1: quais funções TÊM QUE EXISTIR. Ausência é violação, não verde.
+export const FUNCOES_DE_ACESSO_OBRIGATORIAS = [
+  'public.usuario_atual',
+  'public.pode_ler',
+  'public.eh_gestor',
+  'public.pode_escrever',
+  'public.senha_provisoria_de',
+] as const
+
+// Pergunta 2: quais podem TER GRANT para app_usuario. Fechada dos dois lados:
+// definidora concedida fora daqui é violação, e nome daqui ausente ou sem
+// GRANT também. As de acesso aparecem nas duas listas de propósito: são
+// definidoras concedidas como qualquer outra, e "de acesso" é nome nosso, não
+// do banco. Duas listas para a mesma classe de objeto sairiam de sincronia.
+export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
+  'public.usuario_atual',
+  'public.pode_ler',
+  'public.eh_gestor',
+  'public.pode_escrever',
+  'public.senha_provisoria_de',
+  'public.credencial_definir',
+  'public.usuario_situacao_definir',
+] as const
 
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.
@@ -24,7 +41,8 @@ export type Estado = {
   migracaoAlcancavelPor: string[]
   privilegiosDeConexaoEmAutenticacao: string[]
   politicasEmAutenticacao: string[]
-  funcoesDeUsuarioEmAutenticacao: { nome: string; executaAppUsuario: boolean }[]
+  funcoesConcedidasAAppUsuario: string[]
+  funcoesExecutaveisPorPublico: string[]
 }
 
 // Schemas de aplicação: tudo que não é do Postgres.
@@ -42,9 +60,9 @@ export async function lerEstado(c: Client): Promise<Estado> {
     WHERE p.prosecdef AND ${SCHEMAS_DO_SISTEMA}`)
 
   const acesso = await c.query<{ nome: string }>(
-    `SELECT p.proname AS nome FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-     WHERE n.nspname = 'public' AND p.proname = ANY($1)`,
-    [[...FUNCOES_DE_ACESSO]],
+    `SELECT n.nspname || '.' || p.proname AS nome FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname || '.' || p.proname = ANY($1)`,
+    [[...FUNCOES_DE_ACESSO_OBRIGATORIAS]],
   )
 
   const papeis = await c.query<{ nome: string }>('SELECT rolname AS nome FROM pg_roles WHERE rolname = ANY($1)', [
@@ -79,13 +97,27 @@ export async function lerEstado(c: Client): Promise<Estado> {
   // has_function_privilege lança se o papel não existe; sem app_usuario a
   // violação certa é "papel ausente", que já é avaliada.
   const temAppUsuario = papeis.rows.some((r) => r.nome === 'app_usuario')
-  const usuarioEmAutenticacao = temAppUsuario
-    ? await c.query<{ nome: string; executaAppUsuario: boolean }>(`
-        SELECT p.proname AS nome, has_function_privilege('app_usuario', p.oid, 'EXECUTE') AS "executaAppUsuario"
+  // Sem heurística de texto: toda definidora concedida, toque ou não
+  // autenticacao. O critério antigo procurava 'autenticacao.' no corpo e
+  // deixava de fora quem chega lá por outra função.
+  const concedidas = temAppUsuario
+    ? await c.query<{ nome: string }>(`
+        SELECT n.nspname || '.' || p.proname AS nome
         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE n.nspname = 'public' AND p.prosecdef AND p.prosrc LIKE '%autenticacao.%'
+        WHERE ${SCHEMAS_DO_SISTEMA} AND p.prosecdef
+          AND has_function_privilege('app_usuario', p.oid, 'EXECUTE')
         ORDER BY 1`)
-    : { rows: [] as { nome: string; executaAppUsuario: boolean }[] }
+    : { rows: [] as { nome: string }[] }
+
+  // proacl nulo é o padrão do Postgres: EXECUTE para PUBLIC. grantee = 0 é
+  // a entrada explícita de PUBLIC no ACL.
+  const publico = await c.query<{ nome: string }>(`
+    SELECT n.nspname || '.' || p.proname AS nome
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE ${SCHEMAS_DO_SISTEMA}
+      AND (p.proacl IS NULL OR EXISTS (
+        SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'))
+    ORDER BY 1`)
 
   return {
     tabelas: tabelas.rows,
@@ -100,7 +132,8 @@ export async function lerEstado(c: Client): Promise<Estado> {
     migracaoAlcancavelPor: migracao.rows.map((r) => r.nome),
     privilegiosDeConexaoEmAutenticacao: privilegios.rows.map((r) => r.nome),
     politicasEmAutenticacao: politicas.rows.map((r) => r.nome),
-    funcoesDeUsuarioEmAutenticacao: usuarioEmAutenticacao.rows,
+    funcoesConcedidasAAppUsuario: concedidas.rows.map((r) => r.nome),
+    funcoesExecutaveisPorPublico: publico.rows.map((r) => r.nome),
   }
 }
 
@@ -124,7 +157,7 @@ export function avaliar(e: Estado): string[] {
   for (const papel of PAPEIS_APLICACAO) {
     if (!e.papeis.includes(papel)) v.push(`papel ausente: ${papel}`)
   }
-  for (const f of FUNCOES_DE_ACESSO) {
+  for (const f of FUNCOES_DE_ACESSO_OBRIGATORIAS) {
     if (!e.funcoesDeAcesso.includes(f)) v.push(`função de acesso ausente: ${f}`)
   }
 
@@ -146,15 +179,17 @@ export function avaliar(e: Estado): string[] {
     v.push(`política em autenticacao: ${p} (tabela de autenticacao não tem política; alguém abriu para um papel)`)
   }
 
-  const registradas = new Set<string>(FUNCOES_DE_USUARIO_EM_AUTENTICACAO)
-  for (const f of e.funcoesDeUsuarioEmAutenticacao) {
-    if (f.executaAppUsuario && !registradas.has(f.nome)) {
-      v.push(`função definidora de public toca autenticacao com EXECUTE para app_usuario e não está registrada: ${f.nome}`)
-    }
+  const registradas = new Set<string>(FUNCOES_CONCEDIDAS_A_APP_USUARIO)
+  for (const nome of e.funcoesConcedidasAAppUsuario) {
+    if (!registradas.has(nome)) v.push(`função definidora concedida a app_usuario e não registrada: ${nome}`)
   }
-  for (const nome of FUNCOES_DE_USUARIO_EM_AUTENTICACAO) {
-    const f = e.funcoesDeUsuarioEmAutenticacao.find((x) => x.nome === nome)
-    if (!f?.executaAppUsuario) v.push(`função de usuário registrada e ausente ou sem EXECUTE para app_usuario: ${nome}`)
+  const noBanco = new Set(e.funcoesConcedidasAAppUsuario)
+  for (const nome of FUNCOES_CONCEDIDAS_A_APP_USUARIO) {
+    if (!noBanco.has(nome)) v.push(`função registrada e ausente ou sem GRANT: ${nome}`)
+  }
+
+  for (const nome of e.funcoesExecutaveisPorPublico) {
+    v.push(`função de schema de aplicação executável por PUBLIC: ${nome} (função nova nasce assim; falta REVOKE)`)
   }
 
   return v

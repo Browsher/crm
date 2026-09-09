@@ -199,29 +199,55 @@ describe('conferirInvariantes', () => {
     await banco.sql('REVOKE ALL ON _migracao FROM app_usuario')
   })
 
-  test('nomeia função definidora de public tocando autenticacao com EXECUTE para app_usuario fora da lista (controle negativo)', async () => {
-    // Função nova nasce com EXECUTE para PUBLIC, então app_usuario a executa:
-    // é exatamente o esquecimento que a invariante precisa acusar.
-    await banco.sql(
-      "CREATE FUNCTION intrusa() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT count(*)::int FROM autenticacao.sessao'",
-    )
+  test('nomeia definidora concedida a app_usuario fora da lista, sem tocar autenticacao (controle negativo)', async () => {
+    await banco.sql("CREATE FUNCTION atalho() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT 1'")
+    await banco.sql('REVOKE EXECUTE ON FUNCTION atalho() FROM PUBLIC')
+    await banco.sql('GRANT EXECUTE ON FUNCTION atalho() TO app_usuario')
     try {
       const r = await conferirInvariantes(banco.urlAdmin)
       expect(r.ok).toBe(false)
-      if (!r.ok) expect(r.violacoes.join()).toMatch(/não está registrada: intrusa/)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/concedida a app_usuario e não registrada: public\.atalho/)
     } finally {
-      await banco.sql('DROP FUNCTION intrusa()')
+      await banco.sql('DROP FUNCTION atalho()')
     }
   })
 
-  test('nomeia função registrada sem EXECUTE para app_usuario (controle negativo)', async () => {
-    await banco.sql('REVOKE EXECUTE ON FUNCTION sessoes_encerrar_de(uuid) FROM app_usuario')
+  test('nomeia definidora concedida em schema fora de public (controle negativo)', async () => {
+    await banco.sql('CREATE SCHEMA IF NOT EXISTS relatorios')
+    await banco.sql(
+      "CREATE FUNCTION relatorios.espia() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT count(*)::int FROM autenticacao.sessao'",
+    )
+    await banco.sql('REVOKE EXECUTE ON FUNCTION relatorios.espia() FROM PUBLIC')
+    await banco.sql('GRANT EXECUTE ON FUNCTION relatorios.espia() TO app_usuario')
     try {
       const r = await conferirInvariantes(banco.urlAdmin)
       expect(r.ok).toBe(false)
-      if (!r.ok) expect(r.violacoes.join()).toMatch(/sem EXECUTE para app_usuario: sessoes_encerrar_de/)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/não registrada: relatorios\.espia/)
     } finally {
-      await banco.sql('GRANT EXECUTE ON FUNCTION sessoes_encerrar_de(uuid) TO app_usuario')
+      await banco.sql('DROP FUNCTION relatorios.espia()')
+      await banco.sql('DROP SCHEMA relatorios')
+    }
+  })
+
+  test('nomeia função registrada sem GRANT (controle negativo)', async () => {
+    await banco.sql('REVOKE EXECUTE ON FUNCTION credencial_definir(uuid, text) FROM app_usuario')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/ausente ou sem GRANT: public\.credencial_definir/)
+    } finally {
+      await banco.sql('GRANT EXECUTE ON FUNCTION credencial_definir(uuid, text) TO app_usuario')
+    }
+  })
+
+  test('nomeia função executável por PUBLIC (controle negativo)', async () => {
+    await banco.sql("CREATE FUNCTION sem_revoke() RETURNS int LANGUAGE sql AS 'SELECT 1'")
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/executável por PUBLIC: public\.sem_revoke/)
+    } finally {
+      await banco.sql('DROP FUNCTION sem_revoke()')
     }
   })
 })
