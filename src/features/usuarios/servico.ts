@@ -32,13 +32,13 @@ export async function novaSenhaProvisoria(repo: RepositorioUsuarios, id: string)
 }
 
 export function mudarPapel(repo: RepositorioUsuarios, id: string, papel: Papel): Promise<ResultadoSimples> {
-  return repo.alterar(id, { papel })
+  return repo.mudarPapel(id, papel)
 }
 
 export function desativar(repo: RepositorioUsuarios, id: string): Promise<ResultadoSimples> {
-  return repo.desativar(id)
+  return repo.definirSituacao(id, false)
 }
 
 export function reativar(repo: RepositorioUsuarios, id: string): Promise<ResultadoSimples> {
-  return repo.alterar(id, { ativo: true })
+  return repo.definirSituacao(id, true)
 }
