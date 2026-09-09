@@ -89,6 +89,12 @@ function". O `DROP` leva junto o ACL, então `REVOKE`/`GRANT` são refeitos.
 `DROP FUNCTION` é permitido pelo checador, que só barra `DROP TABLE` e
 `DROP COLUMN`.
 
+**Não há janela sem privilégio entre o `DROP` e o `GRANT`.** DDL no Postgres é
+transacional, e a migração inteira roda numa transação só, de que o runner é
+dono. Nenhuma outra sessão observa a função ausente nem sem `GRANT`: vê o
+estado antigo até o `COMMIT` e o novo depois. Está escrito porque "dropar
+função com `GRANT` ativo" assusta quem lê a migração sem reparar no `BEGIN`.
+
 | Função | Assinatura depois | Devolve |
 |---|---|---|
 | `credencial_definir(uuid, text)` | `RETURNS text` (era `boolean`) | `ok`, `nao_encontrado`, `alvo_inativo` |
@@ -304,10 +310,27 @@ próprio, e cada doc de origem ganha ponteiro para cá.
   migrar da política para a função nessa operação.
 - `divida-tecnica.md`: sai o bloco "Vai para a 0c.1"; ficam os itens que
   sobreviveram, mais os que esta fatia criar.
-- `REGRAS.md`, duas regras que a sessão produziu e ainda não estão escritas:
-  função exposta sem consumidor não fica (aplicada três vezes: `AUTH_SECRET`,
-  `usuario_publico`, `sessoes_encerrar_de`); e doc de migração cujo objeto foi
-  alterado depois ganha ponteiro de encaminhamento.
+- `REGRAS.md`, duas regras que a sessão produziu e ainda não estão escritas.
+
+**Regra "função exposta sem consumidor não fica"**, aplicada três vezes no
+projeto: `AUTH_SECRET`, `usuario_publico`, `sessoes_encerrar_de`. Ela é
+**meio catraca e meio bilhete**, e o texto precisa dizer qual metade é qual,
+senão parece mais forte do que é.
+
+| Situação | Quem pega |
+|---|---|
+| função de schema de aplicação executável por `PUBLIC` | catraca (invariante nova) |
+| definidora tocando `autenticacao` com `EXECUTE` para `app_usuario`, fora da lista fechada | catraca (invariante ampliada) |
+| função com `GRANT` deliberado para `app_usuario` que ninguém chama | **bilhete** |
+| função com `GRANT` para `app_usuario` que não toca `autenticacao` | **bilhete**: nenhuma das duas invariantes olha para ela |
+
+As duas últimas linhas são o buraco real. "Não tem consumidor" não é
+observável no catálogo: exigiria cruzar o SQL com o código TypeScript que
+chama, e nada faz isso. A catraca cobre exposição indevida, não desuso.
+
+**Regra do ponteiro de encaminhamento:** doc de migração cujo objeto foi
+alterado por migração posterior ganha uma linha no topo apontando o capítulo
+seguinte. Bilhete: nada confere que o ponteiro existe.
 
 ## 9. Fora de escopo
 
