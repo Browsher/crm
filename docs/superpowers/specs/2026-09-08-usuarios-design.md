@@ -37,7 +37,7 @@ disso: sem editar nome ou e-mail, sem excluir, sem busca, sem paginação.
 | `scrypt` fora da transação | hash gerado antes do `BEGIN` | 800ms segurando conexão do pool. Se o processo morre entre o hash e o `BEGIN`, o desfecho é nenhum usuário e nenhuma credencial; o gestor tenta de novo. **Não mover para dentro**: não muda o desfecho, só segura conexão |
 | Senha provisória na tela | action devolve no estado (`useActionState`), sem redirecionar | mesmo molde do login. Vive só na memória da página; recarregar zera. Nenhum cookie, nunca na URL |
 | Instrução ao lado da senha | "Anote agora e entregue a [nome]. A senha não fica guardada; se perder, gere uma nova senha provisória na lista." | dar a saída, não só o risco |
-| Teste de tela | regra da 0b mantida: lógica em função pura, actions em integração, JSX manual | jsdom com Next 16 é fatia própria. **Gatilho para configurar**: primeiro componente cliente que decide algo sozinho no cliente (`useActionState` devolvendo estado da action não conta) |
+| Teste de tela | regra da 0b mantida: lógica em função pura, serviço em integração, actions finas e JSX manuais (como `app/login/acao.ts`) | jsdom com Next 16 é fatia própria. **Gatilho para configurar**: primeiro componente cliente que decide algo sozinho no cliente (`useActionState` devolvendo estado da action não conta) |
 | Confirmação em desativar | nenhuma | reversível, sem perda de dado; confirmação viria com o gatilho acima |
 | Gestor cria gestor | permitido | a política permite e não há motivo para a aplicação negar |
 
@@ -71,17 +71,15 @@ transação. Isso é o comportamento desejado, e diferente do `senha_trocar`
 `FUNCOES_DE_USUARIO_EM_AUTENTICACAO = ['credencial_definir', 'sessoes_encerrar_de'] as const`
 em `invariantes.ts`.
 
-`lerEstado` ganha `funcoesDeUsuarioEmAutenticacao`: nomes de toda função de
-`public` com `prosecdef`, cujo `prosrc` contém `autenticacao.`, e que
-`app_usuario` pode executar (`has_function_privilege('app_usuario', p.oid,
-'EXECUTE')`). Ganha também `funcoesDeUsuarioSemExecute`: nomes da constante
-que existem em `public` mas `app_usuario` não executa.
+`lerEstado` ganha `funcoesDeUsuarioEmAutenticacao: { nome, executaAppUsuario }[]`:
+toda função de `public` com `prosecdef` cujo `prosrc` contém `autenticacao.`,
+com a marca de `has_function_privilege('app_usuario', p.oid, 'EXECUTE')`.
 
 `avaliar` acusa:
-- nome em `funcoesDeUsuarioEmAutenticacao` fora da constante: "função
-  definidora de public escreve em autenticacao com EXECUTE para app_usuario e
-  não está registrada: X";
-- nome da constante ausente de `funcoesDeUsuarioEmAutenticacao`: "função de
+- nome com `executaAppUsuario` fora da constante: "função definidora de
+  public toca autenticacao com EXECUTE para app_usuario e não está
+  registrada: X";
+- nome da constante ausente da lista ou sem `executaAppUsuario`: "função de
   usuário registrada e ausente ou sem EXECUTE para app_usuario: X".
 
 Limite conhecido: a busca em `prosrc` é por substring. Uma função que chega a
@@ -237,8 +235,9 @@ com zero, um, dois gestores ativos e gestor inativo não contando;
 `validarNovoUsuario`). `mensagens.ts`: um texto por motivo. Serviço com
 repositório falso para `dados_invalidos`.
 
-**Harness.** `criarSessao(banco, usuarioId)` insere em `sessao` como dona e
-devolve o token, para contar e provar morte de sessão sem passar pelo login.
+**Harness.** Sem helper novo: `criarSessao(usuarioId)` de
+`server/autenticacao/sessao.ts` já cria sessão sem login, e `lerSessao(token)`
+prova que ela morreu. Contagem de linhas em `sessao` como dona via `banco.sql`.
 
 **Manual, no navegador, registrado em `divida-tecnica.md`:**
 
