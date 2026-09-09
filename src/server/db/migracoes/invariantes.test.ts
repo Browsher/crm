@@ -26,6 +26,7 @@ const sao = (): Estado => ({
   migracaoAlcancavelPor: [],
   privilegiosDeConexaoEmAutenticacao: [],
   politicasEmAutenticacao: [],
+  politicasIrrestritas: [],
   funcoesConcedidasAAppUsuario: [
     'public.credencial_definir', 'public.eh_gestor', 'public.pode_escrever', 'public.pode_ler',
     'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
@@ -139,5 +140,17 @@ describe('avaliar', () => {
     const e = sao()
     e.funcoesExecutaveisPorPublico = ['public.definir_auditoria']
     umaViolacao(e, /executável por PUBLIC: public\.definir_auditoria/)
+  })
+})
+
+describe('políticas de leitura irrestrita', () => {
+  test('política com USING (true) fora da lista é acusada', () => {
+    const e = sao()
+    e.politicasIrrestritas = ['public.pedido.pedido_ler']
+    umaViolacao(e, /leitura irrestrita não registrada: public\.pedido\.pedido_ler/)
+  })
+
+  test('nenhuma política irrestrita no banco não é violação', () => {
+    expect(avaliar(sao())).toEqual([])
   })
 })
