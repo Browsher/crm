@@ -80,7 +80,13 @@ Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
 | `tentativa_login` acima de 10 mil linhas, ou a fatia de limite global de login | medição | — | **novo em 2026-09-09**; 0 linhas hoje |
 | mil linhas na tabela da entidade, ou a primeira reclamação de tela lenta (paginação de `listar()`) | medição | — | **novo em 2026-09-09** |
 | "refazer quando mexer em `app/**`" (conferência manual das fatias 0b e 0c) | evento observável | — | ativo e confiável: a condição sai no `git diff` |
-| "primeiro componente cliente que decide algo sozinho" (jsdom) | proxy de complexidade | nunca | ativo, com substituto candidato em "Fatia 0c: auditoria" |
+| "primeiro componente cliente que decide algo sozinho" (jsdom) | proxy de complexidade | nunca | **aposentado em 2026-09-09**: disparou tarde, depois do bug — ver "Fatia empresas: o estado inicial" |
+| primeiro `.tsx` em `app/` com ramo condicional no corpo do componente | evento observável | — | **novo em 2026-09-09**; a condição aparece no `git diff` |
+| precisar corrigir dado de empresa já cadastrada (sem tela de edição) | proxy de dor | tarde | **novo em 2026-09-09** |
+| 8% dos CEPs distintos de uma importação real não encontrados | medição | — | **novo em 2026-09-09**; fecha o X que a spec da `cep` deixou aberto |
+| a base de empresas voltar a vir da Receita (`empresas_no_endereco`) | evento observável | — | **novo em 2026-09-09** |
+| a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **novo em 2026-09-09**; dívida de vida curta, que se cobra sozinha |
+| `empresa` acima de 500 mil linhas quando a `0015` for aplicada | medição | — | **novo em 2026-09-09**; a reescrita do `ADD COLUMN GENERATED` vira janela de manutenção |
 | "pegar quando doer" (o padrão desta página) | proxy de dor | tarde | ativo, e é o padrão de tudo que não tem gatilho próprio |
 | "primeira tela do gestor" (faxina) | proxy de uso | cedo | **aposentado em 2026-09-09**: disparou com a tabela vazia |
 | "primeira entidade com volume real" (paginação de `listar()`) | proxy de uso | cedo | **aposentado em 2026-09-09**: `empresas` o dispararia sem volume nenhum |
@@ -460,6 +466,9 @@ gatilho na revisão de 2026-09-09. Estão aqui porque foi aqui que nasceram.
   mudo e a dívida some de vista. Substituto candidato, de medição: **arquivos
   em `app/**` acima de vinte, ou a segunda verificação manual seguida que
   passar de dez linhas na tabela.**
+  **Fechado em 2026-09-09 pela fatia `empresas`**, e não pelo substituto
+  candidato: o gatilho disparou de verdade, tarde, e a leitura está em "Fatia
+  empresas: o estado inicial da tela de importar".
 - Zero gestores ativos por corrida entre dois gestores. Recuperação:
   `db:seed:gestor`.
 - A invariante cataloga só definidoras. Função **não** definidora com `GRANT`
@@ -475,9 +484,105 @@ gatilho na revisão de 2026-09-09. Estão aqui porque foi aqui que nasceram.
   a dona virar papel comum **e** `FORCE` for ligado, ou se a função deixar de
   ser definidora. Com dona superusuária, `FORCE` sozinho não muda nada.
 
+## Fatia empresas: verificado à mão, sem teste de render
+
+Mesma regra da 0b e da 0c: action fina e JSX sem teste automático — com a
+exceção nova do primeiro render, que agora tem
+`app/empresas/importar/formulario.test.tsx`. Verificação manual feita em
+AAAA-MM-DD pelo usuário no navegador contra o container local, com a 0014
+aplicada. Refazer quando mexer em `app/empresas/**`.
+
+**O passo 8 é o que justificou o corte desta fatia.** Modelo e tela ficaram na
+primeira fatia, e não na `empresas.1`, porque a armadilha do Excel é a única
+coisa aqui que teste automático não pega — e ela só aparece com os dois na mão.
+Se ele não produzir a mensagem que explica a causa, a fatia não está pronta.
+
+| # | Caminho | Esperado | Verificado |
+|---|---|---|---|
+| 0 | `/empresas/importar` como gestor, sem importar nada | mostra o campo de arquivo e o botão "Conferir" — **não** "empresas importadas" | |
+| 1 | `/empresas/importar` como vendedor | redireciona para `/`, não mostra a tela | |
+| 2 | baixar o modelo pelo link da própria tela | abre no Excel; CEP na linha 2 é `01310100`, com o zero | |
+| 3 | preencher 3 empresas e salvar como **CSV UTF-8 (delimitado por vírgulas)** | — | |
+| 4 | enviar e conferir | "3 novas · 0 já cadastradas · 0 recusadas"; nada foi gravado ainda | |
+| 5 | confirmar | "3 empresas importadas", **com o número na frente** | |
+| 6 | enviar o **mesmo arquivo** de novo | "0 novas · 3 já cadastradas"; o botão de importar não aparece | |
+| 7 | salvar de novo como **CSV** comum (não UTF-8), com acento na razão social | mensagem citando "CSV UTF-8" | |
+| 8 | abrir o CSV com **duplo-clique**, salvar por cima, reenviar | mensagem de notação científica **ou** de CEP com 7 dígitos, dizendo para formatar a coluna como Texto | |
+| 9 | duplicar uma linha mudando só o telefone | recusa **as duas**, nomeando `telefone` | |
+| 10 | uma linha com CEP `99999999` | a empresa entra; o relatório diz "1 CEP não encontrado na base de 2024-07-08" | |
+| 11 | arquivo com o cabeçalho fora de ordem | mensagem mostrando o cabeçalho que veio | |
+
+Anotar no lugar do "Verificado": `sim`, ou o que apareceu de diferente. Linha
+que falhar vira item nesta página, não correção silenciosa.
+
+**O que a tabela não cobre, e é escolha:** o limite de 5.000 linhas e o de 2 MB
+do transporte. Os dois têm teste de unidade (`planilha.test.ts`), e produzir um
+CSV de 5.001 linhas à mão para conferir uma mensagem não paga o trabalho.
+
+## Fatia empresas: o estado inicial da tela de importar
+
+`/empresas/importar` abria no terceiro estado — "empresas importadas", sem
+número na frente, e o botão de recomeçar — antes de qualquer importação.
+
+**A causa, conferida no build e não deduzida:** `app/empresas/importar/acao.ts`
+exportava a constante `IMPORTAR_INICIAL` de um arquivo `'use server'`. O
+`server-reference-manifest.json` listava **duas** `createServerReference` para o
+arquivo: uma para a action e outra para a constante. Todo export não-função de
+um arquivo `'use server'` vira referência de servidor. No cliente,
+`IMPORTAR_INICIAL` chegava como função; `estado.inseridas` era `undefined`;
+`undefined !== null` é verdadeiro; o ramo de "gravado" renderizava, com
+`{estado.inseridas}` vazio.
+
+Nada acusava. `typecheck`, `lint`, `build` e os 383 testes passavam. Só a tela
+mostrava, e só para quem abrisse.
+
+### A lição não é "faltava teste de render"
+
+Isso precisa estar escrito porque é a conclusão que o caso *parece* ter, e é a
+errada.
+
+Os dois testes que entraram com a correção foram medidos contra o bug ainda
+presente, um de cada vez:
+
+| Teste | Trabalho | Com o bug presente |
+|---|---|---|
+| `app/empresas/importar/formulario.test.tsx` | o primeiro render mostra o formulário | **passa** |
+| `src/server/diretivas.test.ts` | arquivo `'use server'` só exporta função | **falha**: `expected [ 'IMPORTAR_INICIAL' ] to deeply equal []` |
+
+O teste de render **passa com o bug**, porque no Vitest a diretiva `'use server'`
+é uma string literal inerte: a constante importada ali é o objeto de verdade,
+não a referência de servidor que o Next produz. Ele guarda o ramo; não vê a
+causa. Quem vê é a catraca de diretivas.
+
+Então o teste de render entrou porque render sem cobertura nenhuma é dívida
+real — e o gatilho do jsdom era exatamente sobre isso. Mas **não foi ele que
+teria evitado este bug**, e tratar o caso como prova de que faltava jsdom
+levaria a instalar jsdom, testing-library e um projeto Vitest novo para pegar
+uma classe de erro que eles não pegam.
+
+### O gatilho aposentado, e o que entrou no lugar
+
+O gatilho do jsdom era `proxy de complexidade` errando para "nunca", e a página
+já suspeitava disso. Ele disparou — tarde, que é o defeito previsto: a condição
+"componente cliente que decide algo sozinho" só ficou verdadeira quando o
+componente já estava escrito, publicado e errado.
+
+No lugar entra **evento observável**: primeiro `.tsx` em `app/` com ramo
+condicional no corpo do componente. A condição aparece no `git diff`, como a de
+`app/**` da conferência manual — e a diferença entre proxy e evento observável é
+exatamente essa: um espera alguém lembrar de perguntar, o outro se mostra.
+
+O que **não** entrou: nenhuma catraca vê "escreveu componente sem olhar o
+vizinho que já resolve o mesmo problema". Isso virou R-018, que é bilhete.
+
 ## Ferramental
 
-- Sem projeto Vitest para React. `jsdom` e plugin instalados, não
-  configurados.
+- Sem jsdom e sem testing-library, por escolha medida (ver "Fatia empresas: o
+  estado inicial"). Render é testado por `renderToStaticMarkup` de
+  `react-dom/server`, que exercita o primeiro render sem DOM e sem dependência
+  nova. O limite está escrito no próprio arquivo de teste: não clica, não envia
+  formulário, não exercita a action.
+- `jsdom` e plugin continuam instalados e não configurados. Se um teste precisar
+  de clique ou de efeito, é aí que eles entram — não antes.
 - Next 16 usa `proxy.ts`, não `middleware.ts`. Portar o guarda do crm-ch,
   não copiar.

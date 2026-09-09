@@ -280,4 +280,39 @@ quando ela ainda está na cabeça de quem mediu.
 
 ---
 
+## R-018 — Arquivo novo em `app/` lê o vizinho que já faz aquilo
+
+O que aconteceu: a fatia `empresas` escreveu `app/empresas/importar/` sem abrir
+`app/usuarios/`, que já tinha uma action, um formulário com `useActionState` e
+um estado de formulário. Deu nos dois problemas que o `usuarios` **já havia
+resolvido**, com o motivo escrito no código:
+
+- `'inseridas' in r` para estreitar uma união. Não estreita — o membro sem o
+  campo ganha a propriedade como `unknown`. O comentário em
+  `app/usuarios/acoes.ts:47-49` avisa isso em três linhas. Pego pelo
+  `typecheck`, custou minutos.
+- Constante de estado inicial exportada de um arquivo `'use server'`. O Next a
+  transforma em referência de servidor e o cliente recebe função em vez de
+  objeto. `app/usuarios/formulario-criar.tsx:5` sempre definiu o inicial dentro
+  do componente cliente. **Não pego por nada** — passou por `typecheck`, `lint`,
+  `build` e 383 testes, e apareceu como bug de tela.
+
+Os dois desvios vieram do mesmo diretório, na mesma fatia, e o custo foi
+crescente: o primeiro o compilador pegou, o segundo chegou à tela.
+
+A regra: quando o plano criar em `app/` um arquivo que faz o que outro em `app/`
+já faz — action, formulário com `useActionState`, estado de formulário, guarda
+de papel — **ler o existente antes de escrever**, inteiro, inclusive os
+comentários. Eles costumam ser o registro de um erro que já custou uma vez.
+
+Vale para o plano também: plano que manda escrever componente novo em `app/`
+cita o arquivo irmão que serve de molde.
+
+Tipo: bilhete. Nenhuma catraca vê "escreveu sem olhar o vizinho" — o código
+resultante compila, passa e parece normal. A catraca que nasceu deste caso
+(`src/server/diretivas.test.ts`) pega **uma** das duas consequências, não o
+hábito.
+
+---
+
 <!-- próximas regras aqui -->

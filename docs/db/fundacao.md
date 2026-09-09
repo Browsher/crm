@@ -300,6 +300,26 @@ operacional `db:cep:carregar`, que escreve com `DATABASE_URL_ADMIN` porque
 `app_usuario` só tem `SELECT`. Desenho em
 `docs/superpowers/specs/2026-09-09-cep-design.md`.
 
+Feito na fatia `empresas`: a tabela `empresa` (0014) e a tela
+`/empresas/importar`. Três coisas mudam o resumo desta página:
+
+- **É a primeira tabela gestor-só.** `empresa_leitura` usa `USING (eh_gestor())`
+  — não `pode_ler()`, como `usuario`, nem `USING (true)`, como `cep`. O vendedor
+  não lê empresa nenhuma. É **provisório por desenho**: a política foi escrita
+  para um mundo sem posse, e a fatia da fila vai trocá-la junto com
+  `vendedor_id`. O porquê, e a lição do `crm-ch` sobre mascarar por view com
+  `SELECT` revogado, estão em `docs/db/0014.md`.
+- **É o primeiro `GRANT` sem `UPDATE` nem `DELETE`.** A importação ignora e
+  reporta, então nada nesta fatia atualiza empresa; conceder seria superfície
+  sem tela (R-014). `cep_carga`, da 0013, ganhou aqui o `GRANT SELECT` e a
+  política que a spec da `cep` prometeu para quando existisse o consumidor.
+- **É a primeira escrita em lote pela aplicação**, por `unnest` de nove arrays
+  dentro de `comoUsuario` — e não por script com `DATABASE_URL_ADMIN`, para a
+  RLS valer e `criado_por` não nascer nulo na única porta de entrada.
+
+Desenho em `docs/superpowers/specs/2026-09-09-empresas-design.md`, que cobre
+esta fatia e a `empresas.1`.
+
 ## Limitações conhecidas
 
 - `usuario_alterar` bloqueia a pessoa de editar o próprio nome, não só papel e
