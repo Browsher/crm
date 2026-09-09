@@ -172,10 +172,19 @@ local, com a 0011 aplicada. Refazer quando mexer em `app/usuarios/**` ou em
 | desativar deixa só "Reativar"; reativar traz as três ações de volta | sim |
 | mudar papel: o alvo vê o papel novo na próxima página, sem relogar | sim |
 | aviso de único gestor aparece com um e some ao promover outro; gestor pendente em `/usuarios` vai para `/trocar-senha` | sim |
+| **0c.1 (2026-09-09):** criar, nova senha, desativar, reativar e mudar papel refeitos contra o servidor da 0012, sem nenhuma mensagem de transição inválida | sim |
 
 Sobre a linha do `sessoes_encerrar_de`: `sessao_atual` já recusaria o
 inativo, então a tela cairia no `/login` mesmo sem o delete. Quem prova o
 delete é `funcoes-usuario.test.ts`, contando linhas em `sessao` como dona.
+
+Sobre a linha da 0c.1: nenhum arquivo de `app/` mudou naquela fatia, mas o
+servidor por baixo mudou (funções novas, retorno em texto, transição
+recusada). O critério da conferência era negativo: se a tela mostrasse
+"Esse usuário já está nesse estado" ou "Não dá para definir senha de um
+usuário desativado" num fluxo normal, seria bug, porque `acoesDe` não deveria
+oferecer a ação naquele estado. Nenhuma apareceu. As duas mensagens existem
+para requisição forjada e para corrida entre duas abas.
 
 **Gatilho para jsdom:** primeiro componente cliente que decide algo sozinho
 no cliente. `useActionState` devolvendo estado da action não conta.
