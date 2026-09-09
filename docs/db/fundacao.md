@@ -293,6 +293,13 @@ Feito na fatia 0c (usuários): `credencial_definir` e `sessoes_encerrar_de`
 `usuario_situacao_definir`, auditoria em `credencial` e as duas invariantes
 novas (0012).
 
+Feito na fatia `cep`: `cep` e `cep_carga` (0013), a primeira tabela do projeto
+com leitura irrestrita (`USING (true)`, justificada em `docs/db/0013.md`), a
+invariante `POLITICAS_DE_LEITURA_IRRESTRITA` que a cataloga, e o carregador
+operacional `db:cep:carregar`, que escreve com `DATABASE_URL_ADMIN` porque
+`app_usuario` só tem `SELECT`. Desenho em
+`docs/superpowers/specs/2026-09-09-cep-design.md`.
+
 ## Limitações conhecidas
 
 - `usuario_alterar` bloqueia a pessoa de editar o próprio nome, não só papel e

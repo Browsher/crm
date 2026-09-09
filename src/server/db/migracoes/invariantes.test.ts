@@ -26,6 +26,7 @@ const sao = (): Estado => ({
   migracaoAlcancavelPor: [],
   privilegiosDeConexaoEmAutenticacao: [],
   politicasEmAutenticacao: [],
+  politicasIrrestritas: ['public.cep.cep_leitura'],
   funcoesConcedidasAAppUsuario: [
     'public.credencial_definir', 'public.eh_gestor', 'public.pode_escrever', 'public.pode_ler',
     'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
@@ -139,5 +140,25 @@ describe('avaliar', () => {
     const e = sao()
     e.funcoesExecutaveisPorPublico = ['public.definir_auditoria']
     umaViolacao(e, /executável por PUBLIC: public\.definir_auditoria/)
+  })
+})
+
+describe('políticas de leitura irrestrita', () => {
+  test('política com USING (true) fora da lista é acusada', () => {
+    const e = sao()
+    // push, não substituição: tirar a registrada produziria uma segunda
+    // violação ("registrada e ausente") e o teste deixaria de isolar uma coisa.
+    e.politicasIrrestritas.push('public.pedido.pedido_ler')
+    umaViolacao(e, /leitura irrestrita não registrada: public\.pedido\.pedido_ler/)
+  })
+
+  test('a política registrada não é violação', () => {
+    expect(avaliar(sao())).toEqual([])
+  })
+
+  test('política registrada que sumiu do banco é acusada', () => {
+    const e = sao()
+    e.politicasIrrestritas = []
+    umaViolacao(e, /leitura irrestrita registrada e ausente: public\.cep\.cep_leitura/)
   })
 })

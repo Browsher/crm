@@ -30,6 +30,18 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.usuario_situacao_definir',
 ] as const
 
+// Pergunta 3: quais políticas podem liberar a tabela inteira. `USING (true)`
+// não anula a RLS — declara que o dado é público para quem está autenticado.
+// A regra 8 só garante que a RLS foi LIGADA: "RLS sem política" (nega tudo) e
+// "RLS com USING (true)" (libera tudo) são idênticas para os dois booleanos de
+// pg_class, e são opostas em efeito. Esta lista é a diferença.
+//
+// LIMITE HONESTO: pega só `true` literal em USING. `USING (1=1)` escapa, e
+// WITH CHECK irrestrito (escrita) não é olhado. É catraca contra descuido e
+// cópia, não contra quem quer burlar — mesma classe de limite da busca por
+// prosrc. Está escrito para a lista não parecer mais forte do que é.
+export const POLITICAS_DE_LEITURA_IRRESTRITA = ['public.cep.cep_leitura'] as readonly string[]
+
 // Retrato do catálogo que as invariantes olham. Separado da avaliação para
 // que cada violação, inclusive ausência, tenha teste unitário sem banco.
 export type Estado = {
@@ -41,6 +53,7 @@ export type Estado = {
   migracaoAlcancavelPor: string[]
   privilegiosDeConexaoEmAutenticacao: string[]
   politicasEmAutenticacao: string[]
+  politicasIrrestritas: string[]
   funcoesConcedidasAAppUsuario: string[]
   funcoesExecutaveisPorPublico: string[]
 }
@@ -94,6 +107,15 @@ export async function lerEstado(c: Client): Promise<Estado> {
     "SELECT policyname AS nome FROM pg_policies WHERE schemaname = 'autenticacao' ORDER BY 1",
   )
 
+  // pg_policies.qual é o texto do USING já normalizado pelo Postgres:
+  // `USING (true)` volta como 'true'. Nome no formato schema.tabela.politica.
+  const irrestritas = await c.query<{ nome: string }>(`
+    SELECT schemaname || '.' || tablename || '.' || policyname AS nome
+    FROM pg_policies
+    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+      AND qual = 'true'
+    ORDER BY 1`)
+
   // has_function_privilege lança se o papel não existe; sem app_usuario a
   // violação certa é "papel ausente", que já é avaliada.
   const temAppUsuario = papeis.rows.some((r) => r.nome === 'app_usuario')
@@ -132,6 +154,7 @@ export async function lerEstado(c: Client): Promise<Estado> {
     migracaoAlcancavelPor: migracao.rows.map((r) => r.nome),
     privilegiosDeConexaoEmAutenticacao: privilegios.rows.map((r) => r.nome),
     politicasEmAutenticacao: politicas.rows.map((r) => r.nome),
+    politicasIrrestritas: irrestritas.rows.map((r) => r.nome),
     funcoesConcedidasAAppUsuario: concedidas.rows.map((r) => r.nome),
     funcoesExecutaveisPorPublico: publico.rows.map((r) => r.nome),
   }
@@ -186,6 +209,17 @@ export function avaliar(e: Estado): string[] {
   const noBanco = new Set(e.funcoesConcedidasAAppUsuario)
   for (const nome of FUNCOES_CONCEDIDAS_A_APP_USUARIO) {
     if (!noBanco.has(nome)) v.push(`função registrada e ausente ou sem GRANT: ${nome}`)
+  }
+
+  const irrestritasRegistradas = new Set<string>(POLITICAS_DE_LEITURA_IRRESTRITA)
+  for (const nome of e.politicasIrrestritas) {
+    if (!irrestritasRegistradas.has(nome)) {
+      v.push(`política de leitura irrestrita não registrada: ${nome} (USING (true) libera a tabela para todo app_usuario)`)
+    }
+  }
+  const irrestritasNoBanco = new Set(e.politicasIrrestritas)
+  for (const nome of POLITICAS_DE_LEITURA_IRRESTRITA) {
+    if (!irrestritasNoBanco.has(nome)) v.push(`política de leitura irrestrita registrada e ausente: ${nome}`)
   }
 
   for (const nome of e.funcoesExecutaveisPorPublico) {

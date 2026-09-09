@@ -247,4 +247,37 @@ Tipo: bilhete
 Onde: seção "Gatilhos" de `docs/db/divida-tecnica.md`, com a tabela de todos
 os gatilhos vivos classificados
 
+## R-017 — Medição diz o que exatamente foi medido
+
+O que aconteceu: o spike da fatia `cep` registrou "`COPY` para o Postgres: 6,0 s"
+numa tabela de medições. A carga real levou **72,6 s** na gravação, doze vezes
+mais. O número não estava errado: os 6,0 s eram um `COPY` puro numa tabela
+**vazia e sem índice**, e a gravação de verdade é `TRUNCATE` de 1,2 milhão de
+linhas, `COPY` para uma temporária e `INSERT ... DISTINCT ON` numa tabela com
+chave primária. A medição respondeu outra pergunta, com cara de resposta certa,
+e ficou na spec por dias como se fosse o custo da gravação.
+
+O contraste está no mesmo spike, e é o que fecha a regra. A outra linha dizia
+"conversão zip → CSV (**Python**) — 77 s", com a linguagem escrita. Essa não
+enganou ninguém: justamente por estar rotulada, a spec escreveu uma tabela de
+decisão para quando o número de Node aparecesse. Ele apareceu — 359,1 s — a
+tabela disparou e virou fatia de trabalho. **A linha rotulada produziu uma
+decisão; a não rotulada produziu uma correção.**
+
+A regra: número medido nasce com a frase do que foi medido ao lado. Não a
+unidade, não a ferramenta apenas — a **condição**: em que estado estava o
+sistema, com que dado, com que caminho. "6,0 s" é um número; "6,0 s de `COPY` em
+tabela vazia sem índice" é uma medição.
+
+O sinal de alarme é a tabela de medições enxuta, onde cada linha tem duas
+colunas e parece uma ficha técnica. Ela é bonita e é o formato que mais engana,
+porque some com a condição justamente onde ela cabia.
+
+Tipo: bilhete
+Onde: nenhuma catraca confere isso — o catálogo não sabe o que uma linha de
+tabela quis dizer. O que dá é exigir a condição na hora de escrever o número,
+quando ela ainda está na cabeça de quem mediu.
+
+---
+
 <!-- próximas regras aqui -->
