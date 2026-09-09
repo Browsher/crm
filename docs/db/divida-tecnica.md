@@ -77,7 +77,9 @@ Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
 | precisar corrigir dado de empresa já cadastrada (sem tela de edição) | proxy de dor | tarde | **novo em 2026-09-09** |
 | 8% dos CEPs distintos de uma importação real não encontrados | medição | — | **novo em 2026-09-09**; fecha o X que a spec da `cep` deixou aberto |
 | a base de empresas voltar a vir da Receita (`empresas_no_endereco`) | evento observável | — | **novo em 2026-09-09** |
-| a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **novo em 2026-09-09**; dívida de vida curta, que se cobra sozinha |
+| a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **fechado em 2026-09-09 pela fatia `empresas.2`**: a listagem `/empresas` existe. Durou duas fatias, porque a `empresas.1` entrou entre uma e outra |
+| `EXPLAIN ANALYZE` da busca de `/empresas` acima de 300 ms, ou `empresa` acima de 20 mil linhas (índice GIN em `busca`) | medição | — | **novo em 2026-09-09**; 300 ms medidos no banco, não na requisição (R-017) |
+| troca de versão maior do Postgres (`sem_acento` `IMMUTABLE` pode mentir) | evento observável | — | **novo em 2026-09-09** |
 | `empresa` acima de 500 mil linhas quando a `0015` for aplicada | medição | — | **novo em 2026-09-09**; a reescrita do `ADD COLUMN GENERATED` vira janela de manutenção |
 | senha de `app_conexao` reescrita pelo harness (papel próprio `app_teste`) | proxy de dor | tarde | **disparado em 2026-09-09**: quatro interrupções num dia; proposta escrita, não feita |
 | "pegar quando doer" (o padrão desta página) | proxy de dor | tarde | ativo, e é o padrão de tudo que não tem gatilho próprio |
@@ -564,6 +566,52 @@ fisicamente no arquivo, nos offsets 143 e 231.
 exige duas importações simultâneas do mesmo CNPJ, e reproduzir isso na tela é
 mais frágil que o teste de integração que já existe — `gravar` duas vezes, a
 segunda devolvendo `cnpj_ja_gravado` e o segundo CNPJ do lote não entrando.
+
+## Fatia empresas.2: verificado à mão
+
+Não há teste de render além dos três de `renderToStaticMarkup` em
+`app/empresas/`. Verificação manual a fazer no container local, com a `0015`
+aplicada, a base de CEP carregada e uma planilha importada. Refazer quando mexer
+em `app/empresas/**`.
+
+| # | Passo | Esperado | Passou? |
+|---|---|---|---|
+| 0 | `/empresas` como gestor, sem termo | a lista, com a contagem total; sem paginação se couber numa página | |
+| 1 | `/empresas` como vendedor | redireciona para `/` | |
+| 2 | buscar `sao` numa base com "Iluminação São João" | acha | |
+| 3 | buscar `LAMPADAS` em caixa alta, com a empresa cadastrada como `LÂMPADAS` | acha | |
+| 4 | buscar o CNPJ com máscara | acha exatamente aquela | |
+| 5 | buscar quatro dígitos que existem dentro de um CNPJ | não acha nada | |
+| 6 | buscar `%` | não traz a base inteira | |
+| 7 | importar mais de 50 empresas e virar a página | a segunda página não repete nem pula, e a contagem continua a mesma | |
+| 8 | buscar um termo e virar a página | o termo continua no campo e no resultado | |
+| 9 | empresa com CEP fora da base | mostra o CEP e "não encontrado na base", não "sem CEP" | |
+| 10 | empresa sem CEP | mostra "sem CEP" | |
+| 11 | `/empresas?pagina=99` | página vazia com o link "Ver todas" funcionando | |
+| 12 | link `Empresas` no início | leva à listagem como gestor; como vendedor, o link não aparece | |
+
+**Antes de subir o `next dev`, rode a suíte** — o harness de integração
+reescreve a senha de `app_conexao` e derruba a `DATABASE_URL` do dev. Se já
+subiu, `npm run db:senha` refaz.
+
+### O que os testes desta fatia NÃO provam, medido
+
+Os dois estão escritos no comentário do SQL em `listagem.ts`, e estão aqui
+porque são a classe de erro que a R-017 registra: afirmação com cara de prova.
+
+- **`ESCAPE '\'` não acrescenta comportamento.** A barra invertida já é o escape
+  padrão do `LIKE` no Postgres. Medido: removida a cláusula, os 14 testes de
+  `empresas-listagem` continuam passando. Ela fica por ser explícita, não por
+  ser necessária. Quem faz o trabalho é `escaparLike` em `consulta.ts` — sem
+  ela, o teste do `_` falha (`expected 3 to be +0`).
+- **O teste do `%` passa por acaso.** Sem escape, `100%` vira o padrão `%100%%`,
+  que ainda só acha quem tem "100" na razão social. A regressão real é pega pelo
+  teste do `_`.
+- **O desempate `ORDER BY ..., e.id` não é cobrado por teste nenhum.** Medido:
+  removido o `, e.id`, os 14 continuam passando — com esta tabela e este plano
+  de consulta o Postgres devolve ordem estável por acaso. O desempate fica
+  porque o SQL não promete ordem entre linhas iguais, e um teste que dependesse
+  do plano de consulta para falhar seria pior que nenhum.
 
 ## Fatia empresas: auditoria
 

@@ -178,6 +178,27 @@ Papel nasce sem senha e sem `LOGIN`, porque o repositório é público e a
 migração é imutável. `npm run db:senha -- <papel> <senha>` faz o
 `ALTER ROLE ... LOGIN PASSWORD` uma vez por ambiente.
 
+### O schema `extensoes` e a primeira função não-definidora concedida
+
+A `0015` criou o schema `extensoes` só para a extensão `unaccent`, e concedeu a
+`app_usuario`: `USAGE` no schema, `EXECUTE` em
+`extensoes.unaccent(regdictionary, text)` e `EXECUTE` em `public.sem_acento`.
+
+`sem_acento` é a **primeira função não-definidora concedida a `app_usuario`**.
+Ela não entra em `FUNCOES_CONCEDIDAS_A_APP_USUARIO`: aquela lista é fechada
+sobre definidoras. A R-014 classifica este caso como bilhete e diz por quê —
+função não definidora roda como quem chama, sujeita à RLS e aos mesmos
+privilégios, então não escala nada.
+
+Os `GRANT` existem porque `sem_acento` roda como quem chama: sem eles, o corpo
+dela não alcança `extensoes.unaccent` e **tanto a busca quanto o `INSERT` do
+gestor falham** — a expressão da coluna gerada é avaliada com o privilégio de
+quem insere. Medido em 2026-09-09; a spec não previa os dois `GRANT`.
+
+A invariante de PUBLIC varre todo schema que não é do sistema, então `extensoes`
+não escapa dela. As cinco funções (quatro da extensão e o invólucro) nascem com
+`EXECUTE` para `PUBLIC` e a `0015` revoga as cinco.
+
 ## Regras de migração
 
 1. Uma alteração de schema é um arquivo numerado em `db/migracoes/`. Nunca à
@@ -349,3 +370,8 @@ esta fatia e a `empresas.1`.
 - Aplicação na Railway é manual.
 - TLS até a Railway é trust-on-first-use (seção acima). O caminho forte é
   rodar dentro da rede da Railway.
+- **`sem_acento` é `IMMUTABLE` por promessa, não por garantia.** Se o dicionário
+  de `unaccent` mudar numa troca de versão maior do Postgres, a coluna gerada
+  `empresa.busca` fica desatualizada **em silêncio**: nada dá erro, a busca só
+  passa a não achar. Produção é 18.6 e os testes rodam em 17. O conserto é
+  recalcular a coluna, e é barato se alguém souber que precisa.
