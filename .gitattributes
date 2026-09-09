@@ -1,3 +1,5 @@
 * text=auto eol=lf
 db/migracoes/*.sql text eol=lf
 *.zip -text
+
+*.xlsx -text

@@ -193,6 +193,26 @@ migração é imutável. `npm run db:senha -- <papel> <senha>` faz o
    de tabela de referência.
 8. Toda tabela nova entra com RLS. O runner nomeia quem ficou sem.
 
+**Recriar o banco de dev é barato em migração e caro em dado carregado.**
+`DROP DATABASE crm` + `CREATE DATABASE` + `db:aplicar` reconstrói as quinze
+migrações em segundos — e apaga junto **1,2 milhão de linhas de `cep`**, que
+levam sete a oito minutos para voltar por `db:cep:carregar`. Aconteceu em
+2026-09-09, ao corrigir a `0014` antes do merge: o banco foi recriado pensando
+só nas migrações, e a base de CEP foi embora sem ninguém notar até uma
+importação reportar todos os CEPs como não encontrados.
+
+Antes de recriar, conferir o que existe além de schema:
+
+```
+docker exec crm-postgres psql -U postgres -d crm -c "SELECT count(*) FROM cep"
+```
+
+Depois de recriar, se havia dado:
+
+```
+npm run db:cep:carregar -- <caminho-do-zip>
+```
+
 `npm run db:checar` confere as regras estáticas sem banco. O runner confere as
 invariantes de schema depois de aplicar (`src/server/db/migracoes/invariantes.ts`).
 
@@ -299,6 +319,26 @@ invariante `POLITICAS_DE_LEITURA_IRRESTRITA` que a cataloga, e o carregador
 operacional `db:cep:carregar`, que escreve com `DATABASE_URL_ADMIN` porque
 `app_usuario` só tem `SELECT`. Desenho em
 `docs/superpowers/specs/2026-09-09-cep-design.md`.
+
+Feito na fatia `empresas`: a tabela `empresa` (0014) e a tela
+`/empresas/importar`. Três coisas mudam o resumo desta página:
+
+- **É a primeira tabela gestor-só.** `empresa_leitura` usa `USING (eh_gestor())`
+  — não `pode_ler()`, como `usuario`, nem `USING (true)`, como `cep`. O vendedor
+  não lê empresa nenhuma. É **provisório por desenho**: a política foi escrita
+  para um mundo sem posse, e a fatia da fila vai trocá-la junto com
+  `vendedor_id`. O porquê, e a lição do `crm-ch` sobre mascarar por view com
+  `SELECT` revogado, estão em `docs/db/0014.md`.
+- **É o primeiro `GRANT` sem `UPDATE` nem `DELETE`.** A importação ignora e
+  reporta, então nada nesta fatia atualiza empresa; conceder seria superfície
+  sem tela (R-014). `cep_carga`, da 0013, ganhou aqui o `GRANT SELECT` e a
+  política que a spec da `cep` prometeu para quando existisse o consumidor.
+- **É a primeira escrita em lote pela aplicação**, por `unnest` de nove arrays
+  dentro de `comoUsuario` — e não por script com `DATABASE_URL_ADMIN`, para a
+  RLS valer e `criado_por` não nascer nulo na única porta de entrada.
+
+Desenho em `docs/superpowers/specs/2026-09-09-empresas-design.md`, que cobre
+esta fatia e a `empresas.1`.
 
 ## Limitações conhecidas
 

@@ -18,7 +18,8 @@
     "db:pendentes": "tsx scripts/db/pendentes.mts",
     "db:seed:gestor": "tsx scripts/db/seed-gestor.mts",
     "db:senha": "tsx scripts/db/senha.mts",
-    "db:cep:carregar": "tsx scripts/db/cep-carregar.mts"
+    "db:cep:carregar": "tsx scripts/db/cep-carregar.mts",
+    "modelo:empresas": "tsx scripts/modelo-empresas.mts"
   },
   "dependencies": {
     "next": "16.3.4",

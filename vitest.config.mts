@@ -11,7 +11,12 @@ export default defineConfig({
         test: {
           name: 'unitario',
           environment: 'node',
-          include: ['src/**/*.test.ts'],
+          // app/**/*.test.tsx entrou com o bug do estado inicial de
+          // /empresas/importar: um componente cliente decidiu sozinho qual
+          // ramo renderizar e errou, que era exatamente a condição do gatilho
+          // do jsdom em docs/db/divida-tecnica.md. Render por
+          // renderToStaticMarkup, sem jsdom e sem dependência nova.
+          include: ['src/**/*.test.ts', 'app/**/*.test.tsx'],
         },
       },
       {

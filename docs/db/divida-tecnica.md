@@ -45,15 +45,7 @@ Leia a lição de lá antes de registrar gatilho novo em qualquer lugar.
   repetir o padrão no seed com senha.
 - Harness grava senha `'teste'` em `app_conexao`, papel global do cluster.
   Se `.env.test.local` apontar para a Railway, roda lá. Nenhuma conferência
-  de host. Consequência concreta, vista em 2026-09-08: toda rodada de
-  integração troca a senha de `app_conexao` do container, e a `DATABASE_URL`
-  do `.env.local` para de funcionar até rodar `npm run db:senha` de novo.
-  Caminho provável: harness com papel próprio (`app_conexao_teste`) ou senha
-  do harness igual à do `.env.local`.
-  Observação da 0c (2026-09-08): depois de rodar a suíte inteira, a
-  `DATABASE_URL` do `.env.local` **continuou funcionando** contra o
-  container. Só o fato está registrado; a causa não foi investigada, e o
-  risco de o harness apontar para a Railway continua igual.
+  de host. **Ver "Harness com papel próprio" abaixo: o gatilho disparou.**
 - Não existe primitiva de conexão sem identidade; `obterPool` e
   `conectarVerificado` são exportados. A fronteira `comoUsuario` é convenção,
   sem lint.
@@ -80,7 +72,14 @@ Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
 | `tentativa_login` acima de 10 mil linhas, ou a fatia de limite global de login | medição | — | **novo em 2026-09-09**; 0 linhas hoje |
 | mil linhas na tabela da entidade, ou a primeira reclamação de tela lenta (paginação de `listar()`) | medição | — | **novo em 2026-09-09** |
 | "refazer quando mexer em `app/**`" (conferência manual das fatias 0b e 0c) | evento observável | — | ativo e confiável: a condição sai no `git diff` |
-| "primeiro componente cliente que decide algo sozinho" (jsdom) | proxy de complexidade | nunca | ativo, com substituto candidato em "Fatia 0c: auditoria" |
+| "primeiro componente cliente que decide algo sozinho" (jsdom) | proxy de complexidade | nunca | **aposentado em 2026-09-09**: disparou tarde, depois do bug — ver "Fatia empresas: o estado inicial" |
+| primeiro `.tsx` em `app/` com ramo condicional no corpo do componente | evento observável | — | **novo em 2026-09-09**; a condição aparece no `git diff` |
+| precisar corrigir dado de empresa já cadastrada (sem tela de edição) | proxy de dor | tarde | **novo em 2026-09-09** |
+| 8% dos CEPs distintos de uma importação real não encontrados | medição | — | **novo em 2026-09-09**; fecha o X que a spec da `cep` deixou aberto |
+| a base de empresas voltar a vir da Receita (`empresas_no_endereco`) | evento observável | — | **novo em 2026-09-09** |
+| a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **novo em 2026-09-09**; dívida de vida curta, que se cobra sozinha |
+| `empresa` acima de 500 mil linhas quando a `0015` for aplicada | medição | — | **novo em 2026-09-09**; a reescrita do `ADD COLUMN GENERATED` vira janela de manutenção |
+| senha de `app_conexao` reescrita pelo harness (papel próprio `app_teste`) | proxy de dor | tarde | **disparado em 2026-09-09**: quatro interrupções num dia; proposta escrita, não feita |
 | "pegar quando doer" (o padrão desta página) | proxy de dor | tarde | ativo, e é o padrão de tudo que não tem gatilho próprio |
 | "primeira tela do gestor" (faxina) | proxy de uso | cedo | **aposentado em 2026-09-09**: disparou com a tabela vazia |
 | "primeira entidade com volume real" (paginação de `listar()`) | proxy de uso | cedo | **aposentado em 2026-09-09**: `empresas` o dispararia sem volume nenhum |
@@ -460,6 +459,9 @@ gatilho na revisão de 2026-09-09. Estão aqui porque foi aqui que nasceram.
   mudo e a dívida some de vista. Substituto candidato, de medição: **arquivos
   em `app/**` acima de vinte, ou a segunda verificação manual seguida que
   passar de dez linhas na tabela.**
+  **Fechado em 2026-09-09 pela fatia `empresas`**, e não pelo substituto
+  candidato: o gatilho disparou de verdade, tarde, e a leitura está em "Fatia
+  empresas: o estado inicial da tela de importar".
 - Zero gestores ativos por corrida entre dois gestores. Recuperação:
   `db:seed:gestor`.
 - A invariante cataloga só definidoras. Função **não** definidora com `GRANT`
@@ -475,9 +477,217 @@ gatilho na revisão de 2026-09-09. Estão aqui porque foi aqui que nasceram.
   a dona virar papel comum **e** `FORCE` for ligado, ou se a função deixar de
   ser definidora. Com dona superusuária, `FORCE` sozinho não muda nada.
 
+## Fatia empresas: verificado à mão, sem teste de render
+
+Mesma regra da 0b e da 0c: action fina e JSX sem teste automático — com a
+exceção nova do primeiro render, que agora tem
+`app/empresas/importar/formulario.test.tsx`. Verificação manual feita em
+**2026-09-09** pelo usuário no navegador contra o container local, com a 0014
+aplicada e a base de CEP carregada. Refazer quando mexer em `app/empresas/**`.
+
+**O passo 8 é o que justificou o corte desta fatia.** Modelo e tela ficaram na
+primeira fatia, e não na `empresas.1`, porque a armadilha do Excel é a única
+coisa aqui que teste automático não pega — e ela só aparece com os dois na mão.
+Se ele não produzir a mensagem que explica a causa, a fatia não está pronta.
+
+| # | Caminho | Esperado | Verificado |
+|---|---|---|---|
+| 0 | `/empresas/importar` como gestor, sem importar nada | mostra o campo de arquivo e o botão "Conferir" — **não** "empresas importadas" | sim, depois da correção |
+| 1 | `/empresas/importar` como vendedor | redireciona para `/`, não mostra a tela | sim |
+| 2 | baixar o modelo pelo link da própria tela | abre no Excel com 7 colunas; CEP na linha 2 é `01310100`, com o zero | sim |
+| 3 | preencher 3 empresas e salvar como **CSV UTF-8 (delimitado por vírgulas)** | — | sim |
+| 4 | enviar e conferir | "3 novas · 0 já cadastradas · 0 recusadas"; nada foi gravado ainda | sim |
+| 5 | confirmar | "3 empresas importadas", **com o número na frente** | sim |
+| 6 | enviar o **mesmo arquivo** de novo | "0 novas · 3 já cadastradas"; o botão de importar não aparece | sim |
+| 7 | salvar de novo como **CSV** comum (não UTF-8), com acento na razão social | mensagem citando "CSV UTF-8" | sim |
+| 8 | abrir o CSV com **duplo-clique**, salvar por cima, reenviar | mensagem de notação científica **ou** de CEP com 7 dígitos, dizendo para formatar a coluna como Texto | sim: CNPJ em notação científica, com a causa e o conserto |
+| 9 | duplicar uma linha mudando só o telefone | recusa **as duas**, nomeando a coluna divergente | sim, e rendeu duas correções — ver abaixo |
+| 10 | uma linha com CEP `00000000` (**não** `99999999`: existe, é Sarandi/PR) | a empresa entra; o relatório diz "1 CEP não encontrado na base de 2024-07-08" | sim, na segunda tentativa — ver abaixo |
+| 11 | arquivo com o cabeçalho fora de ordem | mensagem mostrando o cabeçalho que veio | **não rodado** |
+
+**O passo 11 não foi rodado.** Fica em aberto, e não vale como passado. O
+caminho tem teste de unidade (`planilha.test.ts`, `cabecalho_diferente`), então
+o que falta é a conferência de que a mensagem chega à tela — não a lógica.
+
+**Três achados, todos de passos que "passaram".** É o argumento a favor desta
+tabela existir, e vale mais que as dez linhas de `sim`:
+
+- **Passo 0 não existia no plano.** Foi acrescentado depois que a tela abriu no
+  terceiro estado ("empresas importadas", sem número) antes de qualquer
+  importação. Causa em "o estado inicial da tela de importar", abaixo.
+- **Passo 9 passou e ainda assim rendeu duas correções.** A recusa da duplicata
+  funcionava, mas a mensagem dizia `razaoSocial` — o nome do campo em
+  TypeScript, não o da coluna que a pessoa digitou no cabeçalho. Quem lê o
+  relatório está com a planilha aberta do lado e procura o nome que não existe.
+- **Passo 10 passou por acidente na primeira rodada.** O relatório disse "1 CEP
+  não encontrado", e parecia certo — mas a base de CEP estava vazia (recriação
+  do banco de dev), então *todos* os CEPs eram não encontrados e o "1" era a
+  Avenida Paulista. Na segunda rodada, com a base carregada, apareceu o oposto:
+  nada foi reportado, porque `99999999` **existe** — é Sarandi/PR, o maior CEP
+  da base. O valor veio de uma frase errada da spec da `cep`, corrigida lá.
+  Rodou de verdade com `00000000`.
+
+Nenhum dos três seria pego por teste automático: o primeiro porque a diretiva
+`'use server'` é inerte no Vitest, o segundo porque a mensagem estava
+"funcionando", o terceiro porque todo teste cria banco novo e popula o que
+precisa.
+
+**O que a tabela não cobre, e é escolha:** o limite de 5.000 linhas e o de 2 MB
+do transporte. Os dois têm teste de unidade (`planilha.test.ts`), e produzir um
+CSV de 5.001 linhas à mão para conferir uma mensagem não paga o trabalho.
+
+## Fatia empresas: a 0014 foi corrigida antes do merge
+
+`numero` e `complemento` chegaram a ser escritas, aplicadas no container e
+testadas. Saíram na revisão final, com o `CHECK`
+`empresa_endereco_precisa_de_cep` junto: o endereço existe nesta tabela porque o
+CEP dá cidade e UF para segmentar ligação, e número de porta serve para visitar
+— coisa que este CRM não faz.
+
+**Como isso foi feito, e por que não foi migração nova.** A regra 3 de
+`fundacao.md` diz "aplicada é imutável", e a `0014` estava aplicada. Mas o único
+ambiente que a tinha rodado era o container de dev: `origin/main` estava no
+commit da fatia `cep`, não havia branch no remoto, a Railway não tinha visto
+nada, e cada arquivo de teste de integração cria o próprio banco e o derruba. A
+regra existe para ninguém reescrever história que outro ambiente já rodou; aqui
+não havia outro ambiente.
+
+A alternativa era pior e barrada: `DROP COLUMN` é recusado por `checar.ts:47`, e
+mesmo que passasse deixaria duas migrações onde uma basta, mais duas colunas
+mortas em qualquer ambiente que aplicasse só a `0014`.
+
+**O preço, e é o que torna isso escolha e não conveniência:** o banco de dev do
+container ficou divergente do arquivo e precisou ser recriado à mão. Uma vez.
+Depois do merge, essa saída deixa de existir — daí em diante é migração nova, e
+`DROP COLUMN` não é permitido.
+
+## Harness com papel próprio — proposta, gatilho disparado
+
+**O que acontece.** `criarBancoDeTeste` faz
+`ALTER ROLE app_conexao LOGIN PASSWORD 'teste'` a cada arquivo de teste de
+integração (`tests/integracao/ajuda.ts:39`). Papel é global no cluster, então a
+senha do `app_conexao` do banco de dev é reescrita junto. A `DATABASE_URL` do
+`.env.local` para de funcionar até alguém rodar `npm run db:senha`.
+
+**O gatilho disparou, e o que mudou foi a contagem.** Isso estava registrado
+desde 2026-08 como "consequência concreta", sem gatilho — o padrão "pegar quando
+doer", proxy de dor que erra para tarde. Em **2026-09-09**, durante a
+verificação manual da fatia `empresas`, interrompeu o trabalho **quatro vezes no
+mesmo dia**. Quatro não é anedota: é o custo aparecendo junto, e é o que
+transforma a observação em proposta.
+
+Também vale dizer o que fez o número saltar: a fatia `empresas` é a primeira com
+verificação manual longa **intercalada com rodadas de teste**. Nas fatias
+anteriores as duas coisas eram fases separadas, e a colisão quase não acontecia.
+
+**A proposta:** o harness usa papel próprio, `app_teste`, em vez de reescrever o
+`app_conexao`. Papel de teste não tem por que ser o mesmo papel da aplicação — o
+motivo de ser o mesmo é histórico, não desenhado.
+
+O que isso resolve, além da interrupção: o harness deixa de mexer num papel que
+a aplicação usa, então **rodar teste para de ter efeito colateral em ambiente
+nenhum** — inclusive na Railway, se um `.env.test.local` apontar para lá por
+engano. Hoje esse risco existe e não tem conferência de host.
+
+**O que custa:** uma migração criando `app_teste` como membro de `app_usuario`
+sem herança, no molde do `app_conexao` (`0006`); `ajuda.ts` passa a alterar
+`app_teste`; e a invariante de papéis ganha mais um nome. Não é grande, mas é
+migração — não cabe no meio de uma fatia de produto.
+
+**Enquanto não for feito:** não rodar a suíte durante verificação manual sem
+avisar. O conserto é `npm run db:senha -- app_conexao <senha do .env.local>`.
+
+**Observação de 2026-09-08, que continua sem explicação:** depois de rodar a
+suíte inteira, a `DATABASE_URL` do `.env.local` **continuou funcionando** contra
+o container naquela ocasião. O fato está registrado, a causa não foi
+investigada, e as quatro interrupções de 2026-09-09 mostram que o
+comportamento não é confiável nos dois sentidos.
+
+## Fatia empresas: o terceiro estado do CEP
+
+A spec da `cep` criou `cep_carga` para desfazer uma ambiguidade de dois estados:
+**um CEP que não resolve não existe, ou é mais novo que a base?** Apareceu um
+terceiro, na verificação manual desta fatia: **a base nunca foi carregada neste
+banco.**
+
+Ele é o mais provável em ambiente novo, e não é hipotético — a Railway está
+assim neste momento, porque a carga só rodou no container. Sem separar, uma base
+ausente vira "todos os CEPs não encontrados": verdade literal, conclusão errada,
+e manda procurar defeito nos dados quando o que falta é rodar um comando.
+
+`textoDoEndereco` em `src/features/empresas/mensagens.ts` separa os três, e a
+mensagem do caso novo **dá a saída** — cita `db:cep:carregar` —, como as
+mensagens de estrago do Excel. `Relatorio` ganhou `cepsPedidos` para distinguir
+"a base não está carregada e isso importa" de "não há CEP nenhum neste arquivo",
+onde avisar seria ruído.
+
+Foi achado por uso, não por revisão: a base tinha sumido de verdade, por causa
+da recriação do banco de dev registrada em `fundacao.md`.
+
+## Fatia empresas: o estado inicial da tela de importar
+
+`/empresas/importar` abria no terceiro estado — "empresas importadas", sem
+número na frente, e o botão de recomeçar — antes de qualquer importação.
+
+**A causa, conferida no build e não deduzida:** `app/empresas/importar/acao.ts`
+exportava a constante `IMPORTAR_INICIAL` de um arquivo `'use server'`. O
+`server-reference-manifest.json` listava **duas** `createServerReference` para o
+arquivo: uma para a action e outra para a constante. Todo export não-função de
+um arquivo `'use server'` vira referência de servidor. No cliente,
+`IMPORTAR_INICIAL` chegava como função; `estado.inseridas` era `undefined`;
+`undefined !== null` é verdadeiro; o ramo de "gravado" renderizava, com
+`{estado.inseridas}` vazio.
+
+Nada acusava. `typecheck`, `lint`, `build` e os 383 testes passavam. Só a tela
+mostrava, e só para quem abrisse.
+
+### A lição não é "faltava teste de render"
+
+Isso precisa estar escrito porque é a conclusão que o caso *parece* ter, e é a
+errada.
+
+Os dois testes que entraram com a correção foram medidos contra o bug ainda
+presente, um de cada vez:
+
+| Teste | Trabalho | Com o bug presente |
+|---|---|---|
+| `app/empresas/importar/formulario.test.tsx` | o primeiro render mostra o formulário | **passa** |
+| `src/server/diretivas.test.ts` | arquivo `'use server'` só exporta função | **falha**: `expected [ 'IMPORTAR_INICIAL' ] to deeply equal []` |
+
+O teste de render **passa com o bug**, porque no Vitest a diretiva `'use server'`
+é uma string literal inerte: a constante importada ali é o objeto de verdade,
+não a referência de servidor que o Next produz. Ele guarda o ramo; não vê a
+causa. Quem vê é a catraca de diretivas.
+
+Então o teste de render entrou porque render sem cobertura nenhuma é dívida
+real — e o gatilho do jsdom era exatamente sobre isso. Mas **não foi ele que
+teria evitado este bug**, e tratar o caso como prova de que faltava jsdom
+levaria a instalar jsdom, testing-library e um projeto Vitest novo para pegar
+uma classe de erro que eles não pegam.
+
+### O gatilho aposentado, e o que entrou no lugar
+
+O gatilho do jsdom era `proxy de complexidade` errando para "nunca", e a página
+já suspeitava disso. Ele disparou — tarde, que é o defeito previsto: a condição
+"componente cliente que decide algo sozinho" só ficou verdadeira quando o
+componente já estava escrito, publicado e errado.
+
+No lugar entra **evento observável**: primeiro `.tsx` em `app/` com ramo
+condicional no corpo do componente. A condição aparece no `git diff`, como a de
+`app/**` da conferência manual — e a diferença entre proxy e evento observável é
+exatamente essa: um espera alguém lembrar de perguntar, o outro se mostra.
+
+O que **não** entrou: nenhuma catraca vê "escreveu componente sem olhar o
+vizinho que já resolve o mesmo problema". Isso virou R-018, que é bilhete.
+
 ## Ferramental
 
-- Sem projeto Vitest para React. `jsdom` e plugin instalados, não
-  configurados.
+- Sem jsdom e sem testing-library, por escolha medida (ver "Fatia empresas: o
+  estado inicial"). Render é testado por `renderToStaticMarkup` de
+  `react-dom/server`, que exercita o primeiro render sem DOM e sem dependência
+  nova. O limite está escrito no próprio arquivo de teste: não clica, não envia
+  formulário, não exercita a action.
+- `jsdom` e plugin continuam instalados e não configurados. Se um teste precisar
+  de clique ou de efeito, é aí que eles entram — não antes.
 - Next 16 usa `proxy.ts`, não `middleware.ts`. Portar o guarda do crm-ch,
   não copiar.
