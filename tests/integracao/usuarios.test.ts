@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { repositorioPostgres } from '@/src/features/usuarios/repositorio'
+import { criarUsuario, desativar, mudarPapel, novaSenhaProvisoria, reativar } from '@/src/features/usuarios/servico'
 import { entrar } from '@/src/server/autenticacao/entrar'
 import { gerarHash } from '@/src/server/autenticacao/senha'
 import { criarSessao, lerSessao } from '@/src/server/autenticacao/sessao'
@@ -86,5 +87,64 @@ describe('repositorioPostgres', () => {
     expect(lista[0]).toMatchObject({ ativo: true })
     const so = await repositorioPostgres(vendedor).listar()
     expect(so.map((u) => u.id)).toEqual([vendedor])
+  })
+})
+
+describe('serviço com repositório real', () => {
+  test('criarUsuario: senha devolvida entra e cai em pendente', async () => {
+    const r = await criarUsuario(repositorioPostgres(gestor), { nome: ' Bia ', email: 'Bia@Teste.local', papel: 'vendedor' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.senhaProvisoria).toMatch(/^[A-HJ-NP-Za-km-z2-9]{4}-[A-HJ-NP-Za-km-z2-9]{4}-[A-HJ-NP-Za-km-z2-9]{4}$/)
+    expect(await entrar({ email: 'bia@teste.local', senha: r.senhaProvisoria, origem: null })).toMatchObject({ ok: true, precisaTrocarSenha: true })
+  })
+
+  test('0010 pelo caminho da fatia: depois de criar, o gestor não zera a marca por UPDATE', async () => {
+    const r = await criarUsuario(repositorioPostgres(gestor), { nome: 'Caio', email: 'caio@teste.local', papel: 'vendedor' })
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    await expect(
+      banco.comoUsuario(gestor, (e) => e('UPDATE usuario SET senha_provisoria_pendente = false WHERE id = $1', [r.id])),
+    ).rejects.toMatchObject({ code: '42501' })
+  })
+
+  test('e-mail repetido: email_em_uso', async () => {
+    expect(await criarUsuario(repositorioPostgres(gestor), { nome: 'Bia2', email: 'bia@teste.local', papel: 'vendedor' })).toEqual({
+      ok: false,
+      motivo: 'email_em_uso',
+    })
+  })
+
+  test('novaSenhaProvisoria: a antiga não entra, a nova entra, sessão antiga morre', async () => {
+    const criado = await criarUsuario(repositorioPostgres(gestor), { nome: 'Dani', email: 'dani@teste.local', papel: 'vendedor' })
+    if (!criado.ok) throw new Error('criação falhou')
+    const { token } = await criarSessao(criado.id)
+    const r = await novaSenhaProvisoria(repositorioPostgres(gestor), criado.id)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(await lerSessao(token)).toBeNull()
+    expect(await entrar({ email: 'dani@teste.local', senha: criado.senhaProvisoria, origem: null })).toEqual({ ok: false, motivo: 'credenciais_invalidas' })
+    expect(await entrar({ email: 'dani@teste.local', senha: r.senhaProvisoria, origem: null })).toMatchObject({ ok: true })
+  })
+
+  test('mudarPapel, desativar, reativar', async () => {
+    const repo = repositorioPostgres(gestor)
+    const alvo = await criarNaTabela(banco, 'vendedor', 'Edu')
+    expect(await mudarPapel(repo, alvo, 'gestor')).toEqual({ ok: true })
+    expect(await desativar(repo, alvo)).toEqual({ ok: true })
+    const [d] = await banco.sql<{ ativo: boolean; papel: string }>('SELECT ativo, papel FROM usuario WHERE id = $1', [alvo])
+    expect(d).toEqual({ ativo: false, papel: 'gestor' })
+    expect(await reativar(repo, alvo)).toEqual({ ok: true })
+    const [v] = await banco.sql<{ ativo: boolean }>('SELECT ativo FROM usuario WHERE id = $1', [alvo])
+    expect(v.ativo).toBe(true)
+  })
+
+  test('vendedor em qualquer operação: sem_permissao ou nao_encontrado; inexistente: nao_encontrado', async () => {
+    const repo = repositorioPostgres(vendedor)
+    expect(await criarUsuario(repo, { nome: 'F', email: 'f@teste.local', papel: 'vendedor' })).toEqual({ ok: false, motivo: 'sem_permissao' })
+    expect(await novaSenhaProvisoria(repo, gestor)).toEqual({ ok: false, motivo: 'sem_permissao' })
+    expect(await mudarPapel(repo, gestor, 'vendedor')).toEqual({ ok: false, motivo: 'nao_encontrado' })
+    expect(await desativar(repo, gestor)).toEqual({ ok: false, motivo: 'nao_encontrado' })
+    expect(await reativar(repositorioPostgres(gestor), NADA)).toEqual({ ok: false, motivo: 'nao_encontrado' })
   })
 })
