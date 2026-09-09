@@ -305,6 +305,15 @@ O caminho do zip é obrigatório — ele vive fora do repositório e não há lu
 padrão em que ele esteja. O manifesto tem padrão `db/cep/opencep.json`, e o teste
 passa o seu próprio.
 
+**Onde o zip está, nesta máquina:** `C:\Users\ADM\projetos\.bases\opencep-2.0.1.zip`,
+fora de qualquer repositório, ao lado da pasta dos projetos. Soma conferida
+depois de movido, igual à do manifesto.
+
+Isto é **referência, não convenção do projeto**: é o caminho da máquina de quem
+escreveu esta spec. Outra máquina põe onde quiser e passa na linha de comando —
+o script não presume nada sobre esse caminho, e nada no repositório o menciona
+além desta linha.
+
 ### Os cinco passos; três são catraca
 
 1. Lê o manifesto e **confere o sha256 do zip**. Diferente, para.
@@ -436,6 +445,17 @@ não depois.
 registrada em `divida-tecnica.md` no formato das fatias 0b e 0c: 1.209.313
 linhas, 156 MB, tempo real medido, e a conferência de que `resolverCeps` acha um
 CEP conhecido.
+
+**O CEP de teste é `01310100` — Avenida Paulista, São Paulo.** Não é capricho, e
+a razão é a defasagem de 26 meses: testar com o próprio CEP é o reflexo natural,
+e se ele for de um endereço recente vai cair em não encontrado e **parecer bug
+numa carga que funcionou**. Um logradouro antigo e conhecido remove essa
+ambiguidade da verificação. `01310100` foi resolvido no spike contra a base real,
+então é sabido que está lá.
+
+Vale para qualquer conferência manual desta tabela, não só a da carga: quando um
+CEP não resolve, a primeira hipótese a descartar é a idade do endereço, não o
+defeito do código.
 
 ## Pré-requisito de produção
 
