@@ -9,9 +9,14 @@ export default async function Inicio() {
         <h1 className="text-2xl font-semibold">CRM</h1>
         <nav className="flex items-center gap-3">
           {eu.papel === 'gestor' && (
-            <Link href="/usuarios" className="text-sm underline">
-              Usuários
-            </Link>
+            <>
+              <Link href="/empresas" className="text-sm underline">
+                Empresas
+              </Link>
+              <Link href="/usuarios" className="text-sm underline">
+                Usuários
+              </Link>
+            </>
           )}
           <form action="/sair" method="post">
             <button type="submit" className="rounded border px-3 py-1 text-sm">
