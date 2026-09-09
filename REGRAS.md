@@ -315,4 +315,43 @@ hábito.
 
 ---
 
+## R-019 — Afirmação sobre valor singular é medição, não ilustração
+
+O que aconteceu: a spec da fatia `cep` escreveu *"nada impede `empresa.cep`
+guardar `'99999999'`, um CEP que nunca existiu"*. `99999999` **existe** — é
+Sarandi/PR, e é o **maior CEP da base**, o último dos 1.209.313. O valor foi
+escolhido por parecer obviamente falso, sem consulta. De lá foi copiado para o
+passo 10 da verificação manual da fatia `empresas`, que passou a esperar um "não
+encontrado" impossível: numa rodada passou por acidente (a base estava vazia) e
+na outra falhou pelo motivo oposto.
+
+O contraste, medido na auditoria e no mesmo documento: **todo agregado daquela
+spec conferiu exatamente** — 10.392 logradouros nulos, 0,86%; 7.200 bairros,
+0,6%; 16,3% de `faixa`; 27 UFs; zero furos em `localidade`, `uf` e `ibge`.
+Quem escreveu aqueles números rodou consulta. A mesma pessoa, na mesma spec, no
+mesmo dia, inventou o valor singular.
+
+**A assimetria tem causa, e é ela que a regra ataca:** ninguém escreve "0,86%"
+por intuição — o formato do número já avisa que precisou de um `SELECT`.
+"Um CEP que nunca existiu" parece um **exemplo**, não uma afirmação sobre o
+dado. E exemplo é justamente o que vira valor de teste depois.
+
+Mais duas do mesmo tipo na fatia `empresas`, achadas na mesma auditoria: "as
+sete colunas dão cerca de 150 bytes por linha" (nunca medido; real 142 no pior
+caso e 50 no comum) e "5.000 linhas ≈ 750 KB" (derivado do anterior; real 693
+KB). O `bodySizeLimit` foi dimensionado sobre o primeiro.
+
+A regra: afirmação sobre **valor singular** — este CEP, este CNPJ, este
+tamanho, este arquivo — é medição, e nasce com a consulta ao lado. Vale mesmo
+quando a frase parece ilustração, e principalmente aí: **agregado ninguém
+escreve sem medir; singular todo mundo escreve por intuição.**
+
+Casos que a regra cobre: um valor citado como impossível, inexistente, típico ou
+extremo; um tamanho ou uma contagem sem unidade de medição declarada; um exemplo
+que vai virar fixture.
+
+Tipo: bilhete (nada confere que a consulta foi feita)
+
+---
+
 <!-- próximas regras aqui -->

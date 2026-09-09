@@ -481,11 +481,20 @@ perceber. As mensagens dizem a causa, não só o sintoma:
 
 - *"CNPJ em notação científica na linha 12 — formate a coluna como Texto"*
 - *"CEP com 7 dígitos na linha 40 — o zero à esquerda foi comido; formate como Texto"*
-- *"telefone com 9 dígitos na linha 51 — zero à esquerda comido"*
+- *"Telefone inválido (987654321). Informe DDD + número, com 10 ou 11 dígitos."*
 - *"o arquivo não está em UTF-8 — no Excel use Salvar como > CSV UTF-8"*
 
 Mensagem que explica a causa transforma "erro de validação" em conserto de
 trinta segundos.
+
+**Correção de 2026-09-09.** Esta lista dizia *"telefone com 9 dígitos — zero à
+esquerda comido"*, e o código nunca fez isso: telefone não começa com zero, e
+nove dígitos é quase sempre celular sem DDD. A mensagem real diz o que preencher
+(*"informe DDD + número"*), que é a causa certa. **Só o CNPJ tem diagnóstico de
+notação científica** — telefone e CEP em notação científica caem nas mensagens
+genéricas de forma, e isso está registrado na auditoria como buraco conhecido.
+Spec que descreve comportamento inexistente é pior que spec omissa: manda
+procurar bug onde não há.
 
 **As colunas do modelo**, nesta ordem, e o cabeçalho é conferido literalmente:
 
@@ -556,8 +565,8 @@ TDD, vermelho primeiro em cada um.
 - `normalizarTelefone`: com máscara, com espaço, 10 e 11 dígitos, 9 dígitos.
 - Leitor de CSV: aspas, separador dentro de aspas, `""` escapado, CRLF, BOM,
   separador `;`, **e a recusa de aspas não fechadas com a linha na mensagem**.
-- Diagnósticos: notação científica, CEP de 7 dígitos, telefone de 9 dígitos, e
-  bytes que não são UTF-8.
+- Diagnósticos: notação científica **no CNPJ**, CEP de 7 dígitos, e bytes que
+  não são UTF-8.
 - Duplicata interna: idêntica e divergente, com o campo divergente nomeado.
 - Limite de 5.000 linhas.
 
