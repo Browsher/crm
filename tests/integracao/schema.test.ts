@@ -31,6 +31,7 @@ describe('migrações reais', () => {
       '0008_senha_provisoria.sql',
       '0009_funcoes_autenticacao.sql',
       '0010_congelar_marca_provisoria.sql',
+      '0011_funcoes_usuario.sql',
     ])
   })
 
