@@ -5,8 +5,32 @@ CNPJ; o endereço é só o CEP, resolvido pela base local da fatia anterior. Nã
 formulário de cadastro manual e não há fila — posse, reserva, quarentena e
 bloqueio são fatia separada, como a spec de `cep` já decidiu.
 
-Entrega a migração `0014`, o módulo `src/features/empresas/`, duas telas, o
-arquivo-modelo para download, e o fechamento de duas heranças da fatia `cep`.
+Esta spec cobre **duas fatias**, e o corte entre elas tem um critério.
+
+## As duas fatias, e por que o corte cai aqui
+
+**`empresas`** — migração `0014`, as funções puras de normalização, o leitor de
+CSV, a importação em três fases, o relatório, **o arquivo-modelo** e **a tela
+`/empresas/importar`**.
+
+**`empresas.1`** — migração `0015`, a listagem `/empresas` com busca e
+paginação, e a maquinaria de busca sem acento que só ela consome.
+
+**O critério é o que dá para verificar à mão.** O modelo e a tela de importar
+ficam na primeira **porque sem eles a primeira fatia só existe em teste de
+integração com fixture**. Com eles, o gestor baixa o modelo, preenche, salva
+como CSV e importa de verdade — e é exatamente aí que mora a armadilha do
+Excel, que é **a única coisa desta fatia que teste automático não pega**. Uma
+fatia cuja parte mais arriscada só é verificável na fatia seguinte está cortada
+no lugar errado.
+
+**Pela mesma lógica, ao contrário:** `unaccent`, `sem_acento` e a coluna `busca`
+ficam na `empresas.1`, não na `0014`. Elas existem só para a busca. Criar um
+schema, uma extensão, cinco `REVOKE` e uma promessa de `IMMUTABLE` que nenhuma
+tela usa é a R-014 — o mesmo argumento com que a spec de `cep` segurou o `GRANT`
+em `cep_carga` até existir o relatório que o consome.
+
+As seções abaixo marcam a qual fatia pertencem quando não for óbvio.
 
 ## O que mudou desde o desenho original
 
@@ -73,21 +97,11 @@ forma garantida pelo banco, existência não. `AAAAAAAAAAAA00` passa no `CHECK`.
 Quem pega isso é o DV, na fase 1. Quem sabe se o CNPJ existe é a Receita, e não
 vamos perguntar a ela.
 
-## A tabela
+## A tabela — fatia `empresas`
 
 Migração `0014_empresa.sql`.
 
 ```sql
-CREATE SCHEMA extensoes;
-CREATE EXTENSION unaccent WITH SCHEMA extensoes;
-REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA extensoes FROM PUBLIC;
-
-CREATE FUNCTION sem_acento(p text) RETURNS text
-LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT SET search_path = ''
-AS $$ SELECT lower(extensoes.unaccent('extensoes.unaccent'::regdictionary, p)) $$;
-REVOKE EXECUTE ON FUNCTION sem_acento(text) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION sem_acento(text) TO app_usuario;
-
 CREATE TABLE empresa (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -104,9 +118,6 @@ CREATE TABLE empresa (
   numero        text CHECK (btrim(numero) <> ''),
   complemento   text CHECK (btrim(complemento) <> ''),
 
-  busca         text GENERATED ALWAYS AS
-                  (sem_acento(razao_social || ' ' || coalesce(nome_fantasia, ''))) STORED,
-
   criado_em      timestamptz NOT NULL DEFAULT now(),
   criado_por     uuid REFERENCES usuario (id) ON DELETE RESTRICT,
   atualizado_em  timestamptz,
@@ -120,8 +131,9 @@ CREATE TRIGGER empresa_auditoria BEFORE INSERT OR UPDATE ON empresa
 FOR EACH ROW EXECUTE FUNCTION definir_auditoria();
 ```
 
-Nove colunas de conteúdo, uma gerada, o quarteto de auditoria preenchido pelo
-gatilho `definir_auditoria()` da `0003` — nunca pelo TypeScript.
+Nove colunas de conteúdo e o quarteto de auditoria preenchido pelo gatilho
+`definir_auditoria()` da `0003` — nunca pelo TypeScript. A coluna `busca` chega
+na `0015`, junto com a busca que a consome.
 
 **`telefone NOT NULL`.** Prospecção começa por telefone: empresa sem telefone é
 uma linha que ninguém consegue trabalhar. Ela ocuparia a fila e não viraria
@@ -170,10 +182,31 @@ Receita**.
 **`vendedor_id`, `reservado_por_id`, `reservado_ate`, `quarentena_ate`,
 `bloqueada_em`**: fatia da fila.
 
-## Busca sem acento
+## Busca sem acento — fatia `empresas.1`
 
 `razao_social` e `nome_fantasia` têm acento, e a busca precisa achar "São"
 digitando "sao". O `crm-ch` usava `unaccent`, e o caminho óbvio não funciona.
+
+Migração `0015_empresa_busca.sql`, inteira:
+
+```sql
+CREATE SCHEMA extensoes;
+CREATE EXTENSION unaccent WITH SCHEMA extensoes;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA extensoes FROM PUBLIC;
+
+CREATE FUNCTION sem_acento(p text) RETURNS text
+LANGUAGE sql IMMUTABLE PARALLEL SAFE STRICT SET search_path = ''
+AS $$ SELECT lower(extensoes.unaccent('extensoes.unaccent'::regdictionary, p)) $$;
+REVOKE EXECUTE ON FUNCTION sem_acento(text) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION sem_acento(text) TO app_usuario;
+
+ALTER TABLE empresa ADD COLUMN busca text GENERATED ALWAYS AS
+  (sem_acento(razao_social || ' ' || coalesce(nome_fantasia, ''))) STORED;
+```
+
+`ADD COLUMN ... GENERATED ... STORED` reescreve a tabela. Com as dezenas ou
+milhares de linhas que existirão entre uma fatia e outra, isso é barato — e é o
+preço de não criar a maquinaria antes do consumidor.
 
 ### Medições de 2026-09-09
 
@@ -424,7 +457,11 @@ cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,numero,complemen
 
 ## As telas
 
-**`/empresas`** — listagem com busca e paginação, gestor-só.
+**`/empresas/importar`** — fatia `empresas`. A página em dois estados descrita
+acima: escolher o arquivo, ver o relatório, confirmar. Gestor-só. É ela, com o
+modelo, que torna a primeira fatia verificável à mão.
+
+**`/empresas`** — fatia `empresas.1`. Listagem com busca e paginação, gestor-só.
 
 **Repositório novo, não cópia do `listar()` de usuários.** O `listar()` existente
 traz tudo, sem paginação nem busca, e foi escrito para cinco linhas. A
@@ -443,9 +480,10 @@ ORDER BY razao_social
 LIMIT $3 OFFSET $4
 ```
 
-**`/empresas/importar`** — a página em dois estados descrita acima. Gestor-só.
+## O que fecha da fatia `cep` — fatia `empresas`
 
-## O que fecha da fatia `cep`
+As duas heranças são do relatório de importação, então as duas ficam na primeira
+fatia.
 
 **`GRANT SELECT ON cep_carga`.** A spec de `cep` deixou a tabela sem `GRANT`
 nenhum de propósito, dizendo que o consumidor natural seria o relatório de
@@ -485,44 +523,61 @@ TDD, vermelho primeiro em cada um.
 - Duplicata interna: idêntica e divergente, com o campo divergente nomeado.
 - Limite de 5.000 linhas.
 
-**Integração, com banco:**
+**Integração, fatia `empresas`:**
 
-- A migração aplica e as invariantes passam — incluindo a de PUBLIC, que só passa
-  se os `REVOKE` estiverem lá, cobrindo as cinco funções.
+- A `0014` aplica e as invariantes passam.
 - Controle negativo: `app_conexao` fora de `comoUsuario` lendo `empresa` → `42501`.
 - Vendedor ativo lendo `empresa` → nenhuma linha (política gestor-só).
 - Gestor com senha provisória pendente tentando inserir → recusado por
   `pode_escrever()`.
 - `UPDATE` e `DELETE` em `empresa` por `app_usuario` → `42501` nos dois.
-- `busca` calculada pelo banco: inserir "Iluminação São João", achar por "sao
-  joao".
 - Importação ponta a ponta com um CSV de fixture: novas, já cadastradas,
   recusadas e CEP não encontrado no mesmo arquivo.
 - `cep_carga` legível pelo gestor e ilegível pelo vendedor.
 
+**Integração, fatia `empresas.1`:**
+
+- A `0015` aplica e as invariantes passam — incluindo a de PUBLIC, que só passa
+  se os `REVOKE` estiverem lá, cobrindo as cinco funções.
+- `busca` calculada pelo banco: inserir "Iluminação São João", achar por "sao
+  joao".
+- Busca por CNPJ é exata: `'1122'` não acha empresa cujo CNPJ contém `1122`.
+- Paginação: segunda página não repete nem pula linha da primeira.
+
 **Verificação manual**, registrada em `divida-tecnica.md` no formato das fatias
-0b, 0c e `cep` — não há teste de render: as duas telas, o download do modelo, e
-uma importação de verdade com o Excel no caminho, que é onde a armadilha mora.
+0b, 0c e `cep` — não há teste de render.
+
+Na `empresas`, e é o motivo do corte: **baixar o modelo, preencher no Excel,
+salvar como CSV e importar**, incluindo de propósito uma rodada salva errado
+(ANSI, ou separador `;`, ou coluna reformatada como número) para conferir que a
+mensagem de diagnóstico aparece e explica a causa. Na `empresas.1`: a listagem,
+a busca com e sem acento, e a paginação.
 
 ## Dívida e gatilhos que esta fatia cria
 
-| Item | Gatilho | Tipo | Erra para |
-|---|---|---|---|
-| Sem tela de edição de empresa | precisar corrigir dado já cadastrado | proxy de dor | tarde |
-| Sem índice GIN em `busca` | 300 ms por `EXPLAIN ANALYZE`, ou 20 mil linhas | medição | — |
-| Base de CEP defasada | 8% dos CEPs distintos não encontrados | medição | — |
-| `empresas_no_endereco` ausente | a base voltar a vir da Receita | evento observável | — |
-| `sem_acento` `IMMUTABLE` pode mentir | troca de versão maior do Postgres | evento observável | — |
+| Item | Fatia | Gatilho | Tipo | Erra para |
+|---|---|---|---|---|
+| Sem tela de edição de empresa | `empresas` | precisar corrigir dado já cadastrado | proxy de dor | tarde |
+| Base de CEP defasada | `empresas` | 8% dos CEPs distintos não encontrados | medição | — |
+| `empresas_no_endereco` ausente | `empresas` | a base voltar a vir da Receita | evento observável | — |
+| Empresa cadastrada só visível por `psql` | `empresas` | a própria `empresas.1` | evento observável | — |
+| Sem índice GIN em `busca` | `empresas.1` | 300 ms por `EXPLAIN ANALYZE`, ou 20 mil linhas | medição | — |
+| `sem_acento` `IMMUTABLE` pode mentir | `empresas.1` | troca de versão maior do Postgres | evento observável | — |
+
+A quarta linha é dívida de propósito e de vida curta: entre uma fatia e outra, o
+que foi importado não tem tela. O gatilho é a fatia seguinte, então ela se cobra
+sozinha.
 
 ## O que a fatia fecha nos documentos
 
 Parte do trabalho, não extra:
 
-- `docs/db/0014.md` com o porquê da migração; o `.sql` só aponta para lá.
-- `docs/db/fundacao.md` passa a descrever o schema `extensoes` e a primeira
-  função não-definidora concedida a `app_usuario`.
-- `docs/db/divida-tecnica.md` recebe os cinco gatilhos da tabela acima e a
-  verificação manual da fatia.
+- `docs/db/0014.md` e, na fatia seguinte, `docs/db/0015.md`, com o porquê de cada
+  migração; os `.sql` só apontam para lá.
+- `docs/db/fundacao.md` na `empresas.1` passa a descrever o schema `extensoes` e
+  a primeira função não-definidora concedida a `app_usuario`.
+- `docs/db/divida-tecnica.md` recebe os gatilhos da tabela acima e a verificação
+  manual, cada um na fatia que o cria.
 - `REGRAS.md` só ganha regra se houver tropeço real durante a execução.
 
 ## O que a fatia da fila herda
