@@ -45,15 +45,7 @@ Leia a lição de lá antes de registrar gatilho novo em qualquer lugar.
   repetir o padrão no seed com senha.
 - Harness grava senha `'teste'` em `app_conexao`, papel global do cluster.
   Se `.env.test.local` apontar para a Railway, roda lá. Nenhuma conferência
-  de host. Consequência concreta, vista em 2026-09-08: toda rodada de
-  integração troca a senha de `app_conexao` do container, e a `DATABASE_URL`
-  do `.env.local` para de funcionar até rodar `npm run db:senha` de novo.
-  Caminho provável: harness com papel próprio (`app_conexao_teste`) ou senha
-  do harness igual à do `.env.local`.
-  Observação da 0c (2026-09-08): depois de rodar a suíte inteira, a
-  `DATABASE_URL` do `.env.local` **continuou funcionando** contra o
-  container. Só o fato está registrado; a causa não foi investigada, e o
-  risco de o harness apontar para a Railway continua igual.
+  de host. **Ver "Harness com papel próprio" abaixo: o gatilho disparou.**
 - Não existe primitiva de conexão sem identidade; `obterPool` e
   `conectarVerificado` são exportados. A fronteira `comoUsuario` é convenção,
   sem lint.
@@ -87,6 +79,7 @@ Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
 | a base de empresas voltar a vir da Receita (`empresas_no_endereco`) | evento observável | — | **novo em 2026-09-09** |
 | a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **novo em 2026-09-09**; dívida de vida curta, que se cobra sozinha |
 | `empresa` acima de 500 mil linhas quando a `0015` for aplicada | medição | — | **novo em 2026-09-09**; a reescrita do `ADD COLUMN GENERATED` vira janela de manutenção |
+| senha de `app_conexao` reescrita pelo harness (papel próprio `app_teste`) | proxy de dor | tarde | **disparado em 2026-09-09**: quatro interrupções num dia; proposta escrita, não feita |
 | "pegar quando doer" (o padrão desta página) | proxy de dor | tarde | ativo, e é o padrão de tudo que não tem gatilho próprio |
 | "primeira tela do gestor" (faxina) | proxy de uso | cedo | **aposentado em 2026-09-09**: disparou com a tabela vazia |
 | "primeira entidade com volume real" (paginação de `listar()`) | proxy de uso | cedo | **aposentado em 2026-09-09**: `empresas` o dispararia sem volume nenhum |
@@ -543,6 +536,48 @@ mortas em qualquer ambiente que aplicasse só a `0014`.
 container ficou divergente do arquivo e precisou ser recriado à mão. Uma vez.
 Depois do merge, essa saída deixa de existir — daí em diante é migração nova, e
 `DROP COLUMN` não é permitido.
+
+## Harness com papel próprio — proposta, gatilho disparado
+
+**O que acontece.** `criarBancoDeTeste` faz
+`ALTER ROLE app_conexao LOGIN PASSWORD 'teste'` a cada arquivo de teste de
+integração (`tests/integracao/ajuda.ts:39`). Papel é global no cluster, então a
+senha do `app_conexao` do banco de dev é reescrita junto. A `DATABASE_URL` do
+`.env.local` para de funcionar até alguém rodar `npm run db:senha`.
+
+**O gatilho disparou, e o que mudou foi a contagem.** Isso estava registrado
+desde 2026-08 como "consequência concreta", sem gatilho — o padrão "pegar quando
+doer", proxy de dor que erra para tarde. Em **2026-09-09**, durante a
+verificação manual da fatia `empresas`, interrompeu o trabalho **quatro vezes no
+mesmo dia**. Quatro não é anedota: é o custo aparecendo junto, e é o que
+transforma a observação em proposta.
+
+Também vale dizer o que fez o número saltar: a fatia `empresas` é a primeira com
+verificação manual longa **intercalada com rodadas de teste**. Nas fatias
+anteriores as duas coisas eram fases separadas, e a colisão quase não acontecia.
+
+**A proposta:** o harness usa papel próprio, `app_teste`, em vez de reescrever o
+`app_conexao`. Papel de teste não tem por que ser o mesmo papel da aplicação — o
+motivo de ser o mesmo é histórico, não desenhado.
+
+O que isso resolve, além da interrupção: o harness deixa de mexer num papel que
+a aplicação usa, então **rodar teste para de ter efeito colateral em ambiente
+nenhum** — inclusive na Railway, se um `.env.test.local` apontar para lá por
+engano. Hoje esse risco existe e não tem conferência de host.
+
+**O que custa:** uma migração criando `app_teste` como membro de `app_usuario`
+sem herança, no molde do `app_conexao` (`0006`); `ajuda.ts` passa a alterar
+`app_teste`; e a invariante de papéis ganha mais um nome. Não é grande, mas é
+migração — não cabe no meio de uma fatia de produto.
+
+**Enquanto não for feito:** não rodar a suíte durante verificação manual sem
+avisar. O conserto é `npm run db:senha -- app_conexao <senha do .env.local>`.
+
+**Observação de 2026-09-08, que continua sem explicação:** depois de rodar a
+suíte inteira, a `DATABASE_URL` do `.env.local` **continuou funcionando** contra
+o container naquela ocasião. O fato está registrado, a causa não foi
+investigada, e as quatro interrupções de 2026-09-09 mostram que o
+comportamento não é confiável nos dois sentidos.
 
 ## Fatia empresas: o terceiro estado do CEP
 
