@@ -155,6 +155,52 @@ limitação conhecida. Se um dia entrar uma tela de "meus dispositivos" ou
 "sair de todos", a faxina de vencidas entra junto, de graça, porque a tela já
 vai varrer a tabela por usuário.
 
+## Fatia cep: verificado à mão, sem teste automático
+
+A carga completa não roda em teste — o automático usa
+`tests/fixtures/cep-mini.zip`, com doze entradas. O que garante o arquivo real
+de 326 MB é a verificação abaixo, feita em 2026-09-09 contra o container local.
+Refazer quando mexer em `src/server/cep/**` ou em `scripts/db/cep-carregar.mts`.
+
+| Caminho | Verificado |
+|---|---|
+| `db:cep:carregar` com o zip real termina com 1.209.313 linhas | sim |
+| `cep` ocupa 156 MB (tabela + índice) | sim |
+| `cep_carga` tem uma linha: `opencep 2.0.1 2024-07-08`, soma `cffa3378…` | sim |
+| `01310100` resolve para Avenida Paulista, Bela Vista, São Paulo, SP | sim |
+| 10.392 sem logradouro, 7.200 sem bairro, 1.012.043 sem faixa, 27 UFs | sim |
+| soma errada no manifesto para antes de tocar no banco, e sai com código 1 | sim |
+| rodar de novo mantém 1.209.313 linhas e acrescenta linha em `cep_carga` | **não** |
+
+Os seis primeiros reproduzem exatamente os números do spike, através do pipeline
+inteiro: a transformação não perde nem inventa linha.
+
+A última não foi feita à mão — custa mais seis minutos e o caminho de código é o
+mesmo que `tests/integracao/cep-carregar.test.ts` já exercita contra o fixture
+(`TRUNCATE`, recarga, segunda linha em `cep_carga`). **O que fica sem prova em
+escala real é o `TRUNCATE` de 1,2 milhão de linhas dentro de transação** —
+travamento e WAL. Registrado como o que é: buraco conhecido, não conferido.
+
+**Tempo real da carga: 352,5 s (5m53s).**
+
+**O CEP de teste é `01310100`, não o primeiro que vier à cabeça.** A base está
+parada em julho de 2024; um CEP recente cai em não encontrado e parece bug numa
+carga que funcionou.
+
+### O tempo caiu na faixa do meio da tabela de decisão
+
+A spec previu três faixas para a conversão em Node, medida agora pela primeira
+vez. Os 352,5 s caem em "3 a 10 minutos", cuja consequência escrita é: **o
+script passa a imprimir progresso.** Sem isso o operador não distingue
+"trabalhando" de "travado" por quase seis minutos, e a reação natural é `Ctrl+C`
+no meio — a transação faria `ROLLBACK`, então não corrompe, mas desperdiça a
+rodada inteira.
+
+Comparação honesta: o mesmo trabalho em Python levou 77 s no spike. Node com
+`yauzl` levou 4,6× mais. A causa provável é um fluxo de leitura por entrada,
+1,2 milhão de vezes, mas **isso não foi medido** — está escrito como suspeita,
+não como diagnóstico.
+
 ## Fonte externa: a base de CEP do OpenCEP
 
 Registrado em 2026-09-09, ao desenhar a fatia `cep`. Não é dívida de código: é
