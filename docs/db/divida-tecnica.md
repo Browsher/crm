@@ -60,7 +60,8 @@ Medição conta a coisa com que você se importa. Proxy conta outra coisa,
 apostando que anda junto com ela. Num produto que ainda não tem uso, todo
 proxy de uso anda solto: ou dispara cedo, e gatilho que dispara sem problema
 treina a ignorar gatilho, ou não dispara nunca, e a dívida fica invisível.
-Gatilho novo nasce com o tipo escrito e com o erro esperado.
+Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
+**R-016** em `REGRAS.md`; a tabela abaixo é a aplicação dela a esta página.
 
 | Gatilho | Tipo | Erra para | Situação |
 |---|---|---|---|
@@ -72,11 +73,13 @@ Gatilho novo nasce com o tipo escrito e com o erro esperado.
 | "primeira tela do gestor" (faxina) | proxy de uso | cedo | **aposentado em 2026-09-09**: disparou com a tabela vazia |
 | "primeira entidade com volume real" (paginação de `listar()`) | proxy de uso | cedo | **aposentado em 2026-09-09**: `empresas` o dispararia sem volume nenhum |
 
-As três primeiras são as que se pode confiar sem vigiar: duas contam o que
-importa, a terceira é um evento que aparece no diff. As duas de proxy que
-continuam ativas precisam ser **relidas** de tempos em tempos, não esperadas —
-"pegar quando doer" porque a dor chega depois do estrago, e o do jsdom porque
-o padrão adotado empurra toda decisão para o servidor e ele pode nunca falar.
+Só a linha de `app/**` se cobra sozinha: a condição aparece no `git diff` sem
+ninguém procurar. As duas de medição são confiáveis mas mudas — respondem
+quando perguntadas, e ninguém as pergunta sozinho, então a conta entra na
+revisão de dívida, não na espera. As duas de proxy ativas precisam ser
+**relidas**: "pegar quando doer" porque a dor chega depois do estrago, e o do
+jsdom porque o padrão adotado empurra toda decisão para o servidor e ele pode
+nunca falar.
 
 Os dois aposentados eram o mesmo erro escrito duas vezes: proxy de uso num
 produto sem uso. Um disparou cedo e quase custou uma fatia inteira; o outro
