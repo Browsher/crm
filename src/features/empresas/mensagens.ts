@@ -5,6 +5,9 @@ import type { Relatorio } from './servico'
 // Record, não if encadeado: motivo novo sem texto quebra o build.
 const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
   sem_permissao: 'Você não tem permissão para importar empresas.',
+  cnpj_ja_gravado:
+    'Outra importação gravou um destes CNPJs enquanto você conferia. Nada foi gravado — confira de novo e reenvie.',
+  texto_invalido: 'O arquivo tem um caractere que o banco não aceita. Reescreva as células com acento ou símbolo estranho.',
 }
 
 export function textoDoMotivo(m: Motivo): string {
@@ -27,7 +30,8 @@ const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string) => string> = {
   cep_curto: (v) =>
     `CEP com 7 dígitos (${v}) — o zero à esquerda foi comido. Formate a coluna como Texto na planilha.`,
   cep_forma: (v) => `CEP inválido (${v}). São 8 dígitos.`,
-  colunas_de_menos: (v) => `A linha tem ${v} colunas; o modelo tem 7.`,
+  caractere_invalido: (v) => `A coluna ${v} tem um caractere que o banco não aceita (byte nulo). Reescreva a célula.`,
+  colunas_erradas: (v) => `A linha tem ${v} colunas; o modelo tem 7. Confira se sobrou ou faltou separador.`,
 }
 
 export function textoDaRecusa(r: Recusa): string {

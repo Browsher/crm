@@ -100,7 +100,9 @@ describe('fase 1: as recusas de campo', () => {
     ['email_forma', '11222333000181,Aurora LTDA,,,11987654321,contato.aurora.com,', 'contato.aurora.com'],
     ['cep_curto', '11222333000181,Aurora LTDA,,,11987654321,,1310100', '1310100'],
     ['cep_forma', '11222333000181,Aurora LTDA,,,11987654321,,consultar', 'consultar'],
-    ['colunas_de_menos', '11222333000181,Aurora LTDA', '2'],
+    ['colunas_erradas', '11222333000181,Aurora LTDA', '2'],
+    ['colunas_erradas', '11222333000181,Aurora LTDA,,,1134567890,,01310100,EXTRA', '8'],
+    ['colunas_erradas', '11222333000181,Aurora LTDA,,,1134567890,,01310100,', '8'],
   ]
   for (const [motivo, linha, valor] of casos) {
     test(`recusa ${motivo}`, () => {
@@ -187,5 +189,44 @@ describe('fase 1: duplicata dentro do arquivo', () => {
     const a = ok(analisarPlanilha(comCabecalho(VALIDA, outra, VALIDA)))
     expect(a.aceitas.map((l) => l.cnpj)).toEqual(['11444777000161'])
     expect(a.recusadas).toHaveLength(2)
+  })
+})
+
+describe('fase 1: numero da linha com linha em branco no meio', () => {
+  test('a recusa aponta para a linha do ARQUIVO', () => {
+    // linha 2 valida, 3 em branco, 4 com DV errado
+    const a = ok(
+      analisarPlanilha(
+        bytes([CABECALHO, VALIDA, '', '11222333000182,Erro LTDA,,,1134567890,,'].join('\n')),
+      ),
+    )
+    expect(a.aceitas.map((l) => l.linha)).toEqual([2])
+    expect(a.recusadas).toEqual([{ tipo: 'campo', linha: 4, motivo: 'cnpj_dv', valor: '11222333000182' }])
+  })
+
+  test('duplicata depois de linha em branco cita as linhas certas', () => {
+    const a = ok(analisarPlanilha(bytes([CABECALHO, VALIDA, '', VALIDA].join('\n'))))
+    expect(a.recusadas.map((r) => r.linha)).toEqual([2, 4])
+    expect(a.recusadas.map((r) => (r.tipo === 'repetido' ? r.par : null))).toEqual([4, 2])
+  })
+})
+
+// Byte NUL e UTF-8 valido, entao passa pelo TextDecoder — e o Postgres recusa
+// com 22021. Pegar aqui da o numero da linha; traduzir o erro do banco daria
+// uma mensagem sem localizacao nenhuma.
+describe('fase 1: byte NUL', () => {
+  test('recusa a linha, com o numero e a coluna', () => {
+    const a = ok(analisarPlanilha(bytes([CABECALHO, '11222333000181,Aurora\u0000 LTDA,,,1134567890,,'].join('\n'))))
+    expect(a.aceitas).toEqual([])
+    expect(a.recusadas).toEqual([
+      { tipo: 'campo', linha: 2, motivo: 'caractere_invalido', valor: 'razao_social' },
+    ])
+  })
+
+  test('linha limpa ao lado de linha com NUL: so a suja sai', () => {
+    const suja = '11444777000161,Bela\u0000 Luz,,,1134567890,,'
+    const a = ok(analisarPlanilha(bytes([CABECALHO, VALIDA, suja].join('\n'))))
+    expect(a.aceitas.map((l) => l.cnpj)).toEqual(['11222333000181'])
+    expect(a.recusadas.map((r) => r.linha)).toEqual([3])
   })
 })

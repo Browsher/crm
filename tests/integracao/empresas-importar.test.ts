@@ -89,13 +89,28 @@ describe('gravar', () => {
     expect(r).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 
-  test('tudo ou nada: cnpj repetido no lote nao grava nenhuma', async () => {
+  // 23505 deixou de subir como excecao na empresas.1: vira { ok: false }, como
+  // manda o contrato de erro do projeto. O tudo-ou-nada continua valendo, e e a
+  // segunda afirmacao que prova isso.
+  test('cnpj repetido no lote: devolve cnpj_ja_gravado e nao grava nenhuma', async () => {
     const antes = await banco.sql<{ n: string }>('SELECT count(*)::text AS n FROM empresa')
-    await expect(
-      repositorioPostgres(gestor).gravar([linha(2, '11777777000164'), linha(3, '11777777000164')]),
-    ).rejects.toMatchObject({ code: '23505' })
+    const r = await repositorioPostgres(gestor).gravar([linha(2, '11777777000183'), linha(3, '11777777000183')])
+    expect(r).toEqual({ ok: false, motivo: 'cnpj_ja_gravado' })
     const depois = await banco.sql<{ n: string }>('SELECT count(*)::text AS n FROM empresa')
     expect(depois[0].n).toBe(antes[0].n)
+  })
+
+  // A corrida de verdade: o CNPJ ja esta no banco quando gravar roda, e nao
+  // estava quando o gestor conferiu.
+  test('cnpj gravado por outra importacao no meio do caminho', async () => {
+    const repo = repositorioPostgres(gestor)
+    expect(await repo.gravar([linha(2, '11666777000106')])).toEqual({ ok: true, inseridas: 1 })
+    const r = await repo.gravar([linha(2, '11666777000106'), linha(3, '11888777000150')])
+    expect(r).toEqual({ ok: false, motivo: 'cnpj_ja_gravado' })
+    const sobrou = await banco.sql<{ n: string }>(
+      "SELECT count(*)::text AS n FROM empresa WHERE cnpj = '11888777000150'",
+    )
+    expect(sobrou[0].n).toBe('0')
   })
 })
 

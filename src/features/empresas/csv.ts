@@ -1,5 +1,11 @@
+// O numero e o da linha NO ARQUIVO, nao o indice da lista. Linha em branco no
+// meio some da lista, e sem carregar o numero ela deslocaria todas as
+// seguintes — o relatorio mandaria o gestor corrigir a linha errada, com cara
+// de mensagem autoritativa.
+export type LinhaCsv = { numero: number; campos: string[] }
+
 export type ResultadoCsv =
-  | { ok: true; linhas: string[][] }
+  | { ok: true; linhas: LinhaCsv[] }
   | { ok: false; motivo: 'aspas_nao_fechadas'; linha: number }
 
 // O Excel em português salva CSV com ';' por padrão; "CSV UTF-8 (delimitado
@@ -17,7 +23,7 @@ function separadorDe(primeiraLinha: string): string {
 export function lerCsv(texto: string): ResultadoCsv {
   const cruas = texto.replace(/\r\n/g, '\n').split('\n')
   const separador = separadorDe(cruas[0] ?? '')
-  const linhas: string[][] = []
+  const linhas: LinhaCsv[] = []
 
   for (let i = 0; i < cruas.length; i++) {
     const crua = cruas[i]
@@ -47,7 +53,7 @@ export function lerCsv(texto: string): ResultadoCsv {
     }
     if (entreAspas) return { ok: false, motivo: 'aspas_nao_fechadas', linha: i + 1 }
     campos.push(campo)
-    linhas.push(campos)
+    linhas.push({ numero: i + 1, campos })
   }
 
   return { ok: true, linhas }

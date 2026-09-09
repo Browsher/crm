@@ -4,7 +4,13 @@ import { lerCsv } from './csv'
 function linhas(texto: string): string[][] {
   const r = lerCsv(texto)
   if (!r.ok) throw new Error(`esperava ok, veio ${r.motivo}`)
-  return r.linhas
+  return r.linhas.map((l) => l.campos)
+}
+
+function numeros(texto: string): number[] {
+  const r = lerCsv(texto)
+  if (!r.ok) throw new Error(`esperava ok, veio ${r.motivo}`)
+  return r.linhas.map((l) => l.numero)
 }
 
 describe('lerCsv: o basico', () => {
@@ -81,5 +87,26 @@ describe('lerCsv: o que ele nao faz', () => {
 
   test('aspa aberta no fim do arquivo tambem e recusada', () => {
     expect(lerCsv('a\n"sem fim')).toEqual({ ok: false, motivo: 'aspas_nao_fechadas', linha: 2 })
+  })
+})
+
+// O numero e o do ARQUIVO, nao o do array. Linha em branco no meio some da
+// lista e NAO pode deslocar as seguintes: quem le o relatorio abre a planilha
+// e vai na linha que a mensagem disser.
+describe('lerCsv: numero da linha no arquivo', () => {
+  test('sem linha em branco, numera 1, 2, 3', () => {
+    expect(numeros('a\n1\n2')).toEqual([1, 2, 3])
+  })
+
+  test('linha em branco no meio nao desloca as seguintes', () => {
+    expect(numeros('a\n1\n\n3')).toEqual([1, 2, 4])
+  })
+
+  test('varias em branco seguidas', () => {
+    expect(numeros('a\n\n\n\n5')).toEqual([1, 5])
+  })
+
+  test('aspas nao fechadas depois de linha em branco reportam a linha do arquivo', () => {
+    expect(lerCsv('a\n\n"sem fim')).toEqual({ ok: false, motivo: 'aspas_nao_fechadas', linha: 3 })
   })
 })
