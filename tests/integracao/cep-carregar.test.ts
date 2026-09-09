@@ -115,4 +115,31 @@ describe('carregar', () => {
     )
     expect(quebrada).toEqual([{ n: '0' }])
   })
+
+  // Este roda por último de propósito: ele acrescenta uma linha em cep_carga, e
+  // os testes acima contam essa tabela.
+  test('avisa fase e progresso, para o operador distinguir trabalhando de travado', async () => {
+    const lidas: number[] = []
+    const fases: string[] = []
+    const r = await carregar({
+      urlAdmin: banco.urlAdmin,
+      caminhoZip: FIXTURE,
+      manifesto,
+      aoProgredir: (n) => lidas.push(n),
+      aoFase: (f) => fases.push(f),
+    })
+    expect(r).toEqual({ ok: true, linhas: 11 })
+    // Doze avisos, um por ENTRADA do zip — não por linha gravada. A duplicata
+    // é lida e contada; quem a descarta é o DISTINCT ON, depois.
+    expect(lidas).toHaveLength(12)
+    expect(lidas.at(-1)).toBe(12)
+    expect(fases).toEqual(['conferindo soma', 'lendo zip', 'gravando no banco'])
+  })
+
+  test('a fase para na soma errada: não anuncia leitura nem gravação', async () => {
+    const fases: string[] = []
+    const errado = { ...manifesto, sha256: '0'.repeat(64) }
+    await carregar({ urlAdmin: banco.urlAdmin, caminhoZip: FIXTURE, manifesto: errado, aoFase: (f) => fases.push(f) })
+    expect(fases).toEqual(['conferindo soma'])
+  })
 })

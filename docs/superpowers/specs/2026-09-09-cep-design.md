@@ -120,6 +120,13 @@ Contra o container local (Postgres 17) e o arquivo real.
 cada CEP de 184 bytes consome um cluster inteiro. O carregador lê de dentro do
 zip — foi assim que o spike mediu.
 
+**Corrigido pela carga real de 2026-09-09:** duas linhas desta tabela mediam
+outra coisa. A conversão em Node levou 359,1 s, não os 77 s do Python, e a
+gravação levou 72,6 s, não 6,0 s — os 6,0 s eram um `COPY` puro numa tabela
+vazia, sem `TRUNCATE` de 1,2 milhão de linhas nem índice para manter. Números
+reais e a suspeita sobre a diferença em `docs/db/divida-tecnica.md`, seção
+"Fatia cep: verificado à mão".
+
 ### Qualidade do dado, conferida linha a linha
 
 Em 1.209.313 linhas: `localidade`, `uf` e `ibge` **não têm um único furo**, e

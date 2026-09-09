@@ -12,21 +12,37 @@ export type Resultado =
 
 const COLUNAS = '(cep, logradouro, faixa, bairro, localidade, uf, ibge)'
 
+// Os dois avisos são opcionais e injetáveis: o carregador diz o que está
+// fazendo, e quem chama decide como mostrar. A carga real leva quase seis
+// minutos, e sem sinal nenhum o operador não distingue "trabalhando" de
+// "travado" — a reação natural é Ctrl+C, que faz ROLLBACK e desperdiça a
+// rodada inteira. A política de quanto imprimir fica no CLI, não aqui.
 export async function carregar(o: {
   urlAdmin: string
   caminhoZip: string
   manifesto: Manifesto
+  aoProgredir?: (lidas: number) => void
+  aoFase?: (fase: string) => void
 }): Promise<Resultado> {
   // Catraca 1, antes de abrir transação: o arquivo em disco é o que o
   // manifesto registra? Diferente, para — não avisa e continua.
+  o.aoFase?.('conferindo soma')
   const soma = await somaDoArquivo(o.caminhoZip)
   if (soma !== o.manifesto.sha256) {
     return { ok: false, motivo: 'soma_diferente', detalhe: `esperado ${o.manifesto.sha256}, lido ${soma}` }
   }
 
+  o.aoFase?.('lendo zip')
   const csv: string[] = []
-  await lerZip(o.caminhoZip, (l) => csv.push(paraCsv(l)))
+  await lerZip(o.caminhoZip, (l) => {
+    csv.push(paraCsv(l))
+    // Conta ENTRADA lida, não linha gravada: a duplicata entra aqui e só é
+    // descartada depois, pelo DISTINCT ON. Por isso o total pode passar de
+    // linhas_esperadas por poucas unidades.
+    o.aoProgredir?.(csv.length)
+  })
 
+  o.aoFase?.('gravando no banco')
   return comAdmin(o.urlAdmin, async (c) => {
     await c.query('BEGIN')
     try {

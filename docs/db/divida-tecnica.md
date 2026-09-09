@@ -170,18 +170,18 @@ Refazer quando mexer em `src/server/cep/**` ou em `scripts/db/cep-carregar.mts`.
 | `01310100` resolve para Avenida Paulista, Bela Vista, São Paulo, SP | sim |
 | 10.392 sem logradouro, 7.200 sem bairro, 1.012.043 sem faixa, 27 UFs | sim |
 | soma errada no manifesto para antes de tocar no banco, e sai com código 1 | sim |
-| rodar de novo mantém 1.209.313 linhas e acrescenta linha em `cep_carga` | **não** |
+| rodar de novo mantém 1.209.313 linhas e acrescenta linha em `cep_carga` | sim |
+| o script imprime fase e progresso a cada 50 mil entradas | sim |
 
-Os seis primeiros reproduzem exatamente os números do spike, através do pipeline
-inteiro: a transformação não perde nem inventa linha.
+Todos reproduzem exatamente os números do spike, através do pipeline inteiro: a
+transformação não perde nem inventa linha.
 
-A última não foi feita à mão — custa mais seis minutos e o caminho de código é o
-mesmo que `tests/integracao/cep-carregar.test.ts` já exercita contra o fixture
-(`TRUNCATE`, recarga, segunda linha em `cep_carga`). **O que fica sem prova em
-escala real é o `TRUNCATE` de 1,2 milhão de linhas dentro de transação** —
-travamento e WAL. Registrado como o que é: buraco conhecido, não conferido.
+A recarga foi feita junto com a verificação do progresso, e fechou o buraco que
+tinha ficado aberto: **`TRUNCATE` de 1,2 milhão de linhas dentro de transação
+funciona**, sem travamento visível, e o retrato antigo dá lugar ao novo sem
+instante de tabela vazia. `cep_carga` ficou com duas linhas, como desenhado.
 
-**Tempo real da carga: 352,5 s (5m53s).**
+**Tempo real: 352,5 s na primeira carga, 431,7 s na recarga.**
 
 **O CEP de teste é `01310100`, não o primeiro que vier à cabeça.** A base está
 parada em julho de 2024; um CEP recente cai em não encontrado e parece bug numa
@@ -197,9 +197,38 @@ no meio — a transação faria `ROLLBACK`, então não corrompe, mas desperdiç
 rodada inteira.
 
 Comparação honesta: o mesmo trabalho em Python levou 77 s no spike. Node com
-`yauzl` levou 4,6× mais. A causa provável é um fluxo de leitura por entrada,
-1,2 milhão de vezes, mas **isso não foi medido** — está escrito como suspeita,
-não como diagnóstico.
+`yauzl` levou 4,6× mais.
+
+### Dois números do spike que a carga real corrigiu
+
+O progresso por fase mostrou o que a medição do spike não separava:
+
+| | Spike | Carga real |
+|---|---|---|
+| leitura e conversão | 77 s (Python) | **359,1 s** (Node) |
+| gravação no banco | 6,0 s | **72,6 s** |
+
+Os 6,0 s do spike eram um `COPY` puro numa tabela vazia, sem índice para
+manter. A gravação de verdade é `TRUNCATE` de 1,2 milhão de linhas, `COPY` para
+a temporária e `INSERT ... DISTINCT ON` numa tabela com chave primária — doze
+vezes mais. O número do spike não estava errado; estava medindo outra coisa, e é
+o tipo de comparação que engana quem só lê a tabela.
+
+### Suspeita sobre os 4,6×, com gatilho
+
+**É suspeita, não diagnóstico.** Duas observações, nenhuma investigada:
+
+1. Um fluxo de leitura por entrada, aberto e fechado 1,2 milhão de vezes.
+2. **O ritmo piora ao longo da carga**: os primeiros 50 mil levaram 12,2 s e os
+   últimos 50 mil levaram 22,2 s, quase o dobro. Um custo por entrada constante
+   não faria isso. O suspeito mais óbvio é o vetor de CSV crescendo até 1,2
+   milhão de strings e a pressão de coleta de lixo que vem junto — mas ninguém
+   mediu, e "o suspeito mais óbvio" é exatamente como se erra diagnóstico.
+
+**Gatilho:** se alguém precisar rodar a carga com frequência — mais de uma vez
+por trimestre, ou dentro de um deploy — aí investiga. Hoje é operação anual, e
+seis a sete minutos com progresso visível é aceitável. É gatilho de **proxy de
+dor**, que erra para tarde: a dor chega quando alguém já estiver esperando.
 
 ## Fonte externa: a base de CEP do OpenCEP
 
