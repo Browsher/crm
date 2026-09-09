@@ -55,11 +55,15 @@ describe('cep: ninguém escreve pela aplicação', () => {
   }
 })
 
-describe('cep_carga: inalcançável pela aplicação', () => {
-  test('SELECT é 42501', async () => {
-    await expect(
-      banco.comoUsuario(vendedor, (e) => e('SELECT versao FROM cep_carga')),
-    ).rejects.toMatchObject({ code: '42501' })
+// A 0014 concedeu SELECT em cep_carga a app_usuario, com política gestor-só,
+// porque o relatório de importação cita a data da base. O vendedor continua
+// sem ver — mas agora por RLS, e não por falta de GRANT. A diferença é
+// observável: era 42501, virou zero linhas. Quem lê é conferido em
+// tests/integracao/empresas.test.ts, que tem gestor.
+describe('cep_carga: fora do alcance do vendedor', () => {
+  test('SELECT devolve zero linhas, barrado pela política', async () => {
+    const r = await banco.comoUsuario(vendedor, (e) => e('SELECT versao FROM cep_carga'))
+    expect(r.linhas).toEqual([])
   })
 
   test('a dona lê: a tabela existe e o teste acima não passou por ausência', async () => {
