@@ -204,9 +204,39 @@ ALTER TABLE empresa ADD COLUMN busca text GENERATED ALWAYS AS
   (sem_acento(razao_social || ' ' || coalesce(nome_fantasia, ''))) STORED;
 ```
 
-`ADD COLUMN ... GENERATED ... STORED` reescreve a tabela. Com as dezenas ou
-milhares de linhas que existirão entre uma fatia e outra, isso é barato — e é o
-preço de não criar a maquinaria antes do consumidor.
+### O custo do `ADD COLUMN ... GENERATED`, com número
+
+`ADD COLUMN ... GENERATED ... STORED` **reescreve a tabela inteira**, segurando
+`ACCESS EXCLUSIVE` durante toda a reescrita — quem tenta ler `empresa` nesse
+intervalo espera. Então o custo real não é o tempo do comando: é por quanto
+tempo a tabela fica indisponível.
+
+O número tem que estar escrito **antes**, senão ele aparece quando alguém já
+estiver esperando o `ALTER` terminar. Medido em 2026-09-09 no container
+(`postgres:17`), com a tabela na forma da `0014` e texto acentuado de verdade:
+
+| Linhas | Reescrita | Tamanho da tabela |
+|---|---|---|
+| 10 mil | 129 ms | — |
+| 100 mil | 792 ms | — |
+| 1 milhão | 5,6 s | 328 MB |
+
+Linear, cerca de **5,6 µs por linha**.
+
+**A leitura:** até **100 mil linhas** a reescrita é sub-segundo e ninguém
+percebe — é trivial, e continua trivial mesmo que a `empresas.1` demore meses.
+Como uma importação carrega no máximo 5.000 linhas, chegar lá são vinte
+importações cheias.
+
+**Acima de 500 mil linhas** (~3 s de tabela travada) o `ALTER` deixa de ser um
+comando qualquer e vira janela de manutenção: aplicar fora do horário de uso, e
+avisar. **Acima de 1 milhão**, reconsiderar a forma — coluna comum preenchida em
+lotes e depois trocada por gerada custa mais trabalho e não trava a tabela.
+
+**O que a medição não cobre, e é honesto dizer:** foi feita em disco local, no
+Postgres 17. Produção é Railway, 18.6, com disco de rede. O tempo lá é
+plausivelmente maior — a ordem de grandeza vale, o número exato não. Se a
+`empresas.1` chegar com a tabela já grande, medir antes de aplicar.
 
 ### Medições de 2026-09-09
 
@@ -561,6 +591,7 @@ a busca com e sem acento, e a paginação.
 | Base de CEP defasada | `empresas` | 8% dos CEPs distintos não encontrados | medição | — |
 | `empresas_no_endereco` ausente | `empresas` | a base voltar a vir da Receita | evento observável | — |
 | Empresa cadastrada só visível por `psql` | `empresas` | a própria `empresas.1` | evento observável | — |
+| Reescrita da `0015` vira janela de manutenção | `empresas` | `empresa` acima de 500 mil linhas quando a `0015` for aplicada | medição | — |
 | Sem índice GIN em `busca` | `empresas.1` | 300 ms por `EXPLAIN ANALYZE`, ou 20 mil linhas | medição | — |
 | `sem_acento` `IMMUTABLE` pode mentir | `empresas.1` | troca de versão maior do Postgres | evento observável | — |
 
