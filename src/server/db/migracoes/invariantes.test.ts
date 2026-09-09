@@ -17,13 +17,20 @@ const sao = (): Estado => ({
     { schema: 'public', nome: 'sessoes_encerrar_de', temSearchPath: true },
     { schema: 'public', nome: 'usuario_situacao_definir', temSearchPath: true },
   ],
-  funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'],
+  funcoesDeAcesso: [
+    'public.usuario_atual', 'public.pode_ler', 'public.eh_gestor',
+    'public.pode_escrever', 'public.senha_provisoria_de',
+  ],
   papeis: ['app_conexao', 'app_usuario'],
   conexao: { rolsuper: false, rolbypassrls: false, rolconnlimit: 20, dona: 0, herdaDe: [] },
   migracaoAlcancavelPor: [],
   privilegiosDeConexaoEmAutenticacao: [],
   politicasEmAutenticacao: [],
-  funcoesDeUsuarioEmAutenticacao: [{ nome: 'credencial_definir', executaAppUsuario: true }],
+  funcoesConcedidasAAppUsuario: [
+    'public.credencial_definir', 'public.eh_gestor', 'public.pode_escrever', 'public.pode_ler',
+    'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
+  ],
+  funcoesExecutaveisPorPublico: [],
 })
 
 const umaViolacao = (estado: Estado, padrao: RegExp) => {
@@ -70,8 +77,8 @@ describe('avaliar', () => {
 
   test('função de acesso ausente é violação, não verde', () => {
     const e = sao()
-    e.funcoesDeAcesso = ['usuario_atual', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de']
-    umaViolacao(e, /função de acesso ausente: pode_ler/)
+    e.funcoesDeAcesso = e.funcoesDeAcesso.filter((n) => n !== 'public.pode_ler')
+    umaViolacao(e, /função de acesso ausente: public\.pode_ler/)
   })
 
   test.each([
@@ -88,8 +95,8 @@ describe('avaliar', () => {
 
   test('pode_escrever ausente é violação', () => {
     const e = sao()
-    e.funcoesDeAcesso = ['usuario_atual', 'pode_ler', 'eh_gestor', 'senha_provisoria_de']
-    umaViolacao(e, /função de acesso ausente: pode_escrever/)
+    e.funcoesDeAcesso = e.funcoesDeAcesso.filter((n) => n !== 'public.pode_escrever')
+    umaViolacao(e, /função de acesso ausente: public\.pode_escrever/)
   })
 
   test('app_conexao com privilégio de tabela em autenticacao', () => {
@@ -110,27 +117,27 @@ describe('avaliar', () => {
     umaViolacao(e, /_migracao alcançável por app_usuario/)
   })
 
-  test('função definidora de public tocando autenticacao com EXECUTE para app_usuario fora da lista', () => {
+  test('definidora concedida a app_usuario fora da lista, mesmo sem tocar autenticacao', () => {
     const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao.push({ nome: 'intrusa', executaAppUsuario: true })
-    umaViolacao(e, /não está registrada: intrusa/)
+    e.funcoesConcedidasAAppUsuario.push('public.atalho')
+    umaViolacao(e, /concedida a app_usuario e não registrada: public\.atalho/)
   })
 
-  test('função tocando autenticacao sem EXECUTE para app_usuario e fora da lista não é violação', () => {
+  test('definidora concedida em outro schema também é acusada', () => {
     const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao.push({ nome: 'interna', executaAppUsuario: false })
-    expect(avaliar(e)).toEqual([])
+    e.funcoesConcedidasAAppUsuario.push('relatorios.espia')
+    umaViolacao(e, /concedida a app_usuario e não registrada: relatorios\.espia/)
   })
 
-  test('função registrada ausente é violação, não verde', () => {
+  test('função registrada ausente ou sem GRANT é violação, não verde', () => {
     const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao = []
-    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: credencial_definir/)
+    e.funcoesConcedidasAAppUsuario = e.funcoesConcedidasAAppUsuario.filter((n) => n !== 'public.eh_gestor')
+    umaViolacao(e, /registrada e ausente ou sem GRANT: public\.eh_gestor/)
   })
 
-  test('função registrada sem EXECUTE é violação', () => {
+  test('função de schema de aplicação executável por PUBLIC', () => {
     const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao[0].executaAppUsuario = false
-    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: credencial_definir/)
+    e.funcoesExecutaveisPorPublico = ['public.definir_auditoria']
+    umaViolacao(e, /executável por PUBLIC: public\.definir_auditoria/)
   })
 })

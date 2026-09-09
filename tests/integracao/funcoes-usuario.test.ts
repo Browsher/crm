@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { entrar } from '@/src/server/autenticacao/entrar'
 import { gerarHash } from '@/src/server/autenticacao/senha'
 import { criarSessao, hashDoToken, lerSessao } from '@/src/server/autenticacao/sessao'
-import { FUNCOES_DE_USUARIO_EM_AUTENTICACAO } from '@/src/server/db/migracoes/invariantes'
+import { FUNCOES_CONCEDIDAS_A_APP_USUARIO } from '@/src/server/db/migracoes/invariantes'
 import { chamar } from '@/src/server/db/sem-identidade'
 import { criarBancoDeTeste, criarUsuario, criarUsuarioComSenha, type BancoDeTeste } from './ajuda'
 
@@ -20,7 +20,7 @@ afterAll(async () => {
 })
 
 const definir = (quem: string, alvo: string, hash: string) =>
-  banco.comoUsuario(quem, (e) => e<{ credencial_definir: boolean }>('SELECT credencial_definir($1, $2)', [alvo, hash]))
+  banco.comoUsuario(quem, (e) => e<{ credencial_definir: string }>('SELECT credencial_definir($1, $2)', [alvo, hash]))
 const situacao = (quem: string, alvo: string, ativo: boolean) =>
   banco.comoUsuario(quem, (e) =>
     e<{ usuario_situacao_definir: string }>('SELECT usuario_situacao_definir($1, $2)', [alvo, ativo]),
@@ -192,11 +192,13 @@ describe('lista fechada', () => {
     ])
   })
 
-  test('as listas são uma: constante = definidoras de public que tocam autenticacao com EXECUTE para app_usuario', async () => {
+  test('as listas são uma: constante = toda definidora concedida a app_usuario, em qualquer schema', async () => {
     const r = await banco.sql<{ nome: string }>(`
-      SELECT p.proname AS nome FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public' AND p.prosecdef AND p.prosrc LIKE '%autenticacao.%'
-        AND has_function_privilege('app_usuario', p.oid, 'EXECUTE') ORDER BY 1`)
-    expect(r.map((f) => f.nome)).toEqual([...FUNCOES_DE_USUARIO_EM_AUTENTICACAO].sort())
+      SELECT n.nspname || '.' || p.proname AS nome
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+        AND p.prosecdef AND has_function_privilege('app_usuario', p.oid, 'EXECUTE')
+      ORDER BY 1`)
+    expect(r.map((f) => f.nome)).toEqual([...FUNCOES_CONCEDIDAS_A_APP_USUARIO].sort())
   })
 })
