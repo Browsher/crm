@@ -77,6 +77,7 @@ Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
 | precisar corrigir dado de empresa já cadastrada (sem tela de edição) | proxy de dor | tarde | **novo em 2026-09-09** |
 | 8% dos CEPs distintos de uma importação real não encontrados | medição | — | **novo em 2026-09-09**; fecha o X que a spec da `cep` deixou aberto |
 | a base de empresas voltar a vir da Receita (`empresas_no_endereco`) | evento observável | — | **novo em 2026-09-09** |
+| o vendedor precisar filtrar ou priorizar por atividade (CNAE e `atividade_categoria` ausentes) | proxy de dor | tarde | **novo em 2026-09-09**; a premissa que os cortou é falsa — ver "Fatia empresas: a coluna Atividade existe na planilha real" |
 | a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **fechado em 2026-09-09 pela fatia `empresas.2`**: a listagem `/empresas` existe. Durou duas fatias, porque a `empresas.1` entrou entre uma e outra |
 | `EXPLAIN ANALYZE` da busca de `/empresas` acima de 300 ms, ou `empresa` acima de 20 mil linhas (índice GIN em `busca`) | medição | — | **novo em 2026-09-09**; 300 ms medidos no banco, não na requisição (R-017) |
 | troca de versão maior do Postgres (`sem_acento` `IMMUTABLE` pode mentir) | evento observável | — | **novo em 2026-09-09** |
@@ -566,6 +567,44 @@ fisicamente no arquivo, nos offsets 143 e 231.
 exige duas importações simultâneas do mesmo CNPJ, e reproduzir isso na tela é
 mais frágil que o teste de integração que já existe — `gravar` duas vezes, a
 segunda devolvendo `cnpj_ja_gravado` e o segundo CNPJ do lote não entrando.
+
+## Fatia empresas: a coluna "Atividade" existe na planilha real
+
+A spec cortou `cnae_codigo`, `cnae_descricao`, `atividade_categoria`, `porte`,
+`capital_social` e `data_abertura` com **um argumento só**: eles existiam no
+`crm-ch` porque vinham da Receita, e *"ninguém digita capital social à mão numa
+planilha de prospecção"*.
+
+**A premissa é falsa para atividade.** A planilha real do gestor tem uma coluna
+**"Atividade"**, e ela não é digitada: vem da origem da base. O argumento
+continua valendo para `capital_social` e `data_abertura`, que ninguém preenche
+de fato — mas foi aplicado em bloco a seis colunas quando só descrevia algumas.
+
+Registrado em 2026-09-09, depois da fatia `empresas.2`.
+
+**Por que não entra agora.** Ter o dado não é ter o uso. Uma coluna que a
+importação grava e nenhuma tela lê é a R-014 pelo lado do dado em vez do lado da
+função — e a fatia `empresas` já recusou `numero` e `complemento` por
+exatamente isso. O que falta não é a coluna: é a decisão de o que a atividade
+faz com a fila de ligação.
+
+**Gatilho: quando o vendedor precisar filtrar ou priorizar por atividade.**
+Tipo: **proxy de dor**, erra para **tarde** — que é o padrão aceito desta
+página (R-016). O custo de errar para tarde aqui é baixo e conhecido: a coluna
+vem por `ALTER TABLE`, e a planilha do gestor **continua guardando o dado no
+arquivo** enquanto isso. Reimportar preenche o passado; nada se perde por
+esperar.
+
+**O que fazer quando disparar**, e a ordem importa: primeiro olhar a coluna
+"Atividade" de uma planilha real e ver **que forma ela tem** — texto livre,
+vocabulário fechado, ou código CNAE. A spec cortou três colunas diferentes
+(`cnae_codigo`, `cnae_descricao`, `atividade_categoria`) que não são a mesma
+coisa, e qual delas volta depende do que o arquivo traz. Decidir isso pelo nome
+que o `crm-ch` usava seria repetir o erro que este registro corrige.
+
+**O modelo `.xlsx` não muda até lá.** Acrescentar a coluna ao cabeçalho literal
+que a fase 0 confere quebraria toda planilha já preenchida pelo gestor, para
+guardar dado que nenhuma tela lê.
 
 ## Fatia empresas.2: verificado à mão
 
