@@ -143,4 +143,20 @@ sobre o tipo do discriminante. O `Record` é melhor onde couber: caso novo sem
 entrada quebra o build, em vez de cair num `else` silencioso.
 Tipo: catraca (o typecheck no CI já pega)
 
+## R-013 — Branch protection sem `enforce_admins` não vale para admin
+
+O que aconteceu: o PR da fatia 0c foi mergeado enquanto o assistente trabalhava,
+e o repositório local passou para a `main`. O commit seguinte foi direto na main
+e o push passou. A proteção existia e exigia o check `catraca`, mas estava com
+`enforce_admins: false`, e o token era de admin do repositório. Em repositório de
+uma pessoa só, que é sempre admin, a proteção é decorativa até isso ser ligado:
+a R-001 estava registrada como catraca e na prática era bilhete.
+A regra: `enforce_admins` ligado, senão não é catraca. Conferir com
+`gh api repos/<dono>/<repo>/branches/main/protection --jq '.enforce_admins.enabled'`.
+Segunda parte, do mesmo tropeço: conferir a branch atual **imediatamente antes**
+de commitar, não no início da sessão. Merge e checkout acontecem por fora.
+Tipo: catraca, ligada em 2026-09-09
+Onde: branch protection da `main` (`enforce_admins: true`, `strict: true`,
+check obrigatório `catraca`)
+
 <!-- próximas regras aqui -->
