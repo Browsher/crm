@@ -13,6 +13,8 @@ const sao = (): Estado => ({
     { schema: 'public', nome: 'eh_gestor', temSearchPath: true },
     { schema: 'public', nome: 'pode_escrever', temSearchPath: true },
     { schema: 'public', nome: 'senha_provisoria_de', temSearchPath: true },
+    { schema: 'public', nome: 'credencial_definir', temSearchPath: true },
+    { schema: 'public', nome: 'sessoes_encerrar_de', temSearchPath: true },
   ],
   funcoesDeAcesso: ['usuario_atual', 'pode_ler', 'eh_gestor', 'pode_escrever', 'senha_provisoria_de'],
   papeis: ['app_conexao', 'app_usuario'],
@@ -20,6 +22,10 @@ const sao = (): Estado => ({
   migracaoAlcancavelPor: [],
   privilegiosDeConexaoEmAutenticacao: [],
   politicasEmAutenticacao: [],
+  funcoesDeUsuarioEmAutenticacao: [
+    { nome: 'credencial_definir', executaAppUsuario: true },
+    { nome: 'sessoes_encerrar_de', executaAppUsuario: true },
+  ],
 })
 
 const umaViolacao = (estado: Estado, padrao: RegExp) => {
@@ -104,5 +110,29 @@ describe('avaliar', () => {
     const e = sao()
     e.migracaoAlcancavelPor = ['app_usuario']
     umaViolacao(e, /_migracao alcançável por app_usuario/)
+  })
+
+  test('função definidora de public tocando autenticacao com EXECUTE para app_usuario fora da lista', () => {
+    const e = sao()
+    e.funcoesDeUsuarioEmAutenticacao.push({ nome: 'intrusa', executaAppUsuario: true })
+    umaViolacao(e, /não está registrada: intrusa/)
+  })
+
+  test('função tocando autenticacao sem EXECUTE para app_usuario e fora da lista não é violação', () => {
+    const e = sao()
+    e.funcoesDeUsuarioEmAutenticacao.push({ nome: 'interna', executaAppUsuario: false })
+    expect(avaliar(e)).toEqual([])
+  })
+
+  test('função registrada ausente é violação, não verde', () => {
+    const e = sao()
+    e.funcoesDeUsuarioEmAutenticacao = [{ nome: 'credencial_definir', executaAppUsuario: true }]
+    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: sessoes_encerrar_de/)
+  })
+
+  test('função registrada sem EXECUTE é violação', () => {
+    const e = sao()
+    e.funcoesDeUsuarioEmAutenticacao[1].executaAppUsuario = false
+    umaViolacao(e, /ausente ou sem EXECUTE para app_usuario: sessoes_encerrar_de/)
   })
 })

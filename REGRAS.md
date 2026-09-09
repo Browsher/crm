@@ -128,4 +128,19 @@ Onde: `.gitattributes` previne; `db:checar` recusa `\r` em migração
 
 ---
 
+## R-012 — Excluir membros de união por comparação negativa não estreita a união
+
+O que aconteceu: `mensagemDeUsuario` excluía os três motivos de `Falha`
+(`sem_permissao`, `nao_encontrado`, `email_em_uso`) com `if` seguidos e depois
+usava `r.faltas`, do outro membro da união. O teste passou; o `tsc` recusou
+com "Property 'faltas' does not exist on type 'Falha'". O discriminante de
+`Falha` já é uma união de literais num campo só, então excluir os literais
+estreita o campo para `never` e **mantém o membro** na união. Mesma família,
+logo depois: `'senhaProvisoria' in r` sobre união onde um membro não tem o
+campo devolve `unknown`, não remove o membro.
+A regra: comparação positiva do membro que tem o campo, ou `Record` completo
+sobre o tipo do discriminante. O `Record` é melhor onde couber: caso novo sem
+entrada quebra o build, em vez de cair num `else` silencioso.
+Tipo: catraca (o typecheck no CI já pega)
+
 <!-- próximas regras aqui -->

@@ -198,4 +198,30 @@ describe('conferirInvariantes', () => {
     if (!r.ok) expect(r.violacoes.join()).toMatch(/_migracao.*app_usuario/)
     await banco.sql('REVOKE ALL ON _migracao FROM app_usuario')
   })
+
+  test('nomeia função definidora de public tocando autenticacao com EXECUTE para app_usuario fora da lista (controle negativo)', async () => {
+    // Função nova nasce com EXECUTE para PUBLIC, então app_usuario a executa:
+    // é exatamente o esquecimento que a invariante precisa acusar.
+    await banco.sql(
+      "CREATE FUNCTION intrusa() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT count(*)::int FROM autenticacao.sessao'",
+    )
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/não está registrada: intrusa/)
+    } finally {
+      await banco.sql('DROP FUNCTION intrusa()')
+    }
+  })
+
+  test('nomeia função registrada sem EXECUTE para app_usuario (controle negativo)', async () => {
+    await banco.sql('REVOKE EXECUTE ON FUNCTION sessoes_encerrar_de(uuid) FROM app_usuario')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/sem EXECUTE para app_usuario: sessoes_encerrar_de/)
+    } finally {
+      await banco.sql('GRANT EXECUTE ON FUNCTION sessoes_encerrar_de(uuid) TO app_usuario')
+    }
+  })
 })

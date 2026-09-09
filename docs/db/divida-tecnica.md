@@ -35,24 +35,33 @@ quando doer. Ao resolver, apagar daqui.
   do `.env.local` para de funcionar até rodar `npm run db:senha` de novo.
   Caminho provável: harness com papel próprio (`app_conexao_teste`) ou senha
   do harness igual à do `.env.local`.
+  Observação da 0c (2026-09-08): depois de rodar a suíte inteira, a
+  `DATABASE_URL` do `.env.local` **continuou funcionando** contra o
+  container. Só o fato está registrado; a causa não foi investigada, e o
+  risco de o harness apontar para a Railway continua igual.
 - Não existe primitiva de conexão sem identidade; `obterPool` e
   `conectarVerificado` são exportados. A fronteira `comoUsuario` é convenção,
   sem lint.
-- Contrato de erro cobre só `42501` e `afetadas: 0`. Login vai precisar de
-  `23505`.
 - "Gestor não se rebaixa" tem contorno: gestor cria segundo gestor, que
-  altera o primeiro. Decidir se importa.
+  altera o primeiro. **Decidido na 0c: não importa.** É o mesmo poder que um
+  gestor já tem sobre outro (desativar, rebaixar, redefinir senha). Gestor
+  confia em quem promove. Fica como limitação conhecida, não como falha.
 - Catálogo (`pg_proc.prosrc`, `pg_policies`) legível por qualquer papel.
   Normal no Postgres; registrado como reconhecimento possível.
 
-## Fora de escopo com gatilho
+## Gatilho disparado, esperando fatia
 
 - **Faxina de `autenticacao.tentativa_login` e de sessões expiradas.** As
   duas tabelas crescem sem teto: nada apaga tentativa antiga nem sessão
-  vencida (a fatia 0b só as ignora na consulta). Gatilho: quando entrar a
-  primeira tela do gestor, ou quando `tentativa_login` passar de 50 mil
-  linhas, o que vier primeiro. Conferir com
+  vencida (a fatia 0b só as ignora na consulta). O gatilho era "a primeira
+  tela do gestor, ou 50 mil linhas em `tentativa_login`". **A primeira tela
+  do gestor entrou na 0c (2026-09-08), então o gatilho disparou.** Não foi
+  feito nesta fatia: faxina é escopo próprio, com decisão sobre onde roda
+  (cron do banco, rota agendada, ou no caminho de login). Antes de começar,
+  conferir o tamanho com
   `SELECT count(*) FROM autenticacao.tentativa_login` na Railway.
+  A 0c não piorou o quadro: `credencial_definir` e `sessoes_encerrar_de`
+  **apagam** sessões, não criam.
 
 ## Fatia 0b: verificado à mão, sem teste de render
 
@@ -134,20 +143,56 @@ harness. O resto está aqui.
 
 ### Herança para a fatia de usuários
 
-- **`credencial_definir` com `eh_gestor()` por dentro não funciona via
-  `chamar`**: `chamar` roda sem identidade, `usuario_atual()` é nulo. A função
-  precisa rodar dentro de `comoUsuario`, mas `app_usuario` não tem `USAGE`
-  em `autenticacao`. Caminho provável: função em `public`, `GRANT EXECUTE TO
-  app_usuario`, tocando `autenticacao` por dentro como definidora. Decidir no
-  brainstorm da fatia.
 - `chamar<'nome', Linha>` não amarra o tipo de retorno ao nome. Um mapa nome
   → linha fecharia.
 - `senhaAtual` sem limite de tamanho em `trocarSenha`.
-- `exigir('gestor')` existe e nenhuma página usa.
 - Matcher do proxy exclui por extensão: `/relatorio.csv` não passa pelo
   proxy. Route handler sem `exigir` fica aberta.
 - `atualizado_por` nulo quando o sistema altera `usuario`: seed e
   `senha_trocar` ficam indistinguíveis de bug na auditoria.
+
+## Fatia 0c: verificado à mão, sem teste de render
+
+Mesma regra da 0b: actions finas e JSX sem teste automático. Verificação
+manual feita em 2026-09-08 pelo usuário no navegador contra o container
+local, com a 0011 aplicada. Refazer quando mexer em `app/usuarios/**` ou em
+`app/page.tsx`.
+
+| Caminho | Verificado |
+|---|---|
+| home mostra o link "Usuários" para gestor | sim |
+| criar vendedor: senha aparece com a instrução ao lado | sim |
+| recarregar depois de criar: senha some; a lista mostra "senha provisória pendente" | sim |
+| e-mail repetido: mensagem de e-mail em uso | sim |
+| vendedor entra com a provisória e cai em `/trocar-senha` | sim |
+| vendedor em `/usuarios` cai em `/` | sim |
+| vendedor em outra aba; gestor gera nova senha; próxima navegação do vendedor cai em `/login` (delete dentro de `credencial_definir`) | sim |
+| a senha anterior do vendedor não entra; a nova provisória entra | sim |
+| vendedor em outra aba; gestor desativa; próxima navegação cai em `/login` (`sessoes_encerrar_de`) | sim |
+| desativar deixa só "Reativar"; reativar traz as três ações de volta | sim |
+| mudar papel: o alvo vê o papel novo na próxima página, sem relogar | sim |
+| aviso de único gestor aparece com um e some ao promover outro; gestor pendente em `/usuarios` vai para `/trocar-senha` | sim |
+
+Sobre a linha do `sessoes_encerrar_de`: `sessao_atual` já recusaria o
+inativo, então a tela cairia no `/login` mesmo sem o delete. Quem prova o
+delete é `funcoes-usuario.test.ts`, contando linhas em `sessao` como dona.
+
+**Gatilho para jsdom:** primeiro componente cliente que decide algo sozinho
+no cliente. `useActionState` devolvendo estado da action não conta.
+
+### Auditoria pendente da 0c
+
+- A invariante da lista fechada procura `autenticacao.` no texto da função
+  (`prosrc`). Função que chega lá por outra função escapa.
+- Gestor A gera nova senha para gestor B e entra como B. Mesmo poder que
+  desativar ou rebaixar. Se doer: gestor não redefine senha de gestor.
+- Zero gestores ativos por corrida entre dois gestores. Recuperação:
+  `db:seed:gestor`.
+- Sessão de gestor roubada cria e altera qualquer um (registrado na 0b).
+- `app/usuarios/**` inteiro sem cobertura automática: as duas actions, os
+  dois componentes cliente. Só manual.
+- `agirNaLinhaAcao` com `acao` fora da lista devolve "Ação desconhecida." e
+  nunca é alcançado pela tela: sem teste.
 
 ## Ferramental
 
