@@ -14,14 +14,16 @@ const endereco: Endereco = {
   ibge: '3550308',
 }
 
-function repoFalso(jaCadastrados: string[] = []) {
+function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } = {}) {
   const gravadas: LinhaAceita[][] = []
   const repo: RepositorioEmpresas = {
     async preparar() {
+      // semBase: cep_carga vazia E cep vazia, que é como um ambiente novo
+      // nasce — a Railway inclusive, enquanto a carga não roda lá.
       return {
         jaCadastrados: new Set(jaCadastrados),
-        enderecos: new Map([['01310100', endereco]]),
-        basePublicadaEm: '2024-07-08',
+        enderecos: opcoes.semBase ? new Map() : new Map([['01310100', endereco]]),
+        basePublicadaEm: opcoes.semBase ? null : '2024-07-08',
       }
     },
     async gravar(linhas) {
@@ -47,6 +49,7 @@ describe('analisar', () => {
         novas: 2,
         jaCadastradas: 1,
         recusadas: [],
+        cepsPedidos: 2,
         cepsNaoEncontrados: 1,
         basePublicadaEm: '2024-07-08',
       },
@@ -88,6 +91,32 @@ describe('analisar', () => {
       },
     }
     expect(await analisar(repo, bytes(AURORA))).toEqual({ ok: false, motivo: 'sem_permissao' })
+  })
+})
+
+describe('analisar: a base de CEP nao carregada', () => {
+  test('basePublicadaEm nulo e todos os ceps pedidos sem resposta', async () => {
+    const { repo } = repoFalso([], { semBase: true })
+    const r = await analisar(repo, bytes(AURORA, SEM_CEP_NA_BASE))
+    if (!r.ok) throw new Error('esperava ok')
+    expect(r.relatorio.basePublicadaEm).toBe(null)
+    expect(r.relatorio.cepsPedidos).toBe(2)
+    expect(r.relatorio.cepsNaoEncontrados).toBe(2)
+  })
+
+  test('cepsPedidos conta CEP distinto, nao linha', async () => {
+    const { repo } = repoFalso()
+    const outra = '11444777000161,Bela Luz LTDA,,,1134567890,,01310100'
+    const r = await analisar(repo, bytes(AURORA, outra))
+    if (!r.ok) throw new Error('esperava ok')
+    expect(r.relatorio.cepsPedidos).toBe(1)
+  })
+
+  test('arquivo sem nenhum CEP pede zero', async () => {
+    const { repo } = repoFalso([], { semBase: true })
+    const r = await analisar(repo, bytes(BELA))
+    if (!r.ok) throw new Error('esperava ok')
+    expect(r.relatorio.cepsPedidos).toBe(0)
   })
 })
 

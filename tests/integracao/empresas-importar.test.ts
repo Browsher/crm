@@ -97,3 +97,30 @@ describe('gravar', () => {
     expect(depois[0].n).toBe(antes[0].n)
   })
 })
+
+// O estado em que um banco novo nasce, e em que a Railway está enquanto a carga
+// não roda lá: cep_carga vazia. Vale ter contra o banco de verdade, e não só
+// contra repositório de mentira, porque o que responde é uma consulta SQL.
+describe('preparar: base de CEP nunca carregada', () => {
+  test('basePublicadaEm vem nulo quando cep_carga esta vazia', async () => {
+    const guardadas = await banco.sql<Record<string, unknown>>('SELECT * FROM cep_carga')
+    await banco.sql('DELETE FROM cep_carga')
+    try {
+      const p = await repositorioPostgres(gestor).preparar([], ['01310100'])
+      if ('motivo' in p) throw new Error(p.motivo)
+      expect(p.basePublicadaEm).toBe(null)
+      // A tabela cep continua cheia: os dois estados sao independentes, e e por
+      // isso que basePublicadaEm precisa ser lido de cep_carga e nao deduzido
+      // de "nenhum endereco resolveu".
+      expect(p.enderecos.size).toBe(1)
+    } finally {
+      for (const l of guardadas) {
+        await banco.sql(
+          `INSERT INTO cep_carga (fonte, versao, publicado_em, arquivo_sha256, linhas)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [l.fonte, l.versao, l.publicado_em, l.arquivo_sha256, l.linhas],
+        )
+      }
+    }
+  })
+})

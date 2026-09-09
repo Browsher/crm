@@ -5,7 +5,12 @@ export type Relatorio = {
   novas: number
   jaCadastradas: number
   recusadas: Recusa[]
+  // CEPs distintos que o arquivo trouxe, e quantos deles a base não resolveu.
+  cepsPedidos: number
   cepsNaoEncontrados: number
+  // Nulo significa `cep_carga` vazia, ou seja: a base nunca foi carregada
+  // neste banco. É estado diferente de "o CEP não existe na base", e a tela
+  // precisa dos dois separados — ver textoDoEndereco em mensagens.ts.
   basePublicadaEm: string | null
 }
 
@@ -48,6 +53,7 @@ async function preparar(
       novas: novas.length,
       jaCadastradas: analise.aceitas.length - novas.length,
       recusadas: analise.recusadas,
+      cepsPedidos: ceps.length,
       cepsNaoEncontrados,
       basePublicadaEm: p.basePublicadaEm,
     },

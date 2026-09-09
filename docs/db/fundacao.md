@@ -193,6 +193,26 @@ migração é imutável. `npm run db:senha -- <papel> <senha>` faz o
    de tabela de referência.
 8. Toda tabela nova entra com RLS. O runner nomeia quem ficou sem.
 
+**Recriar o banco de dev é barato em migração e caro em dado carregado.**
+`DROP DATABASE crm` + `CREATE DATABASE` + `db:aplicar` reconstrói as quinze
+migrações em segundos — e apaga junto **1,2 milhão de linhas de `cep`**, que
+levam sete a oito minutos para voltar por `db:cep:carregar`. Aconteceu em
+2026-09-09, ao corrigir a `0014` antes do merge: o banco foi recriado pensando
+só nas migrações, e a base de CEP foi embora sem ninguém notar até uma
+importação reportar todos os CEPs como não encontrados.
+
+Antes de recriar, conferir o que existe além de schema:
+
+```
+docker exec crm-postgres psql -U postgres -d crm -c "SELECT count(*) FROM cep"
+```
+
+Depois de recriar, se havia dado:
+
+```
+npm run db:cep:carregar -- <caminho-do-zip>
+```
+
 `npm run db:checar` confere as regras estáticas sem banco. O runner confere as
 invariantes de schema depois de aplicar (`src/server/db/migracoes/invariantes.ts`).
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { textoDaFalhaDeArquivo, textoDaRecusa } from './mensagens'
+import { textoDaFalhaDeArquivo, textoDaRecusa, textoDoEndereco } from './mensagens'
 
 describe('textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma', () => {
   test('notacao cientifica manda formatar a coluna', () => {
@@ -38,5 +38,41 @@ describe('textoDaFalhaDeArquivo', () => {
     const t = textoDaFalhaDeArquivo({ motivo: 'excede_limite', linhas: 7000 })
     expect(t).toContain('7000')
     expect(t).toContain('5000')
+  })
+})
+
+describe('textoDoEndereco: da a saida, nao so o diagnostico', () => {
+  const base = { novas: 3, jaCadastradas: 0, recusadas: [] }
+
+  test('base nao carregada manda rodar o carregador', () => {
+    const t = textoDoEndereco({ ...base, cepsPedidos: 2, cepsNaoEncontrados: 2, basePublicadaEm: null })
+    expect(t).toContain('não está carregada')
+    expect(t).toContain('db:cep:carregar')
+  })
+
+  // Sem CEP nenhum no arquivo, a base nao ter sido carregada nao afeta esta
+  // importacao. Avisar seria ruido numa tela que ja tem relatorio.
+  test('base nao carregada e nenhum CEP no arquivo: nao diz nada', () => {
+    expect(textoDoEndereco({ ...base, cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null })).toBe(null)
+  })
+
+  test('base carregada e tudo resolvido: nao diz nada', () => {
+    expect(
+      textoDoEndereco({ ...base, cepsPedidos: 2, cepsNaoEncontrados: 0, basePublicadaEm: '2024-07-08' }),
+    ).toBe(null)
+  })
+
+  test('base carregada com CEP nao encontrado cita a data', () => {
+    const t = textoDoEndereco({ ...base, cepsPedidos: 2, cepsNaoEncontrados: 1, basePublicadaEm: '2024-07-08' })
+    expect(t).toContain('2024-07-08')
+    expect(t).toContain('sem endereço')
+    expect(t).not.toContain('db:cep:carregar')
+  })
+
+  test('singular e plural', () => {
+    const um = textoDoEndereco({ ...base, cepsPedidos: 1, cepsNaoEncontrados: 1, basePublicadaEm: '2024-07-08' })
+    const dois = textoDoEndereco({ ...base, cepsPedidos: 2, cepsNaoEncontrados: 2, basePublicadaEm: '2024-07-08' })
+    expect(um).toContain('1 CEP não encontrado')
+    expect(dois).toContain('2 CEPs não encontrados')
   })
 })

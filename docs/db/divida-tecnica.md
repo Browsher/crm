@@ -544,6 +544,27 @@ container ficou divergente do arquivo e precisou ser recriado à mão. Uma vez.
 Depois do merge, essa saída deixa de existir — daí em diante é migração nova, e
 `DROP COLUMN` não é permitido.
 
+## Fatia empresas: o terceiro estado do CEP
+
+A spec da `cep` criou `cep_carga` para desfazer uma ambiguidade de dois estados:
+**um CEP que não resolve não existe, ou é mais novo que a base?** Apareceu um
+terceiro, na verificação manual desta fatia: **a base nunca foi carregada neste
+banco.**
+
+Ele é o mais provável em ambiente novo, e não é hipotético — a Railway está
+assim neste momento, porque a carga só rodou no container. Sem separar, uma base
+ausente vira "todos os CEPs não encontrados": verdade literal, conclusão errada,
+e manda procurar defeito nos dados quando o que falta é rodar um comando.
+
+`textoDoEndereco` em `src/features/empresas/mensagens.ts` separa os três, e a
+mensagem do caso novo **dá a saída** — cita `db:cep:carregar` —, como as
+mensagens de estrago do Excel. `Relatorio` ganhou `cepsPedidos` para distinguir
+"a base não está carregada e isso importa" de "não há CEP nenhum neste arquivo",
+onde avisar seria ruído.
+
+Foi achado por uso, não por revisão: a base tinha sumido de verdade, por causa
+da recriação do banco de dev registrada em `fundacao.md`.
+
 ## Fatia empresas: o estado inicial da tela de importar
 
 `/empresas/importar` abria no terceiro estado — "empresas importadas", sem

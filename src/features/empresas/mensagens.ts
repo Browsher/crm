@@ -1,5 +1,6 @@
 import { LIMITE_DE_LINHAS, type FalhaDeArquivo, type MotivoDeCampo, type Recusa } from './planilha'
 import type { Motivo } from './repositorio'
+import type { Relatorio } from './servico'
 
 // Record, não if encadeado: motivo novo sem texto quebra o build.
 const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
@@ -51,4 +52,27 @@ export function textoDaFalhaDeArquivo(f: FalhaDeArquivo): string {
     case 'excede_limite':
       return `O arquivo tem ${f.linhas} linhas e o limite é ${LIMITE_DE_LINHAS}. Divida em arquivos menores.`
   }
+}
+
+// A linha sobre endereço no relatório, ou null quando não há o que dizer.
+//
+// Três estados, e a fatia `cep` só previa dois. Ela criou `cep_carga` para
+// desfazer a ambiguidade "um CEP que não resolve não existe, ou é mais novo que
+// a base?". Apareceu um terceiro: **a base nunca foi carregada neste banco** —
+// e ele é o mais provável em ambiente novo, porque é como a Railway nasce.
+//
+// Sem separar, uma base ausente vira "todos os CEPs não encontrados", que é
+// verdade literal e conclusão errada: manda procurar defeito nos dados quando o
+// que falta é rodar um comando.
+//
+// A mensagem dá a saída, não só o diagnóstico, como as da fase 1.
+export function textoDoEndereco(r: Relatorio): string | null {
+  if (r.cepsPedidos === 0) return null
+  if (r.basePublicadaEm === null) {
+    return 'A base de CEP não está carregada neste banco — rode `npm run db:cep:carregar`. Nenhum endereço será resolvido, e as empresas entram sem endereço.'
+  }
+  if (r.cepsNaoEncontrados === 0) return null
+  const quantos =
+    r.cepsNaoEncontrados === 1 ? '1 CEP não encontrado' : `${r.cepsNaoEncontrados} CEPs não encontrados`
+  return `${quantos} na base de ${r.basePublicadaEm}. Essas empresas entram sem endereço.`
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { textoDaRecusa } from '@/src/features/empresas/mensagens'
+import { textoDaRecusa, textoDoEndereco } from '@/src/features/empresas/mensagens'
 import { importarAcao, type EstadoImportar } from './acao'
 
 // Aqui, e não em acao.ts: arquivo com 'use server' só exporta função, senão o
@@ -48,12 +48,7 @@ export function FormularioImportar() {
             <strong>{r.novas}</strong> novas · <strong>{r.jaCadastradas}</strong> já cadastradas ·{' '}
             <strong>{r.recusadas.length}</strong> recusadas
           </p>
-          {r.cepsNaoEncontrados > 0 && (
-            <p>
-              {r.cepsNaoEncontrados} {r.cepsNaoEncontrados === 1 ? 'CEP não encontrado' : 'CEPs não encontrados'}
-              {r.basePublicadaEm && ` na base de ${r.basePublicadaEm}`}. Essas empresas entram sem endereço.
-            </p>
-          )}
+          {textoDoEndereco(r) && <p>{textoDoEndereco(r)}</p>}
           {r.recusadas.length > 0 && (
             <ul className="flex flex-col gap-1 text-red-700">
               {r.recusadas.map((rec) => (
