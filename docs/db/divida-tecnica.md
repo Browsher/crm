@@ -3,6 +3,9 @@
 Achados da auditoria de 2026-09-08 que não entraram na fatia 0a.1. Pegar
 quando doer. Ao resolver, apagar daqui.
 
+O que tem gatilho próprio está na seção "Gatilhos", com o tipo de cada um.
+Leia a lição de lá antes de registrar gatilho novo em qualquer lugar.
+
 ## Invariantes sem teste
 
 - `PG_SSL=off` é aceito para qualquer host. Nada impede desligar TLS contra
@@ -49,19 +52,93 @@ quando doer. Ao resolver, apagar daqui.
 - Catálogo (`pg_proc.prosrc`, `pg_policies`) legível por qualquer papel.
   Normal no Postgres; registrado como reconhecimento possível.
 
-## Gatilho disparado, esperando fatia
+## Gatilhos
 
-- **Faxina de `autenticacao.tentativa_login` e de sessões expiradas.** As
-  duas tabelas crescem sem teto: nada apaga tentativa antiga nem sessão
-  vencida (a fatia 0b só as ignora na consulta). O gatilho era "a primeira
-  tela do gestor, ou 50 mil linhas em `tentativa_login`". **A primeira tela
-  do gestor entrou na 0c (2026-09-08), então o gatilho disparou.** Não foi
-  feito nesta fatia: faxina é escopo próprio, com decisão sobre onde roda
-  (cron do banco, rota agendada, ou no caminho de login). Antes de começar,
-  conferir o tamanho com
-  `SELECT count(*) FROM autenticacao.tentativa_login` na Railway.
-  A 0c não piorou o quadro: `credencial_definir` e `sessoes_encerrar_de`
-  **apagam** sessões, não criam.
+Lição de 2026-09-09, do gatilho da faxina que disparou sem problema:
+**gatilho é medição ou é proxy, e proxy tem que dizer para que lado erra.**
+Medição conta a coisa com que você se importa. Proxy conta outra coisa,
+apostando que anda junto com ela. Num produto que ainda não tem uso, todo
+proxy de uso anda solto: ou dispara cedo, e gatilho que dispara sem problema
+treina a ignorar gatilho, ou não dispara nunca, e a dívida fica invisível.
+Gatilho novo nasce com o tipo escrito e com o erro esperado.
+
+| Gatilho | Tipo | Erra para | Situação |
+|---|---|---|---|
+| `tentativa_login` acima de 10 mil linhas, ou a fatia de limite global de login | medição | — | **novo em 2026-09-09**; 0 linhas hoje |
+| mil linhas na tabela da entidade, ou a primeira reclamação de tela lenta (paginação de `listar()`) | medição | — | **novo em 2026-09-09** |
+| "refazer quando mexer em `app/**`" (conferência manual das fatias 0b e 0c) | evento observável | — | ativo e confiável: a condição sai no `git diff` |
+| "primeiro componente cliente que decide algo sozinho" (jsdom) | proxy de complexidade | nunca | ativo, com substituto candidato em "Fatia 0c: auditoria" |
+| "pegar quando doer" (o padrão desta página) | proxy de dor | tarde | ativo, e é o padrão de tudo que não tem gatilho próprio |
+| "primeira tela do gestor" (faxina) | proxy de uso | cedo | **aposentado em 2026-09-09**: disparou com a tabela vazia |
+| "primeira entidade com volume real" (paginação de `listar()`) | proxy de uso | cedo | **aposentado em 2026-09-09**: `empresas` o dispararia sem volume nenhum |
+
+As três primeiras são as que se pode confiar sem vigiar: duas contam o que
+importa, a terceira é um evento que aparece no diff. As duas de proxy que
+continuam ativas precisam ser **relidas** de tempos em tempos, não esperadas —
+"pegar quando doer" porque a dor chega depois do estrago, e o do jsdom porque
+o padrão adotado empurra toda decisão para o servidor e ele pode nunca falar.
+
+Os dois aposentados eram o mesmo erro escrito duas vezes: proxy de uso num
+produto sem uso. Um disparou cedo e quase custou uma fatia inteira; o outro
+dispararia na fatia seguinte, `empresas`, pelo mesmo motivo.
+
+### Medição de 2026-09-09 (Railway, `DATABASE_URL_ADMIN`, leitura pura)
+
+| Tabela | Linhas | Falhas / vencidas | Mais antiga | Tamanho |
+|---|---|---|---|---|
+| `autenticacao.tentativa_login` | 0 | 0 | — | 32 kB |
+| `autenticacao.sessao` | 0 | 0 | — | 32 kB |
+| `public.usuario` | 1 (o gestor semeado) | — | — | — |
+
+O banco de produção nunca recebeu um login. O gatilho "primeira tela do
+gestor" era proxy para "o produto está em uso", e o produto não está.
+Proxy de uso não substitui contagem de uso.
+
+### Faxina de `autenticacao.tentativa_login` — esperando fatia
+
+A tabela cresce por INSERT em toda tentativa e só perde linha quando alguém
+acerta a senha daquele e-mail: `registrar_tentativa_login` apaga as falhas do
+e-mail no sucesso. Tentativa em e-mail que não existe nunca é apagada, e é
+justamente a que um atacante produz de graça.
+
+**Gatilho novo:** `tentativa_login` acima de 10 mil linhas, **ou** a fatia de
+limite global de login, o que vier primeiro. Conferir com
+`SELECT count(*) FROM autenticacao.tentativa_login` na Railway.
+
+Dez mil não é limite de desempenho — os índices `(email, ocorreu_em DESC)` e
+`(origem, ocorreu_em DESC)` aguentam ordens de grandeza mais, e as consultas
+só olham 15 minutos. É o número que separa "ninguém usa isto" de "isto está
+em uso ou sob ataque".
+
+O "ou" com a fatia de limite global não é conveniência: faxinar sozinho é
+enxugar gelo. Quem consegue encher a tabela derruba a CPU antes, porque cada
+tentativa custa um `scrypt` de ~800ms e 128 MiB sem teto global (ver
+"Atacante só com navegador"). As duas andam na mesma fatia ou nenhuma resolve.
+
+Quando a fatia vier, ela carrega uma decisão que hoje não tem resposta: onde
+a faxina roda. Cron do banco supõe `pg_cron` e um papel para ele; rota
+agendada supõe um agendador da plataforma; no caminho de login supõe que
+alguém faz login. `fundacao.md` fecha com "Aplicação na Railway é manual", ou
+seja, a forma do deploy ainda não está decidida. Decidir onde a faxina roda
+antes disso é chutar e refazer.
+
+### Sessões vencidas — limitação conhecida, sem gatilho
+
+Estava empacotada com a faxina acima por conveniência de anotação, não por
+desenho. São problemas diferentes:
+
+- `sessao` cresce **uma linha por login**, não por tentativa. Não há caminho
+  adversarial barato para inflá-la.
+- A linha vencida é inerte: `sessao_atual` filtra por `expira_em > now()`,
+  então o `token_hash` guardado não abre nada.
+- `sessao_encerrar`, `senha_trocar`, `credencial_definir` e
+  `sessoes_encerrar_de` **apagam** linhas. Só o vencimento por tempo deixa
+  resto.
+
+Para uma equipe pequena são dezenas de linhas por mês, inertes. Fica como
+limitação conhecida. Se um dia entrar uma tela de "meus dispositivos" ou
+"sair de todos", a faxina de vencidas entra junto, de graça, porque a tela já
+vai varrer a tabela por usuário.
 
 ## Fatia 0b: verificado à mão, sem teste de render
 
@@ -119,7 +196,8 @@ harness. O resto está aqui.
   e-mail inexistente. Limite é por e-mail e por origem; com muitos IPs e
   e-mails inventados, não há limite global.
 - `tentativa_login` cresce 30 linhas por IP a cada 15 minutos até o bloqueio.
-  Já tem gatilho de faxina acima.
+  Gatilho da faxina na seção "Gatilhos", amarrado a esta CPU sem teto: as duas
+  andam na mesma fatia.
 - Quem divide IP com a equipe (CGNAT, escritório) bloqueia a origem da equipe
   com 30 falhas, sem conhecer senha.
 - `x-forwarded-for` confiável só se o host sobrescrever. A Vercel sobrescreve;
@@ -187,7 +265,9 @@ oferecer a ação naquele estado. Nenhuma apareceu. As duas mensagens existem
 para requisição forjada e para corrida entre duas abas.
 
 **Gatilho para jsdom:** primeiro componente cliente que decide algo sozinho
-no cliente. `useActionState` devolvendo estado da action não conta.
+no cliente. `useActionState` devolvendo estado da action não conta. É proxy
+de complexidade e erra para "nunca" — ver a seção "Gatilhos" e o achado da
+auditoria da 0c logo abaixo.
 
 ## Fatia 0c: auditoria de 2026-09-08
 
@@ -243,6 +323,9 @@ chamar `credencial_definir`, em vez de forjar sessão e chamar `senha_trocar`.
 
 ### Herdado, sem gatilho
 
+Duas exceções ao título, marcadas no lugar: `listar()` e o jsdom ganharam
+gatilho na revisão de 2026-09-09. Estão aqui porque foi aqui que nasceram.
+
 - `repositorioPostgres(gestorId)` confia no id que recebe. O único elo com a
   sessão real é o `exigir` logo acima, em `acoes.ts`. Nada no tipo impede uma
   feature futura de montar o repositório com id arbitrário.
@@ -251,12 +334,23 @@ chamar `credencial_definir`, em vez de forjar sessão e chamar `senha_trocar`.
   nome degrada a tradução para exceção, em silêncio.
 - `agirNaLinhaAcao` despacha quatro verbos por string de formulário. O
   `Exclude<Acao, 'nova_senha'>` já é sinal de que a forma não escala.
-- `listar()` traz tudo, sem paginação nem busca. A primeira entidade com
-  volume real não pode copiar este repositório.
+- `listar()` traz tudo, sem paginação nem busca. O gatilho registrado era "a
+  primeira entidade com volume real não pode copiar este repositório", e ele é
+  **proxy de uso, do mesmo tipo que o da faxina**: erra para cedo. `empresas` é
+  a próxima fatia e vai parecer que dispara, mas um CRM que ainda não teve um
+  login não tem entidade com volume real — vai ter dezenas de linhas, que
+  `listar()` serve sem reclamar. Copiar o repositório na `empresas` está
+  liberado; o que não pode é copiá-lo **e** apagar este item. Gatilho de
+  medição no lugar: **mil linhas na tabela da entidade, ou a primeira
+  reclamação de tela lenta.**
 - **O gatilho do jsdom pode nunca disparar.** A condição é "componente
   cliente que decide algo sozinho", e o padrão adotado empurra toda decisão
   para o servidor. Na prática `app/` pode crescer indefinidamente sem teste
-  automático. Reconsiderar a condição, não só esperar por ela.
+  automático. Reconsiderar a condição, não só esperar por ela. É o proxy que
+  erra para o outro lado: o da faxina disparou cedo e fez barulho; este fica
+  mudo e a dívida some de vista. Substituto candidato, de medição: **arquivos
+  em `app/**` acima de vinte, ou a segunda verificação manual seguida que
+  passar de dez linhas na tabela.**
 - Zero gestores ativos por corrida entre dois gestores. Recuperação:
   `db:seed:gestor`.
 - A invariante cataloga só definidoras. Função **não** definidora com `GRANT`
