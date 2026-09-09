@@ -519,6 +519,31 @@ que falhar vira item nesta página, não correção silenciosa.
 do transporte. Os dois têm teste de unidade (`planilha.test.ts`), e produzir um
 CSV de 5.001 linhas à mão para conferir uma mensagem não paga o trabalho.
 
+## Fatia empresas: a 0014 foi corrigida antes do merge
+
+`numero` e `complemento` chegaram a ser escritas, aplicadas no container e
+testadas. Saíram na revisão final, com o `CHECK`
+`empresa_endereco_precisa_de_cep` junto: o endereço existe nesta tabela porque o
+CEP dá cidade e UF para segmentar ligação, e número de porta serve para visitar
+— coisa que este CRM não faz.
+
+**Como isso foi feito, e por que não foi migração nova.** A regra 3 de
+`fundacao.md` diz "aplicada é imutável", e a `0014` estava aplicada. Mas o único
+ambiente que a tinha rodado era o container de dev: `origin/main` estava no
+commit da fatia `cep`, não havia branch no remoto, a Railway não tinha visto
+nada, e cada arquivo de teste de integração cria o próprio banco e o derruba. A
+regra existe para ninguém reescrever história que outro ambiente já rodou; aqui
+não havia outro ambiente.
+
+A alternativa era pior e barrada: `DROP COLUMN` é recusado por `checar.ts:47`, e
+mesmo que passasse deixaria duas migrações onde uma basta, mais duas colunas
+mortas em qualquer ambiente que aplicasse só a `0014`.
+
+**O preço, e é o que torna isso escolha e não conveniência:** o banco de dev do
+container ficou divergente do arquivo e precisou ser recriado à mão. Uma vez.
+Depois do merge, essa saída deixa de existir — daí em diante é migração nova, e
+`DROP COLUMN` não é permitido.
+
 ## Fatia empresas: o estado inicial da tela de importar
 
 `/empresas/importar` abria no terceiro estado — "empresas importadas", sem

@@ -3,7 +3,7 @@ import { normalizarCnpj, pareceNotacaoCientifica, validarCnpj } from './cnpj'
 import { lerCsv } from './csv'
 import { normalizarTelefone } from './telefone'
 
-export const CABECALHO = 'cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,numero,complemento'
+export const CABECALHO = 'cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep'
 export const LIMITE_DE_LINHAS = 5000
 
 export type LinhaAceita = {
@@ -15,8 +15,6 @@ export type LinhaAceita = {
   telefone: string
   email: string | null
   cep: string | null
-  numero: string | null
-  complemento: string | null
 }
 
 export type MotivoDeCampo =
@@ -30,7 +28,6 @@ export type MotivoDeCampo =
   | 'email_forma'
   | 'cep_curto'
   | 'cep_forma'
-  | 'endereco_sem_cep'
   | 'colunas_de_menos'
 
 export type Recusa =
@@ -77,7 +74,7 @@ const recusa = (linha: number, motivo: MotivoDeCampo, valor: string): Campo => (
 // causa é a formatação da coluna.
 function analisarLinha(campos: string[], linha: number): LinhaAceita | Campo {
   if (campos.length < COLUNAS.length) return recusa(linha, 'colunas_de_menos', String(campos.length))
-  const [bCnpj, bRazao, bFantasia, bContato, bTelefone, bEmail, bCep, bNumero, bComplemento] = campos
+  const [bCnpj, bRazao, bFantasia, bContato, bTelefone, bEmail, bCep] = campos
 
   if (vazio(bCnpj)) return recusa(linha, 'cnpj_vazio', bCnpj.trim())
   if (pareceNotacaoCientifica(bCnpj)) return recusa(linha, 'cnpj_notacao_cientifica', bCnpj.trim())
@@ -103,12 +100,6 @@ function analisarLinha(campos: string[], linha: number): LinhaAceita | Campo {
     if (cep === null) return recusa(linha, /^[0-9]{7}$/.test(brutoCep) ? 'cep_curto' : 'cep_forma', brutoCep)
   }
 
-  const numero = ouNulo(bNumero)
-  const complemento = ouNulo(bComplemento)
-  if (cep === null && (numero !== null || complemento !== null)) {
-    return recusa(linha, 'endereco_sem_cep', numero ?? complemento ?? '')
-  }
-
   return {
     linha,
     cnpj,
@@ -118,21 +109,10 @@ function analisarLinha(campos: string[], linha: number): LinhaAceita | Campo {
     telefone,
     email,
     cep,
-    numero,
-    complemento,
   }
 }
 
-const COMPARAVEIS = [
-  'razaoSocial',
-  'nomeFantasia',
-  'contatoNome',
-  'telefone',
-  'email',
-  'cep',
-  'numero',
-  'complemento',
-] as const
+const COMPARAVEIS = ['razaoSocial', 'nomeFantasia', 'contatoNome', 'telefone', 'email', 'cep'] as const
 
 // Duplicata idêntica é copiar e colar sem querer, e dá para apagar uma sem
 // pensar. Divergente exige alguém decidir qual está certa — sem o nome do campo

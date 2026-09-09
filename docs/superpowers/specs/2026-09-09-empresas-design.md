@@ -115,23 +115,18 @@ CREATE TABLE empresa (
                             AND email ~ '^[^[:space:]@]+@[^[:space:]@]+$'),
 
   cep           text CHECK (cep ~ '^[0-9]{8}$'),
-  numero        text CHECK (btrim(numero) <> ''),
-  complemento   text CHECK (btrim(complemento) <> ''),
 
   criado_em      timestamptz NOT NULL DEFAULT now(),
   criado_por     uuid REFERENCES usuario (id) ON DELETE RESTRICT,
   atualizado_em  timestamptz,
-  atualizado_por uuid REFERENCES usuario (id) ON DELETE RESTRICT,
-
-  CONSTRAINT empresa_endereco_precisa_de_cep
-    CHECK (cep IS NOT NULL OR (numero IS NULL AND complemento IS NULL))
+  atualizado_por uuid REFERENCES usuario (id) ON DELETE RESTRICT
 );
 
 CREATE TRIGGER empresa_auditoria BEFORE INSERT OR UPDATE ON empresa
 FOR EACH ROW EXECUTE FUNCTION definir_auditoria();
 ```
 
-Nove colunas de conteúdo e o quarteto de auditoria preenchido pelo gatilho
+Sete colunas de conteúdo e o quarteto de auditoria preenchido pelo gatilho
 `definir_auditoria()` da `0003` — nunca pelo TypeScript. A coluna `busca` chega
 na `0015`, junto com a busca que a consome.
 
@@ -155,16 +150,14 @@ mandar mensagem.
 É a mesma regra da fatia `cep`: `''` e `NULL` significando a mesma coisa em
 colunas diferentes é dívida que nasce barata e cobra caro.
 
-**`empresa_endereco_precisa_de_cep`.** Número e complemento sem CEP são texto
-órfão — "sala 302" de lugar nenhum. Uma linha de `CHECK` fecha a porta.
-
 ### O que não entra, e por quê
 
 **Endereço resolvido** (`logradouro`, `bairro`, `cidade`, `estado`): a spec de
 `cep` já decidiu — vêm de `LEFT JOIN` ou de `resolverCeps`. Guardar cópia seria
-derivado com duas fontes de verdade. `empresa.complemento` significa "sala 302"
-e não colide com `cep.faixa`, que é o trecho da rua; a fatia `cep` renomeou a
-coluna justamente para isso.
+derivado com duas fontes de verdade. A fatia `cep` renomeou o `complemento` do arquivo dos Correios para `faixa`
+prevendo uma coluna `complemento` em `empresa`. Ela não existe (ver abaixo), e
+o nome novo continua valendo por si: `faixa` é o trecho da rua, e chamar isso
+de complemento sempre foi errado.
 
 **`cnae_codigo`, `cnae_descricao`, `atividade_categoria`, `porte`,
 `capital_social`, `data_abertura`**: existiam no `crm-ch` porque **vinham da
@@ -178,6 +171,21 @@ mesmo assim, e o motivo importa: **aquilo valia porque a base vinha em massa da
 Receita**. Numa planilha digitada à mão você está digitando o endereço da loja
 que achou, não o do contador. Gatilho para voltar: **a base voltar a vir da
 Receita**.
+
+**`numero` e `complemento`**: saíram na revisão final, e o motivo é o mesmo que
+já tinha tirado `cnae` e `porte` — só que uma volta mais fundo. O endereço aqui
+existe porque o CEP dá cidade e UF, e cidade e UF servem para **segmentar
+ligação**. Número de porta não serve para ligar; serve para **visitar**. Este
+CRM não tem visita: o vendedor liga.
+
+Elas tinham entrado por hábito de cadastro de endereço, não por uso. Nenhuma
+tela as mostrava, nenhuma decisão as lia, e o `CHECK`
+`empresa_endereco_precisa_de_cep` existia inteiro para guardar a coerência de
+dois campos que ninguém consulta — cerimônia em volta de dado morto.
+
+**Voltam junto com a tela que as mostra**, quando existir visita. Não antes: é
+uma coluna e um `ALTER TABLE`, e a fatia que precisar delas vai saber o que
+fazer com o valor.
 
 **`vendedor_id`, `reservado_por_id`, `reservado_ate`, `quarentena_ate`,
 `bloqueada_em`**: fatia da fila.
@@ -352,13 +360,13 @@ CSV" no Excel são dois cliques.
 
 **Limite de tamanho.** Medido na documentação do Next 16.3.4
 (`01-app/02-guides/server-actions.md:83`): Server Action tem corpo limitado a
-**1 MB por padrão**, configurável em `serverActions.bodySizeLimit`. As nove
-colunas dão cerca de 165 bytes por linha, então 2.000 empresas são ~330 KB.
+**1 MB por padrão**, configurável em `serverActions.bodySizeLimit`. As sete
+colunas dão cerca de 150 bytes por linha, então 2.000 empresas são ~300 KB.
 
 Mesmo cabendo, o limite do transporte não pode ser o limite de verdade: acima
 dele a requisição morre **antes do nosso código rodar**, e a mensagem que sobra
 não é nossa. Então `bodySizeLimit: '2mb'` no `next.config`, e o limite real vira
-**5.000 linhas, conferido na fase 1** — cerca de 830 KB, com folga de mais de
+**5.000 linhas, conferido na fase 1** — cerca de 750 KB, com folga de mais de
 duas vezes para baixo do transporte. Quem recusa é sempre o nosso relatório, em
 português.
 
@@ -439,7 +447,7 @@ separador `,` ou `;`.
 
 **O que ele não faz, e o teste que prova:** quebra de linha dentro de campo entre
 aspas **não é aceita**. Recusa com mensagem que diz onde — *"aspas não fechadas
-na linha 41"* — em vez de ler errado em silêncio. Para estas nove colunas, razão
+na linha 41"* — em vez de ler errado em silêncio. Para estas sete colunas, razão
 social com quebra de linha no meio não é dado legítimo, é planilha estragada.
 
 **Limite declarado vale mais que limite implícito**, e esta fatia é a terceira a
@@ -482,7 +490,7 @@ trinta segundos.
 **As colunas do modelo**, nesta ordem, e o cabeçalho é conferido literalmente:
 
 ```
-cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,numero,complemento
+cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep
 ```
 
 ## As telas

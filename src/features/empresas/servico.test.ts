@@ -33,9 +33,9 @@ function repoFalso(jaCadastrados: string[] = []) {
 }
 
 const bytes = (...linhas: string[]) => new TextEncoder().encode([CABECALHO, ...linhas].join('\n'))
-const AURORA = '11222333000181,Aurora Comercio LTDA,,,11987654321,,01310100,300,'
-const BELA = '11444777000161,Bela Luz LTDA,,,1134567890,,,,'
-const SEM_CEP_NA_BASE = '11555777000139,Nova LTDA,,,1134567891,,99999999,,'
+const AURORA = '11222333000181,Aurora Comercio LTDA,,,11987654321,,01310100'
+const BELA = '11444777000161,Bela Luz LTDA,,,1134567890,,'
+const SEM_CEP_NA_BASE = '11555777000139,Nova LTDA,,,1134567891,,99999999'
 
 describe('analisar', () => {
   test('conta novas, ja cadastradas e ceps nao encontrados', async () => {
@@ -72,7 +72,7 @@ describe('analisar', () => {
 
   test('recusa de linha entra no relatorio sem impedir o resto', async () => {
     const { repo } = repoFalso()
-    const r = await analisar(repo, bytes(AURORA, '11222333000182,Erro LTDA,,,11987654321,,,,'))
+    const r = await analisar(repo, bytes(AURORA, '11222333000182,Erro LTDA,,,11987654321,,'))
     if (!r.ok) throw new Error('esperava ok')
     expect(r.relatorio.novas).toBe(1)
     expect(r.relatorio.recusadas).toEqual([{ tipo: 'campo', linha: 3, motivo: 'cnpj_dv', valor: '11222333000182' }])

@@ -9,7 +9,7 @@ function ok(a: Analise) {
   return a
 }
 
-const VALIDA = '11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100,300,sala 12'
+const VALIDA = '11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100'
 
 describe('fase 0: o arquivo inteiro', () => {
   test('bytes que nao sao UTF-8 recusam o arquivo', () => {
@@ -56,7 +56,7 @@ describe('fase 1: a linha valida', () => {
     const a = ok(
       analisarPlanilha(
         comCabecalho(
-          '11.222.333/0001-81,Aurora Comercio LTDA,Aurora,Jose,(11) 98765-4321,Contato@Aurora.com.br,01310-100,300,sala 12',
+          '11.222.333/0001-81,Aurora Comercio LTDA,Aurora,Jose,(11) 98765-4321,Contato@Aurora.com.br,01310-100',
         ),
       ),
     )
@@ -70,41 +70,36 @@ describe('fase 1: a linha valida', () => {
         telefone: '11987654321',
         email: 'contato@aurora.com.br',
         cep: '01310100',
-        numero: '300',
-        complemento: 'sala 12',
       },
     ])
     expect(a.recusadas).toEqual([])
   })
 
   test('opcionais vazios viram null, nunca string vazia', () => {
-    const a = ok(analisarPlanilha(comCabecalho('11222333000181,Aurora Comercio LTDA,,,11987654321,,,,')))
+    const a = ok(analisarPlanilha(comCabecalho('11222333000181,Aurora Comercio LTDA,,,11987654321,,')))
     expect(a.aceitas[0]).toMatchObject({
       nomeFantasia: null,
       contatoNome: null,
       email: null,
       cep: null,
-      numero: null,
-      complemento: null,
     })
   })
 })
 
 describe('fase 1: as recusas de campo', () => {
   const casos: [string, string, string][] = [
-    ['cnpj_vazio', ',Aurora LTDA,,,11987654321,,,,', ''],
+    ['cnpj_vazio', ',Aurora LTDA,,,11987654321,,', ''],
     // O valor precisa vir ENTRE ASPAS no CSV: '1,23457E+13' tem vírgula
     // dentro, e sem aspas viraria dois campos. É assim que o Excel pt-BR grava.
-    ['cnpj_notacao_cientifica', '"1,23457E+13",Aurora LTDA,,,11987654321,,,,', '1,23457E+13'],
-    ['cnpj_forma', '1122233300018,Aurora LTDA,,,11987654321,,,,', '1122233300018'],
-    ['cnpj_dv', '11222333000182,Aurora LTDA,,,11987654321,,,,', '11222333000182'],
-    ['razao_social_vazia', '11222333000181,   ,,,11987654321,,,,', '   '],
-    ['telefone_vazio', '11222333000181,Aurora LTDA,,,,,,,', ''],
-    ['telefone_forma', '11222333000181,Aurora LTDA,,,987654321,,,,', '987654321'],
-    ['email_forma', '11222333000181,Aurora LTDA,,,11987654321,contato.aurora.com,,,', 'contato.aurora.com'],
-    ['cep_curto', '11222333000181,Aurora LTDA,,,11987654321,,1310100,,', '1310100'],
-    ['cep_forma', '11222333000181,Aurora LTDA,,,11987654321,,consultar,,', 'consultar'],
-    ['endereco_sem_cep', '11222333000181,Aurora LTDA,,,11987654321,,,300,', '300'],
+    ['cnpj_notacao_cientifica', '"1,23457E+13",Aurora LTDA,,,11987654321,,', '1,23457E+13'],
+    ['cnpj_forma', '1122233300018,Aurora LTDA,,,11987654321,,', '1122233300018'],
+    ['cnpj_dv', '11222333000182,Aurora LTDA,,,11987654321,,', '11222333000182'],
+    ['razao_social_vazia', '11222333000181,   ,,,11987654321,,', '   '],
+    ['telefone_vazio', '11222333000181,Aurora LTDA,,,,,', ''],
+    ['telefone_forma', '11222333000181,Aurora LTDA,,,987654321,,', '987654321'],
+    ['email_forma', '11222333000181,Aurora LTDA,,,11987654321,contato.aurora.com,', 'contato.aurora.com'],
+    ['cep_curto', '11222333000181,Aurora LTDA,,,11987654321,,1310100', '1310100'],
+    ['cep_forma', '11222333000181,Aurora LTDA,,,11987654321,,consultar', 'consultar'],
     ['colunas_de_menos', '11222333000181,Aurora LTDA', '2'],
   ]
   for (const [motivo, linha, valor] of casos) {
@@ -136,7 +131,7 @@ describe('fase 1: duplicata dentro do arquivo', () => {
   })
 
   test('linha valida no meio de duas repetidas sobrevive', () => {
-    const outra = '11444777000161,Bela Luz LTDA,,,1134567890,,,,'
+    const outra = '11444777000161,Bela Luz LTDA,,,1134567890,,'
     const a = ok(analisarPlanilha(comCabecalho(VALIDA, outra, VALIDA)))
     expect(a.aceitas.map((l) => l.cnpj)).toEqual(['11444777000161'])
     expect(a.recusadas).toHaveLength(2)

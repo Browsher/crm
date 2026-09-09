@@ -16,8 +16,6 @@ const linha = (n: number, cnpj: string, extra: Partial<LinhaAceita> = {}): Linha
   telefone: '11987654321',
   email: null,
   cep: null,
-  numero: null,
-  complemento: null,
   ...extra,
 })
 
@@ -68,16 +66,16 @@ describe('preparar', () => {
 describe('gravar', () => {
   test('insere em lote e a auditoria registra o gestor', async () => {
     const r = await repositorioPostgres(gestor).gravar([
-      linha(2, '11444777000161', { cep: '01310100', numero: '300', complemento: 'sala 12' }),
+      linha(2, '11444777000161', { cep: '01310100' }),
       linha(3, '11555777000160', { nomeFantasia: 'Bela Luz', email: 'oi@bela.com.br' }),
     ])
     expect(r).toEqual({ ok: true, inseridas: 2 })
-    const linhas = await banco.sql<{ cnpj: string; criado_por: string; numero: string | null }>(
-      "SELECT cnpj, criado_por, numero FROM empresa WHERE cnpj IN ('11444777000161', '11555777000160') ORDER BY cnpj",
+    const linhas = await banco.sql<{ cnpj: string; criado_por: string; cep: string | null }>(
+      "SELECT cnpj, criado_por, cep FROM empresa WHERE cnpj IN ('11444777000161', '11555777000160') ORDER BY cnpj",
     )
     expect(linhas).toEqual([
-      { cnpj: '11444777000161', criado_por: gestor, numero: '300' },
-      { cnpj: '11555777000160', criado_por: gestor, numero: null },
+      { cnpj: '11444777000161', criado_por: gestor, cep: '01310100' },
+      { cnpj: '11555777000160', criado_por: gestor, cep: null },
     ])
   })
 

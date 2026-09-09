@@ -68,7 +68,6 @@ describe('empresa: as restricoes', () => {
     ['nome fantasia vazio, que deveria ser NULL', "INSERT INTO empresa (cnpj, razao_social, nome_fantasia, telefone) VALUES ('11222333000184', 'X LTDA', '', '11987654321')"],
     ['email sem arroba', "INSERT INTO empresa (cnpj, razao_social, telefone, email) VALUES ('11222333000185', 'X LTDA', '11987654321', 'contato.exemplo.com')"],
     ['email com maiuscula', "INSERT INTO empresa (cnpj, razao_social, telefone, email) VALUES ('11222333000186', 'X LTDA', '11987654321', 'Contato@exemplo.com')"],
-    ['numero sem cep', "INSERT INTO empresa (cnpj, razao_social, telefone, numero) VALUES ('11222333000187', 'X LTDA', '11987654321', '302')"],
   ]
   for (const [caso, sql] of recusas) {
     test(`recusa ${caso}`, async () => {

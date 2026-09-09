@@ -26,8 +26,7 @@ const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string) => string> = {
   cep_curto: (v) =>
     `CEP com 7 dígitos (${v}) — o zero à esquerda foi comido. Formate a coluna como Texto na planilha.`,
   cep_forma: (v) => `CEP inválido (${v}). São 8 dígitos.`,
-  endereco_sem_cep: () => 'Número ou complemento sem CEP. Preencha o CEP ou apague os dois.',
-  colunas_de_menos: (v) => `A linha tem ${v} colunas; o modelo tem 9.`,
+  colunas_de_menos: (v) => `A linha tem ${v} colunas; o modelo tem 7.`,
 }
 
 export function textoDaRecusa(r: Recusa): string {

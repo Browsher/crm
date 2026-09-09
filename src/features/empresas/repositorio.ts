@@ -50,14 +50,14 @@ export function repositorioPostgres(gestorId: string): RepositorioEmpresas {
       })
     },
 
-    // unnest com nove arrays, e não INSERT com 45 mil parâmetros: o Postgres
+    // unnest com sete arrays, e não INSERT com 35 mil parâmetros: o Postgres
     // limita em 65535 e a conta ficaria perto demais do teto sem motivo.
     gravar(linhas) {
       if (linhas.length === 0) return Promise.resolve({ ok: true as const, inseridas: 0 })
       return tentar(gestorId, async (e) => {
         const r = await e(
-          `INSERT INTO empresa (cnpj, razao_social, nome_fantasia, contato_nome, telefone, email, cep, numero, complemento)
-           SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[])`,
+          `INSERT INTO empresa (cnpj, razao_social, nome_fantasia, contato_nome, telefone, email, cep)
+           SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[])`,
           [
             linhas.map((l) => l.cnpj),
             linhas.map((l) => l.razaoSocial),
@@ -66,8 +66,6 @@ export function repositorioPostgres(gestorId: string): RepositorioEmpresas {
             linhas.map((l) => l.telefone),
             linhas.map((l) => l.email),
             linhas.map((l) => l.cep),
-            linhas.map((l) => l.numero),
-            linhas.map((l) => l.complemento),
           ],
         )
         return { ok: true as const, inseridas: r.afetadas }

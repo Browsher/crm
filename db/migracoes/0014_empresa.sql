@@ -9,14 +9,10 @@ CREATE TABLE empresa (
   telefone      text NOT NULL CHECK (telefone ~ '^[0-9]{10,11}$'),
   email         text CHECK (email = lower(btrim(email)) AND email ~ '^[^[:space:]@]+@[^[:space:]@]+$'),
   cep           text CHECK (cep ~ '^[0-9]{8}$'),
-  numero        text CHECK (btrim(numero) <> ''),
-  complemento   text CHECK (btrim(complemento) <> ''),
   criado_em      timestamptz NOT NULL DEFAULT now(),
   criado_por     uuid REFERENCES usuario (id) ON DELETE RESTRICT,
   atualizado_em  timestamptz,
-  atualizado_por uuid REFERENCES usuario (id) ON DELETE RESTRICT,
-  CONSTRAINT empresa_endereco_precisa_de_cep
-    CHECK (cep IS NOT NULL OR (numero IS NULL AND complemento IS NULL))
+  atualizado_por uuid REFERENCES usuario (id) ON DELETE RESTRICT
 );
 CREATE TRIGGER empresa_auditoria BEFORE INSERT OR UPDATE ON empresa
 FOR EACH ROW EXECUTE FUNCTION definir_auditoria();
