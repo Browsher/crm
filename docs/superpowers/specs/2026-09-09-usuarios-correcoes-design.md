@@ -38,6 +38,9 @@ Brainstorm de 2026-09-09. Correção sobre a 0c
 | `exigir_gestor(p_alvo)` | parâmetro **obrigatório** | opcional com `DEFAULT NULL` cria o pior modo de falha: função futura esquece o argumento, o Postgres aceita, e a conferência de alvo some sem erro. Operação de gestor sem alvo ganha o próprio auxiliar quando existir |
 | Mensagem de erro por função | some, e não faz falta | verificado: o `CONTEXT` do Postgres mostra a pilha e nomeia a função que chamou o auxiliar |
 | Invariante de `PUBLIC` | entra nesta fatia | seu pedido já mexe na invariante; item de dívida sem catraca volta como surpresa |
+| Critério da lista fechada | catalogar **toda definidora concedida a `app_usuario`**, substituindo o critério "toca `autenticacao`" | `usuario_situacao_definir` chega a `autenticacao` por outra função e não menciona o schema: nasceria no ponto cego. O gatilho registrado na dívida era "quando a próxima definidora nascer", e ela nasce aqui |
+| As cinco funções de acesso na lista nova | entram | são definidoras concedidas a `app_usuario` como qualquer outra. Duas listas para a mesma classe de objeto é a divergência que a fatia elimina |
+| `FUNCOES_DE_ACESSO` continua existindo | sim, renomeada | responde outra pergunta: "têm que existir", não "podem ter `GRANT`" |
 | Conferência redundante em `sessoes_encerrar_de` | fica | se ganhar chamador novo, a conferência já está lá. Custo medido na seção 3.4 |
 
 ## 3. Migração `0012_situacao_e_auditoria.sql`
@@ -217,14 +220,50 @@ de aceitar calado.
 
 ### 6.1 Invariantes
 
-- **Lista fechada ampliada:** varre todo schema de aplicação, reusando o
-  `SCHEMAS_DO_SISTEMA` que `lerEstado` já usa para tabelas. A constante passa
-  a guardar nome qualificado: `public.credencial_definir`,
-  `public.usuario_situacao_definir`. `sessoes_encerrar_de` sai, porque perde o
-  `GRANT`.
-- **Nenhuma função de schema de aplicação executável por `PUBLIC`.** Considera
-  `proacl` nulo, que é o padrão do Postgres, e entrada explícita de `PUBLIC`
-  no ACL.
+**A lista fechada muda de critério, não só de escopo.** A versão da 0c
+catalogava "definidora de `public` que menciona `autenticacao.` no corpo e tem
+`GRANT` para `app_usuario`". Isso deixaria `usuario_situacao_definir` fora de
+qualquer catálogo, porque ela chega a `autenticacao` **através de**
+`sessoes_encerrar_de` e não menciona o schema no próprio corpo. A primeira
+função criada nesta fatia nasceria no ponto cego da invariante que a fatia
+existe para apertar.
+
+Então `FUNCOES_DE_USUARIO_EM_AUTENTICACAO` é **substituída**, não ampliada.
+
+**Duas constantes, com propósitos separados e nomes que os digam:**
+
+| Constante | Pergunta que responde |
+|---|---|
+| `FUNCOES_DE_ACESSO_OBRIGATORIAS` | quais funções **têm que existir** |
+| `FUNCOES_CONCEDIDAS_A_APP_USUARIO` | quais podem **ter `GRANT`** para `app_usuario` |
+
+São perguntas diferentes sobre o mesmo conjunto, e por isso as duas listas se
+sobrepõem sem se contradizer: as cinco funções de acesso entram nas duas.
+Excluí-las da segunda seria manter duas listas para a mesma classe de objeto,
+que é a divergência que esta fatia elimina. Elas são definidoras com `GRANT`
+para `app_usuario` como qualquer outra; "de acesso" é como nós as chamamos,
+não uma propriedade do banco.
+
+Conteúdo de `FUNCOES_CONCEDIDAS_A_APP_USUARIO` depois da 0012, sete nomes
+qualificados:
+
+```
+public.usuario_atual          public.credencial_definir
+public.pode_ler               public.usuario_situacao_definir
+public.eh_gestor
+public.pode_escrever
+public.senha_provisoria_de
+```
+
+**Leitura, sem heurística de texto.** Toda função definidora de schema de
+aplicação com `has_function_privilege('app_usuario', p.oid, 'EXECUTE')`.
+Some o `prosrc LIKE '%autenticacao.%'`, e com ele some o limite de substring
+que a 0c documentava. Duas violações: concedida e fora da lista; na lista e
+ausente ou sem `GRANT`.
+
+**Segunda invariante: nenhuma função de schema de aplicação executável por
+`PUBLIC`.** Considera `proacl` nulo, que é o padrão do Postgres, e entrada
+explícita de `PUBLIC` no ACL.
 
 **Custo conhecido da segunda:** extensão instalada em schema de aplicação teria
 todas as funções acusadas. Nenhuma está hoje. Se alguma entrar, ela vai para
@@ -319,14 +358,18 @@ senão parece mais forte do que é.
 
 | Situação | Quem pega |
 |---|---|
-| função de schema de aplicação executável por `PUBLIC` | catraca (invariante nova) |
-| definidora tocando `autenticacao` com `EXECUTE` para `app_usuario`, fora da lista fechada | catraca (invariante ampliada) |
-| função com `GRANT` deliberado para `app_usuario` que ninguém chama | **bilhete** |
-| função com `GRANT` para `app_usuario` que não toca `autenticacao` | **bilhete**: nenhuma das duas invariantes olha para ela |
+| função de schema de aplicação executável por `PUBLIC` | catraca |
+| definidora com `GRANT` para `app_usuario` fora da lista, **toque ou não `autenticacao`** | catraca |
+| função **não** definidora com `GRANT` para `app_usuario` | bilhete |
+| função concedida que ninguém chama | **bilhete** |
 
-As duas últimas linhas são o buraco real. "Não tem consumidor" não é
-observável no catálogo: exigiria cruzar o SQL com o código TypeScript que
-chama, e nada faz isso. A catraca cobre exposição indevida, não desuso.
+A última linha é o buraco que sobra. "Não tem consumidor" não é observável no
+catálogo: exigiria cruzar o SQL com o código TypeScript que chama, e nada faz
+isso. A catraca cobre exposição indevida, não desuso.
+
+A terceira linha é limite deliberado: função não definidora roda como quem
+chama, sujeita a RLS e aos mesmos `GRANT`s, então não escala privilégio. A
+superfície que interessa catalogar é a definidora.
 
 **Regra do ponteiro de encaminhamento:** doc de migração cujo objeto foi
 alterado por migração posterior ganha uma linha no topo apontando o capítulo
@@ -341,9 +384,11 @@ automática de `app/usuarios/**`; paginação; `usuario_publico`. Todos ficam em
 
 ## 10. Limitações conhecidas
 
-- A invariante da lista fechada continua procurando `autenticacao.` no texto
-  da função (`prosrc`). Função que chega lá por outra função, ou por SQL
-  dinâmico, escapa. Esta fatia amplia o escopo de schemas, não esse limite.
+- Função **não** definidora com `GRANT` para `app_usuario` fica fora do
+  catálogo. Deliberado: ela roda como quem chama, sujeita a RLS e aos mesmos
+  privilégios, então não escala nada.
+- Continua sem catraca o desuso: "concedida e ninguém chama" exigiria cruzar
+  o catálogo com o TypeScript.
 - Gestor A ainda redefine a senha de gestor B e entra como B. O que muda é
   que agora fica registrado em `credencial.atualizado_por`.
 - A conferência redundante custa duas leituras a mais por desativação

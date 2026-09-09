@@ -64,6 +64,8 @@ repositório ainda espera booleano de `credencial_definir` e ainda chama
 confere invariantes no fim. Se `sessoes_encerrar_de` sair do `GRANT` e ficar na
 constante, a invariante acusa "registrada e ausente ou sem EXECUTE", `aplicar`
 falha, e `criarBancoDeTeste` lança em **todos** os arquivos de integração.
+Aqui é só o ajuste mínimo para o verde; a substituição da constante inteira é
+a Task 3.
 
 - [ ] **Step 1: Testes de auditoria (vermelho)**
 
@@ -533,51 +535,97 @@ git commit -m "usuarios: interface encolhida e vocabulário traduzido com erro e
 **Files:**
 - Modify: `src/server/db/migracoes/invariantes.ts` (+ `.test.ts`), `tests/integracao/runner.test.ts`
 
-**Nota de decisão pendente.** A spec manda ampliar o escopo de schemas e barrar
-`PUBLIC`, mantendo a lista fechada baseada em `prosrc LIKE '%autenticacao.%'`.
-Com isso, `usuario_situacao_definir` fica **fora de qualquer catálogo**: é
-definidora, tem `GRANT` para `app_usuario`, e não menciona `autenticacao.` no
-corpo. É exatamente a quarta linha da tabela registrada em
-`divida-tecnica.md`, cujo gatilho é "quando a próxima função definidora
-nascer" — e ela nasce nesta fatia. Executar como está escrito, e levar a
-decisão ao humano antes de começar a task.
+**Interfaces:**
+- Produces: `FUNCOES_DE_ACESSO_OBRIGATORIAS` (renomeada de `FUNCOES_DE_ACESSO`) e `FUNCOES_CONCEDIDAS_A_APP_USUARIO` (substitui `FUNCOES_DE_USUARIO_EM_AUTENTICACAO`, que **deixa de existir**).
+
+Duas constantes, duas perguntas diferentes: uma diz quais funções **têm que
+existir**, a outra diz quais podem **ter `GRANT`** para `app_usuario`. As cinco
+funções de acesso aparecem nas duas, de propósito.
+
+A leitura nova não usa `prosrc`: é `p.prosecdef` mais
+`has_function_privilege('app_usuario', p.oid, 'EXECUTE')`, sobre todo schema de
+aplicação. Com isso some o limite de substring que a 0c documentava, e
+`usuario_situacao_definir` passa a ser catalogada.
 
 - [ ] **Step 1: Teste unitário (vermelho)**
 
-Em `invariantes.test.ts`, acrescentar ao `Estado` do `sao()` o campo
-`funcoesExecutaveisPorPublico: []`, e os testes:
+Em `invariantes.test.ts`, o `sao()` muda: `funcoesDeUsuarioEmAutenticacao`
+vira `funcoesConcedidasAAppUsuario`, com os sete nomes qualificados, e entra
+`funcoesExecutaveisPorPublico: []`. `funcoesDeAcesso` passa a nome
+qualificado. Testes novos:
 
 ```ts
+  test('definidora concedida a app_usuario fora da lista, mesmo sem tocar autenticacao', () => {
+    const e = sao()
+    e.funcoesConcedidasAAppUsuario.push('public.atalho')
+    umaViolacao(e, /concedida a app_usuario e não registrada: public\.atalho/)
+  })
+
+  test('definidora concedida em outro schema também é acusada', () => {
+    const e = sao()
+    e.funcoesConcedidasAAppUsuario.push('relatorios.espia')
+    umaViolacao(e, /concedida a app_usuario e não registrada: relatorios\.espia/)
+  })
+
+  test('função registrada ausente ou sem GRANT é violação, não verde', () => {
+    const e = sao()
+    e.funcoesConcedidasAAppUsuario = e.funcoesConcedidasAAppUsuario.filter((n) => n !== 'public.eh_gestor')
+    umaViolacao(e, /registrada e ausente ou sem GRANT: public\.eh_gestor/)
+  })
+
   test('função de schema de aplicação executável por PUBLIC', () => {
     const e = sao()
     e.funcoesExecutaveisPorPublico = ['public.definir_auditoria']
     umaViolacao(e, /executável por PUBLIC: public\.definir_auditoria/)
   })
-
-  test('definidora fora de public tocando autenticacao, concedida a app_usuario', () => {
-    const e = sao()
-    e.funcoesDeUsuarioEmAutenticacao.push({ nome: 'relatorios.espia', executaAppUsuario: true })
-    umaViolacao(e, /não está registrada: relatorios\.espia/)
-  })
 ```
 
-E o `sao()` passa a usar nome qualificado em `funcoesDeUsuarioEmAutenticacao`
-(`public.credencial_definir`) e na constante.
+Os testes antigos que citavam `funcoesDeUsuarioEmAutenticacao` saem, e o que
+cobria "função tocando autenticacao sem EXECUTE não é violação" perde o
+sentido: o critério deixou de ser tocar `autenticacao`.
 
 - [ ] **Step 2: Rodar e ver o vermelho**
 
 Run: `npx vitest run --project unitario src/server/db/migracoes/invariantes.test.ts`
-Expected: FAIL.
+Expected: FAIL, campo inexistente em `Estado` e as quatro asserções novas.
 
 - [ ] **Step 3: Implementar**
 
-`FUNCOES_DE_USUARIO_EM_AUTENTICACAO = ['public.credencial_definir'] as const`.
-
-Em `lerEstado`, a consulta da lista fechada troca `WHERE n.nspname = 'public'`
-por `WHERE ${SCHEMAS_DO_SISTEMA}` e devolve `n.nspname || '.' || p.proname`.
-Acrescentar a consulta nova:
+Constantes, com os propósitos separados no comentário:
 
 ```ts
+// Quais funções TÊM QUE EXISTIR. Ausência é violação, não verde.
+export const FUNCOES_DE_ACESSO_OBRIGATORIAS = [
+  'public.usuario_atual', 'public.pode_ler', 'public.eh_gestor',
+  'public.pode_escrever', 'public.senha_provisoria_de',
+] as const
+
+// Quais podem TER GRANT para app_usuario. Lista fechada dos dois lados:
+// concedida fora daqui é violação, e nome daqui sem GRANT também.
+// As de acesso aparecem nas duas listas de propósito: são definidoras
+// concedidas como qualquer outra, e "de acesso" é nome nosso, não do banco.
+export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
+  'public.usuario_atual', 'public.pode_ler', 'public.eh_gestor',
+  'public.pode_escrever', 'public.senha_provisoria_de',
+  'public.credencial_definir', 'public.usuario_situacao_definir',
+] as const
+```
+
+`FUNCOES_DE_USUARIO_EM_AUTENTICACAO` é apagada.
+
+Em `Estado`, `funcoesDeUsuarioEmAutenticacao` vira `funcoesConcedidasAAppUsuario: string[]`
+e entra `funcoesExecutaveisPorPublico: string[]`. Em `lerEstado`:
+
+```ts
+  const concedidas = temAppUsuario
+    ? await c.query<{ nome: string }>(`
+        SELECT n.nspname || '.' || p.proname AS nome
+        FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE ${SCHEMAS_DO_SISTEMA} AND p.prosecdef
+          AND has_function_privilege('app_usuario', p.oid, 'EXECUTE')
+        ORDER BY 1`)
+    : { rows: [] as { nome: string }[] }
+
   const publico = await c.query<{ nome: string }>(`
     SELECT n.nspname || '.' || p.proname AS nome
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -587,12 +635,48 @@ Acrescentar a consulta nova:
     ORDER BY 1`)
 ```
 
-Em `avaliar`, uma violação por nome: `função de schema de aplicação executável
-por PUBLIC: ${nome} (função nova nasce assim; falta REVOKE)`.
+A consulta de `funcoesDeAcesso` passa a devolver nome qualificado e a comparar
+com `FUNCOES_DE_ACESSO_OBRIGATORIAS`.
+
+Em `avaliar`, três violações: `concedida a app_usuario e não registrada: X`;
+`registrada e ausente ou sem GRANT: X`; `função de schema de aplicação
+executável por PUBLIC: X (função nova nasce assim; falta REVOKE)`.
 
 - [ ] **Step 4: Controles negativos em `runner.test.ts`**
 
+Substituir os dois controles da 0c, que citavam `autenticacao` no critério, por:
+
 ```ts
+  test('nomeia definidora concedida a app_usuario fora da lista, sem tocar autenticacao (controle negativo)', async () => {
+    await banco.sql("CREATE FUNCTION atalho() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT 1'")
+    await banco.sql('REVOKE EXECUTE ON FUNCTION atalho() FROM PUBLIC')
+    await banco.sql('GRANT EXECUTE ON FUNCTION atalho() TO app_usuario')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/concedida a app_usuario e não registrada: public\.atalho/)
+    } finally {
+      await banco.sql('DROP FUNCTION atalho()')
+    }
+  })
+
+  test('nomeia definidora concedida em schema fora de public (controle negativo)', async () => {
+    await banco.sql('CREATE SCHEMA IF NOT EXISTS relatorios')
+    await banco.sql(
+      "CREATE FUNCTION relatorios.espia() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT count(*)::int FROM autenticacao.sessao'",
+    )
+    await banco.sql('REVOKE EXECUTE ON FUNCTION relatorios.espia() FROM PUBLIC')
+    await banco.sql('GRANT EXECUTE ON FUNCTION relatorios.espia() TO app_usuario')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/não registrada: relatorios\.espia/)
+    } finally {
+      await banco.sql('DROP FUNCTION relatorios.espia()')
+      await banco.sql('DROP SCHEMA relatorios')
+    }
+  })
+
   test('nomeia função executável por PUBLIC (controle negativo)', async () => {
     await banco.sql("CREATE FUNCTION sem_revoke() RETURNS int LANGUAGE sql AS 'SELECT 1'")
     try {
@@ -603,23 +687,14 @@ por PUBLIC: ${nome} (função nova nasce assim; falta REVOKE)`.
       await banco.sql('DROP FUNCTION sem_revoke()')
     }
   })
-
-  test('nomeia definidora fora de public tocando autenticacao (controle negativo)', async () => {
-    await banco.sql('CREATE SCHEMA IF NOT EXISTS relatorios')
-    await banco.sql(
-      "CREATE FUNCTION relatorios.espia() RETURNS int LANGUAGE sql SECURITY DEFINER SET search_path = '' AS 'SELECT count(*)::int FROM autenticacao.sessao'",
-    )
-    await banco.sql('REVOKE EXECUTE ON FUNCTION relatorios.espia() FROM PUBLIC')
-    await banco.sql('GRANT EXECUTE ON FUNCTION relatorios.espia() TO app_usuario')
-    try {
-      const r = await conferirInvariantes(banco.urlAdmin)
-      expect(r.ok).toBe(false)
-      if (!r.ok) expect(r.violacoes.join()).toMatch(/não está registrada: relatorios\.espia/)
-    } finally {
-      await banco.sql('DROP FUNCTION relatorios.espia()')
-    }
-  })
 ```
+
+O primeiro é o teste que prova o ganho da fatia: uma definidora concedida que
+**não toca `autenticacao`** passaria despercebida pelo critério da 0c.
+
+E o teste espelho em `funcoes-usuario.test.ts` passa a comparar
+`FUNCOES_CONCEDIDAS_A_APP_USUARIO` com o que o banco devolve, incluindo as
+cinco de acesso e `usuario_situacao_definir`.
 
 - [ ] **Step 5: Rodar**
 
@@ -710,8 +785,13 @@ Apagar o bloco "Vai para a 0c.1". Dos itens que sobrevivem, apagar os que a
 fatia resolveu: `credencial_definir` ignorando o retorno em `criar`,
 `alterar(id, {})`, alvo inativo sem teste, o `AND NOT` sem teste.
 Acrescentar o que a fatia criou: a conferência redundante custando duas
-leituras a mais por desativação, e `usuario_situacao_definir` fora de qualquer
-catálogo enquanto a proposta da invariante única não entrar.
+leituras a mais por desativação.
+
+**Apagar a seção "Proposta com gatilho: invariante única de funções
+concedidas".** Ela foi implementada nesta fatia, e a regra do arquivo é que
+item resolvido sai. Do que ela previa, sobrevive só um item, que vai para a
+lista de limites: função **não** definidora concedida a `app_usuario` fica
+fora do catálogo, por decisão, e desuso continua sem catraca.
 
 - [ ] **Step 5: `REGRAS.md`, duas regras**
 
