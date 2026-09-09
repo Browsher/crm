@@ -283,6 +283,44 @@ chamar `credencial_definir`, em vez de forjar sessão e chamar `senha_trocar`.
   que chega lá por outra função, ou por SQL dinâmico, escapa. A 0c.1 amplia o
   escopo de schemas, não esse limite.
 
+## Proposta com gatilho: invariante única de funções concedidas
+
+**Gatilho: quando a próxima função definidora nascer.** A decisão é tomada
+antes de escrever a lista de novo, não depois.
+
+A 0c.1 deixa duas invariantes que, juntas, ainda não catalogam toda a
+superfície concedida:
+
+| Situação | Quem pega, depois da 0c.1 |
+|---|---|
+| função de schema de aplicação executável por `PUBLIC` | catraca |
+| definidora tocando `autenticacao` com `EXECUTE` para `app_usuario`, fora da lista fechada | catraca |
+| definidora com `GRANT` para `app_usuario` que **não toca `autenticacao`** | nada |
+| função concedida que ninguém chama | nada |
+
+A terceira linha é a maior: uma definidora nova, com `REVOKE FROM PUBLIC` e
+`GRANT` para `app_usuario`, que leia ou escreva qualquer coisa fora de
+`autenticacao`, é invisível para as duas invariantes.
+
+**Proposta.** Uma constante única, `FUNCOES_CONCEDIDAS_A_APP_USUARIO`, que
+**substitui** `FUNCOES_DE_USUARIO_EM_AUTENTICACAO` em vez de conviver com ela.
+Duas listas sobre o mesmo assunto saem de sincronia. A leitura é observável no
+catálogo, sem heurística de texto: `p.prosecdef` mais
+`has_function_privilege('app_usuario', p.oid, 'EXECUTE')`, sobre todo schema de
+aplicação. Isso transforma a terceira linha em catraca e torna o `prosrc LIKE
+'%autenticacao.%'` desnecessário, junto com o limite de substring que ele
+carrega.
+
+**O que continua bilhete mesmo assim:** "não tem consumidor". Desuso não é
+observável no catálogo; exigiria cruzar o SQL com o TypeScript que chama, e
+nada faz isso.
+
+**Custo a decidir na hora:** a lista passa a incluir as funções de acesso
+(`usuario_atual`, `pode_ler`, `eh_gestor`, `pode_escrever`,
+`senha_provisoria_de`), que hoje moram em `FUNCOES_DE_ACESSO` com outra
+finalidade. Ou as duas constantes se fundem, ou a nova exclui explicitamente as
+de acesso. Fundir parece certo e é a parte que precisa de desenho.
+
 ## Ferramental
 
 - Sem projeto Vitest para React. `jsdom` e plugin instalados, não
