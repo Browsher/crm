@@ -29,6 +29,18 @@ Leia a lição de lá antes de registrar gatilho novo em qualquer lugar.
 
 ## Segurança e operação
 
+- **Produção roda Postgres 18.6; os testes rodam 17.** Medido em 2026-09-09
+  contra a Railway (`SELECT version()`): `PostgreSQL 18.6 (Debian
+  18.6-1.pgdg13+2)`. O `docker-compose.yml` fixa `postgres:17`, então toda a
+  suíte de integração e todas as verificações da fundação valeram contra 17 —
+  inclusive as que `fundacao.md` registra como "confirmado em 2026-09-08 contra
+  Postgres 17": `RESET ALL` não restaurando `role` (R-007), a isenção de RLS da
+  dona, o comportamento de `FORCE`. Nada quebrou até hoje e nenhuma dessas
+  conclusões é provável de mudar entre 17 e 18, mas **nenhuma foi conferida no
+  ambiente onde o produto roda**. É divergência de ambiente não registrada, e
+  foi achada por acaso, medindo espaço em disco para a fatia `cep`.
+  Caminho provável: subir o container para 18 e rodar a suíte, que é barato e
+  torna a pergunta desnecessária.
 - `db:senha` recebe a senha em `argv`: visível em histórico e `ps`. Não
   repetir o padrão no seed com senha.
 - Harness grava senha `'teste'` em `app_conexao`, papel global do cluster.
@@ -142,6 +154,25 @@ Para uma equipe pequena são dezenas de linhas por mês, inertes. Fica como
 limitação conhecida. Se um dia entrar uma tela de "meus dispositivos" ou
 "sair de todos", a faxina de vencidas entra junto, de graça, porque a tela já
 vai varrer a tabela por usuário.
+
+## Fonte externa: a base de CEP do OpenCEP
+
+Registrado em 2026-09-09, ao desenhar a fatia `cep`. Não é dívida de código: é
+uma afirmação de terceiro que aceitaríamos sem conferir.
+
+O README do <https://github.com/SeuAliado/OpenCEP> diz "Atualizamos
+frequentemente a base de dados junto com os Correios!". **É falso.** O
+repositório tem uma release única, `2.0.1`, de **2024-07-08**, e o último push é
+do mesmo dia — 26 meses de silêncio. A frase do README foi o que quase entrou na
+spec como "a base envelhece com o tempo", quando o certo é "a base já nasce com
+dois anos".
+
+Fica aqui pelo padrão, não pelo caso: **afirmação de manutenção feita pelo
+próprio mantenedor é conferível em dois comandos** (`gh api repos/<x>
+--jq .pushed_at` e a lista de releases), e não conferir é aceitar o marketing de
+um repositório como medição. A decisão de usar a base assim mesmo está
+justificada em `docs/superpowers/specs/2026-09-09-cep-design.md`, com gatilho de
+medição e saída mapeada.
 
 ## Fatia 0b: verificado à mão, sem teste de render
 
