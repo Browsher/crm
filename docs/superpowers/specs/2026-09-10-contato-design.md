@@ -280,10 +280,11 @@ improvável, e a alternativa a um desempate improvável não é "nenhum desempat
 Medição, com o número declarado como chute:
 
 > **Leitura derivada custando caro.** Dispara quando a carteira de uma pessoa
-> passar de **N empresas** (`N` é chute, e está aqui como chute). Remédio: view
+> passar de **80 empresas** — chute, e está aqui como chute. Remédio: view
 > materializada ou coluna de cache — **com medição antes**, que é o que separa
 > este cache do que a auditoria do `crm-ch` pegou. Hoje o gatilho está
-> **estruturalmente mudo**: a maior carteira possível é 65, que é a base inteira.
+> **estruturalmente mudo**: a maior carteira possível é 65, que é a base inteira,
+> e 65 não chega a 80. É o gatilho D da tabela adiante.
 
 ## Políticas e privilégios
 
@@ -694,9 +695,11 @@ O `200` sai. A `fila.1` já o registrou como chute, e ele era proxy de uma coisa
 que agora é mensurável direto:
 
 > **Carteira maior do que a pessoa dá conta.** Próximos passos **vencidos há mais
-> de N dias** na carteira de um vendedor. Tipo: medição. Erra para tarde.
-> Remédio: teto dentro de `contato_registrar`/`empresa_assumir`, ou conversa com
-> a operação — a medição diz qual.
+> de 7 dias** na carteira de um vendedor — sete porque é o intervalo em que
+> alguém ainda lembra da conversa; passou disso, o combinado virou perdido.
+> Chute, rotulado como chute. Tipo: medição. Erra para tarde. Remédio: teto
+> dentro de `contato_registrar`/`empresa_assumir`, ou conversa com a operação —
+> a medição diz qual. É o gatilho C da tabela adiante.
 
 Manter os dois deixaria um alarme que dispara pelo motivo errado ao lado de um
 que dispara pelo certo.
@@ -714,14 +717,22 @@ continua sendo a única operação irreversível do desenho.
 |---|---|---|---|---|
 | A | reservadas com **zero** contatos, de qualquer tipo (abandono) | medição | tarde | 0 de 0 |
 | B | proporção alta de `nao_liguei` sobre reservadas (descarte) | medição | tarde | 0 de 0 |
-| C | próximos passos vencidos há mais de **`N_VENCIDO`** dias por vendedor | medição (chute) | tarde | 0 |
-| D | carteira de uma pessoa passando de **`N_CARTEIRA`** empresas | medição (chute) | tarde | máx. possível 65 |
+| C | próximos passos vencidos há mais de **7 dias** por vendedor | medição (chute) | tarde | 0 |
+| D | carteira de uma pessoa passando de **80 empresas** | medição (chute) | tarde | máx. possível 65 |
 | E | pedido de segundo prazo de devolução | proxy de dor | tarde | 0 |
 
-**`N_VENCIDO` e `N_CARTEIRA` são dois números diferentes e os dois são chute**,
-nomeados assim de propósito: escritos os dois como `N`, a primeira releitura
-trata como se fossem o mesmo. O plano os fixa em valores concretos, e cada um
-nasce com a palavra "chute" ao lado, no formato que a R-016 exige.
+**Os dois números são chute, e ficam rotulados como chute.** Eram um `N` só numa
+versão anterior desta spec, e viraram dois nomes porque escritos com a mesma
+letra a primeira releitura os trata como o mesmo número.
+
+- **7 dias** (gatilho C) é o intervalo em que alguém ainda lembra da conversa.
+  Passou disso, o próximo passo vencido deixou de ser atraso e virou combinado
+  perdido.
+- **80 empresas** (gatilho D) é a base de hoje mais folga. **Ele está
+  estruturalmente mudo enquanto a base for 65** — a maior carteira possível é a
+  base inteira, e 65 não chega a 80. Só volta a significar alguma coisa depois da
+  próxima importação, e isso é registro, não vigilância: ninguém precisa olhar
+  para ele até lá.
 
 **B mede problema de cadastro, não de fila.** Proporção alta de empresas
 descartadas sem ligar significa que a importação está trazendo empresa fora do
@@ -744,6 +755,12 @@ segmento — e hoje isso é invisível, porque ninguém está olhando para lá.
 
 ## Decisões escritas
 
+- **Fatia única, não dividida em `contato.1` e `contato.2`.** A divisão foi
+  considerada — tabela, função, política e tela da fila numa; agenda e ficha na
+  outra. A primeira metade fecharia o gatilho 1 sozinha e **pareceria pronta**:
+  entregaria histórico sem lugar para ler histórico, com a carteira continuando
+  a ser uma lista de leitura pura. É o mesmo argumento que manteve a `fila.1`
+  inteira — fila sem posse parece pronta e não é.
 - **Sem ficha para o gestor.** Ele lê `contato` pela política e não tem tela. Se
   precisar, nasce em `/empresas/[id]`, com outra política de leitura e outro
   conteúdo. Política de leitura não é `GRANT` de função, então a superfície não
