@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -24,6 +24,7 @@ jobs:
     env:
       DATABASE_URL_ADMIN: postgres://postgres:postgres@localhost:5432/postgres
       PG_SSL: 'off'
+      PG_VERSAO_ESPERADA: '18'
     steps:
       - uses: actions/checkout@v4
 
