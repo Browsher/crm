@@ -279,7 +279,53 @@ inativo, `fila_puxar` zera `vendedor_id` — sem isso o `CHECK`
 `empresa_fila_posse_ou_reserva` recusaria a linha, e é bom que recuse: o `CHECK`
 é o que impede esse caminho de virar dois donos silenciosos.
 
-### `FOR UPDATE OF e`, e por que a trava é em `empresa`
+### A trava é em `empresa`, nas três funções
+
+**As três travam a linha de `empresa` antes de decidir qualquer coisa, e leem
+`empresa_fila` depois da trava.** `fila_puxar` com `FOR UPDATE OF e SKIP
+LOCKED`; `empresa_assumir` e `empresa_devolver` com:
+
+```sql
+PERFORM 1 FROM public.empresa WHERE id = p_empresa_id FOR UPDATE;
+```
+
+**Sem isso, `assumir` e `puxar` não se veem, e o buraco não é escrita rasgada.**
+As duas mexem na mesma linha de `empresa_fila`, que o Postgres serializa; o que
+vaza é **decisão tomada sobre leitura velha**. `now()` é o instante de início da
+transação, não do comando, então na janela do vencimento da reserva:
+
+- `T2` (vendedor A, `assumir`) começa 09:59:59,950 → lê a reserva como vigente.
+- `T1` (vendedor B, `fila_puxar`) começa 10:00:00,100 → lê a mesma reserva como
+  expirada e escolhe a empresa.
+
+Gravando `T2` primeiro, o `ON CONFLICT DO UPDATE` de `T1` escreve em cima e **a
+posse que A acabou de tomar desaparece em silêncio**. Gravando `T1` primeiro, o
+`UPDATE` de `T2` casa só por `empresa_id` — nada re-confere a reserva — e A toma
+posse de uma empresa que B tem reservada e já está discando.
+
+Com a trava, os dois sentidos fecham:
+
+- `assumir`/`devolver` com a trava → `fila_puxar` **pula a empresa**, porque é
+  `SKIP LOCKED` e não espera. Não há `EvalPlanQual` nem re-checagem de qual
+  sobre o `LEFT JOIN`: o caso não acontece.
+- `fila_puxar` com a trava → `assumir` **espera**, relê `empresa_fila` ao entrar,
+  encontra `reservado_por` de outra pessoa e cai no passo 4 do contrato: `42501`.
+  Recusa limpa em vez de roubo silencioso.
+
+**O que sobra, e é benigno:** quem começou a transação antes do vencimento e
+ganha a trava pode assumir uma empresa cuja reserva venceu por alguns
+milissegundos. Ninguém fica com empresa alheia; só o relógio ficou atrás.
+
+**A trava exige privilégio que `app_usuario` não tem.** Medido no container em
+2026-09-10, Postgres 17: com `GRANT SELECT` só, `SELECT` funciona e
+`SELECT ... FOR SHARE` já é recusado com `permission denied for table` — trava de
+linha, em qualquer forma, pede mais que `SELECT`. Então a mesma lógica escrita em
+TypeScript precisaria de `GRANT UPDATE` em `empresa`, que esta fatia recusa dar.
+**A definidora não é conveniência: é a única forma que não reabre a porta que a
+`0014` fechou.** A justificativa por leitura (ver `usuario.ativo` alheio, ver
+empresa que o vendedor não lê) estava certa pela metade.
+
+### Por que `FOR UPDATE OF e`, e não `OF f`
 
 `FOR UPDATE` não pode ser aplicado ao lado anulável de um `LEFT JOIN`, então
 `FOR UPDATE OF f` é recusado pelo Postgres. A trava vai em `empresa`, que é o
@@ -523,12 +569,32 @@ TDD, vermelho primeiro em cada um.
   negativo no molde da 0b.
 - `app_usuario`: `INSERT`, `UPDATE`, `DELETE` em `empresa_fila` → `42501` nos
   três.
-- Vendedor lê a sua linha e **não lê** a de outro vendedor.
+- Vendedor lê a sua linha de `empresa_fila` e **não lê** a de outro vendedor.
 - **`empresa_leitura` nova:** vendedor lê a empresa reservada para ele; **não
   lê** a alheia; **deixa de ler** quando a reserva expira; gestor lê todas.
+- **O par que cobre o acoplamento entre as duas políticas**, com papéis
+  separados de propósito:
+  - **quem pega** é o teste de comportamento acima, em `empresa`. É ele que
+    falha quando alguém estreita `empresa_fila_leitura`.
+  - **quem explica** é um teste vizinho que lê `empresa_fila` como o vendedor e
+    assere que a linha da reserva dele é visível, **nomeado pela dependência**
+    (`empresa_leitura depende desta visibilidade`). Ele falha junto, e é ele que
+    diz por quê — sozinho, o primeiro acusa `empresa` quando a causa está na
+    outra tabela, e o conserto começa procurando no lugar errado.
+
+  Não há catraca para isso, e não vai haver: invariante que leia `qual` de
+  política arbitrária compararia texto de expressão, que muda na primeira
+  reformatação do Postgres. Fica como limite escrito, não como tarefa.
 - Senha provisória pendente → `42501` nas três funções.
 - **`SKIP LOCKED`:** duas transações concorrentes recebem empresas
   **diferentes**. Duas conexões de verdade, não simulação.
+- **A corrida `assumir` × `fila_puxar`**, nos dois sentidos, com duas conexões e
+  a trava segurada de propósito no meio:
+  - `assumir` segurando a trava → o `fila_puxar` concorrente **pula** a empresa.
+  - `fila_puxar` segurando a trava → o `assumir` concorrente espera e recebe
+    `42501`, e ao fim **a posse não existe**: quem tem a empresa é quem puxou.
+  É o teste que prova a correção do TOCTOU; sem ele o `PERFORM ... FOR UPDATE`
+  parece linha decorativa e o próximo a mexer a remove.
 - **Puxar duas vezes**: libera a anterior e **não a re-entrega** na mesma
   chamada.
 - **Ordem:** nunca reservada antes de devolvida; entre nunca reservadas, a de
@@ -665,11 +731,15 @@ número sai da conta acima, não de impressão.
   rastro — inclusive `empresa_devolver`, que já está nesta fatia. "Quem
   trabalhou essa empresa antes?" é a fatia do histórico.
 - **`empresa_leitura` depende de `empresa_fila_leitura`.** Estreitar a segunda
-  estreita a primeira em silêncio; nenhuma invariante lê conteúdo de política.
+  estreita a primeira em silêncio; nenhuma invariante lê conteúdo de política. A
+  rede é o par de testes descrito na seção de testes — um pega, o outro explica.
 - **`elegivel_em ASC` só é "voltou há mais tempo" enquanto houver um prazo só.**
   A `fila.2` não pode introduzir um segundo prazo sem revisitar a ordenação.
 - **A trava é em `empresa` e a escrita em `empresa_fila`.** Quem mexer na
-  consulta de elegibilidade precisa manter `FOR UPDATE OF e`.
+  consulta de elegibilidade precisa manter `FOR UPDATE OF e`, e **função nova
+  que escreva em `empresa_fila` precisa travar `empresa` primeiro** — inclusive
+  as da `fila.2`. Uma que esqueça não dá erro nenhum: ela só perde corridas em
+  silêncio.
 
 ## Documentação e regras a cumprir
 
