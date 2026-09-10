@@ -122,3 +122,101 @@ describe('lerMinhasEmpresas', () => {
     expect(await puxarProxima(pendente)).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 })
+
+// `criarEmpresa` usa CNPJ fixo; estes testes precisam de várias.
+async function criarEmpresaN(sufixo: string, razao: string): Promise<string> {
+  const [linha] = await banco.sql<{ id: string }>(
+    `INSERT INTO empresa (cnpj, razao_social, telefone)
+     VALUES ($1, $2, '11987654321') RETURNING id`,
+    [`1122233300${sufixo}`, razao],
+  )
+  return linha.id
+}
+
+// Escreve pelo caminho de verdade: `definir_auditoria` sobrescreve criado_em e
+// criado_por, então semear contato como dona não controla nem autor nem ordem.
+// Transações separadas é o que dá dois now() diferentes.
+function acompanhar(
+  usuarioId: string,
+  empresaId: string,
+  passo: string | null,
+  data: string | null,
+): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  return registrarContato(usuarioId, empresaId, {
+    tipo: 'acompanhamento',
+    desfecho: 'nenhum',
+    nota: null,
+    proximoPasso: passo,
+    proximoPassoData: data,
+  })
+}
+
+describe('carteira: o proximo passo derivado do contato mais recente', () => {
+  test('empresa sem contato vem com proximo passo nulo e vencido falso', async () => {
+    const id = await criarEmpresaN('0181', 'Aurora')
+    await puxarProxima(vendedor)
+    expect(await assumir(vendedor, id)).toEqual({ ok: true })
+    const r = await lerMinhasEmpresas(vendedor)
+    if (!r.ok) throw new Error('esperava sucesso')
+    expect(r.carteira[0]).toMatchObject({ proximoPasso: null, proximoPassoData: null, vencido: false })
+  })
+
+  test('o contato MAIS RECENTE manda', async () => {
+    const id = await criarEmpresaN('0181', 'Aurora')
+    await puxarProxima(vendedor)
+    await assumir(vendedor, id)
+    await acompanhar(vendedor, id, 'antigo', '2026-01-01')
+    await acompanhar(vendedor, id, 'recente', '2027-01-01')
+    const r = await lerMinhasEmpresas(vendedor)
+    if (!r.ok) throw new Error('esperava sucesso')
+    expect(r.carteira[0].proximoPasso).toBe('recente')
+    expect(r.carteira[0].proximoPassoData).toBe('2027-01-01')
+  })
+
+  // A decisão que evita o compromisso ressuscitado: registrar contato SEM
+  // próximo passo significa "não há próximo passo", e não "vale o anterior".
+  test('contato mais recente SEM passo apaga o passo anterior', async () => {
+    const id = await criarEmpresaN('0181', 'Aurora')
+    await puxarProxima(vendedor)
+    await assumir(vendedor, id)
+    await acompanhar(vendedor, id, 'combinado', '2027-01-01')
+    await acompanhar(vendedor, id, null, null)
+    const r = await lerMinhasEmpresas(vendedor)
+    if (!r.ok) throw new Error('esperava sucesso')
+    expect(r.carteira[0].proximoPasso).toBeNull()
+  })
+
+  test('data de ontem vem como vencido; a de amanha nao', async () => {
+    const id = await criarEmpresaN('0181', 'Aurora')
+    await puxarProxima(vendedor)
+    await assumir(vendedor, id)
+    const [{ ontem, amanha }] = await banco.sql<{ ontem: string; amanha: string }>(
+      `SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date - 1, 'YYYY-MM-DD') AS ontem,
+              to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date + 1, 'YYYY-MM-DD') AS amanha`,
+    )
+    await acompanhar(vendedor, id, 'atrasado', ontem)
+    const vencida = await lerMinhasEmpresas(vendedor)
+    if (!vencida.ok) throw new Error('esperava sucesso')
+    expect(vencida.carteira[0].vencido).toBe(true)
+
+    await acompanhar(vendedor, id, 'em dia', amanha)
+    const emDia = await lerMinhasEmpresas(vendedor)
+    if (!emDia.ok) throw new Error('esperava sucesso')
+    expect(emDia.carteira[0].vencido).toBe(false)
+  })
+
+  test('a carteira vem ordenada por data, com os sem passo por ultimo', async () => {
+    const futura = await criarEmpresaN('0181', 'Aurora')
+    const vencida = await criarEmpresaN('0262', 'Boreal')
+    const semPasso = await criarEmpresaN('0343', 'Cristal')
+    for (const id of [futura, vencida, semPasso]) {
+      await puxarProxima(vendedor)
+      await assumir(vendedor, id)
+    }
+    await acompanhar(vendedor, futura, 'futura', '2030-01-01')
+    await acompanhar(vendedor, vencida, 'vencida', '2020-01-01')
+    const r = await lerMinhasEmpresas(vendedor)
+    if (!r.ok) throw new Error('esperava sucesso')
+    expect(r.carteira.map((c) => c.proximoPasso)).toEqual(['vencida', 'futura', null])
+  })
+})

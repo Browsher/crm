@@ -25,6 +25,9 @@ const BASE: EmpresaComigo = {
   },
   reservadoAte: new Date('2026-09-10T12:18:00Z'),
   posse: false,
+  proximoPasso: null,
+  proximoPassoData: null,
+  vencido: false,
 }
 
 describe('Cartao', () => {

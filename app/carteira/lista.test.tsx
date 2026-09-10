@@ -15,6 +15,9 @@ const UMA: EmpresaComigo = {
   endereco: null,
   reservadoAte: null,
   posse: true,
+  proximoPasso: null,
+  proximoPassoData: null,
+  vencido: false,
 }
 
 describe('ListaCarteira', () => {

@@ -18,6 +18,12 @@ export type EmpresaComigo = {
   // constante de prazo existe em TypeScript.
   reservadoAte: Date | null
   posse: boolean
+  // Derivado do contato mais recente, sem cache: `contato` é a verdade, e duas
+  // fontes para o mesmo dado sempre divergem. `vencido` é calculado no banco,
+  // em data civil de São Paulo — nenhuma comparação de data em TypeScript.
+  proximoPasso: string | null
+  proximoPassoData: string | null
+  vencido: boolean
 }
 
 export type ResultadoMinhasEmpresas = { ok: true; reserva: EmpresaComigo | null; carteira: EmpresaComigo[] } | Falha
@@ -33,6 +39,9 @@ type LinhaCrua = {
   cep: string | null
   reservado_ate: Date | null
   posse: boolean
+  proximo_passo: string | null
+  proximo_passo_data: string | null
+  vencido: boolean
 }
 
 // A reserva vigente e a carteira numa consulta só: são a mesma pergunta ("o
@@ -41,13 +50,30 @@ type LinhaCrua = {
 // A RLS já filtra por `usuario_atual()`, e o `WHERE` repete o filtro de
 // propósito: a política deixa passar reserva EXPIRADA (ela some da leitura de
 // `empresa`, não da linha de fila), e reserva expirada não está com ninguém.
+// O LEFT JOIN LATERAL traz o contato mais recente por empresa; `c.id DESC` é
+// desempate estável, porque `criado_em` vem de now() (início da transação) e
+// ordem sem terceira chave vira sorteio quando há empate.
+//
+// A ordem é `proximo_passo_data ASC NULLS LAST`: vencido cai no topo sozinho,
+// porque data menor vem antes. NULLS LAST é decisão — empresa sem próximo
+// passo precisa de atenção, mas menos que um combinado vencido há três dias.
 const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.contato_nome, e.telefone, e.email, e.cep,
-                    f.reservado_ate, f.vendedor_id IS NOT NULL AS posse
+                    f.reservado_ate, f.vendedor_id IS NOT NULL AS posse,
+                    ultimo.proximo_passo,
+                    to_char(ultimo.proximo_passo_data, 'YYYY-MM-DD') AS proximo_passo_data,
+                    coalesce(ultimo.proximo_passo_data < (now() AT TIME ZONE 'America/Sao_Paulo')::date, false) AS vencido
                FROM empresa_fila f
                JOIN empresa e ON e.id = f.empresa_id
+               LEFT JOIN LATERAL (
+                 SELECT c.proximo_passo, c.proximo_passo_data
+                   FROM contato c
+                  WHERE c.empresa_id = e.id
+                  ORDER BY c.criado_em DESC, c.id DESC
+                  LIMIT 1
+               ) ultimo ON true
               WHERE f.vendedor_id = $1
                  OR (f.reservado_por = $1 AND f.reservado_ate > now())
-              ORDER BY e.razao_social, e.id`
+              ORDER BY ultimo.proximo_passo_data ASC NULLS LAST, e.razao_social, e.id`
 
 export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMinhasEmpresas> {
   try {
@@ -67,6 +93,9 @@ export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMin
         endereco: l.cep ? enderecos.get(l.cep) ?? null : null,
         reservadoAte: l.reservado_ate,
         posse: l.posse,
+        proximoPasso: l.proximo_passo,
+        proximoPassoData: l.proximo_passo_data,
+        vencido: l.vencido,
       }))
       return {
         ok: true as const,
