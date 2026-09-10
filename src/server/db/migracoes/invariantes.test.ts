@@ -25,7 +25,8 @@ const sao = (): Estado => ({
     'public.pode_escrever', 'public.senha_provisoria_de',
   ],
   papeis: ['app_conexao', 'app_usuario'],
-  conexao: { rolsuper: false, rolbypassrls: false, rolconnlimit: 20, dona: 0, herdaDe: [] },
+  conexao: { rolsuper: false, rolbypassrls: false, rolconnlimit: 20, dona: 0, herdaDe: [], config: ['idle_in_transaction_session_timeout=30s'] },
+  teste: null,
   migracaoAlcancavelPor: [],
   privilegiosDeConexaoEmAutenticacao: [],
   politicasEmAutenticacao: [],
@@ -165,5 +166,81 @@ describe('políticas de leitura irrestrita', () => {
     const e = sao()
     e.politicasIrrestritas = []
     umaViolacao(e, /leitura irrestrita registrada e ausente: public\.cep\.cep_leitura/)
+  })
+})
+
+describe('app_teste, o papel do harness', () => {
+  const comTeste = (mudanca: Partial<NonNullable<Estado['teste']>> = {}): Estado => {
+    const e = sao()
+    e.teste = {
+      rolsuper: false,
+      rolbypassrls: false,
+      rolconnlimit: 20,
+      dona: 0,
+      config: ['idle_in_transaction_session_timeout=30s'],
+      membroDe: [{ papel: 'app_conexao', herda: true }],
+      privilegiosDiretos: [],
+      ...mudanca,
+    }
+    return e
+  }
+
+  test('papel ausente não é violação: ele não deve existir na Railway', () => {
+    const e = sao()
+    e.teste = null
+    expect(avaliar(e)).toEqual([])
+  })
+
+  test('papel são não é violação', () => {
+    expect(avaliar(comTeste())).toEqual([])
+  })
+
+  test('rolinherit não entra no Estado: quem manda é o inherit_option do grant (R-010)', () => {
+    // ALTER ROLE app_teste NOINHERIT deixa rolinherit=false, inherit_option=true e o
+    // privilégio inteiro (medido 2026-09-10). Se o Estado lesse rolinherit, este papel
+    // são viraria violação e a catraca acusaria o caso inócuo.
+    const e = comTeste()
+    expect(Object.keys(e.teste!)).not.toContain('rolinherit')
+    expect(avaliar(e)).toEqual([])
+  })
+
+  test.each([
+    ['superusuário', { rolsuper: true }, /app_teste é superusuário/],
+    ['BYPASSRLS', { rolbypassrls: true }, /app_teste tem BYPASSRLS/],
+    ['dona de tabela', { dona: 1 }, /app_teste é dona de tabela/],
+  ])('app_teste %s', (_, mudanca, padrao) => {
+    umaViolacao(comTeste(mudanca), padrao)
+  })
+
+  test('CONNECTION LIMIT diferente do app_conexao, com os dois números na mensagem', () => {
+    umaViolacao(comTeste({ rolconnlimit: 10 }), /app_teste com CONNECTION LIMIT diferente do app_conexao: 10 contra 20/)
+  })
+
+  test('configuração de sessão diferente do app_conexao', () => {
+    umaViolacao(comTeste({ config: null }), /configuração de sessão diferente do app_conexao/)
+  })
+
+  test('a ordem do setconfig não conta', () => {
+    const e = comTeste({ config: ['b=2', 'a=1'] })
+    e.conexao!.config = ['a=1', 'b=2']
+    expect(avaliar(e)).toEqual([])
+  })
+
+  test('privilégio concedido direto é violação, um por objeto', () => {
+    umaViolacao(comTeste({ privilegiosDiretos: ['public.usuario'] }), /app_teste com privilégio concedido direto: public\.usuario/)
+  })
+
+  test('membresia além do app_conexao é violação', () => {
+    const e = comTeste({ membroDe: [{ papel: 'app_conexao', herda: true }, { papel: 'app_usuario', herda: false }] })
+    umaViolacao(e, /app_teste é membro de app_usuario além de app_conexao/)
+  })
+
+  test('membro de app_conexao sem herança: o piso cai em silêncio', () => {
+    const e = comTeste({ membroDe: [{ papel: 'app_conexao', herda: false }] })
+    umaViolacao(e, /app_teste é membro de app_conexao sem herança/)
+  })
+
+  test('não é membro de app_conexao', () => {
+    umaViolacao(comTeste({ membroDe: [] }), /app_teste não é membro de app_conexao/)
   })
 })

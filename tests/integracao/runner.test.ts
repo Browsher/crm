@@ -180,6 +180,30 @@ describe('conferirInvariantes', () => {
     }
   })
 
+  test('nomeia privilégio concedido direto ao app_teste (controle negativo)', async () => {
+    await banco.sql('GRANT SELECT ON usuario TO app_teste')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/app_teste com privilégio concedido direto: public\.usuario/)
+    } finally {
+      await banco.sql('REVOKE ALL ON usuario FROM app_teste')
+    }
+  })
+
+  test('nomeia CONNECTION LIMIT divergente do app_teste (controle negativo)', async () => {
+    // ALTER ROLE é global no cluster: o finally TEM que restaurar 20, senão o
+    // próximo arquivo de teste roda com o limite errado.
+    await banco.sql('ALTER ROLE app_teste CONNECTION LIMIT 5')
+    try {
+      const r = await conferirInvariantes(banco.urlAdmin)
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.violacoes.join()).toMatch(/app_teste com CONNECTION LIMIT diferente do app_conexao: 5 contra 20/)
+    } finally {
+      await banco.sql('ALTER ROLE app_teste CONNECTION LIMIT 20')
+    }
+  })
+
   test('nomeia política em tabela de autenticacao (controle negativo)', async () => {
     await banco.sql('CREATE POLICY aberta ON autenticacao.sessao FOR SELECT TO app_conexao USING (true)')
     try {
