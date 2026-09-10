@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { escaparLike, lerConsulta, POR_PAGINA, totalDePaginas } from './consulta'
+import { destinoCanonico, escaparLike, lerConsulta, POR_PAGINA, totalDePaginas } from './consulta'
 
 describe('lerConsulta', () => {
   test('sem parâmetro nenhum: termo vazio, página 1', () => {
@@ -78,6 +78,41 @@ describe('escaparLike', () => {
 
   test('lerConsulta devolve o padrão já escapado', () => {
     expect(lerConsulta({ q: '100%' }).padrao).toBe('100\\%')
+  })
+})
+
+// Buscar e apagar o campo deixava `?q=` pendurado na URL: o navegador manda
+// todo campo com nome, vazio ou não. Não muda resultado nenhum — lerConsulta
+// trata os dois igual — mas é a URL que a pessoa copia e manda para alguém.
+describe('destinoCanonico', () => {
+  test('sem q na URL, nada a limpar', () => {
+    expect(destinoCanonico({})).toBeNull()
+  })
+
+  test('com termo de verdade, nada a limpar', () => {
+    expect(destinoCanonico({ q: 'sao joao' })).toBeNull()
+  })
+
+  test('q vazio manda para a URL sem q', () => {
+    expect(destinoCanonico({ q: '' })).toBe('/empresas')
+  })
+
+  test('q só com espaço também limpa', () => {
+    expect(destinoCanonico({ q: '   ' })).toBe('/empresas')
+  })
+
+  test('a página sobrevive à limpeza', () => {
+    expect(destinoCanonico({ q: '', pagina: '3' })).toBe('/empresas?pagina=3')
+  })
+
+  test('página 1 é o padrão e não precisa aparecer', () => {
+    expect(destinoCanonico({ q: '', pagina: '1' })).toBe('/empresas')
+  })
+
+  // Sem esta linha o redirecionamento se chamaria de novo para sempre: o
+  // destino não tem `q`, então precisa devolver null quando `q` está ausente.
+  test('o próprio destino já é canônico', () => {
+    expect(destinoCanonico({ pagina: '3' })).toBeNull()
   })
 })
 

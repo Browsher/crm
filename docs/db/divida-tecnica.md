@@ -609,26 +609,31 @@ guardar dado que nenhuma tela lê.
 ## Fatia empresas.2: verificado à mão
 
 Não há teste de render além dos três de `renderToStaticMarkup` em
-`app/empresas/`. Verificação manual a fazer no container local, com a `0015`
-aplicada, a base de CEP carregada e uma planilha importada. Refazer quando mexer
-em `app/empresas/**`.
+`app/empresas/`. Verificação manual feita pelo usuário em 2026-09-09 e
+2026-09-10, no container local, com a `0015` aplicada, a base de CEP carregada
+e uma planilha importada. Refazer quando mexer em `app/empresas/**`.
+
+**Os quatorze passos rodaram. Dois reprovaram e os dois foram corrigidos na
+própria fatia**, não viraram bilhete: a busca por raiz de CNPJ (4b) e o `?q=`
+pendurado na URL (13).
 
 | # | Passo | Esperado | Passou? |
 |---|---|---|---|
-| 0 | `/empresas` como gestor, sem termo | a lista, com a contagem total; sem paginação se couber numa página | |
-| 1 | `/empresas` como vendedor | redireciona para `/` | |
-| 2 | buscar `sao` numa base com "Iluminação São João" | acha | |
-| 3 | buscar `LAMPADAS` em caixa alta, com a empresa cadastrada como `LÂMPADAS` | acha | |
+| 0 | `/empresas` como gestor, sem termo | a lista, com a contagem total; sem paginação se couber numa página | sim |
+| 1 | `/empresas` como vendedor | redireciona para `/` | sim |
+| 2 | buscar `sao` numa base com "Iluminação São João" | acha | sim |
+| 3 | buscar `LAMPADAS` em caixa alta, com a empresa cadastrada como `LÂMPADAS` | acha | sim |
 | 4 | buscar o CNPJ com máscara | acha exatamente aquele estabelecimento | sim |
 | 4b | buscar a **raiz** (8 dígitos, sem pontuação) | acha todos os estabelecimentos daquela empresa | **reprovado em 2026-09-09; corrigido na mesma fatia** — ver a seção abaixo |
 | 5 | buscar quatro dígitos que existem dentro de um CNPJ | não acha nada | sim |
-| 6 | buscar `%` | não traz a base inteira | |
-| 7 | importar mais de 50 empresas e virar a página | a segunda página não repete nem pula, e a contagem continua a mesma | |
-| 8 | buscar um termo e virar a página | o termo continua no campo e no resultado | |
-| 9 | empresa com CEP fora da base | mostra o CEP e "não encontrado na base", não "sem CEP" | |
-| 10 | empresa sem CEP | mostra "sem CEP" | |
-| 11 | `/empresas?pagina=99` | página vazia com o link "Ver todas" funcionando | |
-| 12 | link `Empresas` no início | leva à listagem como gestor; como vendedor, o link não aparece | |
+| 6 | buscar `%` | não traz a base inteira | sim |
+| 7 | importar mais de 50 empresas e virar a página | a segunda página não repete nem pula, e a contagem continua a mesma | sim |
+| 8 | buscar um termo e virar a página | o termo continua no campo e no resultado | sim |
+| 9 | empresa com CEP fora da base | mostra o CEP e "não encontrado na base", não "sem CEP" | sim |
+| 10 | empresa sem CEP | mostra "sem CEP" | sim |
+| 11 | `/empresas?pagina=99` | página vazia com o link "Ver todas" funcionando | sim |
+| 12 | link `Empresas` no início | leva à listagem como gestor; como vendedor, o link não aparece | sim |
+| 13 | buscar e apagar o campo | a URL volta a `/empresas`, sem `?q=` pendurado | **reprovado em 2026-09-10; corrigido na mesma fatia** (`destinoCanonico`) |
 
 **Antes de subir o `next dev`, rode a suíte** — o harness de integração
 reescreve a senha de `app_conexao` e derruba a `DATABASE_URL` do dev. Se já

@@ -74,6 +74,23 @@ export function lerConsulta(params: Params): Consulta {
   }
 }
 
+// O navegador manda todo campo com `name`, vazio ou não: buscar e apagar o
+// campo deixa `?q=` pendurado. Não muda resultado — `lerConsulta` trata os dois
+// igual — mas é a URL que a pessoa copia e manda para alguém.
+//
+// Devolve para onde redirecionar, ou null se a URL já está no formato canônico.
+// A decisão mora aqui, e não na página, porque `page.tsx` é `async` e tem
+// guarda: nada dentro dela é testável neste projeto. A página só obedece.
+//
+// Não entra em laço: o destino nunca tem `q`, e sem `q` esta função devolve
+// null. O teste `o próprio destino já é canônico` é quem prende isso.
+export function destinoCanonico(params: Params): string | null {
+  if (params.q === undefined) return null
+  const { termo, pagina } = lerConsulta(params)
+  if (termo !== '') return null
+  return pagina > 1 ? `/empresas?pagina=${pagina}` : '/empresas'
+}
+
 export function totalDePaginas(total: number): number {
   return Math.max(1, Math.ceil(total / POR_PAGINA))
 }

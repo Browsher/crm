@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { lerConsulta, totalDePaginas } from '@/src/features/empresas/consulta'
+import { redirect } from 'next/navigation'
+import { destinoCanonico, lerConsulta, totalDePaginas } from '@/src/features/empresas/consulta'
 import { listarEmpresas } from '@/src/features/empresas/listagem'
 import { textoDoMotivo } from '@/src/features/empresas/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
@@ -10,7 +11,12 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function PaginaEmpresas({ searchParams }: Props) {
   const eu = await exigir('gestor')
-  const consulta = lerConsulta(await searchParams)
+  const params = await searchParams
+  // Antes de consultar: se a URL não está canônica, a ida ao banco seria
+  // jogada fora pelo redirecionamento.
+  const destino = destinoCanonico(params)
+  if (destino) redirect(destino)
+  const consulta = lerConsulta(params)
   const resultado = await listarEmpresas(eu.usuarioId, consulta)
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
