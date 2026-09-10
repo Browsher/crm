@@ -157,6 +157,22 @@ Quatro escolhas, cada uma com motivo:
 **`WITH INHERIT TRUE` explícito.** R-010: a herança mora no grant. Escrever a
 opção evita depender do `rolinherit` do papel no momento do `GRANT`.
 
+E vale registrar a mesma armadilha do outro lado, porque ela é silenciosa:
+**`ALTER ROLE app_teste NOINHERIT` depois não desliga a herança.** Medido em
+2026-09-10, container local, `PostgreSQL 17.11`, papel descartável com o grant
+já dado:
+
+| depois de | `rolinherit` | `inherit_option` | `USAGE` em `autenticacao` |
+|---|---|---|---|
+| `GRANT app_conexao TO … WITH INHERIT TRUE` | true | true | true |
+| `ALTER ROLE … NOINHERIT` | false | **true** | **true** |
+
+O atributo muda, o grant fica, o privilégio continua inteiro, e o comando não
+reclama. Quem tentar "endurecer" o `app_teste` por aí não endurece nada e não
+fica sabendo. Desligar de verdade é
+`REVOKE INHERIT OPTION FOR app_conexao FROM app_teste` — que é o que a `0006`
+fez com o `app_conexao`, e é o que a invariante de piso confere.
+
 **`NOLOGIN` e sem senha.** A migração roda na Railway. Senha literal em arquivo
 versionado, num papel que herda os privilégios do `app_conexao` por construção,
 seria credencial pública de produção — pior que a dívida que estamos pagando. Na
@@ -179,6 +195,7 @@ A paridade tem três partes, e cada uma é garantida de um jeito diferente:
 |---|---|
 | **Piso** — `app_teste` tem tudo que `app_conexao` tem | herança, medida na sonda 1; vale inclusive para `GRANT`s de migrações futuras, sem ninguém lembrar |
 | **Teto** — `app_teste` não tem nada além | invariante: nenhum `GRANT` direto, nenhuma membresia além do `app_conexao`, sem `SUPERUSER`, sem `BYPASSRLS`, não é dona de tabela |
+| **O próprio piso** — a herança continua ligada | invariante: a membresia em `app_conexao` tem `inherit_option = true`; ler `pg_auth_members`, nunca `pg_roles.rolinherit` (R-010) |
 | **Atributos** — o que a herança não carrega | invariante: `rolconnlimit` e `setconfig` iguais aos do `app_conexao` |
 
 A invariante mora em `src/server/db/migracoes/invariantes.ts`, roda em todo
@@ -231,6 +248,13 @@ mesmo engano encontraria o `app_teste` inerte, falharia ao conectar, e o
 consertaria — `ALTER ROLE app_teste LOGIN PASSWORD 'teste'` num papel de produção
 que herda os privilégios da aplicação. **Funciona, e ninguém nota.** Papel inerte
 ganhando `LOGIN` em produção é a coisa que não pode acontecer por acidente.
+
+A conferência mora em **`criarBancoDeTeste`**, não num script de CLI. O cenário
+que ela existe para impedir é a suíte inteira, e cada arquivo de teste cria o
+próprio banco pela mesma função — são as 30 chamadas da primeira seção. Guarda em
+`db:aplicar` ou em qualquer outro comando não seria atravessada por teste nenhum:
+os testes passariam por baixo dela, que é exatamente o caminho do engano. A
+função é o gargalo por onde todo arquivo passa, e é onde a recusa tem que estar.
 
 `criarBancoDeTeste` passa a recusar `DATABASE_URL_ADMIN` cujo host não seja
 local. A conferência é sobre o **host da URL** — o que se digita no `.env` —, e
@@ -289,6 +313,9 @@ TDD: vermelho antes de qualquer implementação, em todos os itens.
 **Unitários** (`src/server/db/`):
 
 - a conferência de host aceita `localhost`, `127.0.0.1` e `::1`
+- a conferência roda dentro de `criarBancoDeTeste`, antes de qualquer
+  `CREATE DATABASE` ou `ALTER ROLE` (integração: um host remoto não chega a criar
+  banco nenhum)
 - recusa host da Railway, e a mensagem nomeia o host recusado
 - recusa host desconhecido qualquer
 - `invariantes.ts`: `app_teste` ausente não gera violação
@@ -296,6 +323,9 @@ TDD: vermelho antes de qualquer implementação, em todos os itens.
 - `app_teste` com `SUPERUSER` ou `BYPASSRLS` é violação
 - `app_teste` membro de um papel além do `app_conexao` é violação
 - `app_teste` com `setconfig` diferente é violação
+- `app_teste` com a membresia em `app_conexao` sem `inherit_option` é violação
+- `app_teste` com `rolinherit = false` e `inherit_option = true` **não** é violação
+  (é o caso medido do `ALTER ROLE ... NOINHERIT` inócuo)
 
 **Integração** (`tests/integracao/`):
 
