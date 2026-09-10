@@ -361,6 +361,35 @@ Feito na fatia `empresas`: a tabela `empresa` (0014) e a tela
 Desenho em `docs/superpowers/specs/2026-09-09-empresas-design.md`, que cobre
 esta fatia e a `empresas.1`.
 
+Feito na fatia `fila.1`: a tabela `empresa_fila` e as três funções de fila
+(0016). Quatro coisas mudam o resumo desta página:
+
+- **`empresa_leitura` deixou de ser gestor-só.** O vendedor lê o que está com
+  ele — posse, ou reserva **vigente**. A `0014` prometeu a troca e ela aconteceu
+  aqui; a política nova consulta `empresa_fila`, e por isso estreitar
+  `empresa_fila_leitura` estreita `empresa_leitura` **em silêncio**.
+- **É a primeira tabela cuja escrita não tem `GRANT` nenhum.** `app_usuario`
+  recebe só `SELECT` em `empresa_fila`; `fila_puxar`, `empresa_assumir` e
+  `empresa_devolver` escrevem como donas. É o que mantém "um dono de escrita por
+  tabela" sem `GRANT` de coluna, que é onde o `crm-ch` se enforcou.
+- **A trava fica numa tabela e a escrita na outra.** `FOR UPDATE` não se aplica
+  ao lado anulável de um `LEFT JOIN`, então as três funções travam a linha de
+  `empresa` antes de decidir e escrevem em `empresa_fila`. **Função nova que
+  escreva em `empresa_fila` precisa travar `empresa` primeiro** — quem esquecer
+  não recebe erro nenhum, só perde corridas em silêncio.
+- **Medido em 2026-09-10 (PG 17):** `GRANT SELECT` não compra trava de linha —
+  `SELECT ... FOR SHARE` já dá `permission denied for table`. Então essa lógica
+  em TypeScript exigiria `GRANT UPDATE` em `empresa`, e a definidora é o que
+  evita isso.
+
+O gestor vê e usa `/fila` e `/carteira`, e é decisão: ele precisa ver a fila
+para saber se está vazia e a carteira para entender o que a equipe faz. As
+funções checam `pode_escrever()` e não papel, então ele também puxa e assume. Se
+incomodar, a correção é na função, não na tela.
+
+Desenho em `docs/superpowers/specs/2026-09-10-fila-design.md`; o porquê de cada
+decisão em `docs/db/0016.md`.
+
 ## Limitações conhecidas
 
 - `usuario_alterar` bloqueia a pessoa de editar o próprio nome, não só papel e
@@ -370,6 +399,15 @@ esta fatia e a `empresas.1`.
 - Aplicação na Railway é manual.
 - TLS até a Railway é trust-on-first-use (seção acima). O caminho forte é
   rodar dentro da rede da Railway.
+- **O sufixo `_em` passou a ter dois significados, e não vale generalizar.** Até
+  a `0015`, `_em` era instante de coisa que **aconteceu** (`criado_em`,
+  `bloqueada_em`) e `_ate` era **prazo** (`reservado_ate`). A `0016` trouxe
+  `empresa_fila.elegivel_em`, que é instante **futuro** — não há sufixo nosso
+  para "a partir de". A regra continua valendo: `_em` é passado, `_ate` é prazo.
+  `elegivel_em` é exceção **nomeada**, com o argumento em `docs/db/0016.md`, e a
+  próxima coluna de instante futuro não copia o padrão sem o mesmo argumento.
+  Diferente do `USING (true)` da `cep`, aqui **não existe catraca possível** —
+  comparar nome de coluna não pega intenção.
 - **`sem_acento` é `IMMUTABLE` por promessa, não por garantia.** Se o dicionário
   de `unaccent` mudar numa troca de versão maior do Postgres, a coluna gerada
   `empresa.busca` fica desatualizada **em silêncio**: nada dá erro, a busca só

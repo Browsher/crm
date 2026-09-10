@@ -965,6 +965,150 @@ exatamente essa: um espera alguém lembrar de perguntar, o outro se mostra.
 O que **não** entrou: nenhuma catraca vê "escreveu componente sem olhar o
 vizinho que já resolve o mesmo problema". Isso virou R-018, que é bilhete.
 
+## Fatia fila.1: os cinco gatilhos
+
+Todos no formato da R-016: tipo, lado do erro e o número quando há. Desenho em
+`docs/superpowers/specs/2026-09-10-fila-design.md`.
+
+| # | O que dispara | Tipo | Erra para | Hoje |
+|---|---|---|---|---|
+| 1 | empresas já reservadas alguma vez encostando no total da base → **histórico de tentativa** | medição | tarde | **0 de 65** |
+| 2 | menor descanso que a fila está entregando encostando no piso → **revisar os 30 dias** | medição | **cedo** | sem dado |
+| 3 | vendedor perguntar "está com alguém?" ao gestor mais de 1×/semana → **consulta por CNPJ** | proxy de dor | tarde | 0 |
+| 4 | algum vendedor passar de 200 na carteira, **ou** gestor reclamar que a base não gira → **teto de carteira** | medição (chute) + proxy | tarde | 0 |
+| 5 | a base crescer → **promover a `fila.2`** (bloqueio) | medição | tarde | 3/mês |
+
+### 1. Histórico de tentativa: o custo central da fatia
+
+Empresa que cumpriu o descanso volta à fila **indistinguível de uma nunca
+tocada**. Sem histórico, "já ligamos para esta?" não tem resposta na aplicação.
+
+```sql
+SELECT count(*) FILTER (WHERE primeira_reserva_em IS NOT NULL), count(*) FROM empresa_fila;
+SELECT count(*) FROM empresa;
+```
+
+Hoje 0 de 65. Dispara quando o primeiro se aproximar do segundo — ou seja,
+quando a fila der a primeira volta completa. **Não é tempo passando: é a base
+girando.** Erra para tarde, e o custo de errar para tarde é uma fatia feita
+depois, não dado perdido: nada do que existe hoje é apagado por ela.
+
+### 2. O piso de 30 dias: a única medição desta página que erra para cedo
+
+A medição óbvia — "quantas empresas voltaram dentro do piso" — **é impossível
+por construção**: o piso é filtro, então a resposta é sempre zero. A pergunta
+certa é o inverso, **quanto descanso a fila está de fato entregando**, e ela é
+legível do estado atual sem coluna nova, porque a data de devolução está
+codificada no piso:
+
+```sql
+SELECT min(now() - (f.elegivel_em - interval '30 days')) AS descanso_mais_curto
+  FROM empresa_fila f
+ WHERE f.elegivel_em IS NOT NULL AND f.elegivel_em <= now()
+   AND f.vendedor_id IS NULL AND (f.reservado_ate IS NULL OR f.reservado_ate < now());
+```
+
+"A mais fresca que a fila está a ponto de entregar descansou X dias." Com base
+folgada, X fica bem acima de 30 e ninguém olha. Quando X encostar no piso, a
+base é pequena demais para o consumo, e isso aparece **antes** de alguém
+reclamar. É snapshot, não histórico: diz o que a fila faria hoje, não o que ela
+fez — cada devolução sobrescreve a anterior.
+
+Os 30 dias são **chute declarado**. O outro gatilho para revisitá-los é a
+primeira reclamação de empresa ligada demais, que é proxy e erra para tarde.
+
+### 4. Teto de carteira: por que adiar é seguro
+
+Posse é ilimitada. No `crm-ch` o limite de reserva era estrutural (uma por vez)
+e posse não tinha limite nenhum.
+
+**O mecanismo caro não é `CHECK`.** Um `CHECK` no Postgres não consegue
+expressar "no máximo 200 por vendedor": é por linha, e subconsulta é proibida. A
+versão cara é **gatilho** contando as linhas do vendedor, ou coluna contadora
+denormalizada com o problema de consistência que ela traz. A versão barata é uma
+conferência dentro de `empresa_assumir`, e cabe a qualquer momento.
+
+**E ela é mais barata do que parece, porque teto como alarme não precisa ser
+exato.** Dois `assumir` simultâneos em 199 passam os dois e a carteira fica com
+201. Se o teto fosse lei, a corrida exigiria trava e a conversa mudaria; como
+alarme para alguém olhar, 201 não significa nada. É essa frouxidão consciente
+que torna adiar seguro.
+
+**200 é chute e serve como alarme, não como limite.** Quando disparar, a
+pergunta certa é "quantas o melhor vendedor consegue trabalhar de verdade", e só
+a operação responde.
+
+### 5. Promover a `fila.2`: o custo do bloqueio adiado, com número
+
+Empresa sem futuro reaparece a cada 30 dias e o vendedor devolve de novo: **uma
+ligação desperdiçada por empresa bloqueável, por mês.**
+
+| Base | Bloqueáveis | Ligações desperdiçadas/mês |
+|---|---|---|
+| 65 (hoje) | ~3 | **3** |
+| 2.246 | 5% = 112 | **112** |
+
+**O gatilho é a base crescer, não o tempo passar.** Três por mês não paga uma
+fatia; 112 paga. A próxima importação grande é o momento de reavaliar, e o
+número sai da conta acima, não de impressão.
+
+O par bloquear/desbloquear é indivisível: bloqueio é a única operação
+irreversível do desenho e quem o executa é o vendedor. Entregar o gatilho sem o
+desfazer faria erro de clique custar `psql`.
+
+## Fatia fila.1: fragilidades herdadas
+
+- **Abandono é gratuito e invisível.** Fechar o navegador não grava nada.
+  Empresa com telefone ruim pode ser puxada, abandonada e reoferecida
+  indefinidamente, para um vendedor depois do outro, sem sair do topo. Não há
+  como distinguir "abandonou" de "ligou e não devolveu" sem histórico — é o
+  gatilho 1.
+- **A assimetria devolver × abandonar.** Devolver custa 30 dias de descanso;
+  abandonar custa zero. Quem quisesse a empresa de volta logo bastaria
+  abandoná-la. Não há ganho pessoal nisso (ela não volta com preferência para
+  ele), então fica registrado e não corrigido.
+- **A reserva não se renova.** Ligação de 35 minutos perde a reserva, e outro
+  vendedor pode puxar a empresa. O caminho é assumir antes de a conversa
+  esticar. Se doer, o conserto é renovar na tela, não aumentar o prazo.
+- **A tabela guarda estado atual.** Toda escrita sobrescreve o dono anterior sem
+  rastro — inclusive `empresa_devolver`. "Quem trabalhou essa empresa antes?" é
+  a fatia do histórico.
+- **`empresa_leitura` depende de `empresa_fila_leitura`.** Estreitar a segunda
+  estreita a primeira em silêncio; nenhuma invariante lê conteúdo de política
+  além de `USING (true)` literal, e não vai ler — comparar texto de expressão
+  quebra na primeira reformatação do Postgres. A rede é um par de testes em
+  `fila-politicas.test.ts`: um pega o estreitamento, o outro nomeia de qual
+  tabela ele veio.
+- **`elegivel_em ASC` só é "voltou há mais tempo" enquanto houver um prazo só.**
+  A `fila.2` não pode introduzir um segundo prazo sem revisitar a ordenação.
+- **A trava é em `empresa` e a escrita em `empresa_fila`.** Função nova que
+  escreva na fila precisa travar `empresa` primeiro. Quem esquecer não recebe
+  erro: só perde corridas em silêncio.
+- **`empresas.test.ts > vendedor nao le nenhuma linha` passa hoje por outro
+  motivo que o nome sugere.** Ele foi escrito para a política gestor-só; com a
+  política nova ele continua verde porque o vendedor não tem linha em
+  `empresa_fila`. Não é falso — é frágil de ler. Renomear quando alguém mexer
+  naquele arquivo.
+- **O `Cartao` conta minutos no servidor, sem relógio no cliente.** O número
+  congela até a próxima navegação. Suficiente para 30 minutos, e mantém o
+  componente testável por `renderToStaticMarkup`.
+- **O estado vazio da fila não conta empresas.** O vendedor não lê `empresa`
+  fora do que está com ele, então a tela explica a causa sem número. Dar a
+  contagem exigiria função nova, e é fatia própria.
+
+## Fatia fila.1: o que os testes NÃO provam
+
+- **Nenhum teste exercita as telas de verdade.** `Cartao`, `ListaCarteira` e
+  `Formulario` têm render por `renderToStaticMarkup`; ninguém clica, e a action
+  `agirNaFilaAcao` não tem teste. O que cobre isso é a verificação manual.
+- **O `Formulario` é testado com `useActionState` trocado por mock.** O que se
+  prova é qual ramo renderiza para cada estado, não que o estado chegue.
+- **A corrida `devolver` × `fila_puxar` não tem teste**, só a de `assumir`. A
+  trava é a mesma linha nas duas funções, e o argumento é o mesmo — mas isso é
+  raciocínio, não medição.
+- **Nada roda contra Postgres 18.6**, que é a versão da Railway. Os testes rodam
+  em 17.
+
 ## Ferramental
 
 - Sem jsdom e sem testing-library, por escolha medida (ver "Fatia empresas: o
