@@ -409,23 +409,32 @@ transações aqui a falha no meio é pior — **a empresa volta à fila e o regi
 que aconteceu na ligação se perde**, que é o dado que esta fatia inteira existe
 para não perder.
 
-### A trava, e o comentário que vai no corpo da função
+### A trava, e onde o porquê dela mora
 
 O passo 2 não é decoração. A `fila.1` deixou escrito que **função nova que
 escreva em `empresa_fila` precisa travar `empresa` primeiro, e que quem esquecer
 não recebe erro — só perde corridas em silêncio.** `contato_registrar` escreve em
 `empresa_fila` pelo desfecho.
 
-A trava vem **antes do `INSERT` em `contato`**, e o comentário no corpo da função
-diz o motivo, não a instrução:
+A trava vem **antes do `INSERT` em `contato`**, e o motivo é que invertê-la
+(inserir o contato e travar depois) cria um caminho de deadlock que **não aparece
+em teste de uma conexão só**.
 
-> A ordem é a mesma das três funções da 0016 — travar `empresa` antes de tudo.
-> Invertê-la (inserir o contato e travar depois) cria um caminho de deadlock que
-> **não aparece em teste de uma conexão só**.
+**Correção de uma versão anterior desta spec, e ela mudou o desenho.** Estava
+escrito aqui que esse motivo iria como comentário no corpo da função, com o
+argumento de que *"o `COALESCE` de `empresa_devolver` continua lá por causa do
+parágrafo ao lado dele"*. **Não há parágrafo ao lado dele.** Medido:
+`db/migracoes/0016_empresa_fila.sql` não tem um único comentário além da primeira
+linha, e `src/server/db/migracoes/checar.ts:44` é catraca que recusa qualquer
+outro — comentário em migração só na linha 1, até 120 caracteres. O porquê do
+`COALESCE` está em `docs/db/0016.md`, que é onde ele sempre esteve.
 
-Linha que diz "trava primeiro" alguém remove; linha que diz por que a remoção não
-falha em teste, alguém pensa duas vezes. O `COALESCE` de `empresa_devolver`
-continua lá por causa do parágrafo ao lado dele.
+Então o comentário **não** vai no corpo da função: vai em `docs/db/0018.md`, que
+é a convenção deste projeto e é o que a catraca impõe. A ordem no SQL fica sem
+explicação ao lado, e a rede é o teste de corrida mais o doc.
+
+Esse erro virou a **R-022**: afirmação sobre o estado do próprio repositório é
+medição, não memória.
 
 `empresa_assumir` e `empresa_devolver` refazem a trava por dentro
 (`PERFORM ... FOR UPDATE` na mesma linha que já está travada). Isso é no-op, e é

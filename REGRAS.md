@@ -453,4 +453,50 @@ de branches.
 
 ---
 
+## R-022 — Afirmação sobre o estado do próprio repositório é medição, não memória
+
+O que aconteceu: a spec da fatia `contato` escreveu, para justificar pôr um
+comentário dentro do corpo de uma função SQL, que *"o `COALESCE` de
+`empresa_devolver` continua lá por causa do parágrafo ao lado dele"*. **Não há
+parágrafo ao lado dele.** `db/migracoes/0016_empresa_fila.sql` não tem um único
+comentário além da primeira linha, e `src/server/db/migracoes/checar.ts:44` é
+catraca que recusa qualquer outro: comentário em migração só na linha 1, até 120
+caracteres. O porquê do `COALESCE` está em `docs/db/0016.md`, que é onde ele
+sempre esteve.
+
+A causa é transferência do projeto de referência. As migrações do `crm-ch` são
+fortemente comentadas — `0011_contato.sql` abre com vinte linhas de bloco. Essa
+é a imagem que ficou, e ela foi afirmada sobre **este** repositório, que tem a
+convenção oposta e uma catraca para garanti-la.
+
+**O agravante, e é ele que faz a regra valer:** o arquivo tinha sido lido inteiro
+na mesma conversa, poucas horas antes. Ler não é lembrar. E a afirmação não ficou
+decorativa — ela **sustentou uma decisão de desenho**, que foi apresentada,
+discutida e aprovada. Quem aprovou aprovou em parte por causa dela. O erro só
+apareceu quando o `db:checar` recusou o arquivo, na execução — três documentos e
+uma aprovação depois.
+
+A regra: afirmação sobre o que **este** repositório contém — um arquivo tem tal
+comentário, existe tal teste, tal convenção é seguida, o vizinho faz assim —
+nasce com o comando que conferiu. `grep`, abrir o arquivo, `git show`. Vale
+principalmente quando a afirmação está servindo de argumento para uma decisão:
+aí ela deixa de ser contexto e vira fundamento.
+
+A relação com a R-019, e a diferença que importa: a R-019 cobre **valor singular
+de dado** e a verificação custa um `SELECT`. Esta cobre **estado de código** e a
+verificação custa um `grep` — é mais barata, e por isso a omissão é pior. O que
+as duas têm em comum é o formato que engana: ninguém escreve "0,86%" por
+intuição, e ninguém desconfia de "existe um comentário ali", porque a segunda
+tem cara de lembrança em vez de afirmação.
+
+O sinal a reconhecer: a frase "o projeto já faz assim" escrita sem que nada
+tenha sido aberto nos últimos minutos. Se ela vai virar argumento, abre.
+
+Tipo: bilhete. Nada confere se prosa sobre código é verdadeira — seria preciso
+executar a afirmação, e ela está em português. O que existe é meia rede: neste
+caso a catraca do checador pegou, mas só porque a afirmação falsa levou a
+escrever SQL inválido. Afirmação falsa que leve a prosa continua passando.
+
+---
+
 <!-- próximas regras aqui -->
