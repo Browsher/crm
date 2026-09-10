@@ -1,5 +1,11 @@
 # Fatia `empresas`: cadastro por importação de planilha
 
+> **Emenda de 2026-09-10 (R-015).** A premissa que cortou `cnae_codigo`,
+> `cnae_descricao` e `atividade_categoria` desta fatia é **falsa**: a planilha
+> real do gestor tem uma coluna "Atividade", vinda da origem da base. Ver
+> "Fatia empresas: a coluna Atividade existe na planilha real" em
+> `docs/db/divida-tecnica.md`, com o gatilho registrado.
+
 A base de prospecção entra por um CSV que o gestor envia. A empresa existe pelo
 CNPJ; o endereço é só o CEP, resolvido pela base local da fatia anterior. Não há
 formulário de cadastro manual e não há fila — posse, reserva, quarentena e
@@ -170,6 +176,11 @@ de complemento sempre foi errado.
 `capital_social`, `data_abertura`**: existiam no `crm-ch` porque **vinham da
 Receita**, não de digitação. Ninguém digita capital social à mão numa planilha
 de prospecção.
+
+**Correção de 2026-09-10:** o argumento vale para `capital_social` e
+`data_abertura`, e **não** para atividade — a planilha real tem a coluna, e ela
+não é digitada. O corte segue de pé por outro motivo, que está no registro:
+ter o dado não é ter o uso. Ver `docs/db/divida-tecnica.md`.
 
 **`empresas_no_endereco`**: era o achado mais valioso do `crm-ch` — empresa
 recém-aberta costuma ser registrada no endereço do contador, e na base de teste
