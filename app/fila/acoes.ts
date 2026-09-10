@@ -2,15 +2,15 @@
 
 import { revalidatePath } from 'next/cache'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
-import { assumir, devolver, puxarProxima } from '@/src/features/fila/repositorio'
+import { puxarProxima } from '@/src/features/fila/repositorio'
 import { exigir } from '@/src/server/autenticacao/guarda'
 
 export type EstadoFila = { erro: string | null; filaVazia: boolean }
 
-const ACOES: readonly string[] = ['puxar', 'assumir', 'devolver']
+// Só `puxar` sobrou: assumir e devolver passaram a ser desfecho de
+// `registrarContatoAcao`, em src/features/contato/acao.ts.
+const ACOES: readonly string[] = ['puxar']
 
-// Uma action para os três botões: o campo `acao` diz qual. Molde de
-// `app/usuarios/acoes.ts`.
 export async function agirNaFilaAcao(_anterior: EstadoFila, form: FormData): Promise<EstadoFila> {
   const eu = await exigir('usuario')
   const acao = String(form.get('acao') ?? '')
@@ -25,10 +25,5 @@ export async function agirNaFilaAcao(_anterior: EstadoFila, form: FormData): Pro
     return { erro: null, filaVazia: r.empresaId === null }
   }
 
-  const id = String(form.get('id') ?? '')
-  const r = acao === 'assumir' ? await assumir(eu.usuarioId, id) : await devolver(eu.usuarioId, id)
-  if (!r.ok) return { erro: textoDoMotivo(r.motivo), filaVazia: false }
-  revalidatePath('/fila')
-  revalidatePath('/carteira')
-  return { erro: null, filaVazia: false }
+  return { erro: 'Ação desconhecida.', filaVazia: false }
 }

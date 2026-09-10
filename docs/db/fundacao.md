@@ -390,12 +390,60 @@ incomodar, a correção é na função, não na tela.
 Desenho em `docs/superpowers/specs/2026-09-10-fila-design.md`; o porquê de cada
 decisão em `docs/db/0016.md`.
 
+## Feito na fatia `contato`
+
+`contato` é a tabela de eventos que registra o que aconteceu na ligação, e ela
+fecha a lacuna que a `fila.1` deixou registrada como o custo central dela:
+empresa devolvida voltava à fila **indistinguível de uma nunca tocada**.
+
+- **Uma tabela, pendurada em `empresa`, para os dois estados.** Prospecção
+  (reserva) e acompanhamento (posse) são a mesma linha com `tipo` diferente. O
+  `crm-ch` separava em duas tabelas por fase do funil; aqui não há funil, há
+  posse e não-posse, que é estado da fila e não do relacionamento.
+- **O próximo passo é derivado, não guardado.** `proximo_passo` e
+  `proximo_passo_data` vivem só em `contato`, e "o que vale hoje" sai do contato
+  mais recente por `LEFT JOIN LATERAL`. Não há cache: a auditoria do `crm-ch`
+  apontou `cliente.proximo_passo` como problema, e a única tabela candidata aqui
+  seria `empresa_fila`, que é estado de fila e não hospeda combinado.
+- **O contato acompanha a empresa, não o autor.** `contato_leitura` é uma frase
+  que delega para `empresa_leitura` (`EXISTS (SELECT 1 FROM empresa ...)`), e a
+  RLS aninhada faz gestor, posse e reserva vigente entrarem sozinhos. Vendedor B
+  lê o que o vendedor A escreveu — é o que faz o histórico atravessar a troca de
+  dono. **A consequência decidida:** o autor deixa de ler o que escreveu quando a
+  empresa sai da mão dele.
+- **A cadeia de políticas passou a ter três elos:** `contato_leitura` →
+  `empresa_leitura` → `empresa_fila_leitura`. Estreitar a última estreita as
+  três, em silêncio.
+- **A tabela é imutável por ausência.** `GRANT SELECT` e mais nada, e nenhuma
+  função de alteração. Ausência não é observável no código: tem teste próprio.
+- **`empresa_assumir` e `empresa_devolver` deixaram de ser chamáveis pela
+  aplicação.** `contato_registrar` é o único caminho de desfecho, e chama as duas
+  por dentro. Devolver sem registrar deixou de existir, o que começa a cobrar
+  pela assimetria devolver × abandonar que a `fila.1` registrou.
+- **`contato.tipo` é lista fechada em TypeScript, e o banco só exige não-vazio.**
+  Ao contrário de `usuario.papel`, nenhuma função do banco lê `tipo` — o desfecho
+  é parâmetro separado. A defesa é teste, e está escrito que é.
+- **Nenhuma comparação de data em TypeScript.** `proximo_passo_data` é `date`, e
+  "vencido" é calculado no banco com
+  `(now() AT TIME ZONE 'America/Sao_Paulo')::date`.
+
+`/carteira` virou a agenda (ordenada por `proximo_passo_data ASC NULLS LAST`) e
+ganhou `/carteira/[id]`, a ficha — que traz o **devolver da carteira**, caminho
+que a `fila.1` não tinha e cuja falta prendia quem assumisse por engano.
+
+Desenho em `docs/superpowers/specs/2026-09-10-contato-design.md`; o porquê de
+cada decisão em `docs/db/0017.md`, `0018.md` e `0019.md`.
+
 ## Limitações conhecidas
 
 - `usuario_alterar` bloqueia a pessoa de editar o próprio nome, não só papel e
   situação. Quando houver tela de perfil, a solução é política separada.
 - `criado_por` anulável, sem CHECK, para o seed do primeiro gestor.
-- `usuario_publico` (view com id e nome) fica fora até ter consumidor.
+- ~~`usuario_publico` fica fora até ter consumidor.~~ **Resolvido na fatia
+  `contato` (`0020`):** o consumidor apareceu como defeito de tela — o histórico
+  mostrava `sistema` no lugar do nome de quem registrou o contato, porque
+  `usuario_ler` não deixa um vendedor ler a linha de outro. A view expõe `id` e
+  `nome`, e o que ela **não** expõe tem teste. Ver `docs/db/0020.md`.
 - Aplicação na Railway é manual.
 - TLS até a Railway é trust-on-first-use (seção acima). O caminho forte é
   rodar dentro da rede da Railway.
@@ -413,3 +461,15 @@ decisão em `docs/db/0016.md`.
   `empresa.busca` fica desatualizada **em silêncio**: nada dá erro, a busca só
   passa a não achar. Produção é 18.6 e os testes rodam em 17. O conserto é
   recalcular a coluna, e é barato se alguém souber que precisa.
+- **`definir_auditoria` sobrescreve `criado_em` e `criado_por` no `INSERT`.**
+  Linha semeada como dona, sem identidade de sessão, nasce sem autor e com o
+  `now()` da semeadura — o valor passado é descartado. **Teste que dependa de
+  autor ou de ordem no tempo precisa escrever pelo caminho de verdade, em
+  transações separadas.** Um teste da fatia `contato` passou por sorte antes de
+  isso ser entendido: duas linhas com o mesmo instante caíram no desempate por
+  `id`, que é uuid aleatório.
+- **Migração não se explica; o doc explica a migração.**
+  `src/server/db/migracoes/checar.ts:44` recusa comentário fora da primeira
+  linha do arquivo. Então raciocínio de função definidora — inclusive o motivo
+  de uma ordem de travamento — mora em `docs/db/NNNN.md`, e quem for mexer no
+  SQL não encontra aviso ao lado do código. A rede é o teste de corrida.

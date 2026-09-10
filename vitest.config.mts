@@ -16,7 +16,7 @@ export default defineConfig({
           // ramo renderizar e errou, que era exatamente a condição do gatilho
           // do jsdom em docs/db/divida-tecnica.md. Render por
           // renderToStaticMarkup, sem jsdom e sem dependência nova.
-          include: ['src/**/*.test.ts', 'app/**/*.test.tsx'],
+          include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'app/**/*.test.tsx'],
         },
       },
       {

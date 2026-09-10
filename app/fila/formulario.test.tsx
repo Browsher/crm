@@ -17,14 +17,14 @@ const { Formulario } = await import('./formulario')
 describe('Formulario', () => {
   test('sem reserva, oferece puxar e nao fala de fila vazia', () => {
     estado.atual = { erro: null, filaVazia: false }
-    const saida = renderToStaticMarkup(<Formulario reserva={null} />)
+    const saida = renderToStaticMarkup(<Formulario reserva={null} contatos={[]} />)
     expect(saida).toContain('Puxar próxima')
     expect(saida).not.toContain('trabalhadas nos últimos 30 dias')
   })
 
   test('fila vazia diz POR QUE, e nao usa a palavra quarentena', () => {
     estado.atual = { erro: null, filaVazia: true }
-    const saida = renderToStaticMarkup(<Formulario reserva={null} />)
+    const saida = renderToStaticMarkup(<Formulario reserva={null} contatos={[]} />)
     expect(saida).toContain('estão com alguém')
     expect(saida).toContain('últimos 30 dias')
     expect(saida.toLowerCase()).not.toContain('quarentena')
@@ -32,7 +32,7 @@ describe('Formulario', () => {
 
   test('erro aparece na tela', () => {
     estado.atual = { erro: 'O tempo da reserva acabou.', filaVazia: false }
-    const saida = renderToStaticMarkup(<Formulario reserva={null} />)
+    const saida = renderToStaticMarkup(<Formulario reserva={null} contatos={[]} />)
     expect(saida).toContain('O tempo da reserva acabou.')
   })
 })

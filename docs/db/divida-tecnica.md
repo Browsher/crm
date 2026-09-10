@@ -970,13 +970,17 @@ vizinho que já resolve o mesmo problema". Isso virou R-018, que é bilhete.
 Todos no formato da R-016: tipo, lado do erro e o número quando há. Desenho em
 `docs/superpowers/specs/2026-09-10-fila-design.md`.
 
-| # | O que dispara | Tipo | Erra para | Hoje |
+> **Reauditados pela fatia `contato`.** O 1 foi resolvido e substituído; o 4 foi
+> trocado; o 2, o 3 e o 5 continuam de pé sem alteração. A auditoria um a um
+> está em "Fatia contato: o que acontece com os gatilhos da fila.1", adiante.
+
+| # | O que dispara | Tipo | Erra para | Estado |
 |---|---|---|---|---|
-| 1 | empresas já reservadas alguma vez encostando no total da base → **histórico de tentativa** | medição | tarde | **0 de 65** |
-| 2 | menor descanso que a fila está entregando encostando no piso → **revisar os 30 dias** | medição | **cedo** | sem dado |
-| 3 | vendedor perguntar "está com alguém?" ao gestor mais de 1×/semana → **consulta por CNPJ** | proxy de dor | tarde | 0 |
-| 4 | algum vendedor passar de 200 na carteira, **ou** gestor reclamar que a base não gira → **teto de carteira** | medição (chute) + proxy | tarde | 0 |
-| 5 | a base crescer → **promover a `fila.2`** (bloqueio) | medição | tarde | 3/mês |
+| 1 | empresas já reservadas alguma vez encostando no total da base → **histórico de tentativa** | medição | tarde | **resolvido na fatia `contato`**; virou o gatilho A |
+| 2 | menor descanso que a fila está entregando encostando no piso → **revisar os 30 dias** | medição | **cedo** | vivo, sem dado |
+| 3 | vendedor perguntar "está com alguém?" ao gestor mais de 1×/semana → **consulta por CNPJ** | proxy de dor | tarde | vivo, 0 |
+| 4 | algum vendedor passar de 200 na carteira → **teto de carteira** | medição (chute) + proxy | tarde | **substituído pelo gatilho C** |
+| 5 | a base crescer → **promover a `fila.2`** (bloqueio) | medição | tarde | vivo, 3/mês; adiado pela fatia `contato` |
 
 ### 1. Histórico de tentativa: o custo central da fatia
 
@@ -1149,8 +1153,280 @@ decisão que a `empresas.1` tomou sobre o `23505`.
   raciocínio, não medição.
 - **Nada roda contra Postgres 18.6**, que é a versão da Railway. Os testes rodam
   em 17.
+- **Nenhuma invariante confere o conteúdo de `usuario_publico`.** A view contorna
+  a RLS de `usuario` por desenho, e acrescentar `email` a ela é uma linha de SQL
+  numa migração futura. O obstáculo é um teste de coluna inexistente, que
+  falharia por um motivo que parece burocrático para quem não leu
+  `docs/db/0020.md`.
+
+## Fatia contato: o que acontece com os gatilhos da `fila.1`
+
+Os cinco, um a um, no formato da R-016. Desenho em
+`docs/superpowers/specs/2026-09-10-contato-design.md`.
+
+### 1 — resolvido, e o numerador troca de pergunta
+
+O gatilho existia para cronometrar uma fatia: *"quando a fila der a primeira
+volta, faça o histórico"*. A fatia `contato` **é** o histórico. Gatilho cujo
+remédio embarcou não fica esperando.
+
+**Mas a medição não vira redundante**, porque `primeira_reserva_em` e `contato`
+respondem coisas diferentes: a primeira diz que alguém **recebeu** a empresa na
+tela, a segunda diz que alguém **ligou**. A diferença entre as duas é exatamente
+o abandono, que a `fila.1` registrou como fragilidade sem medida. Vira o gatilho
+A, adiante.
+
+### 2 — o piso de 30 dias: não muda
+
+É sobre tamanho de base contra consumo. Contato não toca nisso.
+
+### 3 — consulta por CNPJ: não muda
+
+Contato não responde "está com alguém?": o vendedor continua sem enxergar
+empresa alheia, porque `contato_leitura` delega para `empresa_leitura`.
+
+### 4 — teto de carteira: substituído, não mantido
+
+O `200` sai. A `fila.1` já o registrara como chute, e ele era **proxy de uma
+coisa que passou a ser mensurável direto**: próximos passos vencidos na carteira
+de um vendedor. Vira o gatilho C.
+
+Manter os dois deixaria um alarme que dispara pelo motivo errado ao lado de um
+que dispara pelo certo — e alarme que dispara sem problema treina a ignorar
+alarme, que é o custo que a R-016 registra para o proxy que erra para cedo.
+
+### 5 — promover a `fila.2`: adiado, não aposentado
+
+O número de ligações desperdiçadas por mês não muda, mas **o custo de cada uma
+cai**: o vendedor B, ao puxar, lê "A ligou três vezes, sem interesse" e gasta
+trinta segundos em vez de uma ligação. Adiar é o resultado certo — bloqueio
+continua sendo a única operação irreversível do desenho, e o par
+bloquear/desbloquear continua indivisível.
+
+## Fatia contato: os gatilhos novos
+
+| # | O que dispara | Tipo | Erra para | Hoje |
+|---|---|---|---|---|
+| A | reservadas com **zero** contatos, de qualquer tipo (abandono) | medição | tarde | 0 de 0 |
+| B | proporção alta de `nao_liguei` sobre reservadas (descarte) | medição | tarde | 0 de 0 |
+| C | próximos passos vencidos há mais de **7 dias** por vendedor | medição (chute) | tarde | 0 |
+| D | carteira de uma pessoa passando de **80 empresas** | medição (chute) | tarde | máx. possível 65 |
+| E | pedido de segundo prazo de devolução | proxy de dor | tarde | 0 |
+
+### A — empresas que passam pela tela sem deixar rastro
+
+```sql
+SELECT count(*) FILTER (WHERE f.primeira_reserva_em IS NOT NULL AND c.n = 0) AS abandonadas,
+       count(*) FILTER (WHERE f.primeira_reserva_em IS NOT NULL) AS reservadas
+  FROM empresa_fila f
+  LEFT JOIN LATERAL (SELECT count(*) AS n FROM contato WHERE empresa_id = f.empresa_id) c ON true;
+```
+
+**Esta é a contagem de _rastro_, e por isso `nao_liguei` NÃO é excluído dela.**
+Empresa com `nao_liguei` foi vista e descartada por decisão de alguém; ela não
+foi abandonada. Excluí-la aqui somaria descarte deliberado com abandono e
+apagaria justamente a distinção que o tipo nasceu para criar. Quem conta descarte
+é o gatilho B.
+
+**Remédio, e ele vai escrito porque gatilho sem remédio dispara e fica parado:**
+a tela cobrar o registro antes de liberar o botão. Não é tabela nova, é regra de
+action. Isso também termina de corrigir a assimetria devolver × abandonar —
+abandonar deixa de custar zero e passa a custar uma linha faltando numa conta.
+
+### B — descarte sem ligar mede problema de cadastro, não de fila
+
+Proporção alta de `nao_liguei` sobre reservadas significa que a importação está
+trazendo empresa fora do segmento. **Hoje isso é invisível, porque ninguém está
+olhando para lá** — e o remédio não é mexer na fila, é rever de onde a base vem.
+
+### C e D — os dois chutes, rotulados como chute
+
+- **7 dias** (C) é o intervalo em que alguém ainda lembra da conversa. Passou
+  disso, o próximo passo vencido deixou de ser atraso e virou combinado perdido.
+  Substitui o `200` da `fila.1`. Remédio: teto dentro de `contato_registrar`, ou
+  conversa com a operação — a medição diz qual.
+- **80 empresas** (D) é a base de hoje mais folga, e o gatilho é sobre **custo de
+  leitura**: o próximo passo é derivado por `LEFT JOIN LATERAL` a cada
+  renderização da carteira. Remédio: view materializada ou coluna de cache, **com
+  medição antes** — é a medição que separa esse cache do que a auditoria do
+  `crm-ch` pegou. **Está estruturalmente mudo enquanto a base for 65**: a maior
+  carteira possível é a base inteira, e 65 não chega a 80. É registro, não
+  vigilância — ninguém precisa olhar para ele até a próxima importação.
+
+### E — segundo prazo de devolução: não é mudança isolada
+
+`nao_atendeu` deveria voltar em dias, `retornar_depois` em meses, `sem_interesse`
+em muito tempo. Hoje os três custam 30 dias.
+
+**A dependência vai escrita junto, porque quem implementar precisa dela:**
+`elegivel_em ASC` só significa "voltou há mais tempo" **enquanto houver um prazo
+só**, e a conta do gatilho 2 da `fila.1`
+(`dias desde a devolução = now() - (elegivel_em - interval '30 days')`) lê a data
+de devolução **de dentro** do `elegivel_em`, assumindo intervalo fixo — com dois
+prazos ela passa a devolver número errado **sem errar**. Quem implementar
+revisita a ordenação e o gatilho 2 na mesma fatia, ou grava a data de devolução
+em coluna própria.
+
+**O dado para calibrar os três prazos nasce nesta fatia**, nos tipos. É o oposto
+de `primeira_reserva_em`: coluna barata hoje que evita medição impossível depois.
+
+## Fatia contato: verificado à mão
+
+No container, com a base de CEP carregada, as 65 empresas importadas e dois
+vendedores. Doze passos.
+
+| # | O que se esperava | Passou |
+|---|---|---|
+| 0 | criar segundo vendedor e trocar a senha dele | sim |
+| 1 | puxar traz empresa com endereço, contagem e histórico vazio | sim |
+| 2 | registrar `nao_atendeu` com devolver tira a empresa da fila | sim |
+| 3 | `interessado` assume; a carteira mostra o grupo "sem próximo passo" contado | sim |
+| 4 | acompanhamento com data de ontem sobe ao topo com "(vencido)" | sim |
+| 5 | acompanhamento com data futura substitui o anterior | sim |
+| 6 | acompanhamento sem próximo passo é recusado pela tela | sim |
+| 7 | "Registrar e devolver" tira a empresa da carteira | **não — dois defeitos** |
+| 8 | `retornar_depois` avisa que a data não agenda nada | sim |
+| 9 | vendedor B lê o contato que A escreveu | **parcial**, e um defeito |
+| 10 | `nao_liguei` devolve sem inventar ligação | sim |
+| 11 | senha provisória pendente recusa o registro | sim |
+| 12 | gestor vê as 65; ficha de empresa alheia é 404 | sim |
+
+**O passo 9 passou no que importa e falhou na mecânica de chegar lá.** O
+vendedor B leu a nota do vendedor A numa empresa que A tocou — o histórico
+atravessa a troca de dono, que é o propósito da fatia. Mas a empresa não voltou
+ao topo da fila sozinha: foi preciso forçar a elegibilidade pelo banco. A
+ordenação já tem teste de integração; o que o passo provou foi a leitura.
+
+### Os quatro defeitos, e três deles são o mesmo erro
+
+**Três têm uma causa só: a tela raciocinava sobre o estado ANTERIOR à ação, não
+sobre o desfecho dela.**
+
+1. **O aviso dos 30 dias era fixo.** Aparecia nos cinco tipos de reserva,
+   inclusive em `interessado` — que **assume** a empresa em vez de devolvê-la. O
+   aviso mentia. Consertado: o aviso segue `DESFECHO_SUGERIDO[tipo]`, e o ramo
+   que assume diz que a empresa vai para a carteira.
+2. **"Registrar e devolver" exigia próximo passo.** A empresa está saindo da
+   carteira: não há o que combinar com quem você não vai mais ligar. Consertado
+   em `regras.ts` — a exigência passou de `posse` para
+   `posse && desfecho === 'nenhum'`, isto é, "a empresa continua comigo depois
+   disto".
+3. **Devolver pela ficha mostrava erro E funcionava.** A ação dava certo, e a
+   revalidação de `/carteira/[id]` renderizava uma página cuja empresa já não
+   está na carteira — `notFound()`. Consertado: a ficha manda `voltarPara`, e a
+   action redireciona para `/carteira` quando o desfecho é devolver. A fila não
+   manda nada, porque `/fila` continua existindo depois de devolver.
+
+**O quarto é separado, e o diagnóstico inicial estava errado.** O histórico
+mostrava `sistema` como autor. `criado_por` **não** estava nulo — conferido no
+banco, com os nomes certos. O que sumia era o **nome**: `usuario_ler` é
+`pode_ler() AND (id = usuario_atual() OR eh_gestor())`, então o vendedor B não
+lê a linha de `usuario` do vendedor A e o `LEFT JOIN` devolvia nulo. Consertado
+com `usuario_publico` (`0020`), a view que a fundação registrava como parada
+*"até ter consumidor"* — o consumidor apareceu como defeito de tela.
+
+### Reconferido à mão depois dos consertos
+
+| Achado | Confirmado na tela |
+|---|---|
+| 1 — aviso dos 30 dias | sim: o aviso muda com o tipo escolhido |
+| 2 — devolver exigindo combinado | sim: "Registrar e devolver" não exige mais |
+| 3 — erro depois do sucesso | **por consequência, não por observação direta**: o passo 2 só é observável clicando "Registrar e devolver", e não houve relato de erro. Coberto por teste. |
+| 4 — autor `sistema` | sim: aparece `Alexandre Teste` |
+
+**O que os três primeiros ensinam sobre os testes que existiam.** Todos os
+quatro passaram por `typecheck`, `lint`, 418 unitários e 300 de integração. Os
+testes de render exercitam **um estado por vez** e o padrão do projeto é
+`renderToStaticMarkup` sem DOM: sem clique, o `useState` do tipo nunca muda,
+então o aviso só era renderizado no tipo inicial — e o tipo inicial devolve. O
+conserto trouxe `tipoInicial` como prop, que é o que permite ao render alcançar
+os outros ramos sem jsdom.
+
+O quarto não é limite de render: **é limite de cenário**. O teste de integração
+lia o histórico como o **autor**, e a própria linha de `usuario` sempre é
+visível. Precisava de um segundo vendedor lendo o histórico do primeiro — que é
+exatamente o cenário que a fatia existe para servir, e o que o teste novo faz.
+
+## Fatia contato: fragilidades herdadas
+
+- **O vendedor devolve uma empresa, lembra que anotou algo importante nela, e
+  não consegue mais ver.** A política segue a empresa, não o autor. Não foi
+  consertado porque a cláusula `OR criado_por = usuario_atual()` não teria tela
+  que a consumisse — não existe "meus contatos" — e política com cláusula sem
+  consumidor é a R-014 na forma que a catraca não pega. Volta com a tela no dia
+  em que doer. **É a fragilidade desta fatia com mais chance de virar
+  reclamação**, e está escrita pelo sintoma de propósito: quem receber a
+  reclamação procura por ela, não pela política.
+- **`retornar_depois` grava data que ninguém honra.** "Me liga em março" é
+  gravado, mas a empresa volta à fila com os mesmos 30 dias de todo mundo. A tela
+  avisa com todas as letras; o dado serve ao histórico de quem puxar depois e ao
+  gatilho E. **Se a tela parar de avisar, vira promessa falsa.**
+- **O próximo passo é anulável em dois lugares pelo mesmo motivo.** Na
+  prospecção, porque não há o que combinar; no acompanhamento, porque o vendedor
+  pode não combinar nada — e é essa segunda que faz "o último contato manda"
+  funcionar. **É uma frouxidão só, vista duas vezes**, e o conserto, se um dia
+  virar problema, é um só: a tela cobrar por tipo. Registrada uma vez de
+  propósito — duas fragilidades separadas convidam a dois consertos, e o segundo
+  é sempre o que fica pela metade.
+- **`nota` é texto livre e é lida por quem puxar a empresa depois.** Não há
+  máscara, de propósito: o motivo da máscara do `crm-ch` (`GRANT` por coluna) não
+  existe aqui. O que se escreve ali chega a colegas.
+- **A cadeia de políticas agora tem três elos:** `contato_leitura` →
+  `empresa_leitura` → `empresa_fila_leitura`. Estreitar a última estreita as três
+  **em silêncio**. Nenhuma invariante lê conteúdo de política e não vai ler —
+  comparar texto de expressão quebra na primeira reformatação do Postgres. A rede
+  é o par de testes em `contato-politicas.test.ts`: um pega o estreitamento, o
+  outro nomeia de qual tabela ele veio.
+- **`features/fila` lê a tabela `contato`.** Acoplamento por tabela, não por
+  importação de módulo: legal pela regra do `CLAUDE.md`, e ainda assim um lugar
+  onde mexer numa feature quebra a outra **sem o `tsc` avisar**.
+- **A tabela é imutável por ausência de função, não por gatilho.** `REVOKE` que
+  se perca numa migração futura abre escrita sem nada acusar além do teste de
+  integração dos três verbos.
+- **Contato falso continua possível.** Nada prova que a ligação aconteceu; o que
+  a fatia faz é remover o incentivo a mentir, dando `nao_liguei` a quem não
+  ligou.
+- **O SQL não se explica.** `checar.ts:44` recusa comentário fora da primeira
+  linha da migração, então o motivo da ordem de travamento de
+  `contato_registrar` mora em `docs/db/0018.md`. Quem mexer no SQL não encontra
+  aviso ao lado do código.
+
+## Fatia contato: o que os testes NÃO provam
+
+- **Nenhum teste exercita as telas de verdade.** `Cartao`, `Ficha`,
+  `ListaCarteira`, `FormularioContato` e `LinhaDoTempo` têm render por
+  `renderToStaticMarkup`; ninguém clica, e `registrarContatoAcao` não tem teste
+  próprio. O que cobre isso é a verificação manual.
+- **O `FormularioContato` é testado com `useActionState` trocado por mock.** O
+  que se prova é qual ramo renderiza para cada estado, não que o estado chegue.
+  **E foi por aí que três defeitos passaram**: sem clique, o `useState` do tipo
+  nunca muda, então o aviso de desfecho só era renderizado no tipo inicial. A
+  prop `tipoInicial` existe para o render alcançar os outros ramos sem DOM, e é
+  a única forma que este projeto tem de cobrir isso sem jsdom.
+- **A regra de "exige próximo passo onde há posse" é provada como função pura**,
+  em `regras.ts`. Que a action a chame é bilhete, não catraca: existe um teste
+  que confere o `import`, e ele não pega validação duplicada dentro da action.
+- **A corrida `devolver` × `fila_puxar` continua sem teste**, como na `fila.1`.
+  Só `assumir` tem. A trava é a mesma linha, e o argumento é o mesmo — mas isso é
+  raciocínio, não medição.
+- **Nada roda contra Postgres 18.6**, que é a versão da Railway. Os testes rodam
+  em 17.
+- **Nenhuma invariante confere o conteúdo de `usuario_publico`.** A view contorna
+  a RLS de `usuario` por desenho, e acrescentar `email` a ela é uma linha de SQL
+  numa migração futura. O obstáculo é um teste de coluna inexistente, que
+  falharia por um motivo que parece burocrático para quem não leu
+  `docs/db/0020.md`.
+- **Uma falha unitária vista uma vez e não explicada.** Numa rodada da fatia, o
+  unitário deu 1 falha em 415 e a saída foi truncada antes de alguém ler qual.
+  Cinco rodadas depois, incluindo `build` seguido de `test:unit`, deram 415
+  verdes. Não reproduziu e não se sabe o que era. Para a próxima ocorrência ser
+  **comparável** em vez de outro mistério do mesmo tamanho, o inventário dos
+  testes está em `tests/inventario-unitario.txt`, regenerável por
+  `npm run test:inventario` — `git diff` sobre ele responde que teste sumiu,
+  apareceu ou mudou de nome.
 
 ## Ferramental
+
 
 - Sem jsdom e sem testing-library, por escolha medida (ver "Fatia empresas: o
   estado inicial"). Render é testado por `renderToStaticMarkup` de

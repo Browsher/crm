@@ -1,4 +1,5 @@
 import { comoUsuario, type Executar } from '../../server/db/como-usuario'
+import type { Validado } from './regras'
 
 export type Motivo = 'sem_permissao' | 'nao_encontrada' | 'reserva_expirada' | 'ja_e_sua'
 export type Falha = { ok: false; motivo: Motivo }
@@ -10,9 +11,8 @@ export class ResultadoDesconhecido extends Error {
   }
 }
 
-// Vocabulário das funções de escrita da 0016. Object.hasOwn, não indexação
-// direta, para 'toString' não virar resultado. Valor fora daqui é defeito
-// nosso, não estado de negócio: lança em vez de virar { ok: false }.
+// Object.hasOwn, não indexação direta, para 'toString' não virar resultado.
+// Valor fora daqui é defeito nosso, não estado de negócio: lança.
 const VOCABULARIO: Record<string, { ok: true } | Falha> = {
   ok: { ok: true },
   nao_encontrada: { ok: false, motivo: 'nao_encontrada' },
@@ -43,14 +43,16 @@ async function tentar<T>(usuarioId: string, trabalho: (executar: Executar) => Pr
   }
 }
 
-// `empresaId` nulo é fila vazia, e não falha: a função devolveu zero linhas
-// porque não há candidata. Quem decide o que dizer é a tela.
-export function puxarProxima(usuarioId: string): Promise<{ ok: true; empresaId: string | null } | Falha> {
+export function registrarContato(
+  usuarioId: string,
+  empresaId: string,
+  v: Validado,
+): Promise<{ ok: true } | Falha> {
   return tentar(usuarioId, async (executar) => {
-    const r = await executar<{ empresa_id: string }>('SELECT empresa_id FROM fila_puxar()')
-    return { ok: true as const, empresaId: r.linhas[0]?.empresa_id ?? null }
+    const r = await executar<{ contato_registrar: string }>(
+      'SELECT contato_registrar($1, $2, $3, $4, $5, $6)',
+      [empresaId, v.tipo, v.nota, v.proximoPasso, v.proximoPassoData, v.desfecho],
+    )
+    return traduzirResultado('contato_registrar', r.linhas[0].contato_registrar)
   })
 }
-
-// `assumir` e `devolver` saíram na 0019: as funções do banco viraram internas
-// e o caminho da tela é `contato_registrar`, em src/features/contato.

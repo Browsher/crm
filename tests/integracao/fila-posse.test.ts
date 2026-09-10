@@ -16,6 +16,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
 })
@@ -29,10 +30,17 @@ async function criarEmpresa(sufixo = '0181'): Promise<string> {
   return linha.id
 }
 
+// `empresa_assumir` e `empresa_devolver` sao internas desde a 0019: o caminho
+// da aplicacao e `contato_registrar` com desfecho. O contrato de ordem das
+// checagens continua o mesmo e continua exercitado — so que pelo chamador de
+// verdade, que e o que a tela usa.
 function assumir(usuarioId: string, empresaId: string): Promise<string> {
   return banco.comoUsuario(usuarioId, async (e) => {
-    const r = await e<{ empresa_assumir: string }>('SELECT empresa_assumir($1)', [empresaId])
-    return r.linhas[0].empresa_assumir
+    const r = await e<{ contato_registrar: string }>(
+      'SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)',
+      [empresaId, 'interessado', 'assumir'],
+    )
+    return r.linhas[0].contato_registrar
   })
 }
 
@@ -117,7 +125,7 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
       await c1.query('BEGIN')
       await c1.query("SELECT set_config('role', 'app_usuario', true)")
       await c1.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
-      await c1.query('SELECT empresa_assumir($1)', [unica])
+      await c1.query('SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)', [unica, 'interessado', 'assumir'])
       await c2.query('BEGIN')
       await c2.query("SELECT set_config('role', 'app_usuario', true)")
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
@@ -155,7 +163,7 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
       await c2.query("SELECT set_config('role', 'app_usuario', true)")
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
       // Espera a trava de c1. Só depois do COMMIT ele relê e vê a reserva de B.
-      const espera = c2.query('SELECT empresa_assumir($1)', [unica])
+      const espera = c2.query('SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)', [unica, 'interessado', 'assumir'])
       await c1.query('COMMIT')
       await expect(espera).rejects.toMatchObject({ code: '42501' })
       await c2.query('ROLLBACK')
@@ -174,8 +182,11 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
 
 function devolver(usuarioId: string, empresaId: string): Promise<string> {
   return banco.comoUsuario(usuarioId, async (e) => {
-    const r = await e<{ empresa_devolver: string }>('SELECT empresa_devolver($1)', [empresaId])
-    return r.linhas[0].empresa_devolver
+    const r = await e<{ contato_registrar: string }>(
+      'SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)',
+      [empresaId, 'nao_atendeu', 'devolver'],
+    )
+    return r.linhas[0].contato_registrar
   })
 }
 

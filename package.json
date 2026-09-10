@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unitario",
     "test:integracao": "vitest run --project integracao",
+    "test:inventario": "tsx scripts/inventario-unitario.mts",
     "db:subir": "docker compose up -d --wait",
     "db:derrubar": "docker compose down",
     "db:checar": "tsx scripts/db/checar.mts",

@@ -20,7 +20,12 @@ import { describe, expect, test } from 'vitest'
 // a diretiva é inerte. Pega export de valor, que é o erro que aconteceu. Não
 // pega função exportada que não deveria ser action, nem 'use server' inline
 // dentro de uma função.
-const ARQUIVOS = globSync('app/**/*.{ts,tsx}').filter((caminho) => {
+// Varre `app/**` e `src/**`: a action de contato mora em src/features/contato,
+// e sem esta linha ela ficaria fora do alcance da catraca que nasceu
+// exatamente do bug que ela pode ter. Antes da fatia `contato` a catraca
+// afirmava "toda action em app/ está vigiada"; agora afirma "toda superfície
+// 'use server' do projeto está vigiada".
+const ARQUIVOS = [...globSync('app/**/*.{ts,tsx}'), ...globSync('src/**/*.{ts,tsx}')].filter((caminho) => {
   const primeira = readFileSync(caminho, 'utf8').trimStart().slice(0, 20)
   return primeira.startsWith("'use server'") || primeira.startsWith('"use server"')
 })
@@ -28,6 +33,12 @@ const ARQUIVOS = globSync('app/**/*.{ts,tsx}').filter((caminho) => {
 describe("arquivos 'use server'", () => {
   test('existe pelo menos um, senão esta catraca não vigia nada', () => {
     expect(ARQUIVOS.length).toBeGreaterThan(0)
+  })
+
+  // Sem isto, estender o glob passa e não cobre nada: a catraca ficaria verde
+  // sobre os mesmos arquivos de antes.
+  test('a varredura enxerga a action que mora em src/', () => {
+    expect(ARQUIVOS.some((c) => c.split('\\').join('/') === 'src/features/contato/acao.ts')).toBe(true)
   })
 
   for (const caminho of ARQUIVOS) {
