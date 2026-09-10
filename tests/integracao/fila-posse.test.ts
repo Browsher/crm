@@ -171,3 +171,99 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
     }
   })
 })
+
+function devolver(usuarioId: string, empresaId: string): Promise<string> {
+  return banco.comoUsuario(usuarioId, async (e) => {
+    const r = await e<{ empresa_devolver: string }>('SELECT empresa_devolver($1)', [empresaId])
+    return r.linhas[0].empresa_devolver
+  })
+}
+
+describe('empresa_devolver', () => {
+  test('devolve posse, limpa tudo e grava o piso', async () => {
+    const id = await criarEmpresa('0181')
+    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await assumir(vendedorA, id)
+    expect(await devolver(vendedorA, id)).toBe('ok')
+    const [estado] = await banco.sql<{
+      vendedor_id: null
+      reservado_por: null
+      reservado_ate: null
+      dias: string
+    }>(
+      `SELECT vendedor_id, reservado_por, reservado_ate,
+              round(extract(epoch FROM elegivel_em - now()) / 86400)::text AS dias
+         FROM empresa_fila WHERE empresa_id = $1`,
+      [id],
+    )
+    expect(estado.vendedor_id).toBeNull()
+    expect(estado.reservado_por).toBeNull()
+    expect(estado.reservado_ate).toBeNull()
+    // O prazo é do banco; o teste confere que o piso existe e é de 30 dias
+    // sem escrever o número em nenhuma constante de TypeScript.
+    expect(estado.dias).toBe('30')
+  })
+
+  test('devolve reserva vigente, sem ter assumido', async () => {
+    const id = await criarEmpresa('0181')
+    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    expect(await devolver(vendedorA, id)).toBe('ok')
+  })
+
+  test('devolvida nao volta a ser puxavel na hora', async () => {
+    const id = await criarEmpresa('0181')
+    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await devolver(vendedorA, id)
+    const r = await banco.comoUsuario(vendedorB, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    expect(r.linhas).toEqual([])
+  })
+
+  test('empresa sem linha de fila e nao_encontrada', async () => {
+    const id = await criarEmpresa('0181')
+    expect(await devolver(vendedorA, id)).toBe('nao_encontrada')
+  })
+
+  test('empresa de outro vendedor e 42501', async () => {
+    const id = await criarEmpresa('0181')
+    await banco.sql(
+      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
+      [id, vendedorB],
+    )
+    await expect(devolver(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
+  })
+
+  // O CASO DO COALESCE, e ele é o motivo de o COALESCE existir.
+  //
+  // Linha sem dono e sem reserva: `v_dono` e `v_resv` são nulos, então
+  // `v_dono = v_eu OR v_resv = v_eu` é NULL — não false. `NOT NULL` é NULL, e
+  // `IF NULL THEN` NÃO EXECUTA: sem o default explícito, a checagem de posse
+  // seria PULADA e qualquer vendedor devolveria empresa de qualquer outro.
+  test('linha sem dono e sem reserva e 42501, nao passa direto', async () => {
+    const id = await criarEmpresa('0181')
+    await banco.sql('INSERT INTO empresa_fila (empresa_id, primeira_reserva_em) VALUES ($1, now())', [id])
+    await expect(devolver(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
+  })
+
+  test('gestor NAO devolve empresa alheia nesta fatia', async () => {
+    const gestor = await criarUsuario(banco, 'gestor', 'GestorDevolve')
+    const id = await criarEmpresa('0181')
+    await banco.sql(
+      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
+      [id, vendedorA],
+    )
+    // Tirar posse é do gestor e foi adiado. Se um dia isto passar a devolver
+    // 'ok', a operação chegou sem tela — superfície sem consumidor (R-014).
+    await expect(devolver(gestor, id)).rejects.toMatchObject({ code: '42501' })
+  })
+
+  test('senha provisoria pendente e 42501', async () => {
+    const id = await criarEmpresa('0181')
+    const pendente = await criarUsuario(banco, 'vendedor', 'PendenteDevolve')
+    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [pendente])
+    await banco.sql(
+      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
+      [id, pendente],
+    )
+    await expect(devolver(pendente, id)).rejects.toMatchObject({ code: '42501' })
+  })
+})
