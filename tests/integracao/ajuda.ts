@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { Client } from 'pg'
 import { gerarHash } from '@/src/server/autenticacao/senha'
 import { comAdmin, comBanco } from '@/src/server/db/admin'
 import { comoUsuario as comoUsuarioReal, type Executar } from '@/src/server/db/como-usuario'
@@ -7,6 +8,7 @@ import { exigirHostLocal } from '@/src/server/db/host-local'
 import { aplicar } from '@/src/server/db/migracoes/aplicar'
 import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { fecharPool } from '@/src/server/db/pool'
+import { configSsl } from '@/src/server/db/ssl'
 
 export type BancoDeTeste = {
   nome: string
@@ -14,16 +16,45 @@ export type BancoDeTeste = {
   urlApp: string
   // Como dono: RLS ignorada. Para preparar cenário e para controles negativos.
   sql: <T>(texto: string, params?: unknown[]) => Promise<T[]>
-  // O módulo real, como app_conexao: RLS vale.
+  // O módulo real, como app_teste: RLS vale.
   comoUsuario: <T>(usuarioId: string, trabalho: (executar: Executar) => Promise<T>) => Promise<T>
   derrubar: () => Promise<void>
 }
 
 type Opcoes = { semMigracoes?: boolean }
 
-// Senha SÓ do container local. Papel é global no cluster; repetir o ALTER por
-// arquivo de teste é inofensivo.
+const PAPEL_TESTE = 'app_teste'
+// Senha SÓ do container local, e SÓ do papel do harness. A migração 0021 cria
+// app_teste NOLOGIN e sem senha de propósito: ela roda na Railway também, e
+// senha em arquivo versionado seria credencial de produção.
 const SENHA_APP_TESTE = 'teste'
+
+// Papel é global no cluster e a senha sobrevive a CREATE/DROP DATABASE: depois
+// da primeira vez ninguém precisa escrever de novo. Só escreve se a conexão
+// falhar — em regime são zero escritas por rodada.
+let loginGarantido: Promise<void> | undefined
+function garantirLoginDeAppTeste(urlServidor: string): Promise<void> {
+  loginGarantido ??= (async () => {
+    const u = new URL(urlServidor)
+    u.username = PAPEL_TESTE
+    u.password = SENHA_APP_TESTE
+    const cliente = new Client({ connectionString: u.toString(), ssl: configSsl(lerEnv()) })
+    try {
+      await cliente.connect()
+      await cliente.end()
+      return
+    } catch (erro) {
+      // 28P01: senha errada. 28000: papel sem LOGIN (container novo, ou depois
+      // de docker compose down -v). Qualquer outro erro é problema de verdade e
+      // sobe: 42501 e 3D000 diriam que falta GRANT CONNECT, que a 0021 não dá
+      // porque o padrão do Postgres concede CONNECT a PUBLIC.
+      const codigo = (erro as { code?: string }).code
+      if (codigo !== '28P01' && codigo !== '28000') throw erro
+    }
+    await comAdmin(urlServidor, (c) => c.query(`ALTER ROLE ${PAPEL_TESTE} LOGIN PASSWORD '${SENHA_APP_TESTE}'`))
+  })()
+  return loginGarantido
+}
 
 export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTeste> {
   const urlServidor = exigir(lerEnv(), 'DATABASE_URL_ADMIN')
@@ -42,11 +73,11 @@ export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTes
     if (!r.ok) {
       throw new Error(`migrações não aplicaram: ${r.motivo} ${JSON.stringify(r.problemas ?? r.divergentes)}`)
     }
-    await comAdmin(urlAdmin, (c) => c.query(`ALTER ROLE app_conexao LOGIN PASSWORD '${SENHA_APP_TESTE}'`))
+    await garantirLoginDeAppTeste(urlServidor)
   }
 
   const u = new URL(urlAdmin)
-  u.username = 'app_conexao'
+  u.username = PAPEL_TESTE
   u.password = SENHA_APP_TESTE
   const urlApp = u.toString()
   // `chamar` e o pool usam o caminho padrão (DATABASE_URL). Definir aqui

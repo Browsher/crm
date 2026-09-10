@@ -1,4 +1,7 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { criarBancoDeTeste, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -10,11 +13,21 @@ afterAll(async () => {
 })
 
 describe('app_teste: o papel do harness', () => {
-  test('existe, não loga e não tem senha', async () => {
-    const r = await banco.sql<{ canlogin: boolean; temSenha: boolean }>(`
-      SELECT a.rolcanlogin AS canlogin, (a.rolpassword IS NOT NULL) AS "temSenha"
-      FROM pg_authid a WHERE a.rolname = 'app_teste'`)
-    expect(r).toEqual([{ canlogin: false, temSenha: false }])
+  test('existe', async () => {
+    const r = await banco.sql<{ n: number }>(
+      "SELECT count(*)::int AS n FROM pg_roles WHERE rolname = 'app_teste'",
+    )
+    expect(r).toEqual([{ n: 1 }])
+  })
+
+  test('a migração cria o papel NOLOGIN e sem senha: é o que a Railway recebe', async () => {
+    // No cluster local este papel TEM login e senha — o harness as dá, porque é
+    // ele quem conecta. Então o catálogo daqui não prova nada sobre produção.
+    // Quem prova é o texto da migração, que é o que roda lá.
+    const sql = await readFile(join(PASTA_MIGRACOES, '0021_papel_teste.sql'), 'utf8')
+    expect(sql).toMatch(/CREATE ROLE app_teste NOLOGIN/)
+    expect(sql).not.toMatch(/PASSWORD/i)
+    expect(sql).not.toMatch(/ALTER ROLE app_teste[^;]*LOGIN/)
   })
 
   test('é membro de app_conexao com herança, e de mais ninguém', async () => {

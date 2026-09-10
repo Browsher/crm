@@ -12,11 +12,11 @@ afterAll(async () => {
   await banco.derrubar()
 })
 
-test('como app_conexao a guarda deixa passar', async () => {
+test('a conexão do harness é app_teste, e a guarda deixa passar', async () => {
   const c = await conectarVerificado(banco.urlApp)
   try {
     const { rows } = await c.query<{ u: string }>('SELECT current_user AS u')
-    expect(rows[0].u).toBe('app_conexao')
+    expect(rows[0].u).toBe('app_teste')
   } finally {
     c.release()
   }
@@ -36,8 +36,11 @@ test('app_conexao tem CONNECTION LIMIT 20 e timeout de transação ociosa de 30s
 
 test('a conexão além do limite é recusada com 53300', async () => {
   // O pool deste arquivo pode ter conexão ociosa aberta: conta o que já existe.
+  // Conta app_teste porque é ele quem conecta. Só faz sentido porque a invariante
+  // de paridade garante o mesmo CONNECTION LIMIT do app_conexao — sem ela, este
+  // teste ficaria verde medindo outro limite.
   const [{ n }] = await banco.sql<{ n: number }>(
-    "SELECT count(*)::int AS n FROM pg_stat_activity WHERE usename = 'app_conexao'",
+    "SELECT count(*)::int AS n FROM pg_stat_activity WHERE usename = 'app_teste'",
   )
   const abertos: Client[] = []
   try {

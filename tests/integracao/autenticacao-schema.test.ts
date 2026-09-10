@@ -74,7 +74,7 @@ describe('schema autenticacao', () => {
     }
   })
 
-  test('SELECT direto em cada tabela como app_conexao é 42501', async () => {
+  test('SELECT direto em cada tabela como app_teste é 42501', async () => {
     const c = await conectarVerificado(banco.urlApp)
     try {
       for (const tabela of TABELAS) {
