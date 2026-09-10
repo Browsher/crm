@@ -28,6 +28,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.senha_provisoria_de',
   'public.credencial_definir',
   'public.usuario_situacao_definir',
+  'public.fila_puxar',
 ] as const
 
 // Pergunta 3: quais políticas podem liberar a tabela inteira. `USING (true)`

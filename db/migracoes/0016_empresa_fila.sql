@@ -29,4 +29,47 @@ CREATE POLICY empresa_leitura ON empresa FOR SELECT USING (
             OR (f.reservado_por = usuario_atual() AND f.reservado_ate > now()))
   )
 );
+CREATE FUNCTION fila_puxar() RETURNS TABLE (empresa_id uuid, reservado_ate timestamptz)
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $$
+#variable_conflict use_column
+DECLARE
+  v_eu       uuid := public.usuario_atual();
+  v_anterior uuid;
+  v_empresa  uuid;
+BEGIN
+  IF NOT public.pode_escrever() THEN
+    RAISE EXCEPTION 'troque a senha provisoria antes de prospectar' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.empresa_fila ef
+     SET reservado_por = NULL, reservado_ate = NULL
+   WHERE ef.reservado_por = v_eu
+   RETURNING ef.empresa_id INTO v_anterior;
+  SELECT e.id INTO v_empresa
+    FROM public.empresa e
+    LEFT JOIN public.empresa_fila f ON f.empresa_id = e.id
+    LEFT JOIN public.usuario dono ON dono.id = f.vendedor_id
+   WHERE (f.vendedor_id IS NULL OR dono.ativo = false)
+     AND (f.reservado_ate IS NULL OR f.reservado_ate < now())
+     AND (f.elegivel_em IS NULL OR f.elegivel_em <= now())
+     AND e.id IS DISTINCT FROM v_anterior
+   ORDER BY f.elegivel_em ASC NULLS FIRST, e.criado_em ASC, e.id ASC
+   LIMIT 1
+   FOR UPDATE OF e SKIP LOCKED;
+  IF v_empresa IS NULL THEN
+    RETURN;
+  END IF;
+  INSERT INTO public.empresa_fila AS ef (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
+  VALUES (v_empresa, v_eu, now() + interval '30 minutes', now())
+  ON CONFLICT (empresa_id) DO UPDATE
+     SET reservado_por = excluded.reservado_por,
+         reservado_ate = excluded.reservado_ate,
+         vendedor_id = NULL,
+         primeira_reserva_em = coalesce(ef.primeira_reserva_em, excluded.primeira_reserva_em)
+  RETURNING ef.empresa_id, ef.reservado_ate INTO empresa_id, reservado_ate;
+  RETURN NEXT;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION fila_puxar() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION fila_puxar() TO app_usuario;
 COMMIT;

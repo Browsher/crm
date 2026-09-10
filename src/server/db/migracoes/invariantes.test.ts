@@ -16,6 +16,7 @@ const sao = (): Estado => ({
     { schema: 'public', nome: 'credencial_definir', temSearchPath: true },
     { schema: 'public', nome: 'sessoes_encerrar_de', temSearchPath: true },
     { schema: 'public', nome: 'usuario_situacao_definir', temSearchPath: true },
+    { schema: 'public', nome: 'fila_puxar', temSearchPath: true },
   ],
   funcoesDeAcesso: [
     'public.usuario_atual', 'public.pode_ler', 'public.eh_gestor',
@@ -30,6 +31,7 @@ const sao = (): Estado => ({
   funcoesConcedidasAAppUsuario: [
     'public.credencial_definir', 'public.eh_gestor', 'public.pode_escrever', 'public.pode_ler',
     'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
+    'public.fila_puxar',
   ],
   funcoesExecutaveisPorPublico: [],
 })
