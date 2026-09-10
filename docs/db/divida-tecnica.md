@@ -1056,6 +1056,47 @@ O par bloquear/desbloquear é indivisível: bloqueio é a única operação
 irreversível do desenho e quem o executa é o vendedor. Entregar o gatilho sem o
 desfazer faria erro de clique custar `psql`.
 
+## Fatia fila.1: verificado à mão
+
+Não há teste que exercite as telas de verdade — `Cartao`, `ListaCarteira` e
+`Formulario` têm render por `renderToStaticMarkup`, e a action
+`agirNaFilaAcao` não tem teste nenhum. Esta verificação é o que cobre isso.
+Feita pelo usuário em **2026-09-10**, no container local, com a `0016`
+aplicada, a base de CEP carregada, as 65 empresas importadas, um gestor e dois
+vendedores. Refazer quando mexer em `app/fila/**` ou `app/carteira/**`.
+
+**Os dez passos rodaram e os dez passaram.**
+
+| # | Passo | Esperado | Passou? |
+|---|---|---|---|
+| 1 | vendedor puxa | empresa com endereço resolvido e contagem correndo | sim |
+| 2 | puxa de novo | vem **outra**, e a primeira volta a aparecer depois | sim |
+| 3 | assume | sai de `/fila` e aparece em `/carteira` | sim |
+| 4 | devolve | sai da carteira e **não reaparece** ao puxar | sim |
+| 5 | gestor em `/empresas` | continua vendo as 65 | sim |
+| 6 | vendedor B | **não** vê a empresa que está com o A | sim |
+| 7 | reserva expira sem assumir | volta a ser puxável, e o A deixa de ler o contato | sim |
+| 8 | gestor desativa o vendedor A | a carteira dele volta a ser puxável | sim |
+| 9 | senha provisória pendente tenta puxar | recusa **com mensagem**, não tela branca | sim |
+| 10 | base inteira indisponível | estado vazio diz **por que**, sem a palavra "quarentena" | sim |
+
+**Ordem que a rodada usou, e por que ela importa:** criar o vendedor B como
+gestor deixa ele com senha provisória pendente, então o passo 9 sai de graça
+antes de trocar a senha. Sem essa ordem, o passo 9 exige desfazer estado ou
+criar um terceiro usuário.
+
+**Dois passos admitem atalho por SQL**, e o roteiro os ofereceu: o 7 forçando
+`reservado_ate = now() - interval '1 minute'`, e o 10 pondo a base inteira em
+descanso por `INSERT ... ON CONFLICT` com `elegivel_em = now() + interval '30
+days'`. **Qual caminho foi usado nesta rodada não ficou registrado** — esperar
+os 30 minutos e forçar o relógio provam a mesma regra, mas só a espera prova
+que o prazo gravado é o que o banco gravou. Vale escolher e anotar na próxima.
+
+**O que esta verificação NÃO cobriu:** nenhuma corrida. Duas abas puxando no
+mesmo instante é o que os testes de `SKIP LOCKED` e da trava cobrem, e
+reproduzir isso no navegador é mais frágil que o teste que já existe — mesma
+decisão que a `empresas.1` tomou sobre o `23505`.
+
 ## Fatia fila.1: fragilidades herdadas
 
 - **Abandono é gratuito e invisível.** Fechar o navegador não grava nada.
