@@ -1,6 +1,6 @@
 # P1: emissão de sessão exige credencial vigente
 
-Data: 10/09/2026. Diagnóstico: 061bb2c. Base atual: 0ac5ae7, após merge do PR #23. Branch: codex/login-credencial-vigente. Status: especificação para aprovação; nenhuma implementação do P1 iniciada.
+Data: 10/09/2026. Diagnóstico: 061bb2c. Base atual: 0ac5ae7, após merge do PR #23. Branch: codex/login-credencial-vigente. Status: implementada e revisada; validação local concluída, aguardando CI e integração. Migração Railway não aplicada.
 
 ## Problema confirmado
 

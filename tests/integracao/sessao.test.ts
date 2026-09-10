@@ -13,7 +13,10 @@ afterAll(async () => {
 })
 
 test('criar, ler e encerrar; o banco guarda o hash, não o token', async () => {
-  const { token, expiraEm } = await criarSessao(id)
+  const criada = await criarSessao(id, '1')
+  expect(criada.ok).toBe(true)
+  if (!criada.ok) throw new Error('sessão recusada')
+  const { token, expiraEm } = criada
   const s = await lerSessao(token)
   expect(s).toMatchObject({ usuarioId: id, nome: 'Gestora', email: 'gestora@teste.local', papel: 'gestor', senhaProvisoriaPendente: false })
   expect(s?.expiraEm.getTime()).toBe(expiraEm.getTime())

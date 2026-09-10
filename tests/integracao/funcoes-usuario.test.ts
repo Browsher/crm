@@ -14,6 +14,7 @@ beforeAll(async () => {
   banco = await criarBancoDeTeste()
   gestor = await criarUsuario(banco, 'gestor', 'Gestora')
   vendedor = await criarUsuario(banco, 'vendedor', 'Vendedor')
+  await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [vendedor, 'hash-anterior'])
 })
 afterAll(async () => {
   await banco.derrubar()
@@ -32,7 +33,10 @@ const sessoesDe = async (id: string) => {
 
 describe('credencial_definir', () => {
   test('gestor define: credencial entra, marca sobe, sessões do alvo somem, atualizado_por é o gestor', async () => {
-    const { token } = await criarSessao(vendedor)
+    const criada = await criarSessao(vendedor, '1')
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) throw new Error('sessão recusada')
+    const { token } = criada
     const hash = await gerarHash('provisoria-1')
     const r = await definir(gestor, vendedor, hash)
     expect(r.linhas).toEqual([{ credencial_definir: 'ok' }])
@@ -89,7 +93,10 @@ describe('usuario_situacao_definir', () => {
 
   test('desativar apaga as sessões do alvo e derruba o login', async () => {
     const { id, email } = await criarUsuarioComSenha(banco, 'vendedor', 'Demitido', 'senha-forte-1')
-    const { token } = await criarSessao(id)
+    const criada = await criarSessao(id, '1')
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) throw new Error('sessão recusada')
+    const { token } = criada
     const r = await situacao(gestor, id, false)
     expect(r.linhas).toEqual([{ usuario_situacao_definir: 'ok' }])
     expect(await lerSessao(token)).toBeNull()
@@ -99,7 +106,11 @@ describe('usuario_situacao_definir', () => {
 
   test('reativar não apaga sessão de ninguém', async () => {
     const outro = await criarUsuario(banco, 'vendedor', 'Intocado')
-    const { token } = await criarSessao(outro)
+    await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [outro, 'hash'])
+    const criada = await criarSessao(outro, '1')
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) throw new Error('sessão recusada')
+    const { token } = criada
     const alvo = await criarUsuario(banco, 'vendedor', 'Reativado')
     await situacao(gestor, alvo, false)
     await situacao(gestor, alvo, true)
@@ -151,7 +162,10 @@ describe('auditoria de quem redefiniu', () => {
 
   test('senha_trocar grava o próprio usuário', async () => {
     const { id } = await criarUsuarioComSenha(banco, 'vendedor', 'Trocador', 'senha-forte-1')
-    const { token } = await criarSessao(id)
+    const criada = await criarSessao(id, '1')
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) throw new Error('sessão recusada')
+    const { token } = criada
     await chamar('senha_trocar', [hashDoToken(token), 'hash-novo'])
     const [c] = await banco.sql<{ por: string }>(
       'SELECT atualizado_por AS por FROM autenticacao.credencial WHERE usuario_id = $1',

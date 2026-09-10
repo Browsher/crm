@@ -10,7 +10,9 @@ let token: string
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
   ;({ id } = await criarUsuarioComSenha(banco, 'gestor', 'Gestora', 'provisoria-1', { pendente: true }))
-  ;({ token } = await criarSessao(id))
+  const criada = await criarSessao(id, '1')
+  if (!criada.ok) throw new Error('sessão recusada')
+  token = criada.token
 })
 afterAll(async () => {
   await banco.derrubar()
@@ -31,7 +33,9 @@ describe('trocarSenha', () => {
   })
 
   test('sucesso: nova entra, antiga não, marca cai, outra sessão morre e a atual vive', async () => {
-    const outra = await criarSessao(id)
+    const outra = await criarSessao(id, '1')
+    expect(outra.ok).toBe(true)
+    if (!outra.ok) throw new Error('sessão recusada')
     expect(await trocarSenha({ token, senhaAtual: 'provisoria-1', senhaNova: 'definitiva-1' })).toEqual({ ok: true })
     expect(await lerSessao(token)).toMatchObject({ senhaProvisoriaPendente: false })
     expect(await lerSessao(outra.token)).toBeNull()

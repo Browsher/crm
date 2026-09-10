@@ -28,11 +28,13 @@ export async function entrar(dados: { email: string; senha: string; origem: stri
 
   const [credencial] = await chamar<'credencial_por_email', LinhaCredencial>('credencial_por_email', [email])
   const confere = await verificarSenha(senha, credencial?.senha_hash ?? (await hashDescartavel()))
-  const sucesso = confere && credencial !== undefined && credencial.ativo
+  if (!confere || !credencial || !credencial.ativo) {
+    const [depois] = await chamar<'registrar_tentativa_login', LinhaBloqueio>('registrar_tentativa_login', [email, origem, false])
+    return depois.bloqueado ? bloqueado(depois) : INVALIDAS
+  }
 
-  const [depois] = await chamar<'registrar_tentativa_login', LinhaBloqueio>('registrar_tentativa_login', [email, origem, sucesso])
-  if (!sucesso || !credencial) return depois.bloqueado ? bloqueado(depois) : INVALIDAS
-
-  const { token, expiraEm } = await criarSessao(credencial.usuario_id)
-  return { ok: true, token, expiraEm, precisaTrocarSenha: credencial.senha_provisoria_pendente }
+  const sessao = await criarSessao(credencial.usuario_id, credencial.versao)
+  await chamar('registrar_tentativa_login', [email, origem, sessao.ok])
+  if (!sessao.ok) return INVALIDAS
+  return sessao
 }
