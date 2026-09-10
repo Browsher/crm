@@ -1,0 +1,424 @@
+# Inventário dos testes unitários
+#
+# Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
+# Serve para diferenciar uma falha intermitente da próxima: sem isto,
+# "1 falha em N" com a saída truncada não é comparável com nada.
+# Total: 415
+
+app/carteira/[id]/ficha.test.tsx :: Ficha a linha do tempo vazia diz que ninguem ligou ainda
+app/carteira/[id]/ficha.test.tsx :: Ficha com posse, o formulario pede proximo passo
+app/carteira/[id]/ficha.test.tsx :: Ficha mostra cadastro, telefone e CNPJ
+app/carteira/[id]/ficha.test.tsx :: Ficha mostra o proximo passo que vale hoje
+app/carteira/[id]/ficha.test.tsx :: Ficha sem proximo passo, diz que nao ha combinado
+app/carteira/[id]/ficha.test.tsx :: Ficha tem o caminho de devolver, que a carteira nao tinha
+app/carteira/[id]/ficha.test.tsx :: Ficha vencido aparece com palavra
+app/carteira/lista.test.tsx :: ListaCarteira cada empresa linka para a ficha
+app/carteira/lista.test.tsx :: ListaCarteira com empresas, monta uma lista
+app/carteira/lista.test.tsx :: ListaCarteira marca a vencida com palavra, nao so com cor
+app/carteira/lista.test.tsx :: ListaCarteira mostra o proximo passo e a data de cada empresa
+app/carteira/lista.test.tsx :: ListaCarteira nao mostra o aviso de grupo quando todas tem proximo passo
+app/carteira/lista.test.tsx :: ListaCarteira o grupo sem proximo passo aparece contado e nomeado
+app/carteira/lista.test.tsx :: ListaCarteira vazia, diz o que fazer em vez de so dizer que esta vazia
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o botão de conferir
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o campo de arquivo
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render não mostra o botão de confirmar antes de haver relatório
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece razão social e nome fantasia
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem e-mail, não sobra rótulo vazio
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem nome fantasia, não sobra rótulo vazio
+app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP que a base não resolveu mostra o CEP e diz isso
+app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP resolvido mostra cidade e UF
+app/empresas/linha.test.tsx :: Linha: os três estados do endereço empresa sem CEP diz que não tem CEP
+app/empresas/lista.test.tsx :: Lista com empresas, monta uma lista
+app/empresas/lista.test.tsx :: Lista vazia, diz que não achou
+app/empresas/lista.test.tsx :: Lista vazia, oferece o caminho de volta para a lista inteira
+app/empresas/paginacao.test.tsx :: Paginacao diz onde a pessoa está
+app/empresas/paginacao.test.tsx :: Paginacao na primeira, "Anterior" não é link
+app/empresas/paginacao.test.tsx :: Paginacao na última, "Próxima" não é link
+app/empresas/paginacao.test.tsx :: Paginacao no meio, os dois lados são link
+app/empresas/paginacao.test.tsx :: Paginacao o termo viaja com a página, codificado
+app/empresas/paginacao.test.tsx :: Paginacao uma página só: não aparece
+app/fila/cartao.test.tsx :: Cartao cartao sem historico diz que ninguem ligou ainda
+app/fila/cartao.test.tsx :: Cartao CEP fora da base diz que o endereco nao foi encontrado, e nao finge que nao ha CEP
+app/fila/cartao.test.tsx :: Cartao conta os minutos que faltam a partir do instante do banco
+app/fila/cartao.test.tsx :: Cartao em posse, nao mostra prazo, e o formulario pede proximo passo
+app/fila/cartao.test.tsx :: Cartao empresa sem CEP diz que nao ha endereco
+app/fila/cartao.test.tsx :: Cartao mostra contato, telefone e cidade
+app/fila/cartao.test.tsx :: Cartao o cartao mostra o historico de quem ligou antes
+app/fila/cartao.test.tsx :: Cartao o cartao NAO tem mais botoes soltos de assumir e devolver
+app/fila/formulario.test.tsx :: Formulario erro aparece na tela
+app/fila/formulario.test.tsx :: Formulario fila vazia diz POR QUE, e nao usa a palavra quarentena
+app/fila/formulario.test.tsx :: Formulario sem reserva, oferece puxar e nao fala de fila vazia
+src/docs.test.ts :: documentos sem caractere de controle CLAUDE.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0000.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0001.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0002.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0003.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0004.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0005.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0006.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0007.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0008.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0009.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0010.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0011.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0012.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0013.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0014.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0015.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0016.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-fundacao-banco.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-login-sessao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-usuarios.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-cep.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-empresas-2.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-empresas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-usuarios-correcoes.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-contato.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-fila-1.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-usuarios-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-09-cep-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-09-empresas-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-09-usuarios-correcoes-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-contato-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-fila-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
+src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle README.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle REGRAS.md não tem caractere de controle literal
+src/features/contato/formulario.test.tsx :: FormularioContato avisa que a data de retornar_depois nao agenda nada
+src/features/contato/formulario.test.tsx :: FormularioContato com comDevolver, oferece o segundo botao de desfecho
+src/features/contato/formulario.test.tsx :: FormularioContato com posse oferece acompanhamento e nenhum tipo de reserva
+src/features/contato/formulario.test.tsx :: FormularioContato com posse, PEDE proximo passo e data
+src/features/contato/formulario.test.tsx :: FormularioContato leva o id da empresa e a posse como campos ocultos
+src/features/contato/formulario.test.tsx :: FormularioContato sem comDevolver, o desfecho e o sugerido pelo tipo, em campo oculto
+src/features/contato/formulario.test.tsx :: FormularioContato sem posse oferece os cinco tipos de reserva, e nao o de posse
+src/features/contato/formulario.test.tsx :: FormularioContato sem posse, NAO pede proximo passo obrigatorio
+src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo contato sem autor nao quebra o render
+src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo lista vazia diz que ninguem ligou ainda, e nao fica em branco
+src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo mostra o proximo passo combinado quando ha
+src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo mostra o rotulo do tipo, a nota e o autor
+src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo tipo desconhecido cai no proprio texto, sem quebrar
+src/features/contato/mensagens.test.ts :: textoDaFalta desfecho_invalido tem texto proprio
+src/features/contato/mensagens.test.ts :: textoDaFalta par_incompleto tem texto proprio
+src/features/contato/mensagens.test.ts :: textoDaFalta proximo_passo_exigido diz o que fazer, nao so que faltou
+src/features/contato/mensagens.test.ts :: textoDaFalta proximo_passo_exigido tem texto proprio
+src/features/contato/mensagens.test.ts :: textoDaFalta tipo_invalido tem texto proprio
+src/features/contato/mensagens.test.ts :: textoDoMotivo ja_e_sua tem texto proprio e nao vazio
+src/features/contato/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto proprio e nao vazio
+src/features/contato/mensagens.test.ts :: textoDoMotivo reserva_expirada explica que o tempo acabou, e nao fala em permissao
+src/features/contato/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto proprio e nao vazio
+src/features/contato/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto proprio e nao vazio
+src/features/contato/regras.test.ts :: validar com posse e proximo passo completo, passa
+src/features/contato/regras.test.ts :: validar com posse, proximo passo e EXIGIDO
+src/features/contato/regras.test.ts :: validar data sem passo e recusado antes do banco, e nao vira 23514 na tela
+src/features/contato/regras.test.ts :: validar desfecho fora do vocabulario e recusado antes do banco
+src/features/contato/regras.test.ts :: validar espaco em branco vira nulo, nao string vazia — o CHECK do banco recusa vazio
+src/features/contato/regras.test.ts :: validar passo sem data e recusado antes do banco, e nao vira 23514 na tela
+src/features/contato/regras.test.ts :: validar rascunho de reserva sem proximo passo e valido
+src/features/contato/regras.test.ts :: validar retornar_depois grava passo e data mesmo sem posse
+src/features/contato/regras.test.ts :: validar tipo fora da lista e recusado antes do banco
+src/features/contato/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
+src/features/contato/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
+src/features/contato/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
+src/features/contato/repositorio.test.ts :: traduzirResultado ok vira sucesso
+src/features/contato/repositorio.test.ts :: traduzirResultado reserva_expirada vira falha com motivo proprio
+src/features/contato/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
+src/features/contato/tipos.test.ts :: ehTipo aceita tipo da lista
+src/features/contato/tipos.test.ts :: ehTipo nome de propriedade herdada nao e tipo
+src/features/contato/tipos.test.ts :: ehTipo recusa tipo fora da lista — e e a UNICA defesa que existe, porque o banco so exige nao-vazio
+src/features/contato/tipos.test.ts :: TIPOS_CONTATO acompanhamento e o unico tipo de posse
+src/features/contato/tipos.test.ts :: TIPOS_CONTATO interessado sugere assumir; os outros de reserva sugerem devolver
+src/features/contato/tipos.test.ts :: TIPOS_CONTATO tem os seis tipos da spec, e nenhum a mais
+src/features/contato/tipos.test.ts :: TIPOS_CONTATO todo tipo tem rotulo e desfecho sugerido
+src/features/contato/um-chamador.test.ts :: a action importa a regra pura em vez de validar por conta propria
+src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só existe pelo menos um arquivo com o literal, senão esta catraca não vigia nada
+src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só o literal aparece em exatamente um arquivo fora de tests/
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "  11222333000181  " vira "11222333000181"
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "" vira null
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "11.222.333/0001-81" vira "11222333000181"
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "1122233300018" vira null
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "112223330001812" vira null
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "112223330001A1" vira null
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "ab12c3d40e9f45" vira "AB12C3D40E9F45"
+src/features/empresas/cnpj.test.ts :: normalizarCnpj "CNPJ: consultar" vira null
+src/features/empresas/cnpj.test.ts :: pareceNotacaoCientifica "" nao e
+src/features/empresas/cnpj.test.ts :: pareceNotacaoCientifica "11222333000181" nao e
+src/features/empresas/cnpj.test.ts :: pareceNotacaoCientifica "AB12C3D40E9F45" nao e
+src/features/empresas/cnpj.test.ts :: pareceNotacaoCientifica 1,1E13 e notacao cientifica
+src/features/empresas/cnpj.test.ts :: pareceNotacaoCientifica 1,23457E+13 e notacao cientifica
+src/features/empresas/cnpj.test.ts :: pareceNotacaoCientifica 1.23457E+13 e notacao cientifica
+src/features/empresas/cnpj.test.ts :: validarCnpj alfanumerico com DV errado reprova
+src/features/empresas/cnpj.test.ts :: validarCnpj alfanumerico valido
+src/features/empresas/cnpj.test.ts :: validarCnpj numerico com um digito trocado reprova
+src/features/empresas/cnpj.test.ts :: validarCnpj numerico valido
+src/features/empresas/cnpj.test.ts :: validarCnpj todos os digitos iguais reprova
+src/features/empresas/consulta.test.ts :: destinoCanonico a página sobrevive à limpeza
+src/features/empresas/consulta.test.ts :: destinoCanonico com termo de verdade, nada a limpar
+src/features/empresas/consulta.test.ts :: destinoCanonico o próprio destino já é canônico
+src/features/empresas/consulta.test.ts :: destinoCanonico página 1 é o padrão e não precisa aparecer
+src/features/empresas/consulta.test.ts :: destinoCanonico q só com espaço também limpa
+src/features/empresas/consulta.test.ts :: destinoCanonico q vazio manda para a URL sem q
+src/features/empresas/consulta.test.ts :: destinoCanonico sem q na URL, nada a limpar
+src/features/empresas/consulta.test.ts :: escaparLike escapa % e _
+src/features/empresas/consulta.test.ts :: escaparLike escapa a própria barra invertida
+src/features/empresas/consulta.test.ts :: escaparLike lerConsulta devolve o padrão já escapado
+src/features/empresas/consulta.test.ts :: escaparLike texto sem metacaractere passa intacto
+src/features/empresas/consulta.test.ts :: lerConsulta a raiz de oito dígitos vira prefixo
+src/features/empresas/consulta.test.ts :: lerConsulta abaixo da raiz não vira prefixo: sete dígitos não identificam empresa
+src/features/empresas/consulta.test.ts :: lerConsulta acima de 14 não vira prefixo
+src/features/empresas/consulta.test.ts :: lerConsulta apara o termo
+src/features/empresas/consulta.test.ts :: lerConsulta CNPJ com máscara vira prefixo completo
+src/features/empresas/consulta.test.ts :: lerConsulta corta o termo em 100 caracteres
+src/features/empresas/consulta.test.ts :: lerConsulta página inválida (-2) vira 1
+src/features/empresas/consulta.test.ts :: lerConsulta página inválida () vira 1
+src/features/empresas/consulta.test.ts :: lerConsulta página inválida (0) vira 1
+src/features/empresas/consulta.test.ts :: lerConsulta página inválida (2.5) vira 1
+src/features/empresas/consulta.test.ts :: lerConsulta página inválida (abc) vira 1
+src/features/empresas/consulta.test.ts :: lerConsulta página lida do parâmetro
+src/features/empresas/consulta.test.ts :: lerConsulta parâmetro repetido: usa o primeiro
+src/features/empresas/consulta.test.ts :: lerConsulta pedaço curto de CNPJ não vira prefixo
+src/features/empresas/consulta.test.ts :: lerConsulta raiz com pontuação também vira prefixo
+src/features/empresas/consulta.test.ts :: lerConsulta sem parâmetro nenhum: termo vazio, página 1
+src/features/empresas/consulta.test.ts :: lerConsulta texto com acento não vira prefixo
+src/features/empresas/consulta.test.ts :: totalDePaginas 1 empresas dão 1 páginas
+src/features/empresas/consulta.test.ts :: totalDePaginas 150 empresas dão 3 páginas
+src/features/empresas/consulta.test.ts :: totalDePaginas 50 empresas dão 1 páginas
+src/features/empresas/consulta.test.ts :: totalDePaginas 51 empresas dão 2 páginas
+src/features/empresas/consulta.test.ts :: totalDePaginas lista vazia ainda é uma página
+src/features/empresas/csv.test.ts :: lerCsv: aspas aspas escapadas viram uma aspa
+src/features/empresas/csv.test.ts :: lerCsv: aspas aspas no meio de campo sem aspas sao literais
+src/features/empresas/csv.test.ts :: lerCsv: aspas separador dentro de aspas nao separa
+src/features/empresas/csv.test.ts :: lerCsv: numero da linha no arquivo aspas nao fechadas depois de linha em branco reportam a linha do arquivo
+src/features/empresas/csv.test.ts :: lerCsv: numero da linha no arquivo linha em branco no meio nao desloca as seguintes
+src/features/empresas/csv.test.ts :: lerCsv: numero da linha no arquivo sem linha em branco, numera 1, 2, 3
+src/features/empresas/csv.test.ts :: lerCsv: numero da linha no arquivo varias em branco seguidas
+src/features/empresas/csv.test.ts :: lerCsv: o basico campo vazio sobrevive
+src/features/empresas/csv.test.ts :: lerCsv: o basico CRLF e tratado como LF
+src/features/empresas/csv.test.ts :: lerCsv: o basico duas colunas, duas linhas
+src/features/empresas/csv.test.ts :: lerCsv: o basico linha vazia no fim nao vira linha
+src/features/empresas/csv.test.ts :: lerCsv: o que ele nao faz aspa aberta no fim do arquivo tambem e recusada
+src/features/empresas/csv.test.ts :: lerCsv: o que ele nao faz quebra de linha dentro de aspas e recusada, com a linha
+src/features/empresas/csv.test.ts :: lerCsv: separador ponto e virgula farejado do cabecalho, que e onde o Excel pt-BR estraga
+src/features/empresas/csv.test.ts :: lerCsv: separador ponto e virgula virgula ganha quando as duas aparecem no cabecalho
+src/features/empresas/formato.test.ts :: formatarCnpj alfanumérico
+src/features/empresas/formato.test.ts :: formatarCnpj numérico
+src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai como veio
+src/features/empresas/formato.test.ts :: formatarTelefone celular, 11 dígitos
+src/features/empresas/formato.test.ts :: formatarTelefone fixo, 10 dígitos
+src/features/empresas/formato.test.ts :: formatarTelefone valor fora de forma sai como veio
+src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
+src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo excede limite mostra os dois numeros
+src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo nao utf-8 diz exatamente o que fazer no Excel
+src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma cep curto explica o zero a esquerda
+src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma duplicata divergente nomeia o campo
+src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma duplicata identica diz que sao iguais
+src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma notacao cientifica manda formatar a coluna
+src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico base carregada com CEP nao encontrado cita a data
+src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico base carregada e tudo resolvido: nao diz nada
+src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico base nao carregada e nenhum CEP no arquivo: nao diz nada
+src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico base nao carregada manda rodar o carregador
+src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico singular e plural
+src/features/empresas/modelo.test.ts :: modelo de importação existe e é um zip, que é o que um xlsx é
+src/features/empresas/modelo.test.ts :: modelo de importação o arquivo versionado é o que o gerador produz hoje
+src/features/empresas/modelo.test.ts :: modelo de importação o cabeçalho do modelo é o CABECALHO da fase 1
+src/features/empresas/modelo.test.ts :: modelo de importação o exemplo tem CEP com zero à esquerda
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro acima do limite recusa o arquivo
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro arquivo vazio
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro aspas nao fechadas recusam o arquivo
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro BOM no comeco nao atrapalha o cabecalho
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro bytes que nao sao UTF-8 recusam o arquivo
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro cabecalho com ponto e virgula e aceito
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro cabecalho diferente recusa o arquivo e diz o que veio
+src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro so o cabecalho, sem dados
+src/features/empresas/planilha.test.ts :: fase 1: a linha valida opcionais vazios viram null, nunca string vazia
+src/features/empresas/planilha.test.ts :: fase 1: a linha valida vira LinhaAceita com tudo normalizado
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cep_curto
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cep_forma
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_dv
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_forma
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_notacao_cientifica
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_vazio
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa email_forma
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa razao_social_vazia
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa telefone_forma
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa telefone_vazio
+src/features/empresas/planilha.test.ts :: fase 1: byte NUL linha limpa ao lado de linha com NUL: so a suja sai
+src/features/empresas/planilha.test.ts :: fase 1: byte NUL recusa a linha, com o numero e a coluna
+src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo linha valida no meio de duas repetidas sobrevive
+src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo nome_fantasia e contato_nome tambem saem com o nome da coluna
+src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo o nome e o da coluna da planilha, nao o do campo
+src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo quando divergem, nomeia o campo
+src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo recusa as DUAS linhas, e diz que sao identicas
+src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo todo nome de coluna do relatorio existe no CABECALHO
+src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio a recusa aponta para a linha do ARQUIVO
+src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio duplicata depois de linha em branco cita as linhas certas
+src/features/empresas/servico.test.ts :: analisar arquivo invalido devolve a falha do arquivo
+src/features/empresas/servico.test.ts :: analisar conta novas, ja cadastradas e ceps nao encontrados
+src/features/empresas/servico.test.ts :: analisar nao grava nada, nem quando esta tudo certo
+src/features/empresas/servico.test.ts :: analisar recusa de linha entra no relatorio sem impedir o resto
+src/features/empresas/servico.test.ts :: analisar sem_permissao do repositorio sobe como esta
+src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada arquivo sem nenhum CEP pede zero
+src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada basePublicadaEm nulo e todos os ceps pedidos sem resposta
+src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada cepsPedidos conta CEP distinto, nao linha
+src/features/empresas/servico.test.ts :: importar grava so as novas, nunca as ja cadastradas
+src/features/empresas/servico.test.ts :: importar o relatorio devolvido e o mesmo que analisar daria
+src/features/empresas/telefone.test.ts :: normalizarTelefone "  11987654321 " vira "11987654321"
+src/features/empresas/telefone.test.ts :: normalizarTelefone "" vira null
+src/features/empresas/telefone.test.ts :: normalizarTelefone "(11) 98765-4321" vira "11987654321"
+src/features/empresas/telefone.test.ts :: normalizarTelefone "+55 11 98765-4321" vira null
+src/features/empresas/telefone.test.ts :: normalizarTelefone "11 3456-7890" vira "1134567890"
+src/features/empresas/telefone.test.ts :: normalizarTelefone "119876543210" vira null
+src/features/empresas/telefone.test.ts :: normalizarTelefone "987654321" vira null
+src/features/empresas/telefone.test.ts :: normalizarTelefone "ligar de manha" vira null
+src/features/fila/mensagens.test.ts :: textoDoMotivo ja_e_sua tem texto de gente
+src/features/fila/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto de gente
+src/features/fila/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto de gente
+src/features/fila/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto de gente
+src/features/fila/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
+src/features/fila/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
+src/features/fila/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
+src/features/fila/repositorio.test.ts :: traduzirResultado ok vira sucesso
+src/features/fila/repositorio.test.ts :: traduzirResultado reserva_expirada vira falha com motivo proprio
+src/features/fila/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
+src/features/usuarios/mensagens.test.ts :: um texto por motivo
+src/features/usuarios/regras.test.ts :: acoesDe a própria linha não oferece nada
+src/features/usuarios/regras.test.ts :: acoesDe ativo: nova senha, mudar papel, desativar
+src/features/usuarios/regras.test.ts :: acoesDe inativo: só reativar
+src/features/usuarios/regras.test.ts :: gestorUnico dois gestores ativos: falso
+src/features/usuarios/regras.test.ts :: gestorUnico gestor inativo não conta
+src/features/usuarios/regras.test.ts :: gestorUnico um gestor ativo: verdadeiro
+src/features/usuarios/regras.test.ts :: gestorUnico zero gestores: falso
+src/features/usuarios/regras.test.ts :: validarNovoUsuario gestor é papel válido
+src/features/usuarios/regras.test.ts :: validarNovoUsuario normaliza nome e e-mail
+src/features/usuarios/regras.test.ts :: validarNovoUsuario todas as faltas de uma vez
+src/features/usuarios/repositorio.test.ts :: traduzirResultado propriedade de Object.prototype não vira resultado
+src/features/usuarios/repositorio.test.ts :: traduzirResultado valor desconhecido lança, não vira ok: false
+src/features/usuarios/repositorio.test.ts :: traduzirResultado vocabulário conhecido vira ok ou motivo
+src/features/usuarios/servico.test.ts :: criarUsuario dados inválidos: faltas nomeadas, sem tocar o repositório nem gerar hash
+src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor sem pendência passa em tudo
+src/server/autenticacao/acesso.test.ts :: avaliarAcesso pendente: só "sessao" passa; o resto vai para /trocar-senha
+src/server/autenticacao/acesso.test.ts :: avaliarAcesso sem sessão: /login em qualquer exigência
+src/server/autenticacao/acesso.test.ts :: avaliarAcesso vendedor em exigência gestor vai para /
+src/server/autenticacao/mensagens.test.ts :: login: inválidas e bloqueado com minutos arredondados para cima
+src/server/autenticacao/mensagens.test.ts :: troca: faltas em texto, senha atual, sem sessão
+src/server/autenticacao/origem.test.ts :: primeiro endereço de x-forwarded-for, senão x-real-ip, senão nulo
+src/server/autenticacao/rota.test.ts :: com cookie: nunca redireciona; quem decide é a página
+src/server/autenticacao/rota.test.ts :: sem cookie: rota protegida vai para /login; pública passa
+src/server/autenticacao/senha.test.ts :: gerarHash e verificarSenha formato scrypt$N=131072,r=8,p=1$sal$chave e verificação confere
+src/server/autenticacao/senha.test.ts :: gerarHash e verificarSenha hash malformado ou de algoritmo desconhecido não confere e não lança
+src/server/autenticacao/senha.test.ts :: gerarHash e verificarSenha hashDescartavel é um hash real, reusado, que não confere com nada
+src/server/autenticacao/senha.test.ts :: gerarHash e verificarSenha mesma senha gera hashes diferentes (sal aleatório)
+src/server/autenticacao/senha.test.ts :: gerarHash e verificarSenha NFKC: formas Unicode equivalentes conferem
+src/server/autenticacao/senha.test.ts :: gerarSenhaProvisoria três blocos de quatro, alfabeto sem 0 O 1 l I, passa na validação
+src/server/autenticacao/senha.test.ts :: validarSenha 8 a 128 caracteres, não só espaço, diferente da atual
+src/server/autenticacao/sessao.test.ts :: hash do token é sha256 hex, determinístico
+src/server/autenticacao/sessao.test.ts :: token: 32 bytes em base64url, sem padding, sempre diferente
+src/server/cep/linha.test.ts :: campoCsv null vira 
+src/server/cep/linha.test.ts :: campoCsv null vira campo vazio SEM aspas, que é como o COPY CSV lê NULL
+src/server/cep/linha.test.ts :: campoCsv Rua
+com quebra vira "Rua
+com quebra"
+src/server/cep/linha.test.ts :: campoCsv Rua "Aspas" vira "Rua ""Aspas"""
+src/server/cep/linha.test.ts :: campoCsv Rua A, 100 vira "Rua A, 100"
+src/server/cep/linha.test.ts :: campoCsv Rua Simples vira Rua Simples
+src/server/cep/linha.test.ts :: linhaDoJson { isto não é json (json quebrado) vira null
+src/server/cep/linha.test.ts :: linhaDoJson {"cep":"01001-000","localidade":"","uf":"SP","ibge":"3550308"} (localidade vazia) vira null
+src/server/cep/linha.test.ts :: linhaDoJson {"cep":"01001-000","localidade":"X","uf":"","ibge":"3550308"} (uf vazia) vira null
+src/server/cep/linha.test.ts :: linhaDoJson {"cep":"01001-000","localidade":"X","uf":"SP","ibge":"355030"} (ibge com seis dígitos) vira null
+src/server/cep/linha.test.ts :: linhaDoJson {"cep":"123"} (cep curto) vira null
+src/server/cep/linha.test.ts :: linhaDoJson string vazia vira null, não string vazia
+src/server/cep/linha.test.ts :: linhaDoJson tira o hífen do cep e move complemento para faixa
+src/server/cep/linha.test.ts :: paraCsv sete campos na ordem das colunas, terminando em quebra de linha
+src/server/cep/manifesto.test.ts :: lerManifesto lê o manifesto real da base
+src/server/cep/manifesto.test.ts :: lerManifesto manifesto inexistente lança, não devolve objeto meio vazio
+src/server/cep/manifesto.test.ts :: somaDoArquivo a mesma soma nas duas chamadas
+src/server/cep/manifesto.test.ts :: somaDoArquivo devolve sha256 em minúsculas, 64 caracteres
+src/server/cep/resolver.test.ts :: normalizarCep     (só espaço) vira null
+src/server/cep/resolver.test.ts :: normalizarCep   01310100   vira 01310100
+src/server/cep/resolver.test.ts :: normalizarCep  (vazio) vira null
+src/server/cep/resolver.test.ts :: normalizarCep 01310 100 vira 01310100
+src/server/cep/resolver.test.ts :: normalizarCep 01310-100 vira 01310100
+src/server/cep/resolver.test.ts :: normalizarCep 01310.100 vira 01310100
+src/server/cep/resolver.test.ts :: normalizarCep 0131010 (sete dígitos) vira null
+src/server/cep/resolver.test.ts :: normalizarCep 01310100 vira 01310100
+src/server/cep/resolver.test.ts :: normalizarCep 013101000 (nove dígitos) vira null
+src/server/cep/resolver.test.ts :: normalizarCep 0131010a (letra no meio) vira null
+src/server/cep/resolver.test.ts :: normalizarCep consultar (texto) vira null
+src/server/cep/resolver.test.ts :: normalizarCep não confunde separador com dígito: 12-34-56-78 tem oito dígitos
+src/server/db/como-usuario.test.ts :: id que não é UUID lança antes de tocar no banco
+src/server/db/env.test.ts :: lerEnv aceita off e verify
+src/server/db/env.test.ts :: lerEnv PG_SSL ausente vira verify
+src/server/db/env.test.ts :: lerEnv PG_SSL_NOME_SERVIDOR é opcional e vazio vira ausente
+src/server/db/env.test.ts :: lerEnv recusa qualquer outro valor, inclusive inseguro
+src/server/db/env.test.ts :: lerEnv string vazia conta como ausente
+src/server/db/env.test.ts :: lerEnv URLs são opcionais na leitura e exigidas por quem usa
+src/server/db/migracoes/arquivos.test.ts :: corpoDe comentário de uma linha no topo fica antes do BEGIN e é removido junto
+src/server/db/migracoes/arquivos.test.ts :: corpoDe ignora linhas vazias nas pontas e mantém o miolo intacto
+src/server/db/migracoes/arquivos.test.ts :: corpoDe remoção é posicional: não procura BEGIN no meio
+src/server/db/migracoes/arquivos.test.ts :: corpoDe remove a primeira e a última linha
+src/server/db/migracoes/arquivos.test.ts :: somaDe qualquer byte diferente muda a soma, inclusive comentário
+src/server/db/migracoes/arquivos.test.ts :: somaDe sha256 hex do conteúdo inteiro
+src/server/db/migracoes/checar.test.ts :: checarMigracoes arquivo bem formado passa
+src/server/db/migracoes/checar.test.ts :: checarMigracoes BEGIN e END do plpgsql em linha própria não são controle de transação
+src/server/db/migracoes/checar.test.ts :: checarMigracoes comandos que não rodam em transação são barrados
+src/server/db/migracoes/checar.test.ts :: checarMigracoes comentário: só uma linha, só no topo, só --, até 120 caracteres
+src/server/db/migracoes/checar.test.ts :: checarMigracoes controle de transação no meio é recusado
+src/server/db/migracoes/checar.test.ts :: checarMigracoes CREATE TABLE exige PK uuid com gen_random_uuid(), salvo exceções
+src/server/db/migracoes/checar.test.ts :: checarMigracoes DROP TABLE e DROP COLUMN barrados, DROP INDEX e DROP CONSTRAINT liberados
+src/server/db/migracoes/checar.test.ts :: checarMigracoes fim de linha CRLF é recusado: a soma é do byte em disco (R-011)
+src/server/db/migracoes/checar.test.ts :: checarMigracoes nome fora do padrão
+src/server/db/migracoes/checar.test.ts :: checarMigracoes numeração precisa começar em 0000 e ser contígua
+src/server/db/migracoes/checar.test.ts :: checarMigracoes schema ou papel de fornecedor é recusado
+src/server/db/migracoes/checar.test.ts :: checarMigracoes sem BEGIN; na primeira linha de código ou COMMIT; na última
+src/server/db/migracoes/invariantes.test.ts :: avaliar _migracao alcançável por papel da aplicação
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao ausente é violação única
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao BYPASSRLS
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao com privilégio de tabela em autenticacao
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao dona de tabela
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao herdando privilégio
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao sem CONNECTION LIMIT
+src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao superusuário
+src/server/db/migracoes/invariantes.test.ts :: avaliar definidora concedida a app_usuario fora da lista, mesmo sem tocar autenticacao
+src/server/db/migracoes/invariantes.test.ts :: avaliar definidora concedida em outro schema também é acusada
+src/server/db/migracoes/invariantes.test.ts :: avaliar estado são não tem violação
+src/server/db/migracoes/invariantes.test.ts :: avaliar função de acesso ausente é violação, não verde
+src/server/db/migracoes/invariantes.test.ts :: avaliar função de schema de aplicação executável por PUBLIC
+src/server/db/migracoes/invariantes.test.ts :: avaliar função registrada ausente ou sem GRANT é violação, não verde
+src/server/db/migracoes/invariantes.test.ts :: avaliar função SECURITY DEFINER sem search_path, em qualquer schema
+src/server/db/migracoes/invariantes.test.ts :: avaliar papel da aplicação ausente é violação, não verde
+src/server/db/migracoes/invariantes.test.ts :: avaliar pode_escrever ausente é violação
+src/server/db/migracoes/invariantes.test.ts :: avaliar política em tabela de autenticacao
+src/server/db/migracoes/invariantes.test.ts :: avaliar tabela com FORCE: a mensagem diz o efeito real, bloqueio, não recursão
+src/server/db/migracoes/invariantes.test.ts :: avaliar tabela sem RLS em qualquer schema de aplicação, exceto _migracao
+src/server/db/migracoes/invariantes.test.ts :: políticas de leitura irrestrita a política registrada não é violação
+src/server/db/migracoes/invariantes.test.ts :: políticas de leitura irrestrita política com USING (true) fora da lista é acusada
+src/server/db/migracoes/invariantes.test.ts :: políticas de leitura irrestrita política registrada que sumiu do banco é acusada
+src/server/db/pool.test.ts :: mesma URL devolve a mesma instância, sobrevivendo a um novo import do módulo
+src/server/db/pool.test.ts :: URLs diferentes são pools diferentes
+src/server/db/sem-identidade.test.ts :: aridade errada lança antes de tocar no banco
+src/server/db/sem-identidade.test.ts :: nome fora do mapa lança antes de tocar no banco
+src/server/db/sem-identidade.test.ts :: o mapa tem exatamente as sete funções da spec
+src/server/db/ssl.test.ts :: configSsl nome de servidor sem CA é recusado: pinar nome só faz sentido com CA pinado
+src/server/db/ssl.test.ts :: configSsl nunca devolve rejectUnauthorized false
+src/server/db/ssl.test.ts :: configSsl off desliga TLS
+src/server/db/ssl.test.ts :: configSsl verify com CA inline usa o PEM
+src/server/db/ssl.test.ts :: configSsl verify com nome de servidor valida o certificado contra o nome pinado, não contra o host
+src/server/db/ssl.test.ts :: configSsl verify sem CA valida contra as CAs do sistema
+src/server/diretivas.test.ts :: arquivos 'use server' a varredura enxerga a action que mora em src/
+src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\importar\acao.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\fila\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\login\acao.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\trocar-senha\acao.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\usuarios\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
+src/server/diretivas.test.ts :: arquivos 'use server' src\features\contato\acao.ts só exporta função
