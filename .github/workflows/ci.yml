@@ -50,15 +50,29 @@ jobs:
         run: npm run test:integracao
 
       - name: Build sem env (validação precisa ser preguiçosa)
-        run: npm run build
+        run: npm run build:e2e
         env:
           DATABASE_URL_ADMIN: ''
           PG_SSL: ''
 
-      # Conferência somente-leitura contra a Railway. Regra:
-      # - PR de fork: não recebe secret. Pula, com nota no resumo do job.
-      # - PR do próprio repositório sem secret: falha. Só acontece se o secret sumiu.
-      # O CA da Railway é público e vai numa variable, não em secret.
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Jornadas no navegador
+        run: npm run test:e2e -- --sem-build
+
+      - name: Relatório das falhas no navegador
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-falhas
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Forks e Dependabot não recebem secrets de Actions.
       - name: Conferência de migrações na Railway
         if: github.event_name == 'pull_request'
         env:
@@ -67,20 +81,5 @@ jobs:
           PG_SSL_CA: ${{ vars.PG_SSL_CA_RAILWAY }}
           PG_SSL_NOME_SERVIDOR: postgres.railway.internal
           EH_FORK: ${{ github.event.pull_request.head.repo.fork }}
-        run: |
-          if [ -z "$DATABASE_URL_CONFERENCIA" ]; then
-            if [ "$EH_FORK" = "true" ]; then
-              {
-                echo "### Migrações na Railway"
-                echo "- conferência **não rodou**: PR de fork não recebe o secret"
-              } >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo "::error::DATABASE_URL_CONFERENCIA ausente em PR do próprio repositório. O secret sumiu ou expirou."
-            exit 1
-          fi
-          if [ -z "$PG_SSL_CA" ]; then
-            echo "::error::variable PG_SSL_CA_RAILWAY ausente. Sem o CA pinado a conexão verificada não sobe."
-            exit 1
-          fi
-          npm run db:pendentes
+          AUTOR_PR: ${{ github.event.pull_request.user.login }}
+        run: npx tsx scripts/ci/conferencia.mts

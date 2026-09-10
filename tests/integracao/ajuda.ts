@@ -68,12 +68,21 @@ export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTes
   await comAdmin(urlServidor, (c) => c.query(`CREATE DATABASE ${nome}`))
   const urlAdmin = comBanco(urlServidor, nome)
 
-  if (!opcoes.semMigracoes) {
-    const r = await aplicar(urlAdmin, PASTA_MIGRACOES)
-    if (!r.ok) {
-      throw new Error(`migrações não aplicaram: ${r.motivo} ${JSON.stringify(r.problemas ?? r.divergentes)}`)
+  try {
+    if (!opcoes.semMigracoes) {
+      const r = await aplicar(urlAdmin, PASTA_MIGRACOES)
+      if (!r.ok) {
+        throw new Error(`migrações não aplicaram: ${r.motivo} ${JSON.stringify(r.problemas ?? r.divergentes)}`)
+      }
+      await garantirLoginDeAppTeste(urlServidor)
     }
-    await garantirLoginDeAppTeste(urlServidor)
+  } catch (erro) {
+    try {
+      await comAdmin(urlServidor, (c) => c.query(`DROP DATABASE IF EXISTS ${nome} WITH (FORCE)`))
+    } catch (limpeza) {
+      throw new AggregateError([erro, limpeza], 'Falha na preparação e na remoção do banco de teste')
+    }
+    throw erro
   }
 
   const u = new URL(urlAdmin)

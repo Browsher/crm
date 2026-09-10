@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  distDir: process.env.CRM_E2E === '1' ? '.next-e2e' : '.next',
   experimental: {
     // O padrão é 1 MB. 5.000 linhas dão ~830 KB, e o limite do transporte não
     // pode ser o limite de verdade: acima dele a requisição morre ANTES do
