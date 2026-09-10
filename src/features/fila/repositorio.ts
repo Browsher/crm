@@ -52,16 +52,5 @@ export function puxarProxima(usuarioId: string): Promise<{ ok: true; empresaId: 
   })
 }
 
-export function assumir(usuarioId: string, empresaId: string): Promise<{ ok: true } | Falha> {
-  return tentar(usuarioId, async (executar) => {
-    const r = await executar<{ empresa_assumir: string }>('SELECT empresa_assumir($1)', [empresaId])
-    return traduzirResultado('empresa_assumir', r.linhas[0].empresa_assumir)
-  })
-}
-
-export function devolver(usuarioId: string, empresaId: string): Promise<{ ok: true } | Falha> {
-  return tentar(usuarioId, async (executar) => {
-    const r = await executar<{ empresa_devolver: string }>('SELECT empresa_devolver($1)', [empresaId])
-    return traduzirResultado('empresa_devolver', r.linhas[0].empresa_devolver)
-  })
-}
+// `assumir` e `devolver` saíram na 0019: as funções do banco viraram internas
+// e o caminho da tela é `contato_registrar`, em src/features/contato.

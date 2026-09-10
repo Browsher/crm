@@ -172,3 +172,17 @@ describe('contato_proximo_passo_coerente', () => {
     ).rejects.toMatchObject({ code: '23514' })
   })
 })
+
+// A revogação. É este teste que impede o GRANT de voltar por descuido numa
+// migração futura: a ausência do privilégio não é observável no código.
+describe('empresa_assumir e empresa_devolver sao internas', () => {
+  const internas: [string, string][] = [
+    ['empresa_assumir', 'SELECT empresa_assumir($1)'],
+    ['empresa_devolver', 'SELECT empresa_devolver($1)'],
+  ]
+  for (const [nome, sql] of internas) {
+    test(`${nome} chamada direto por app_usuario e 42501`, async () => {
+      await expect(banco.comoUsuario(vendedorA, (e) => e(sql, [empresa]))).rejects.toMatchObject({ code: '42501' })
+    })
+  }
+})

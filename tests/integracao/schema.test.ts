@@ -17,7 +17,7 @@ describe('migrações reais', () => {
     expect(checarMigracoes(await lerMigracoes(PASTA_MIGRACOES))).toEqual({ ok: true })
   })
 
-  test('as dezoito estão registradas', async () => {
+  test('as dezenove estão registradas', async () => {
     const r = await banco.sql<{ nome: string }>('SELECT nome FROM _migracao ORDER BY nome')
     expect(r.map((x) => x.nome)).toEqual([
       '0000_papeis.sql',
@@ -39,6 +39,7 @@ describe('migrações reais', () => {
       '0016_empresa_fila.sql',
       '0017_contato.sql',
       '0018_contato_registrar.sql',
+      '0019_fila_interna.sql',
     ])
   })
 

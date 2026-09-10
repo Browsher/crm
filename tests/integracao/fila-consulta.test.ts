@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
-import { assumir, devolver, puxarProxima } from '@/src/features/fila/repositorio'
+import { registrarContato } from '@/src/features/contato/repositorio'
+import { puxarProxima } from '@/src/features/fila/repositorio'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -19,6 +20,9 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  // `contato` tem FK ON DELETE RESTRICT para `empresa`: apagar empresa antes
+  // derruba com 23503.
+  await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
 })
@@ -31,6 +35,19 @@ async function criarEmpresa(cep: string | null): Promise<string> {
   )
   return linha.id
 }
+
+// Assumir e devolver deixaram de ser chamáveis pela aplicação na 0019: o
+// caminho é `contato_registrar` com desfecho, e é ele que estes testes devem
+// exercitar — não uma porta que a tela não tem mais.
+const assumir = (usuarioId: string, empresaId: string) =>
+  registrarContato(usuarioId, empresaId, {
+    tipo: 'interessado', desfecho: 'assumir', nota: null, proximoPasso: null, proximoPassoData: null,
+  })
+
+const devolver = (usuarioId: string, empresaId: string) =>
+  registrarContato(usuarioId, empresaId, {
+    tipo: 'nao_atendeu', desfecho: 'devolver', nota: null, proximoPasso: null, proximoPassoData: null,
+  })
 
 describe('lerMinhasEmpresas', () => {
   test('sem nada, devolve reserva nula e carteira vazia', async () => {

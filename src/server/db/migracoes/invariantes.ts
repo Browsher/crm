@@ -29,8 +29,6 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.credencial_definir',
   'public.usuario_situacao_definir',
   'public.fila_puxar',
-  'public.empresa_assumir',
-  'public.empresa_devolver',
   'public.contato_registrar',
 ] as const
 
