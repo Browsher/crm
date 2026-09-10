@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 415
+# Total: 418
 
 app/carteira/[id]/ficha.test.tsx :: Ficha a linha do tempo vazia diz que ninguem ligou ainda
 app/carteira/[id]/ficha.test.tsx :: Ficha com posse, o formulario pede proximo passo
@@ -68,6 +68,9 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0013.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0014.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0015.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0016.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0017.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0018.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0019.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-fundacao-banco.md não tem caractere de controle literal
