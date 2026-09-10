@@ -163,9 +163,11 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
       await c2.query("SELECT set_config('role', 'app_usuario', true)")
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
       // Espera a trava de c1. Só depois do COMMIT ele relê e vê a reserva de B.
+      // Captura a rejeição já: ela pode chegar antes da resposta do COMMIT.
       const espera = c2.query('SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)', [unica, 'interessado', 'assumir'])
+        .then(() => ({ ok: true }), (erro: unknown) => ({ ok: false, erro }))
       await c1.query('COMMIT')
-      await expect(espera).rejects.toMatchObject({ code: '42501' })
+      expect(await espera).toMatchObject({ ok: false, erro: { code: '42501' } })
       await c2.query('ROLLBACK')
       const [estado] = await banco.sql<{ vendedor_id: string | null; reservado_por: string }>(
         'SELECT vendedor_id, reservado_por FROM empresa_fila WHERE empresa_id = $1',
