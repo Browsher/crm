@@ -410,4 +410,47 @@ recusa, e uma catraca que proíbe isso proibiria o teste que importa.
 
 ---
 
+## R-021 — PR empilhado não sobrevive a squash com delete-on-merge
+
+O que aconteceu: o #17 foi aberto com base na branch do #16, para evitar
+conflito nos dois PRs que tocavam a mesma spec. O #16 entrou por squash e a
+branch dele foi apagada no merge. O GitHub então **fechou o #17 sozinho**, e as
+duas saídas óbvias estavam fechadas junto:
+
+```
+GraphQL: Cannot change the base branch of a closed pull request.
+GraphQL: Could not open the pull request.
+```
+
+Trocar a base exige PR aberto; reabrir exige base existente. Nenhum dos dois
+existia.
+
+**O que torna isso diferente de merge sujo, e é a parte que engana.** Merge sujo
+é recuperável de dentro: rebaseia, força o push, o mesmo PR segue. Aqui o PR é
+**estado terminal** — o conserto é abrir outro, e discussão, revisão e
+aprovações ficam no que fechou. A mensagem que aparece primeiro
+(`the merge commit cannot be cleanly created`) tem cara de merge sujo, e manda
+procurar conserto onde não tem.
+
+O trabalho em si não se perde: a branch continua lá, e o rebase em cima da
+`main` até descarta o commit duplicado sozinho, porque squash preserva o
+`patch-id` do conteúdo. O que se perde é o PR.
+
+A regra: em repositório com **squash + delete-on-merge**, não empilhe PR. Abra o
+segundo contra a `main` desde o começo e aceite o conflito. Um conflito de uma
+seção custa uma resolução; um PR fechado custa um PR novo, e o histórico da
+revisão fica órfão.
+
+O cálculo que leva ao erro é o de sempre — "evito um conflito pequeno agora" —
+e o que ele não põe na conta é que a base vai **sumir**, não só andar para a
+frente.
+
+Tipo: bilhete
+Onde: nenhuma catraca vê isso. Não é estado do repositório nem do catálogo: é
+configuração da forja cruzada com o formato do merge, e some do `git log`. O que
+dá é reconhecer o sintoma — PR recusando merge cuja base não está mais na lista
+de branches.
+
+---
+
 <!-- próximas regras aqui -->
