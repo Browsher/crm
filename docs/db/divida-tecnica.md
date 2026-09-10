@@ -29,6 +29,12 @@ Leia a lição de lá antes de registrar gatilho novo em qualquer lugar.
 
 ## Segurança e operação
 
+**Atualização de 2026-09-10 — validação Postgres 18:** a fatia descrita em
+`docs/superpowers/specs/2026-09-10-postgres-18-design.md` muda o serviço do CI
+para `postgres:18` e exige versão maior 18 por consulta ao servidor. O banco
+de desenvolvimento continua em 17. O registro abaixo descreve a divergência
+original; resultados e limites da nova validação ficam na seção final.
+
 - **Produção roda Postgres 18.6; os testes rodam 17.** Medido em 2026-09-09
   contra a Railway (`SELECT version()`): `PostgreSQL 18.6 (Debian
   18.6-1.pgdg13+2)`. O `docker-compose.yml` fixa `postgres:17`, então toda a
@@ -1428,3 +1434,27 @@ exatamente o cenário que a fatia existe para servir, e o que o teste novo faz.
   de clique ou de efeito, é aí que eles entram — não antes.
 - Next 16 usa `proxy.ts`, não `middleware.ts`. Portar o guarda do crm-ch,
   não copiar.
+
+## Validação Postgres 18 — 2026-09-10
+
+Suíte completa executada em container descartável Postgres 18.6, medido por
+SHOW server_version, com porta loopback separada do banco de desenvolvimento:
+89 arquivos, 849 testes passaram e 1 foi pulado. Inclui políticas, migrações,
+concorrência e busca sem acento já cobertas pelos testes existentes.
+Typecheck, lint e db:checar passaram. O controle negativo da nova asserção
+falhou em PG17 ao exigir PG18, antes da validação positiva.
+
+O CI passa a usar postgres:18 e PG_VERSAO_ESPERADA=18, mantendo o job catraca.
+A asserção consulta server_version_num: rodar silenciosamente em outra versão
+maior falha. Sem a variável, a asserção é pulada para permitir o banco local17.
+Build e jornadas de autenticação Playwright permanecem no mesmo job.
+
+A dívida de nunca executar a suíte na versão maior usada pela Railway fica
+resolvida pela validação acima. Não é teste contra o provedor: TLS, configuração
+e dados reais não são replicados. O container de desenvolvimento permanece17;
+sua atualização é trabalho separado, incluindo preservação dos dados e backup.
+A imagem18 acompanha atualizações menores, não fixa o patch18.6.
+
+Os trechos históricos sobre ausência de testes em18 devem ser lidos com esta
+atualização. A restauração do backup em18, realizada antes desta fatia, é uma
+validação diferente e não foi usada como substituto da suíte.
