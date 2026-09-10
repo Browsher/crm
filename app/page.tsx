@@ -8,6 +8,12 @@ export default async function Inicio() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">CRM</h1>
         <nav className="flex items-center gap-3">
+          <Link href="/fila" className="text-sm underline">
+            Fila
+          </Link>
+          <Link href="/carteira" className="text-sm underline">
+            Carteira
+          </Link>
           {eu.papel === 'gestor' && (
             <>
               <Link href="/empresas" className="text-sm underline">
