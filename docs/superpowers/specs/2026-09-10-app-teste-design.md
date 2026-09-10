@@ -263,8 +263,9 @@ não sobre o que o Postgres enxerga: a medição 2 mostra o servidor vendo
 servidor seria validar a coisa errada. Como o harness é o cliente, e o cliente lê
 a URL, `localhost` basta.
 
-Lista aceita: `localhost`, `127.0.0.1` e `::1` (a forma `[::1]` na URL volta como
-`::1` em `hostname`). O IP do bridge não entra: da máquina do desenvolvedor ele
+Lista aceita: `localhost`, `127.0.0.1` e `::1`. Medido em 2026-09-10, corrigindo
+uma suposição desta spec: `new URL(...).hostname` devolve `[::1]` **com** os
+colchetes para a forma `[::1]` da URL, então a guarda os tira antes de comparar. O IP do bridge não entra: da máquina do desenvolvedor ele
 não é o host que se digita. Se algum dia a suíte rodar de dentro de um container,
 o endereço que ela usar entra na lista junto com o motivo.
 

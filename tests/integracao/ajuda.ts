@@ -3,6 +3,7 @@ import { gerarHash } from '@/src/server/autenticacao/senha'
 import { comAdmin, comBanco } from '@/src/server/db/admin'
 import { comoUsuario as comoUsuarioReal, type Executar } from '@/src/server/db/como-usuario'
 import { exigir, lerEnv } from '@/src/server/db/env'
+import { exigirHostLocal } from '@/src/server/db/host-local'
 import { aplicar } from '@/src/server/db/migracoes/aplicar'
 import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { fecharPool } from '@/src/server/db/pool'
@@ -26,6 +27,11 @@ const SENHA_APP_TESTE = 'teste'
 
 export async function criarBancoDeTeste(opcoes: Opcoes = {}): Promise<BancoDeTeste> {
   const urlServidor = exigir(lerEnv(), 'DATABASE_URL_ADMIN')
+  // Antes de qualquer CREATE DATABASE ou ALTER ROLE. Cada arquivo de teste cria
+  // o próprio banco por aqui, então esta função é o único gargalo que a suíte
+  // não atravessa por baixo — guarda em script de CLI não seria vista por teste
+  // nenhum.
+  exigirHostLocal(urlServidor)
   const nome = `teste_${randomBytes(6).toString('hex')}`
   // `nome` é gerado aqui com hex, então interpolar é seguro.
   await comAdmin(urlServidor, (c) => c.query(`CREATE DATABASE ${nome}`))
