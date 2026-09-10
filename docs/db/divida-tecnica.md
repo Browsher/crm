@@ -77,7 +77,10 @@ Gatilho novo nasce com o tipo escrito e com o lado do erro esperado. Virou
 | precisar corrigir dado de empresa já cadastrada (sem tela de edição) | proxy de dor | tarde | **novo em 2026-09-09** |
 | 8% dos CEPs distintos de uma importação real não encontrados | medição | — | **novo em 2026-09-09**; fecha o X que a spec da `cep` deixou aberto |
 | a base de empresas voltar a vir da Receita (`empresas_no_endereco`) | evento observável | — | **novo em 2026-09-09** |
-| a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **novo em 2026-09-09**; dívida de vida curta, que se cobra sozinha |
+| o vendedor precisar filtrar ou priorizar por atividade (CNAE e `atividade_categoria` ausentes) | proxy de dor | tarde | **novo em 2026-09-09**; a premissa que os cortou é falsa — ver "Fatia empresas: a coluna Atividade existe na planilha real" |
+| a própria fatia `empresas.1` (empresa cadastrada só visível por `psql`) | evento observável | — | **fechado em 2026-09-09 pela fatia `empresas.2`**: a listagem `/empresas` existe. Durou duas fatias, porque a `empresas.1` entrou entre uma e outra |
+| `EXPLAIN ANALYZE` da busca de `/empresas` acima de 300 ms, ou `empresa` acima de 20 mil linhas (índice GIN em `busca`) | medição | — | **novo em 2026-09-09**; 300 ms medidos no banco, não na requisição (R-017) |
+| troca de versão maior do Postgres (`sem_acento` `IMMUTABLE` pode mentir) | evento observável | — | **novo em 2026-09-09** |
 | `empresa` acima de 500 mil linhas quando a `0015` for aplicada | medição | — | **novo em 2026-09-09**; a reescrita do `ADD COLUMN GENERATED` vira janela de manutenção |
 | senha de `app_conexao` reescrita pelo harness (papel próprio `app_teste`) | proxy de dor | tarde | **disparado em 2026-09-09**: quatro interrupções num dia; proposta escrita, não feita |
 | "pegar quando doer" (o padrão desta página) | proxy de dor | tarde | ativo, e é o padrão de tudo que não tem gatilho próprio |
@@ -564,6 +567,153 @@ fisicamente no arquivo, nos offsets 143 e 231.
 exige duas importações simultâneas do mesmo CNPJ, e reproduzir isso na tela é
 mais frágil que o teste de integração que já existe — `gravar` duas vezes, a
 segunda devolvendo `cnpj_ja_gravado` e o segundo CNPJ do lote não entrando.
+
+## Fatia empresas: a coluna "Atividade" existe na planilha real
+
+A spec cortou `cnae_codigo`, `cnae_descricao`, `atividade_categoria`, `porte`,
+`capital_social` e `data_abertura` com **um argumento só**: eles existiam no
+`crm-ch` porque vinham da Receita, e *"ninguém digita capital social à mão numa
+planilha de prospecção"*.
+
+**A premissa é falsa para atividade.** A planilha real do gestor tem uma coluna
+**"Atividade"**, e ela não é digitada: vem da origem da base. O argumento
+continua valendo para `capital_social` e `data_abertura`, que ninguém preenche
+de fato — mas foi aplicado em bloco a seis colunas quando só descrevia algumas.
+
+Registrado em 2026-09-09, depois da fatia `empresas.2`.
+
+**Por que não entra agora.** Ter o dado não é ter o uso. Uma coluna que a
+importação grava e nenhuma tela lê é a R-014 pelo lado do dado em vez do lado da
+função — e a fatia `empresas` já recusou `numero` e `complemento` por
+exatamente isso. O que falta não é a coluna: é a decisão de o que a atividade
+faz com a fila de ligação.
+
+**Gatilho: quando o vendedor precisar filtrar ou priorizar por atividade.**
+Tipo: **proxy de dor**, erra para **tarde** — que é o padrão aceito desta
+página (R-016). O custo de errar para tarde aqui é baixo e conhecido: a coluna
+vem por `ALTER TABLE`, e a planilha do gestor **continua guardando o dado no
+arquivo** enquanto isso. Reimportar preenche o passado; nada se perde por
+esperar.
+
+**O que fazer quando disparar**, e a ordem importa: primeiro olhar a coluna
+"Atividade" de uma planilha real e ver **que forma ela tem** — texto livre,
+vocabulário fechado, ou código CNAE. A spec cortou três colunas diferentes
+(`cnae_codigo`, `cnae_descricao`, `atividade_categoria`) que não são a mesma
+coisa, e qual delas volta depende do que o arquivo traz. Decidir isso pelo nome
+que o `crm-ch` usava seria repetir o erro que este registro corrige.
+
+**O modelo `.xlsx` não muda até lá.** Acrescentar a coluna ao cabeçalho literal
+que a fase 0 confere quebraria toda planilha já preenchida pelo gestor, para
+guardar dado que nenhuma tela lê.
+
+## Fatia empresas.2: verificado à mão
+
+Não há teste de render além dos três de `renderToStaticMarkup` em
+`app/empresas/`. Verificação manual feita pelo usuário em 2026-09-09 e
+2026-09-10, no container local, com a `0015` aplicada, a base de CEP carregada
+e uma planilha importada. Refazer quando mexer em `app/empresas/**`.
+
+**Os quatorze passos rodaram. Dois reprovaram e os dois foram corrigidos na
+própria fatia**, não viraram bilhete: a busca por raiz de CNPJ (4b) e o `?q=`
+pendurado na URL (13).
+
+| # | Passo | Esperado | Passou? |
+|---|---|---|---|
+| 0 | `/empresas` como gestor, sem termo | a lista, com a contagem total; sem paginação se couber numa página | sim |
+| 1 | `/empresas` como vendedor | redireciona para `/` | sim |
+| 2 | buscar `sao` numa base com "Iluminação São João" | acha | sim |
+| 3 | buscar `LAMPADAS` em caixa alta, com a empresa cadastrada como `LÂMPADAS` | acha | sim |
+| 4 | buscar o CNPJ com máscara | acha exatamente aquele estabelecimento | sim |
+| 4b | buscar a **raiz** (8 dígitos, sem pontuação) | acha todos os estabelecimentos daquela empresa | **reprovado em 2026-09-09; corrigido na mesma fatia** — ver a seção abaixo |
+| 5 | buscar quatro dígitos que existem dentro de um CNPJ | não acha nada | sim |
+| 6 | buscar `%` | não traz a base inteira | sim |
+| 7 | importar mais de 50 empresas e virar a página | a segunda página não repete nem pula, e a contagem continua a mesma | sim |
+| 8 | buscar um termo e virar a página | o termo continua no campo e no resultado | sim |
+| 9 | empresa com CEP fora da base | mostra o CEP e "não encontrado na base", não "sem CEP" | sim |
+| 10 | empresa sem CEP | mostra "sem CEP" | sim |
+| 11 | `/empresas?pagina=99` | página vazia com o link "Ver todas" funcionando | sim |
+| 12 | link `Empresas` no início | leva à listagem como gestor; como vendedor, o link não aparece | sim |
+| 13 | buscar e apagar o campo | a URL volta a `/empresas`, sem `?q=` pendurado | **reprovado em 2026-09-10; corrigido na mesma fatia** (`destinoCanonico`) |
+
+**Antes de subir o `next dev`, rode a suíte** — o harness de integração
+reescreve a senha de `app_conexao` e derruba a `DATABASE_URL` do dev. Se já
+subiu, `npm run db:senha` refaz.
+
+### A busca por raiz de CNPJ não achava nada
+
+Reprovado na verificação manual, corrigido na mesma fatia. Medido pelo usuário
+contra o container local:
+
+| Digitado | Antes | Depois |
+|---|---|---|
+| `11222333` (a raiz, só dígitos) | **0 empresas**, com quatro na base começando assim | acha as quatro |
+| `11.222.333/0099-95` (formatado, como aparece na tela) | acha | acha, só aquela |
+
+**A causa não era a que o sintoma sugeria.** Não havia comparação contra texto
+formatado em lugar nenhum — `formatarCnpj` só desenha tela e nunca toca
+consulta. O formatado funcionava **porque** `normalizarCnpj` tirava a pontuação
+e devolvia um CNPJ de 14 caracteres, que casava na igualdade. O de oito dígitos
+falhava porque `normalizarCnpj` **exige** os 14, devolvia `null`, e
+`cnpj = NULL` nunca é verdadeiro — enquanto `busca` não contém o CNPJ, de
+propósito. Ou seja: **a única condição sobre `cnpj` era igualdade com um CNPJ
+inteiro; busca por prefixo não existia.**
+
+**Duas perguntas coladas numa função só.** `normalizarCnpj` valida identidade
+para gravar, e por isso exige os 14 — está certa. Buscar é outra pergunta.
+Reusá-la para as duas foi o que produziu o defeito, e o conserto é
+`prefixoCnpj`, ao lado dela, com o piso na raiz.
+
+**A raiz é a unidade certa, e não um número escolhido por gosto.** As oito
+primeiras posições do CNPJ identificam a **empresa**; as quatro seguintes, o
+estabelecimento (matriz `0001`, filiais `0002`…); as duas últimas são os
+dígitos verificadores. Foi exatamente por isso que quatro linhas começavam
+igual. Abaixo de oito o termo não identifica empresa nenhuma — então `'1122'`
+continua não achando nada, como antes.
+
+**O que a spec quis dizer com "exata", e o que meu teste tinha entendido.** A
+spec diz *"busca por CNPJ é exata e é condição separada no `WHERE`, nunca `LIKE`
+dentro de `busca`"*, e o argumento dela é contra **substring não ancorada**:
+`'1122'` casando pedaço do CNPJ de empresa nenhuma a ver, de forma diferente
+conforme o nome fantasia da vizinha. Prefixo **ancorado na própria coluna
+`cnpj`** não é esse caso.
+
+O teste `pedaço de CNPJ não acha ninguém` codificou a **letra** da spec —
+"exata" — em vez do **argumento** dela, e por isso passava verde enquanto o
+caminho que o gestor mais usa estava quebrado. Teste que fixa a palavra da spec
+em vez da razão dela protege a frase, não o usuário. O teste continua existindo,
+renomeado para `pedaço curto`, porque a coisa que ele protege — substring solta
+não achar — continua valendo.
+
+**O passo não estava na tabela de conferência.** Havia "buscar o CNPJ com
+máscara" e "buscar quatro dígitos", e nenhum dos dois é o caminho real: quem
+procura uma empresa específica digita o que tem à mão, que é a raiz. A tabela
+ganhou o passo 4b. Uma tabela de conferência que só percorre os caminhos que o
+implementador já pensou testa a implementação, não o uso.
+
+### O que os testes desta fatia NÃO provam, medido
+
+Os dois estão escritos no comentário do SQL em `listagem.ts`, e estão aqui
+porque são a classe de erro que a R-017 registra: afirmação com cara de prova.
+
+- **`ESCAPE '\'` não acrescenta comportamento.** A barra invertida já é o escape
+  padrão do `LIKE` no Postgres. Medido: removida a cláusula, os 14 testes de
+  `empresas-listagem` continuam passando. Ela fica por ser explícita, não por
+  ser necessária. Quem faz o trabalho é `escaparLike` em `consulta.ts` — sem
+  ela, o teste do `_` falha (`expected 3 to be +0`).
+- **O teste do `%` passa por acaso.** Sem escape, `100%` vira o padrão `%100%%`,
+  que ainda só acha quem tem "100" na razão social. A regressão real é pega pelo
+  teste do `_`.
+- **Os totais da paginação eram somados à mão.** `POR_PAGINA + 8` acoplava o
+  `describe` de paginação à quantidade de fixtures dos outros: acrescentar três
+  linhas noutro bloco quebrou dois testes que não tinham nada a ver com a
+  mudança. Agora a contagem sai de um `count(*)` no próprio `beforeAll`, que é
+  o que o teste queria dizer — a janela do `count(*) OVER ()` concorda com a
+  tabela inteira.
+- **O desempate `ORDER BY ..., e.id` não é cobrado por teste nenhum.** Medido:
+  removido o `, e.id`, os 14 continuam passando — com esta tabela e este plano
+  de consulta o Postgres devolve ordem estável por acaso. O desempate fica
+  porque o SQL não promete ordem entre linhas iguais, e um teste que dependesse
+  do plano de consulta para falhar seria pior que nenhum.
 
 ## Fatia empresas: auditoria
 
