@@ -32,7 +32,7 @@ describe('cep: leitura', () => {
     expect(linhas).toEqual([{ localidade: 'São Paulo' }])
   })
 
-  test('app_conexao fora de comoUsuario é permission denied, não zero linhas', async () => {
+  test('app_teste fora de comoUsuario é permission denied, não zero linhas', async () => {
     const c = await conectarVerificado(banco.urlApp)
     try {
       await expect(c.query('SELECT cep FROM cep')).rejects.toMatchObject({ code: '42501' })

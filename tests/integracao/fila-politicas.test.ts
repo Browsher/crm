@@ -38,7 +38,7 @@ async function reservarPara(usuarioId: string, minutos = 30): Promise<void> {
 }
 
 describe('empresa_fila: privilégios', () => {
-  test('app_conexao fora de comoUsuario e 42501, nao zero linhas', async () => {
+  test('app_teste fora de comoUsuario e 42501, nao zero linhas', async () => {
     const c = await conectarVerificado(banco.urlApp)
     try {
       await expect(c.query('SELECT empresa_id FROM empresa_fila')).rejects.toMatchObject({ code: '42501' })

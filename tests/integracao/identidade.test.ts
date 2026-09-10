@@ -57,7 +57,7 @@ describe('identidade não sobrevive à transação', () => {
       const { rows } = await c.query(
         "SELECT COALESCE(current_setting('app.usuario_id', true), '') AS id, current_user AS papel",
       )
-      expect(rows[0]).toEqual({ id: '', papel: 'app_conexao' })
+      expect(rows[0]).toEqual({ id: '', papel: 'app_teste' })
     } finally {
       c.release()
     }
@@ -84,7 +84,7 @@ describe('identidade não sobrevive à transação', () => {
       expect(rows[0].papel).toBe('app_usuario')
       await c.query('RESET ROLE')
       const depois = await c.query('SELECT current_user AS papel')
-      expect(depois.rows[0].papel).toBe('app_conexao')
+      expect(depois.rows[0].papel).toBe('app_teste')
     } finally {
       c.release()
     }

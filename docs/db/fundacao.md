@@ -173,6 +173,17 @@ Falha de infraestrutura (conexão, timeout) lança e não é traduzida.
 | `app_conexao` | `LOGIN`, `NOBYPASSRLS`, `NOINHERIT`, `CONNECTION LIMIT 20`, `idle_in_transaction_session_timeout = 30s`, dono de nada | está na `DATABASE_URL`. Membro de `app_usuario` **sem herança**: só tem os privilégios ao assumir o papel. Fora de `comoUsuario`, `usuario` dá `42501`. |
 | `app_usuario` | `NOLOGIN` | recebe os GRANTs. Alvo do `set_config('role', ...)`. |
 | `app_conferencia` | `NOLOGIN`, criado pelo runner | `SELECT` só em `_migracao`. Usado pelo CI para conferir a Railway. |
+| `app_teste` | `NOLOGIN` e sem senha na migração; `CONNECTION LIMIT 20` e o mesmo `idle_in_transaction_session_timeout` do `app_conexao` | papel do **harness de teste**, não da aplicação. Membro de `app_conexao` **com herança**: tem o que ele tem, inclusive `GRANT` de migração futura. Só o harness lhe dá `LOGIN`, e só no container. Ver `docs/db/0021.md`. |
+
+A distinção entre `app_conexao` e `app_teste` é o ponto: um é o papel da
+aplicação, o outro é o papel de quem testa. Papel é global no cluster, então
+enquanto os dois eram um só, rodar teste reescrevia a senha do papel que a
+aplicação usa e derrubava a `DATABASE_URL` do dev. A herança é o que mantém o
+`app_teste` idêntico ao `app_conexao` sem cópia de `GRANT`s — e a revogação de
+herança da `0006` é o que impede que ela vaze até `app_usuario`, então os
+controles negativos da suíte continuam recebendo `42501` pelo mesmo motivo de
+sempre. `invariantes.ts` confere o teto e os atributos sempre que o papel existir;
+na Railway ele não deve existir, e ausência não é violação.
 
 Papel nasce sem senha e sem `LOGIN`, porque o repositório é público e a
 migração é imutável. `npm run db:senha -- <papel> <senha>` faz o

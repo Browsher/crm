@@ -37,7 +37,7 @@ describe('empresa: quem escreve', () => {
     expect(r.linhas).toEqual([])
   })
 
-  test('app_conexao fora de comoUsuario e permission denied, nao zero linhas', async () => {
+  test('app_teste fora de comoUsuario e permission denied, nao zero linhas', async () => {
     const c = await conectarVerificado(banco.urlApp)
     try {
       await expect(c.query('SELECT cnpj FROM empresa')).rejects.toMatchObject({ code: '42501' })

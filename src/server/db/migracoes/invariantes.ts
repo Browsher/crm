@@ -51,7 +51,19 @@ export type Estado = {
   funcoesDefinidoras: { schema: string; nome: string; temSearchPath: boolean }[]
   funcoesDeAcesso: string[]
   papeis: string[]
-  conexao: { rolsuper: boolean; rolbypassrls: boolean; rolconnlimit: number; dona: number; herdaDe: string[] } | null
+  conexao: { rolsuper: boolean; rolbypassrls: boolean; rolconnlimit: number; dona: number; herdaDe: string[]; config: string[] | null } | null
+  // Papel do harness. Nulo é o esperado em produção: ele não deve existir lá.
+  // `rolinherit` não entra aqui de propósito — a herança mora no grant (R-010),
+  // e ALTER ROLE ... NOINHERIT não desliga herança existente.
+  teste: {
+    rolsuper: boolean
+    rolbypassrls: boolean
+    rolconnlimit: number
+    dona: number
+    config: string[] | null
+    membroDe: { papel: string; herda: boolean }[]
+    privilegiosDiretos: string[]
+  } | null
   migracaoAlcancavelPor: string[]
   privilegiosDeConexaoEmAutenticacao: string[]
   politicasEmAutenticacao: string[]
@@ -88,8 +100,56 @@ export async function lerEstado(c: Client): Promise<Estado> {
     SELECT r.rolsuper, r.rolbypassrls, r.rolconnlimit,
       (SELECT count(*)::int FROM pg_tables t WHERE t.tableowner = r.rolname) AS dona,
       COALESCE((SELECT array_agg(m.roleid::regrole::text) FROM pg_auth_members m
-                WHERE m.member = r.oid AND m.inherit_option), '{}') AS "herdaDe"
+                WHERE m.member = r.oid AND m.inherit_option), '{}') AS "herdaDe",
+      (SELECT s.setconfig FROM pg_db_role_setting s WHERE s.setrole = r.oid AND s.setdatabase = 0) AS config
     FROM pg_roles r WHERE r.rolname = 'app_conexao'`)
+
+  // O papel do harness pode não existir — e não existir é o certo na Railway.
+  // Só depois de confirmar é que dá para usar 'app_teste'::regrole, que estoura
+  // com 42704 se o papel não estiver lá.
+  const existeTeste = await c.query("SELECT 1 FROM pg_roles WHERE rolname = 'app_teste'")
+  const teste: Estado['teste'] = existeTeste.rowCount
+    ? await (async () => {
+        const atributos = await c.query<{
+          rolsuper: boolean
+          rolbypassrls: boolean
+          rolconnlimit: number
+          dona: number
+          config: string[] | null
+        }>(`
+          SELECT r.rolsuper, r.rolbypassrls, r.rolconnlimit,
+            (SELECT count(*)::int FROM pg_tables t WHERE t.tableowner = r.rolname) AS dona,
+            (SELECT s.setconfig FROM pg_db_role_setting s WHERE s.setrole = r.oid AND s.setdatabase = 0) AS config
+          FROM pg_roles r WHERE r.rolname = 'app_teste'`)
+
+        const membros = await c.query<{ papel: string; herda: boolean }>(`
+          SELECT m.roleid::regrole::text AS papel, m.inherit_option AS herda
+          FROM pg_auth_members m WHERE m.member = 'app_teste'::regrole ORDER BY 1`)
+
+        // Teto: qualquer objeto onde app_teste apareça como grantee explícito.
+        // aclexplode de ACL nulo não devolve linha, que é o caso são.
+        const diretos = await c.query<{ nome: string }>(`
+          SELECT DISTINCT nome FROM (
+            SELECT n.nspname || '.' || c.relname AS nome
+              FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace, aclexplode(c.relacl) a
+             WHERE a.grantee = 'app_teste'::regrole AND ${SCHEMAS_DO_SISTEMA}
+            UNION ALL
+            SELECT n.nspname || '.' || p.proname
+              FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace, aclexplode(p.proacl) a
+             WHERE a.grantee = 'app_teste'::regrole AND ${SCHEMAS_DO_SISTEMA}
+            UNION ALL
+            SELECT 'schema ' || n.nspname
+              FROM pg_namespace n, aclexplode(n.nspacl) a
+             WHERE a.grantee = 'app_teste'::regrole AND ${SCHEMAS_DO_SISTEMA}
+          ) t ORDER BY 1`)
+
+        return {
+          ...atributos.rows[0],
+          membroDe: membros.rows,
+          privilegiosDiretos: diretos.rows.map((r) => r.nome),
+        }
+      })()
+    : null
 
   const migracao = await c.query<{ nome: string }>(
     `SELECT rolname AS nome FROM pg_roles
@@ -153,6 +213,7 @@ export async function lerEstado(c: Client): Promise<Estado> {
     funcoesDeAcesso: acesso.rows.map((r) => r.nome),
     papeis: papeis.rows.map((r) => r.nome),
     conexao: conexao.rows[0] ?? null,
+    teste,
     migracaoAlcancavelPor: migracao.rows.map((r) => r.nome),
     privilegiosDeConexaoEmAutenticacao: privilegios.rows.map((r) => r.nome),
     politicasEmAutenticacao: politicas.rows.map((r) => r.nome),
@@ -193,6 +254,38 @@ export function avaliar(e: Estado): string[] {
     if (c.dona > 0) v.push('app_conexao é dona de tabela')
     if (c.rolconnlimit <= 0) v.push('app_conexao sem CONNECTION LIMIT')
     for (const papel of c.herdaDe) v.push(`app_conexao herda privilégios de ${papel} (ver R-010)`)
+  }
+
+  if (e.teste) {
+    const t = e.teste
+    if (t.rolsuper) v.push('app_teste é superusuário')
+    if (t.rolbypassrls) v.push('app_teste tem BYPASSRLS')
+    if (t.dona > 0) v.push('app_teste é dona de tabela')
+    for (const p of t.privilegiosDiretos) {
+      v.push(`app_teste com privilégio concedido direto: ${p} (o papel do harness só pode ter o que herda de app_conexao)`)
+    }
+
+    const deConexao = t.membroDe.find((m) => m.papel === 'app_conexao')
+    if (!deConexao) v.push('app_teste não é membro de app_conexao (o piso da paridade vem da herança)')
+    else if (!deConexao.herda) {
+      v.push('app_teste é membro de app_conexao sem herança (ver R-010: a herança mora no grant, em pg_auth_members.inherit_option)')
+    }
+    for (const m of t.membroDe) {
+      if (m.papel !== 'app_conexao') v.push(`app_teste é membro de ${m.papel} além de app_conexao`)
+    }
+
+    // Atributo não se herda: sem esta conferência, o harness conectaria por um
+    // papel com outro limite e o teste do 53300 ficaria verde medindo outra coisa.
+    if (e.conexao) {
+      if (t.rolconnlimit !== e.conexao.rolconnlimit) {
+        v.push(`app_teste com CONNECTION LIMIT diferente do app_conexao: ${t.rolconnlimit} contra ${e.conexao.rolconnlimit}`)
+      }
+      const doTeste = [...(t.config ?? [])].sort().join(', ')
+      const daConexao = [...(e.conexao.config ?? [])].sort().join(', ')
+      if (doTeste !== daConexao) {
+        v.push(`app_teste com configuração de sessão diferente do app_conexao: [${doTeste}] contra [${daConexao}]`)
+      }
+    }
   }
 
   for (const papel of e.migracaoAlcancavelPor) v.push(`_migracao alcançável por ${papel}`)

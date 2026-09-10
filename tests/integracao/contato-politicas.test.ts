@@ -68,7 +68,7 @@ function lerContatos(usuarioId: string): Promise<{ id: string }[]> {
 }
 
 describe('contato: privilégios', () => {
-  test('app_conexao fora de comoUsuario e 42501, nao zero linhas', async () => {
+  test('app_teste fora de comoUsuario e 42501, nao zero linhas', async () => {
     await contatoDe(vendedorA)
     const c = await conectarVerificado(banco.urlApp)
     try {
