@@ -676,7 +676,7 @@ desfaz e o contrato de tudo-ou-nada continua valendo — `ON CONFLICT DO NOTHING
 foi recusado justamente por criar sucesso parcial, que é um estado novo na tela
 e uma invariante a menos.
 
-O **byte NUL** é pego na **fase 1**, não traduzido do banco: ` ` é UTF-8
+O **byte NUL** é pego na **fase 1**, não traduzido do banco: `U+0000` é UTF-8
 válido e só o Postgres recusa. Pego na fase 1, o gestor recebe a linha e a
 coluna; traduzido, receberia mensagem sem localização nenhuma. `22021` continua
 traduzido como rede, com texto vago de propósito.

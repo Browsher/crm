@@ -372,4 +372,42 @@ Tipo: bilhete (nada confere que a consulta foi feita)
 
 ---
 
+## R-020 — Caractere de controle se ilustra pelo nome, não pelo caractere
+
+O que aconteceu: duas vezes, e as duas no parágrafo que **explicava o byte
+NUL**. Na `empresas.1` dois NUL literais entraram na `divida-tecnica.md` e foram
+pegos antes de virar commit. Na spec de `empresas` um entrou e ficou, entre
+crases, ilustrando o byte que o texto descreve.
+
+O estrago não é de renderização — no Markdown renderizado ninguém percebe. É que
+o `grep` passa a tratar o arquivo inteiro como binário e responde
+`Binary file matches` em vez das linhas. Custou uma busca falhada na própria
+spec, procurando `pode_ler` para conferir uma política: a resposta parecia
+"não sei ler isso" quando a resposta certa era "não existe".
+
+A ferramenta desiste do documento **inteiro** por causa de um byte, e desiste
+justamente no documento que mais vai ser consultado — a spec da fatia recém
+escrita.
+
+A regra: para ilustrar um caractere de controle, escreva o **nome do ponto de
+código** (`U+0000`, `U+001B`), não o caractere. Vale para prosa: doc, spec,
+regra, comentário de commit. Em código o escape (`\x00`) já é o normal, e
+fixture de teste que precisa do byte de verdade precisa dele de verdade.
+
+O sintoma a reconhecer: `grep` respondendo `Binary file matches` sobre um
+arquivo que você sabe que é texto. Não é o grep quebrado; é um byte de controle
+lá dentro.
+
+Tipo: catraca
+Onde: `src/docs.test.ts` varre `docs/**/*.md` e os `.md` da raiz, recusando todo
+o bloco C0 fora de tab e LF, mais DEL. CR entra na recusa porque o
+`.gitattributes` normaliza o working tree para LF (`* text=auto eol=lf`), então
+um CR ali é um CR que alguém escreveu.
+
+**LIMITE DECLARADO:** varre só prosa. `src/**` fica de fora de propósito —
+`planilha.test.ts` precisa do byte NUL de verdade para provar que a fase 1 o
+recusa, e uma catraca que proíbe isso proibiria o teste que importa.
+
+---
+
 <!-- próximas regras aqui -->
