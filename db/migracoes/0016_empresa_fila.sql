@@ -72,4 +72,41 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION fila_puxar() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION fila_puxar() TO app_usuario;
+CREATE FUNCTION empresa_assumir(p_empresa_id uuid) RETURNS text
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+  v_eu   uuid := public.usuario_atual();
+  v_dono uuid;
+  v_resv uuid;
+  v_ate  timestamptz;
+BEGIN
+  IF NOT public.pode_escrever() THEN
+    RAISE EXCEPTION 'troque a senha provisoria antes de assumir empresa' USING ERRCODE = '42501';
+  END IF;
+  PERFORM 1 FROM public.empresa e WHERE e.id = p_empresa_id FOR UPDATE;
+  SELECT f.vendedor_id, f.reservado_por, f.reservado_ate
+    INTO v_dono, v_resv, v_ate
+    FROM public.empresa_fila f
+   WHERE f.empresa_id = p_empresa_id;
+  IF NOT FOUND THEN
+    RETURN 'nao_encontrada';
+  END IF;
+  IF v_dono = v_eu THEN
+    RETURN 'ja_e_sua';
+  END IF;
+  IF v_resv = v_eu AND v_ate <= now() THEN
+    RETURN 'reserva_expirada';
+  END IF;
+  IF v_resv IS DISTINCT FROM v_eu THEN
+    RAISE EXCEPTION 'esta empresa nao esta com voce' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.empresa_fila ef
+     SET vendedor_id = v_eu, reservado_por = NULL, reservado_ate = NULL
+   WHERE ef.empresa_id = p_empresa_id;
+  RETURN 'ok';
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION empresa_assumir(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION empresa_assumir(uuid) TO app_usuario;
 COMMIT;
