@@ -1325,6 +1325,15 @@ lê a linha de `usuario` do vendedor A e o `LEFT JOIN` devolvia nulo. Consertado
 com `usuario_publico` (`0020`), a view que a fundação registrava como parada
 *"até ter consumidor"* — o consumidor apareceu como defeito de tela.
 
+### Reconferido à mão depois dos consertos
+
+| Achado | Confirmado na tela |
+|---|---|
+| 1 — aviso dos 30 dias | sim: o aviso muda com o tipo escolhido |
+| 2 — devolver exigindo combinado | sim: "Registrar e devolver" não exige mais |
+| 3 — erro depois do sucesso | **por consequência, não por observação direta**: o passo 2 só é observável clicando "Registrar e devolver", e não houve relato de erro. Coberto por teste. |
+| 4 — autor `sistema` | sim: aparece `Alexandre Teste` |
+
 **O que os três primeiros ensinam sobre os testes que existiam.** Todos os
 quatro passaram por `typecheck`, `lint`, 418 unitários e 300 de integração. Os
 testes de render exercitam **um estado por vez** e o padrão do projeto é
