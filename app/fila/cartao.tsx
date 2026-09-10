@@ -1,3 +1,6 @@
+import { FormularioContato } from '@/src/features/contato/formulario'
+import type { Contato } from '@/src/features/contato/historico'
+import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 
 // `agora` entra por parâmetro em vez de a função chamar new Date() dentro: é o
@@ -19,9 +22,9 @@ function endereco(empresa: EmpresaComigo): string {
   return 'Empresa sem CEP cadastrado'
 }
 
-type Props = { empresa: EmpresaComigo; agora: Date }
+type Props = { empresa: EmpresaComigo; agora: Date; contatos: Contato[] }
 
-export function Cartao({ empresa, agora }: Props) {
+export function Cartao({ empresa, agora, contatos }: Props) {
   return (
     <article className="flex flex-col gap-3 rounded border p-4">
       <header className="flex flex-col gap-1">
@@ -54,16 +57,11 @@ export function Cartao({ empresa, agora }: Props) {
           conversa esticar.
         </p>
       ) : null}
-      <div className="flex gap-2">
-        {empresa.posse ? null : (
-          <button type="submit" name="acao" value="assumir" className="rounded border px-3 py-2 text-sm">
-            Assumir
-          </button>
-        )}
-        <button type="submit" name="acao" value="devolver" className="rounded border px-3 py-2 text-sm">
-          Devolver
-        </button>
-      </div>
+      <section className="flex flex-col gap-2">
+        <h3 className="text-sm font-medium">O que já aconteceu com esta empresa</h3>
+        <LinhaDoTempo contatos={contatos} />
+      </section>
+      <FormularioContato empresaId={empresa.id} posse={empresa.posse} />
     </article>
   )
 }
