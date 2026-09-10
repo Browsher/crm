@@ -69,7 +69,11 @@ describe('repositorioPostgres', () => {
 
   test('desativar apaga as sessões na mesma transação; reativar não as traz de volta', async () => {
     const alvo = await criarNaTabela(banco, 'vendedor', 'Alvo')
-    const { token } = await criarSessao(alvo)
+    await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [alvo, hash])
+    const criada = await criarSessao(alvo, '1')
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) throw new Error('sessão recusada')
+    const { token } = criada
     const repo = repositorioPostgres(gestor)
     expect(await repo.definirSituacao(alvo, false)).toEqual({ ok: true })
     const [{ n }] = await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM autenticacao.sessao WHERE usuario_id = $1', [alvo])
@@ -118,7 +122,10 @@ describe('serviço com repositório real', () => {
   test('novaSenhaProvisoria: a antiga não entra, a nova entra, sessão antiga morre', async () => {
     const criado = await criarUsuario(repositorioPostgres(gestor), { nome: 'Dani', email: 'dani@teste.local', papel: 'vendedor' })
     if (!criado.ok) throw new Error('criação falhou')
-    const { token } = await criarSessao(criado.id)
+    const criada = await criarSessao(criado.id, '1')
+    expect(criada.ok).toBe(true)
+    if (!criada.ok) throw new Error('sessão recusada')
+    const { token } = criada
     const r = await novaSenhaProvisoria(repositorioPostgres(gestor), criado.id)
     expect(r.ok).toBe(true)
     if (!r.ok) return

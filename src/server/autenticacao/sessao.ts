@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { chamar } from '../db/sem-identidade'
-import type { LinhaSessao, Papel } from './linhas'
+import type { LinhaSessao, LinhaSessaoCriada, Papel } from './linhas'
 
 export const DIAS_VALIDADE = 30
 
@@ -25,11 +25,16 @@ export function hashDoToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
-export async function criarSessao(usuarioId: string): Promise<{ token: string; expiraEm: Date }> {
+export type ResultadoCriarSessao =
+  | { ok: false }
+  | { ok: true; token: string; expiraEm: Date; precisaTrocarSenha: boolean }
+
+export async function criarSessao(usuarioId: string, versao: string): Promise<ResultadoCriarSessao> {
   const token = gerarToken()
   const expiraEm = new Date(Date.now() + DIAS_VALIDADE * 24 * 60 * 60 * 1000)
-  await chamar('sessao_criar', [usuarioId, hashDoToken(token), expiraEm])
-  return { token, expiraEm }
+  const [linha] = await chamar<'sessao_criar', LinhaSessaoCriada>('sessao_criar', [usuarioId, hashDoToken(token), expiraEm, versao])
+  if (!linha) return { ok: false }
+  return { ok: true, token, expiraEm, precisaTrocarSenha: linha.senha_provisoria_pendente }
 }
 
 export async function lerSessao(token: string): Promise<Sessao | null> {

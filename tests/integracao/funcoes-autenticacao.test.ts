@@ -29,7 +29,7 @@ const falhas = (n: number, email: string, origem: string | null, quando: Date) =
 describe('credencial_por_email', () => {
   test('devolve a credencial com a situação do usuário; normaliza o e-mail por dentro', async () => {
     const r = await chamar<'credencial_por_email', LinhaCredencial>('credencial_por_email', ['  Vendedor@Teste.local '])
-    expect(r).toEqual([{ usuario_id: vendedor, senha_hash: 'hash-qualquer', ativo: true, senha_provisoria_pendente: false }])
+    expect(r).toEqual([{ usuario_id: vendedor, senha_hash: 'hash-qualquer', versao: '1', ativo: true, senha_provisoria_pendente: false }])
   })
 
   test('zero linhas para e-mail inexistente', async () => {
@@ -39,27 +39,28 @@ describe('credencial_por_email', () => {
 
 describe('sessão', () => {
   test('criar e resolver', async () => {
-    await chamar('sessao_criar', [vendedor, 'h1', FUTURO])
+    await chamar('sessao_criar', [vendedor, 'h1', FUTURO, '1'])
     const r = await chamar<'sessao_atual', LinhaSessao>('sessao_atual', ['h1'])
     expect(r).toHaveLength(1)
     expect(r[0]).toMatchObject({ usuario_id: vendedor, nome: 'Vendedor', papel: 'vendedor', senha_provisoria_pendente: false })
   })
 
   test('expirada devolve zero linhas', async () => {
-    await chamar('sessao_criar', [vendedor, 'h-expirada', PASSADO])
+    await chamar('sessao_criar', [vendedor, 'h-expirada', PASSADO, '1'])
     expect(await chamar('sessao_atual', ['h-expirada'])).toEqual([])
   })
 
   test('barreira da sessão: usuário desativado com sessão viva devolve zero linhas, sem passar por comoUsuario', async () => {
     const id = await criarUsuario(banco, 'vendedor', 'Demitido')
-    await chamar('sessao_criar', [id, 'h-demitido', FUTURO])
+    await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, 'hash'])
+    await chamar('sessao_criar', [id, 'h-demitido', FUTURO, '1'])
     expect(await chamar('sessao_atual', ['h-demitido'])).toHaveLength(1)
     await banco.sql('UPDATE usuario SET ativo = false WHERE id = $1', [id])
     expect(await chamar('sessao_atual', ['h-demitido'])).toEqual([])
   })
 
   test('encerrar apaga', async () => {
-    await chamar('sessao_criar', [vendedor, 'h-fim', FUTURO])
+    await chamar('sessao_criar', [vendedor, 'h-fim', FUTURO, '1'])
     await chamar('sessao_encerrar', ['h-fim'])
     expect(await chamar('sessao_atual', ['h-fim'])).toEqual([])
   })
@@ -70,8 +71,8 @@ describe('senha_trocar', () => {
     const id = await criarUsuario(banco, 'gestor', 'Trocador')
     await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, 'antigo'])
     await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [id])
-    await chamar('sessao_criar', [id, 'atual', FUTURO])
-    await chamar('sessao_criar', [id, 'outra', FUTURO])
+    await chamar('sessao_criar', [id, 'atual', FUTURO, '1'])
+    await chamar('sessao_criar', [id, 'outra', FUTURO, '1'])
     const r = await chamar<'senha_trocar', LinhaSenhaTrocar>('senha_trocar', ['atual', 'novo'])
     expect(r).toEqual([{ senha_trocar: id }])
     const [c] = await banco.sql<{ senha_hash: string }>('SELECT senha_hash FROM autenticacao.credencial WHERE usuario_id = $1', [id])

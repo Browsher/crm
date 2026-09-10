@@ -9,7 +9,7 @@ export const FUNCOES = {
   credencial_por_email: 1,
   bloqueio_login: 2,
   registrar_tentativa_login: 3,
-  sessao_criar: 3,
+  sessao_criar: 4,
   sessao_atual: 1,
   sessao_encerrar: 1,
   senha_trocar: 2,

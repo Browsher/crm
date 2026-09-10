@@ -71,9 +71,13 @@ tem `USAGE` no schema e `EXECUTE` nas sete, e nenhum privilégio de tabela.
 As duas listas são a mesma, e a invariante confere a do banco.
 
 Verificação de senha é no Node (`scrypt`), então `credencial_por_email` é o
-único ponto onde hash sai do banco, e `sessao_criar` confia no `usuario_id`
-que o Node verificou. Quem tem a `DATABASE_URL` cunha sessão de qualquer um,
-do mesmo modo que afirma identidade em `comoUsuario`. É o limite do desenho.
+único ponto onde hash sai do banco, junto à versão `bigint` transportada
+como string. `sessao_criar` exige essa versão vigente e usuário ativo, sob
+travas credencial → usuário → sessão. Revogação anterior recusa emissão;
+revogação posterior remove a sessão emitida. A marca provisória vem da
+emissão final e só depois dela o login registra sucesso. Ver [0022](0022.md).
+Quem tem a `DATABASE_URL` ainda pode ler a versão e cunhar sessão de qualquer
+um, do mesmo modo que afirma identidade em `comoUsuario`. É o limite do desenho.
 
 Sessão: token de 32 bytes no cookie `crm_sessao`, `sha256` no banco, 30 dias
 fixos. `sessao_atual` recusa expirada e inativo. Troca de senha derruba as
