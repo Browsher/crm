@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { exigir } from '../../server/autenticacao/guarda'
 import { textoDaFalta, textoDoMotivo } from './mensagens'
 import { validar } from './regras'
@@ -22,6 +23,10 @@ export async function registrarContatoAcao(
 ): Promise<EstadoContato> {
   const eu = await exigir('usuario')
   const empresaId = String(form.get('id') ?? '')
+  // Só a ficha manda `voltarPara`: ela é a única tela cuja ROTA deixa de
+  // existir quando a empresa sai da mão do vendedor. A fila não manda, porque
+  // /fila continua sendo /fila depois de devolver.
+  const voltarPara = String(form.get('voltarPara') ?? '')
   const r = validar({
     tipo: String(form.get('tipo') ?? ''),
     desfecho: String(form.get('desfecho') ?? ''),
@@ -38,5 +43,12 @@ export async function registrarContatoAcao(
   revalidatePath('/fila')
   revalidatePath('/carteira')
   revalidatePath(`/carteira/${empresaId}`)
+
+  // Devolver tira a empresa da carteira, e `/carteira/[id]` passa a responder
+  // 404 para ela. Sem isto, a ação dava certo e a revalidação da própria rota
+  // renderizava a página que não existe mais — erro na tela depois do sucesso.
+  // `redirect` lança por desenho: nada depois dele executa.
+  if (r.valor.desfecho === 'devolver' && voltarPara) redirect(voltarPara)
+
   return { erro: null, ok: true }
 }

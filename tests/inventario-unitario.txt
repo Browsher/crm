@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 418
+# Total: 428
 
 app/carteira/[id]/ficha.test.tsx :: Ficha a linha do tempo vazia diz que ninguem ligou ainda
 app/carteira/[id]/ficha.test.tsx :: Ficha com posse, o formulario pede proximo passo
@@ -71,6 +71,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0016.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0017.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0018.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0019.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0020.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-fundacao-banco.md não tem caractere de controle literal
@@ -103,6 +104,10 @@ src/features/contato/formulario.test.tsx :: FormularioContato leva o id da empre
 src/features/contato/formulario.test.tsx :: FormularioContato sem comDevolver, o desfecho e o sugerido pelo tipo, em campo oculto
 src/features/contato/formulario.test.tsx :: FormularioContato sem posse oferece os cinco tipos de reserva, e nao o de posse
 src/features/contato/formulario.test.tsx :: FormularioContato sem posse, NAO pede proximo passo obrigatorio
+src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado diz que a empresa vai para a sua carteira
+src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado NAO avisa dos 30 dias, porque assume em vez de devolver
+src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse na ficha, o botao de devolver avisa dos 30 dias ao lado dele
+src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse tipo que devolve avisa que a empresa volta em 30 dias
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo contato sem autor nao quebra o render
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo lista vazia diz que ninguem ligou ainda, e nao fica em branco
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo mostra o proximo passo combinado quando ha
@@ -127,6 +132,9 @@ src/features/contato/regras.test.ts :: validar passo sem data e recusado antes d
 src/features/contato/regras.test.ts :: validar rascunho de reserva sem proximo passo e valido
 src/features/contato/regras.test.ts :: validar retornar_depois grava passo e data mesmo sem posse
 src/features/contato/regras.test.ts :: validar tipo fora da lista e recusado antes do banco
+src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior devolver com proximo passo preenchido continua valendo, e vira historico
+src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior posse com desfecho devolver NAO exige, porque a empresa sai
+src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior posse com desfecho nenhum EXIGE proximo passo, porque a empresa fica
 src/features/contato/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
 src/features/contato/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
 src/features/contato/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
@@ -141,6 +149,8 @@ src/features/contato/tipos.test.ts :: TIPOS_CONTATO interessado sugere assumir; 
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO tem os seis tipos da spec, e nenhum a mais
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO todo tipo tem rotulo e desfecho sugerido
 src/features/contato/um-chamador.test.ts :: a action importa a regra pura em vez de validar por conta propria
+src/features/contato/um-chamador.test.ts :: a action redireciona quando o desfecho tira a empresa da mao do vendedor
+src/features/contato/um-chamador.test.ts :: a ficha diz para onde voltar depois de devolver
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só existe pelo menos um arquivo com o literal, senão esta catraca não vigia nada
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só o literal aparece em exatamente um arquivo fora de tests/
 src/features/empresas/cnpj.test.ts :: normalizarCnpj "  11222333000181  " vira "11222333000181"

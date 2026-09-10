@@ -439,7 +439,11 @@ cada decisão em `docs/db/0017.md`, `0018.md` e `0019.md`.
 - `usuario_alterar` bloqueia a pessoa de editar o próprio nome, não só papel e
   situação. Quando houver tela de perfil, a solução é política separada.
 - `criado_por` anulável, sem CHECK, para o seed do primeiro gestor.
-- `usuario_publico` (view com id e nome) fica fora até ter consumidor.
+- ~~`usuario_publico` fica fora até ter consumidor.~~ **Resolvido na fatia
+  `contato` (`0020`):** o consumidor apareceu como defeito de tela — o histórico
+  mostrava `sistema` no lugar do nome de quem registrou o contato, porque
+  `usuario_ler` não deixa um vendedor ler a linha de outro. A view expõe `id` e
+  `nome`, e o que ela **não** expõe tem teste. Ver `docs/db/0020.md`.
 - Aplicação na Railway é manual.
 - TLS até a Railway é trust-on-first-use (seção acima). O caminho forte é
   rodar dentro da rede da Railway.

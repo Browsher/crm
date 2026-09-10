@@ -59,8 +59,10 @@ export function Ficha({ empresa, contatos }: { empresa: EmpresaComigo; contatos:
 
       {/* `comDevolver` é o que fecha o gap da fila.1: até aqui não havia
           caminho de tela para devolver empresa da carteira, e quem assumia por
-          engano ficava com ela. */}
-      <FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver />
+          engano ficava com ela.
+          `voltarPara` existe porque ESTA rota deixa de existir depois de
+          devolver: a empresa sai da carteira e a ficha vira 404. */}
+      <FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver voltarPara="/carteira" />
     </article>
   )
 }

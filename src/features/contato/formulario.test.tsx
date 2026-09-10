@@ -61,3 +61,37 @@ describe('FormularioContato', () => {
     expect(saida).toContain('value="nenhum"')
   })
 })
+
+// Achado da verificação manual: o aviso dos 30 dias era fixo por `posse` e
+// aparecia nos cinco tipos de reserva — inclusive em `interessado`, que ASSUME
+// a empresa em vez de devolvê-la. O aviso mente ali.
+//
+// `tipoInicial` existe para o render alcançar os outros ramos sem DOM: sem
+// clique não há como mudar o `useState`, e sem ele este teste não existiria.
+describe('FormularioContato: o aviso segue o desfecho, nao a posse', () => {
+  test('tipo que devolve avisa que a empresa volta em 30 dias', () => {
+    const saida = renderToStaticMarkup(
+      <FormularioContato empresaId="e1" posse={false} tipoInicial="nao_atendeu" />,
+    )
+    expect(saida).toContain('volta para a fila em 30 dias')
+  })
+
+  test('interessado NAO avisa dos 30 dias, porque assume em vez de devolver', () => {
+    const saida = renderToStaticMarkup(
+      <FormularioContato empresaId="e1" posse={false} tipoInicial="interessado" />,
+    )
+    expect(saida).not.toContain('30 dias')
+  })
+
+  test('interessado diz que a empresa vai para a sua carteira', () => {
+    const saida = renderToStaticMarkup(
+      <FormularioContato empresaId="e1" posse={false} tipoInicial="interessado" />,
+    )
+    expect(saida).toContain('carteira')
+  })
+
+  test('na ficha, o botao de devolver avisa dos 30 dias ao lado dele', () => {
+    const saida = renderToStaticMarkup(<FormularioContato empresaId="e1" posse comDevolver />)
+    expect(saida).toContain('30 dias')
+  })
+})

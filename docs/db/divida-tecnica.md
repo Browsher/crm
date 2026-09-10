@@ -1153,6 +1153,11 @@ decisão que a `empresas.1` tomou sobre o `23505`.
   raciocínio, não medição.
 - **Nada roda contra Postgres 18.6**, que é a versão da Railway. Os testes rodam
   em 17.
+- **Nenhuma invariante confere o conteúdo de `usuario_publico`.** A view contorna
+  a RLS de `usuario` por desenho, e acrescentar `email` a ela é uma linha de SQL
+  numa migração futura. O obstáculo é um teste de coluna inexistente, que
+  falharia por um motivo que parece burocrático para quem não leu
+  `docs/db/0020.md`.
 
 ## Fatia contato: o que acontece com os gatilhos da `fila.1`
 
@@ -1265,6 +1270,74 @@ em coluna própria.
 **O dado para calibrar os três prazos nasce nesta fatia**, nos tipos. É o oposto
 de `primeira_reserva_em`: coluna barata hoje que evita medição impossível depois.
 
+## Fatia contato: verificado à mão
+
+No container, com a base de CEP carregada, as 65 empresas importadas e dois
+vendedores. Doze passos.
+
+| # | O que se esperava | Passou |
+|---|---|---|
+| 0 | criar segundo vendedor e trocar a senha dele | sim |
+| 1 | puxar traz empresa com endereço, contagem e histórico vazio | sim |
+| 2 | registrar `nao_atendeu` com devolver tira a empresa da fila | sim |
+| 3 | `interessado` assume; a carteira mostra o grupo "sem próximo passo" contado | sim |
+| 4 | acompanhamento com data de ontem sobe ao topo com "(vencido)" | sim |
+| 5 | acompanhamento com data futura substitui o anterior | sim |
+| 6 | acompanhamento sem próximo passo é recusado pela tela | sim |
+| 7 | "Registrar e devolver" tira a empresa da carteira | **não — dois defeitos** |
+| 8 | `retornar_depois` avisa que a data não agenda nada | sim |
+| 9 | vendedor B lê o contato que A escreveu | **parcial**, e um defeito |
+| 10 | `nao_liguei` devolve sem inventar ligação | sim |
+| 11 | senha provisória pendente recusa o registro | sim |
+| 12 | gestor vê as 65; ficha de empresa alheia é 404 | sim |
+
+**O passo 9 passou no que importa e falhou na mecânica de chegar lá.** O
+vendedor B leu a nota do vendedor A numa empresa que A tocou — o histórico
+atravessa a troca de dono, que é o propósito da fatia. Mas a empresa não voltou
+ao topo da fila sozinha: foi preciso forçar a elegibilidade pelo banco. A
+ordenação já tem teste de integração; o que o passo provou foi a leitura.
+
+### Os quatro defeitos, e três deles são o mesmo erro
+
+**Três têm uma causa só: a tela raciocinava sobre o estado ANTERIOR à ação, não
+sobre o desfecho dela.**
+
+1. **O aviso dos 30 dias era fixo.** Aparecia nos cinco tipos de reserva,
+   inclusive em `interessado` — que **assume** a empresa em vez de devolvê-la. O
+   aviso mentia. Consertado: o aviso segue `DESFECHO_SUGERIDO[tipo]`, e o ramo
+   que assume diz que a empresa vai para a carteira.
+2. **"Registrar e devolver" exigia próximo passo.** A empresa está saindo da
+   carteira: não há o que combinar com quem você não vai mais ligar. Consertado
+   em `regras.ts` — a exigência passou de `posse` para
+   `posse && desfecho === 'nenhum'`, isto é, "a empresa continua comigo depois
+   disto".
+3. **Devolver pela ficha mostrava erro E funcionava.** A ação dava certo, e a
+   revalidação de `/carteira/[id]` renderizava uma página cuja empresa já não
+   está na carteira — `notFound()`. Consertado: a ficha manda `voltarPara`, e a
+   action redireciona para `/carteira` quando o desfecho é devolver. A fila não
+   manda nada, porque `/fila` continua existindo depois de devolver.
+
+**O quarto é separado, e o diagnóstico inicial estava errado.** O histórico
+mostrava `sistema` como autor. `criado_por` **não** estava nulo — conferido no
+banco, com os nomes certos. O que sumia era o **nome**: `usuario_ler` é
+`pode_ler() AND (id = usuario_atual() OR eh_gestor())`, então o vendedor B não
+lê a linha de `usuario` do vendedor A e o `LEFT JOIN` devolvia nulo. Consertado
+com `usuario_publico` (`0020`), a view que a fundação registrava como parada
+*"até ter consumidor"* — o consumidor apareceu como defeito de tela.
+
+**O que os três primeiros ensinam sobre os testes que existiam.** Todos os
+quatro passaram por `typecheck`, `lint`, 418 unitários e 300 de integração. Os
+testes de render exercitam **um estado por vez** e o padrão do projeto é
+`renderToStaticMarkup` sem DOM: sem clique, o `useState` do tipo nunca muda,
+então o aviso só era renderizado no tipo inicial — e o tipo inicial devolve. O
+conserto trouxe `tipoInicial` como prop, que é o que permite ao render alcançar
+os outros ramos sem jsdom.
+
+O quarto não é limite de render: **é limite de cenário**. O teste de integração
+lia o histórico como o **autor**, e a própria linha de `usuario` sempre é
+visível. Precisava de um segundo vendedor lendo o histórico do primeiro — que é
+exatamente o cenário que a fatia existe para servir, e o que o teste novo faz.
+
 ## Fatia contato: fragilidades herdadas
 
 - **O vendedor devolve uma empresa, lembra que anotou algo importante nela, e
@@ -1317,6 +1390,10 @@ de `primeira_reserva_em`: coluna barata hoje que evita medição impossível dep
   próprio. O que cobre isso é a verificação manual.
 - **O `FormularioContato` é testado com `useActionState` trocado por mock.** O
   que se prova é qual ramo renderiza para cada estado, não que o estado chegue.
+  **E foi por aí que três defeitos passaram**: sem clique, o `useState` do tipo
+  nunca muda, então o aviso de desfecho só era renderizado no tipo inicial. A
+  prop `tipoInicial` existe para o render alcançar os outros ramos sem DOM, e é
+  a única forma que este projeto tem de cobrir isso sem jsdom.
 - **A regra de "exige próximo passo onde há posse" é provada como função pura**,
   em `regras.ts`. Que a action a chame é bilhete, não catraca: existe um teste
   que confere o `import`, e ele não pega validação duplicada dentro da action.
@@ -1325,6 +1402,11 @@ de `primeira_reserva_em`: coluna barata hoje que evita medição impossível dep
   raciocínio, não medição.
 - **Nada roda contra Postgres 18.6**, que é a versão da Railway. Os testes rodam
   em 17.
+- **Nenhuma invariante confere o conteúdo de `usuario_publico`.** A view contorna
+  a RLS de `usuario` por desenho, e acrescentar `email` a ela é uma linha de SQL
+  numa migração futura. O obstáculo é um teste de coluna inexistente, que
+  falharia por um motivo que parece burocrático para quem não leu
+  `docs/db/0020.md`.
 - **Uma falha unitária vista uma vez e não explicada.** Numa rodada da fatia, o
   unitário deu 1 falha em 415 e a saída foi truncada antes de alguém ler qual.
   Cinco rodadas depois, incluindo `build` seguido de `test:unit`, deram 415

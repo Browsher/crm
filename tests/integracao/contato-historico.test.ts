@@ -3,12 +3,14 @@ import { lerHistorico } from '@/src/features/contato/historico'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
+let gestor: string
 let vendedorA: string
 let vendedorB: string
 let empresa: string
 
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
+  gestor = await criarUsuario(banco, 'gestor', 'Gestor')
   vendedorA = await criarUsuario(banco, 'vendedor', 'VendedorA')
   vendedorB = await criarUsuario(banco, 'vendedor', 'VendedorB')
   const [linha] = await banco.sql<{ id: string }>(
@@ -93,5 +95,32 @@ describe('lerHistorico', () => {
     ])
     const r = await lerHistorico(vendedorB, empresa)
     expect(r).toEqual({ ok: true, contatos: [] })
+  })
+})
+
+// Achado da verificação manual: o histórico mostrava "sistema" como autor.
+// `criado_por` está gravado; quem some é o NOME, porque `usuario_ler` é
+// `pode_ler() AND (id = usuario_atual() OR eh_gestor())` — o vendedor B não lê
+// a linha de `usuario` do vendedor A, e o LEFT JOIN devolve nulo.
+//
+// É o consumidor que faltava para `usuario_publico`, que a fundacao registrou
+// como "fica fora até ter consumidor".
+describe('o autor atravessa a troca de dono junto com o contato', () => {
+  test('vendedor B le o NOME do vendedor A no contato que A escreveu', async () => {
+    await darPosseA(vendedorA)
+    await registrar(vendedorA, 'liguei e nao atenderam')
+    await darPosseA(vendedorB)
+    const r = await lerHistorico(vendedorB, empresa)
+    if (!r.ok) throw new Error('esperava sucesso')
+    expect(r.contatos).toHaveLength(1)
+    expect(r.contatos[0].autor).toBe('VendedorA')
+  })
+
+  test('o gestor tambem le o nome', async () => {
+    await darPosseA(vendedorA)
+    await registrar(vendedorA, 'nota qualquer')
+    const r = await lerHistorico(gestor, empresa)
+    if (!r.ok) throw new Error('esperava sucesso')
+    expect(r.contatos[0].autor).toBe('VendedorA')
   })
 })

@@ -37,8 +37,11 @@ export function validar(r: Rascunho): { ok: true; valor: Validado } | { ok: fals
   // dizer "faltou a data" em vez de deixar o 23514 subir como erro de sistema.
   if ((proximoPasso === null) !== (proximoPassoData === null)) return { ok: false, falta: 'par_incompleto' }
 
-  // Exige onde há posse, não pede onde não há.
-  if (r.posse && EXIGE_POSSE[r.tipo] && proximoPasso === null) {
+  // Exige onde a empresa CONTINUA com você depois da ação, não onde ela estava
+  // antes. Devolver tira a empresa da carteira: não há o que combinar com quem
+  // você não vai mais ligar, e exigir ali foi achado da verificação manual.
+  const ficaComigo = r.posse && r.desfecho === 'nenhum'
+  if (ficaComigo && EXIGE_POSSE[r.tipo] && proximoPasso === null) {
     return { ok: false, falta: 'proximo_passo_exigido' }
   }
 

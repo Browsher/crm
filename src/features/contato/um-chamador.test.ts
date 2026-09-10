@@ -44,3 +44,20 @@ test('a action importa a regra pura em vez de validar por conta propria', () => 
   const fonte = readFileSync('src/features/contato/acao.ts', 'utf8')
   expect(fonte).toContain("from './regras'")
 })
+
+// Achado da verificação manual: devolver pela ficha mostrava erro E funcionava.
+// A ação dava certo, e em seguida a revalidação de /carteira/[id] renderizava
+// uma página cuja empresa já não está na carteira — `notFound()`. A tela
+// raciocinava sobre o estado anterior à ação: depois de devolver, a rota da
+// ficha deixa de existir para aquele vendedor, e o lugar para onde ir é a
+// carteira.
+test('a action redireciona quando o desfecho tira a empresa da mao do vendedor', () => {
+  const fonte = readFileSync('src/features/contato/acao.ts', 'utf8')
+  expect(fonte).toContain("from 'next/navigation'")
+  expect(fonte).toContain('redirect(')
+})
+
+test('a ficha diz para onde voltar depois de devolver', () => {
+  const fonte = readFileSync('app/carteira/[id]/ficha.tsx', 'utf8')
+  expect(fonte).toContain('voltarPara')
+})

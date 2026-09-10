@@ -34,11 +34,17 @@ type LinhaCrua = {
 // `to_char` na data: `date` chega no pg como string em alguns caminhos e como
 // Date em outros. Converter no SQL tira a ambiguidade do TypeScript, e nenhuma
 // comparação de data acontece aqui.
+//
+// `usuario_publico`, não `usuario`: `usuario_ler` é
+// `pode_ler() AND (id = usuario_atual() OR eh_gestor())`, então o vendedor B
+// não lê a linha do vendedor A e o LEFT JOIN devolveria autor nulo — o
+// histórico mostrava "sistema" no contato de um colega. A view expõe id e nome
+// e nada mais.
 const SQL = `SELECT c.id, c.tipo, c.nota, c.proximo_passo,
                     to_char(c.proximo_passo_data, 'YYYY-MM-DD') AS proximo_passo_data,
                     c.criado_em, u.nome AS autor
                FROM contato c
-               LEFT JOIN usuario u ON u.id = c.criado_por
+               LEFT JOIN usuario_publico u ON u.id = c.criado_por
               WHERE c.empresa_id = $1
               ORDER BY c.criado_em DESC, c.id DESC`
 

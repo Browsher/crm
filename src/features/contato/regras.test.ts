@@ -91,3 +91,45 @@ describe('validar', () => {
     expect(r).toEqual({ ok: true, valor: expect.objectContaining({ nota: null }) })
   })
 })
+
+// Achado da verificação manual: "Registrar e devolver" exigia próximo passo.
+// A empresa está SAINDO da carteira — não há o que combinar com quem você não
+// vai mais ligar. A tela raciocinava sobre o estado anterior à ação (`posse`)
+// em vez de sobre o desfecho dela.
+describe('validar: o que decide é o desfecho, não o estado anterior', () => {
+  const naCarteira: Rascunho = {
+    tipo: 'acompanhamento',
+    desfecho: 'nenhum',
+    nota: '',
+    proximoPasso: '',
+    proximoPassoData: '',
+    posse: true,
+  }
+
+  test('posse com desfecho nenhum EXIGE proximo passo, porque a empresa fica', () => {
+    expect(validar(naCarteira)).toEqual({ ok: false, falta: 'proximo_passo_exigido' })
+  })
+
+  test('posse com desfecho devolver NAO exige, porque a empresa sai', () => {
+    expect(validar({ ...naCarteira, desfecho: 'devolver' })).toEqual({
+      ok: true,
+      valor: {
+        tipo: 'acompanhamento',
+        desfecho: 'devolver',
+        nota: null,
+        proximoPasso: null,
+        proximoPassoData: null,
+      },
+    })
+  })
+
+  test('devolver com proximo passo preenchido continua valendo, e vira historico', () => {
+    const r = validar({
+      ...naCarteira,
+      desfecho: 'devolver',
+      proximoPasso: 'Retomar em marco',
+      proximoPassoData: '2027-03-02',
+    })
+    expect(r).toEqual({ ok: true, valor: expect.objectContaining({ proximoPasso: 'Retomar em marco' }) })
+  })
+})

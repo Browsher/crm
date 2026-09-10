@@ -186,3 +186,34 @@ describe('empresa_assumir e empresa_devolver sao internas', () => {
     })
   }
 })
+
+// `usuario_publico` contorna a RLS de `usuario` POR DESENHO: view sem
+// `security_invoker` roda como a dona, que é dona da tabela e não sofre RLS
+// (a tabela não tem FORCE). É o que faz o nome do autor atravessar a troca de
+// dono. O preço é que a view precisa expor o mínimo, e isso tem teste.
+describe('usuario_publico expõe id e nome, e nada mais', () => {
+  test('vendedor le o nome de OUTRO usuario', async () => {
+    const nomes = await banco.comoUsuario(vendedorA, async (e) => {
+      const r = await e<{ nome: string }>('SELECT nome FROM usuario_publico ORDER BY nome')
+      return r.linhas.map((l) => l.nome)
+    })
+    expect(nomes).toContain('VendedorB')
+  })
+
+  const escondidas: string[] = ['email', 'papel', 'ativo', 'senha_provisoria_pendente']
+  for (const coluna of escondidas) {
+    test(`${coluna} nao existe na view`, async () => {
+      await expect(
+        banco.comoUsuario(vendedorA, (e) => e(`SELECT ${coluna} FROM usuario_publico`)),
+      ).rejects.toMatchObject({ code: '42703' })
+    })
+  }
+
+  test('a tabela usuario continua fechada: o vendedor nao le a linha de outro', async () => {
+    const linhas = await banco.comoUsuario(vendedorA, async (e) => {
+      const r = await e<{ nome: string }>('SELECT nome FROM usuario')
+      return r.linhas.map((l) => l.nome)
+    })
+    expect(linhas).toEqual(['VendedorA'])
+  })
+})
