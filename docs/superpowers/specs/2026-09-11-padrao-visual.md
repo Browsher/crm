@@ -1,8 +1,8 @@
 # Padrão visual do CRM
 
-Estado: proposta concreta para validação na página de componentes. Não altera
-as telas atuais. Parte do protótipo aprovado; os detalhes novos abaixo ainda
-devem ser conferidos visualmente antes da aplicação na Fila.
+Estado: galeria aprovada pelo usuário em 11/09/2026, após os ajustes de cards,
+avisos e diálogo descritos abaixo. Este padrão passa a ser a referência para
+a aplicação visual na Fila. A galeria não altera as telas operacionais.
 
 Referências lidas: fila-combinada.html da conversa; src/styles/theme.css,
 src/styles/index.css e src/components/ui/button.tsx do shadcn-admin fornecido.
