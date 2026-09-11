@@ -291,22 +291,69 @@ test('Devolver pela ficha com filtros ativos some da agenda e da Carteira, e vol
   await expect(page.locator('body')).toContainText('404')
 })
 
-test('Posse perdida durante a sessão avisa sem expor dado nenhum da empresa', async ({ page }) => {
+test('Posse perdida durante a sessão remove o item, atualiza a contagem e preserva a rolagem dos itens restantes', async ({ page }) => {
+  test.setTimeout(45_000)
   await entrar(page, 'meudiae2e')
+  await page.setViewportSize({ width: 1280, height: 800 })
   const lista = page.getByTestId('lista-meu-dia')
   const perfil = perfilAtual(page)
+  const listaBox = (await lista.boundingBox())!
+
+  // A contagem de partida não é sempre 14: os testes de reagendamento e
+  // devolução, quando rodam antes deste no mesmo processo, já tiraram
+  // empresas da agenda de verdade no banco. Lê a contagem real da tela em
+  // vez de presumir um número, para a asserção de "caiu em um" valer
+  // independentemente da ordem de execução dos outros testes.
+  const contagem = page.getByText(/^\d+ de \d+ retornos?$/)
+  const totalAntes = Number((await contagem.textContent())!.match(/de (\d+)/)![1])
+
+  const alvoRemocao = lista.getByRole('button', { name: 'Meu Dia Posse Perdida' })
+  // Rola exatamente o bastante para o PRÓPRIO item de remoção (medido a
+  // scrollTop=0) ficar acima da dobra do container, com uma folga pequena
+  // só para não deixar a prova de "escondido" na margem exata do pixel.
+  const folga = 20
+  const antesAlvoRemocao = (await alvoRemocao.boundingBox())!
+  const rolagemNecessaria = Math.ceil(antesAlvoRemocao.y + antesAlvoRemocao.height - listaBox.y + folga)
+  await lista.evaluate((el, alvo) => { el.scrollTop = alvo }, rolagemNecessaria)
+  const scrollAntes = await lista.evaluate((el) => el.scrollTop)
+  expect(scrollAntes).toBeGreaterThan(0)
+  const alvoRemocaoBox = (await alvoRemocao.boundingBox())!
+  // Acima da dobra do próprio container, por medição: a remoção que este
+  // teste prova é de um item que já saiu da posição visível.
+  expect(alvoRemocaoBox.y + alvoRemocaoBox.height).toBeLessThanOrEqual(listaBox.y)
 
   // A agenda já está aberta com a posse intacta; a posse muda por fora agora.
   await revogarPosse(EMPRESA_MEU_DIA_POSSE_PERDIDA)
-  await lista.getByRole('button', { name: 'Meu Dia Posse Perdida' }).click()
+  // Clique despachado no DOM, de propósito: o item está acima da dobra (é o
+  // que acabou de ser medido), e um `.click()` normal traria a lista de
+  // volta para o topo antes de medir a rolagem preservada — mascarando
+  // exatamente o que este teste prova. A acionabilidade de um clique real
+  // já foi provada no teste principal, com outro item nas mesmas condições;
+  // aqui o clique é só o gatilho para a checagem de posse no servidor.
+  await alvoRemocao.evaluate((el) => (el as HTMLElement).click())
 
   await expect(page.getByRole('alert').getByRole('heading', { name: 'Esta empresa não está mais na sua carteira', exact: true })).toBeVisible()
   await expect(perfil).toHaveCount(0)
   // '11999990401' é o telefone real de "Meu Dia Posse Perdida" na fixture:
   // ele só apareceria na tela se o perfil vazasse os dados da empresa.
   await expect(page.getByRole('main')).not.toContainText('11999990401')
-  // O item continua na lista até a agenda recarregar: só o perfil foi limpo.
-  await expect(lista.getByRole('button', { name: 'Meu Dia Posse Perdida' })).toBeVisible()
+
+  // Comportamento atual: a empresa sai da lista na hora (não só o perfil).
+  await expect(alvoRemocao).toHaveCount(0)
+  // A contagem cai em um, com a frase real que a tela usa.
+  const totalDepois = totalAntes - 1
+  await expect(contagem).toHaveText(`${totalDepois} de ${totalDepois} ${totalDepois === 1 ? 'retorno' : 'retornos'}`)
+
+  // A rolagem dos itens restantes não voltou ao topo. O `scrollTop` não
+  // precisa ficar idêntico bit a bit: remover conteúdo ACIMA do ponto
+  // rolado encolhe o `scrollHeight`, e o navegador pode clampar o
+  // `scrollTop` para o novo teto — comportamento legítimo do navegador,
+  // diferente de um reset para 0. A prova aqui é dupla: continua bem longe
+  // do topo, e a eventual queda não passa da altura do próprio item
+  // removido (a explicação real de um clamp, não um reset disfarçado).
+  const scrollDepois = await lista.evaluate((el) => el.scrollTop)
+  expect(scrollDepois).toBeGreaterThan(0)
+  expect(scrollAntes - scrollDepois).toBeLessThanOrEqual(alvoRemocaoBox.height + folga)
 
   await page.getByRole('link', { name: 'Recarregar a agenda', exact: true }).click()
   await expect(page).toHaveURL('/meu-dia')
