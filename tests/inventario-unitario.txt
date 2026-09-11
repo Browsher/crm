@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 725
+# Total: 732
 
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
@@ -146,10 +146,17 @@ app/meu-dia/historico-acao.test.tsx :: sem sessão a action não lê nada: a gua
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador desmontar cancela o pedido: resolver depois não lança nem atualiza o DOM
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador durante o carregamento nenhum histórico de outro cliente fica na tela
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador falha de carregamento não vira histórico vazio
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador ida e volta A -> B -> A: nota antiga de A que já tinha chegado não reaparece durante o novo pedido
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador ida e volta A -> B -> A: primeira resposta de A não reaparece quando o novo pedido de A está no ar
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista esvazia por posse negada cai no vazio que já existe
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista que esvazia não deixa perfil nem histórico antigos
-app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador posse negada limpa o perfil e avisa
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador posse negada remove a empresa da lista e do perfil, sem selecionar outra
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador recarregar depois de posse negada não desconta a remoção duas vezes, e o aviso some
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador rejeição de pedido antigo é descartada quando a seleção muda
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador remover empresa por posse negada manda o foco para o aviso, não para o body
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador remover empresa por posse negada preserva a rolagem dos itens restantes
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador resposta antiga é descartada quando a seleção muda
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador revalidação que devolve a mesma lista não traz o item removido de volta
 app/meu-dia/painel.test.tsx :: agenda vazia e busca sem resultado dizem coisas diferentes
 app/meu-dia/painel.test.tsx :: primeira empresa já aparece selecionada e o link leva a ficha com os filtros
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
