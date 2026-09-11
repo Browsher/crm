@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
+vi.mock('next/navigation', () => ({useRouter: () => ({push: () => {}})}))
 import { Formulario } from './formulario'
 import { Resultados } from './resultados'
 import { Paginacao } from './paginacao'

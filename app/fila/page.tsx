@@ -4,9 +4,13 @@ import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { Formulario } from './formulario'
+import { lerFiltros } from '@/src/features/prospeccao/filtros'
+import { urlConsulta } from './localizar/navegacao'
 
-export default async function PaginaFila() {
+export default async function PaginaFila({ searchParams }: { searchParams: Promise<Record<string,string|string[]|undefined>> }) {
   const eu = await exigir('usuario')
+  const entrada = lerFiltros(await searchParams)
+  if (!entrada.ok) return <main className="p-6"><p role="alert">Filtros inválidos. A busca não foi executada.</p><Link href="/fila">Limpar filtros</Link></main>
   const r = await lerMinhasEmpresas(eu.usuarioId)
   // O histórico só é buscado quando há reserva: sem empresa na mão, não há
   // linha do tempo para mostrar, e a ida ao banco não se paga.
@@ -17,7 +21,7 @@ export default async function PaginaFila() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Fila</h1>
         <nav className="flex items-center gap-3">
-          <Link href="/fila/localizar" className="text-sm underline">
+          <Link href={urlConsulta(entrada.filtros,1)} className="text-sm underline">
             Localizar empresa
           </Link>
           <Link href="/carteira" className="text-sm underline">
@@ -29,7 +33,7 @@ export default async function PaginaFila() {
         </nav>
       </header>
       {r.ok ? (
-        <Formulario reserva={r.reserva} contatos={contatos} />
+        <Formulario reserva={r.reserva} contatos={contatos} contexto={r.contexto} filtros={entrada.filtros} />
       ) : (
         <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{textoDoMotivo(r.motivo)}</p>
       )}

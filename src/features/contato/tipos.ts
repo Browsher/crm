@@ -16,7 +16,7 @@ export type TipoContato = (typeof TIPOS_CONTATO)[number]
 export type Desfecho = 'nenhum' | 'assumir' | 'devolver'
 
 export const ROTULO: Record<TipoContato, string> = {
-  nao_liguei: 'Não liguei — descartei pelo cadastro',
+  nao_liguei: 'Não liguei, descartei pelo cadastro',
   nao_atendeu: 'Liguei, não falei com ninguém',
   retornar_depois: 'Falei, pediu para ligar em outro momento',
   sem_interesse: 'Falei, não tem interesse',

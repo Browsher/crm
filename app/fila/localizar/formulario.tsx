@@ -1,6 +1,8 @@
 'use client'
 
 import type { ChangeEvent } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { Filtros, OpcoesFiltro } from '@/src/features/prospeccao/tipos'
 
 const campos = [
@@ -23,8 +25,14 @@ function atualizarDependentes(evento: ChangeEvent<HTMLSelectElement>) {
 }
 
 export function Formulario({ filtros, opcoes }: { filtros: Filtros; opcoes: OpcoesFiltro[] }) {
+  const router = useRouter()
   return (
-    <form action="/fila/localizar" method="get" className="flex flex-col gap-4 rounded border p-4">
+    <form action="/fila/localizar" method="get" onSubmit={e => {
+      e.preventDefault()
+      const params = new URLSearchParams()
+      new FormData(e.currentTarget).forEach((valor,chave) => params.set(chave,String(valor)))
+      router.push(`/fila/localizar?${params}`)
+    }} className="flex flex-col gap-4 rounded border p-4">
       <label className="flex flex-col gap-1 text-sm">
         Nome
         <input name="nome" type="search" maxLength={100} defaultValue={filtros.nome}
@@ -50,7 +58,7 @@ export function Formulario({ filtros, opcoes }: { filtros: Filtros; opcoes: Opco
       <p id="filtros-dependentes" className="text-sm">Ao mudar estado ou cidade, a página atualiza as opções seguintes.</p>
       <div className="flex items-center gap-4">
         <button type="submit" className="rounded border px-4 py-2">Consultar</button>
-        <a href="/fila/localizar" className="text-sm underline">Limpar filtros</a>
+        <Link href="/fila/localizar" className="text-sm underline">Limpar filtros</Link>
       </div>
     </form>
   )

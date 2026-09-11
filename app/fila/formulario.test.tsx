@@ -11,10 +11,21 @@ vi.mock('react', async () => {
   return { ...react, useActionState: () => [estado.atual, () => {}, false] }
 })
 vi.mock('./acoes', () => ({ agirNaFilaAcao: () => {} }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: () => {} }) }))
+const memoria = vi.hoisted(() => ({ entradas: {} as Record<string, unknown> }))
+vi.mock('./rascunhos', () => ({ useRascunhos: () => ({ entradas: memoria.entradas, gravando: false, setGravando: () => {}, marcarExpirada: () => {} }) }))
 
 const { Formulario } = await import('./formulario')
 
 describe('Formulario', () => {
+  test('permite tentar novamente após perder reserva expirada mesmo sem anotações', () => {
+    memoria.entradas = { expirada: { nome: 'Empresa anterior', expirada: true, valor: { tipo:'nao_liguei', nota:'', proximoPasso:'', proximoPassoData:'' } } }
+    const saida = renderToStaticMarkup(<Formulario reserva={null} contatos={[]} />)
+    memoria.entradas = {}
+    expect(saida).toContain('Tentar reservar novamente')
+    expect(saida).toContain('Empresa anterior')
+    expect(saida).not.toContain('<article')
+  })
   test('sem reserva, oferece puxar e nao fala de fila vazia', () => {
     estado.atual = { erro: null, filaVazia: false }
     const saida = renderToStaticMarkup(<Formulario reserva={null} contatos={[]} />)
@@ -34,5 +45,17 @@ describe('Formulario', () => {
     estado.atual = { erro: 'O tempo da reserva acabou.', filaVazia: false }
     const saida = renderToStaticMarkup(<Formulario reserva={null} contatos={[]} />)
     expect(saida).toContain('O tempo da reserva acabou.')
+  })
+
+  test('reserva mostra próxima sem form aninhado e mantém contexto', () => {
+    estado.atual = { erro:null, filaVazia:false }
+    const saida = renderToStaticMarkup(<Formulario contexto="versao" reserva={{
+      id:'e1',cnpj:'11222333000181',razaoSocial:'Cliente',nomeFantasia:null,contatoNome:null,
+      telefone:'11987654321',email:null,cep:null,endereco:null,reservadoAte:new Date('2099-01-01'),
+      posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
+    }} contatos={[]} />)
+    expect(saida).toContain('Próxima')
+    expect(saida).toContain('name="contexto" value="versao"')
+    expect(saida).not.toMatch(/<form[^>]*>(?:(?!<\/form>)[\s\S])*<form/)
   })
 })

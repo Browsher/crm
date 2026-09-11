@@ -1,5 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, test, vi } from 'vitest'
+import type { EstadoContato } from './acao'
+
+const captura = vi.hoisted(() => ({
+  action: null as null | ((estado: EstadoContato, form: FormData) => Promise<EstadoContato>),
+  registrar: vi.fn(),
+  pendente: false,
+}))
+vi.mock('./acao', () => ({ registrarContatoAcao: captura.registrar }))
 
 // useActionState trocado por mock: o que se prova é qual ramo renderiza para
 // cada estado, não que o estado chegue. Mesmo limite dos outros testes de
@@ -7,12 +15,76 @@ import { describe, expect, test, vi } from 'vitest'
 // action.
 vi.mock('react', async () => {
   const real = await vi.importActual<typeof import('react')>('react')
-  return { ...real, useActionState: () => [{ erro: null, ok: false }, () => {}, false] }
+  return { ...real, useActionState: (action: typeof captura.action) => {
+    captura.action = action
+    return [{ erro: null, ok: false }, () => {}, captura.pendente]
+  } }
 })
 
 const { FormularioContato } = await import('./formulario')
 
 describe('FormularioContato', () => {
+  test('troca pendente congela rascunho sem confundir com bloqueio por expiração', () => {
+    const html = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} somenteLeitura />)
+    expect(html).toMatch(/<textarea[^>]*readOnly=""/)
+    expect(html.match(/<input[^>]*readOnly=""/g)).toHaveLength(2)
+    expect(html.match(/<input[^>]*type="radio"[^>]*disabled=""/g)).toHaveLength(5)
+    const expirada = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} bloqueado />)
+    expect(expirada).not.toMatch(/readOnly=""/)
+  })
+  test('label da nota tem texto fixo e associação única mesmo com rascunho', () => {
+    const html = renderToStaticMarkup(<><FormularioContato empresaId="e1" posse={false}
+      rascunho={{ tipo: 'nao_liguei', nota: 'Texto preenchido', proximoPasso: '', proximoPassoData: '' }} />
+      <FormularioContato empresaId="e2" posse={false} /></>)
+    const ids = [...html.matchAll(/<label for="([^"]+)"[^>]*>Nota<\/label>/g)].map(m => m[1])
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+    for (const id of ids) expect(html).toContain(`<textarea id="${id}"`)
+  })
+  test('enquanto grava congela os campos sem impedir copiar anotações', () => {
+    captura.pendente = true
+    try {
+      const html = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} />)
+      expect(html).toMatch(/<textarea[^>]*readOnly=""/)
+      expect(html.match(/<input[^>]*readOnly=""/g)).toHaveLength(2)
+      expect(html.match(/<input[^>]*type="radio"[^>]*disabled=""/g)).toHaveLength(5)
+      expect(html).not.toMatch(/<textarea[^>]*disabled/)
+    } finally { captura.pendente = false }
+  })
+  test('sucesso notifica empresa submetida antes de encerrar envio', async () => {
+    const eventos: unknown[] = []
+    captura.registrar.mockResolvedValueOnce({ erro: null, ok: true })
+    renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false}
+      onSaved={id => eventos.push(id)} onPendingChange={p => eventos.push(p)} />)
+    await captura.action!({ erro: null, ok: false }, new FormData())
+    expect(eventos).toEqual([true, 'e1', false])
+  })
+
+  test('falha preserva rascunho e sempre encerra envio', async () => {
+    const salvo = vi.fn()
+    const pendente = vi.fn()
+    captura.registrar.mockRejectedValueOnce(new Error('infraestrutura'))
+    renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} onSaved={salvo} onPendingChange={pendente} />)
+    await expect(captura.action!({ erro: null, ok: false }, new FormData())).rejects.toThrow('infraestrutura')
+    expect(salvo).not.toHaveBeenCalled()
+    expect(pendente.mock.calls).toEqual([[true], [false]])
+  })
+
+  test('bloqueio também recusa dispatch da action', async () => {
+    captura.registrar.mockClear()
+    renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} bloqueado />)
+    expect(await captura.action!({ erro: null, ok: false }, new FormData())).toMatchObject({ ok: false })
+    expect(captura.registrar).not.toHaveBeenCalled()
+  })
+  test('rascunho bloqueado mantém campos editáveis e impede registrar', () => {
+    const saida = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} bloqueado
+      rascunho={{ tipo: 'interessado', nota: 'Minha nota', proximoPasso: 'Retornar', proximoPassoData: '2026-10-01' }} />)
+    expect(saida).toContain('Minha nota')
+    expect(saida).toContain('value="Retornar"')
+    expect(saida).toContain('value="2026-10-01"')
+    expect(saida).toMatch(/<button[^>]*disabled/)
+    expect(saida).not.toMatch(/<textarea[^>]*disabled/)
+  })
   test('sem posse, NAO pede proximo passo obrigatorio', () => {
     const saida = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} />)
     expect(saida).toContain('Combinado (opcional)')

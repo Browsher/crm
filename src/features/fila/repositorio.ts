@@ -43,12 +43,40 @@ async function tentar<T>(usuarioId: string, trabalho: (executar: Executar) => Pr
   }
 }
 
-// `empresaId` nulo é fila vazia, e não falha: a função devolveu zero linhas
-// porque não há candidata. Quem decide o que dizer é a tela.
-export function puxarProxima(usuarioId: string): Promise<{ ok: true; empresaId: string | null } | Falha> {
-  return tentar(usuarioId, async (executar) => {
-    const r = await executar<{ empresa_id: string }>('SELECT empresa_id FROM fila_puxar()')
-    return { ok: true as const, empresaId: r.linhas[0]?.empresa_id ?? null }
+export type FiltrosReserva = {
+  nome: string
+  cnae: string | null
+  uf: string | null
+  cidade: string | null
+  bairro: string | null
+}
+export type ResultadoReserva = {
+  ok: true
+  resultado: 'ok' | 'sem_candidata' | 'indisponivel' | 'contexto_alterado'
+  empresaId: string | null
+  reservadoAte: Date | null
+  contexto: string | null
+} | Falha
+
+export function reservarEmpresa(usuarioId: string, alvo: string | null, filtros: FiltrosReserva, contexto: string | null): Promise<ResultadoReserva> {
+  return tentar(usuarioId, async executar => {
+    const r = await executar<{
+      resultado: string
+      empresa_id: string | null
+      reservado_ate: Date | null
+      contexto: string | null
+    }>('SELECT * FROM fila_reservar($1,$2,$3,$4,$5,$6,$7)', [alvo, filtros.nome, filtros.cnae, filtros.uf, filtros.cidade, filtros.bairro, contexto])
+    const linha = r.linhas[0]
+    if (!linha || !['ok', 'sem_candidata', 'indisponivel', 'contexto_alterado'].includes(linha.resultado)) {
+      throw new ResultadoDesconhecido('fila_reservar', linha?.resultado ?? '')
+    }
+    return {
+      ok: true as const,
+      resultado: linha.resultado as 'ok' | 'sem_candidata' | 'indisponivel' | 'contexto_alterado',
+      empresaId: linha.empresa_id,
+      reservadoAte: linha.reservado_ate,
+      contexto: linha.contexto,
+    }
   })
 }
 

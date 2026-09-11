@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import { lerFiltros } from '@/src/features/prospeccao/filtros'
+import { urlConsulta } from './navegacao'
 import { consultarEmpresas, listarOpcoes } from '@/src/features/prospeccao/repositorio'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { Formulario } from './formulario'
 import { Resultados } from './resultados'
 import { Paginacao } from './paginacao'
+import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -22,18 +24,19 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
   const temFiltro = Boolean(filtros.nome || filtros.cnae || filtros.uf || filtros.cidade || filtros.bairro)
   const opcoes = await listarOpcoes(eu.usuarioId, filtros.uf, filtros.cidade)
   const resultado = temFiltro && opcoes.ok ? await consultarEmpresas(eu.usuarioId, filtros) : null
+  const minhas = resultado?.ok ? await lerMinhasEmpresas(eu.usuarioId) : null
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Localizar empresa</h1>
-        <Link href="/fila" className="text-sm underline">Voltar para a fila</Link>
+        <Link href={urlConsulta(filtros, 1).replace('/fila/localizar', '/fila')} className="text-sm underline">Voltar para a fila</Link>
       </header>
       <p>Pesquise empresas e confira a disponibilidade para atendimento.</p>
       {opcoes.ok ? <Formulario key={JSON.stringify(filtros)} filtros={filtros} opcoes={opcoes.opcoes} />
         : <p role="alert">Você não tem permissão para consultar empresas.</p>}
       {opcoes.ok && !temFiltro && <p>Digite um nome ou escolha um filtro para localizar empresas.</p>}
       {resultado && (resultado.ok ? <>
-        <Resultados empresas={resultado.empresas} />
+        <Resultados empresas={resultado.empresas} reserva={minhas?.ok ? {contexto:minhas.contexto,filtros,empresaAtual:minhas.reserva?.id ?? null} : undefined} />
         <Paginacao filtros={filtros} temProxima={resultado.temProxima} />
       </> : <p role="alert">Você não tem permissão para consultar empresas.</p>)}
     </main>

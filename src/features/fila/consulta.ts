@@ -26,10 +26,11 @@ export type EmpresaComigo = {
   vencido: boolean
 }
 
-export type ResultadoMinhasEmpresas = { ok: true; reserva: EmpresaComigo | null; carteira: EmpresaComigo[] } | Falha
+export type ResultadoMinhasEmpresas = { ok: true; reserva: EmpresaComigo | null; carteira: EmpresaComigo[]; contexto: string | null } | Falha
 
 type LinhaCrua = {
-  id: string
+  id: string | null
+  contexto: string | null
   cnpj: string
   razao_social: string
   nome_fantasia: string | null
@@ -57,7 +58,7 @@ type LinhaCrua = {
 // A ordem é `proximo_passo_data ASC NULLS LAST`: vencido cai no topo sozinho,
 // porque data menor vem antes. NULLS LAST é decisão — empresa sem próximo
 // passo precisa de atenção, mas menos que um combinado vencido há três dias.
-const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.contato_nome, e.telefone, e.email, e.cep,
+const SQL = `WITH minhas AS (SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.contato_nome, e.telefone, e.email, e.cep,
                     f.reservado_ate, f.vendedor_id IS NOT NULL AS posse,
                     ultimo.proximo_passo,
                     to_char(ultimo.proximo_passo_data, 'YYYY-MM-DD') AS proximo_passo_data,
@@ -73,15 +74,20 @@ const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.contato_nom
                ) ultimo ON true
               WHERE f.vendedor_id = $1
                  OR (f.reservado_por = $1 AND f.reservado_ate > now())
-              ORDER BY ultimo.proximo_passo_data ASC NULLS LAST, e.razao_social, e.id`
+              ORDER BY ultimo.proximo_passo_data ASC NULLS LAST, e.razao_social, e.id)
+              SELECT minhas.*, contexto.versao AS contexto
+                FROM (SELECT (SELECT versao FROM fila_contexto WHERE usuario_id = $1) AS versao) contexto
+                LEFT JOIN minhas ON true
+               ORDER BY minhas.proximo_passo_data ASC NULLS LAST, minhas.razao_social, minhas.id`
 
 export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMinhasEmpresas> {
   try {
     return await comoUsuario(usuarioId, async (executar) => {
       const r = await executar<LinhaCrua>(SQL, [usuarioId])
-      const ceps = [...new Set(r.linhas.map((l) => l.cep).filter((c): c is string => c !== null))]
+      const linhas = r.linhas.filter((l): l is LinhaCrua & { id: string } => l.id !== null)
+      const ceps = [...new Set(linhas.map((l) => l.cep).filter((c): c is string => c !== null))]
       const enderecos = await resolverCeps(executar, ceps)
-      const todas = r.linhas.map((l) => ({
+      const todas = linhas.map((l) => ({
         id: l.id,
         cnpj: l.cnpj,
         razaoSocial: l.razao_social,
@@ -99,8 +105,8 @@ export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMin
       }))
       return {
         ok: true as const,
-        // No máximo uma reserva por vendedor: é o desenho da fila, garantido
-        // pelo `UPDATE` de liberação em `fila_puxar`.
+        contexto: r.linhas[0]?.contexto ?? null,
+        // A aquisição e a liberação são serializadas por usuário na 0025.
         reserva: todas.find((x) => !x.posse) ?? null,
         carteira: todas.filter((x) => x.posse),
       }

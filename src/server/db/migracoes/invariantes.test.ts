@@ -34,7 +34,7 @@ const sao = (): Estado => ({
   funcoesConcedidasAAppUsuario: [
     'public.credencial_definir', 'public.eh_gestor', 'public.pode_escrever', 'public.pode_ler',
     'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
-    'public.fila_puxar',
+    'public.fila_reservar',
     'public.contato_registrar',
     'public.empresa_consultar',
     'public.empresa_filtros',
