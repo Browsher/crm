@@ -21,6 +21,13 @@ export type BancoDeTeste = {
   derrubar: () => Promise<void>
 }
 
+// Preparação de cenários pelo contrato de produção vigente. O contexto é
+// capturado no mesmo statement; a função compara novamente após o advisory.
+export const SQL_RESERVAR_PROXIMA = `SELECT empresa_id, reservado_ate
+  FROM fila_reservar(NULL, '', NULL, NULL, NULL, NULL,
+    (SELECT versao FROM fila_contexto WHERE usuario_id = usuario_atual()))
+  WHERE resultado = 'ok'`
+
 type Opcoes = { semMigracoes?: boolean }
 
 const PAPEL_TESTE = 'app_teste'

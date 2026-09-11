@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { conectarVerificado } from '@/src/server/db/pool'
-import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { criarBancoDeTeste, criarUsuario, SQL_RESERVAR_PROXIMA, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
 let vendedorA: string
@@ -40,12 +40,12 @@ async function criarEmpresa(sufixo: string): Promise<string> {
 
 function puxar(usuarioId: string): Promise<Puxada[]> {
   return banco.comoUsuario(usuarioId, async (e) => {
-    const r = await e<Puxada>('SELECT empresa_id, reservado_ate FROM fila_puxar()')
+    const r = await e<Puxada>(SQL_RESERVAR_PROXIMA)
     return r.linhas
   })
 }
 
-describe('fila_puxar: a entrega', () => {
+describe('fila_reservar: a entrega', () => {
   test('base vazia devolve zero linhas, nao nulo', async () => {
     expect(await puxar(vendedorA)).toEqual([])
   })
@@ -78,8 +78,8 @@ describe('fila_puxar: a entrega', () => {
   })
 })
 
-describe('fila_puxar: uma reserva por vendedor', () => {
-  test('puxar de novo libera a anterior e entrega OUTRA', async () => {
+describe('fila_reservar: uma reserva por vendedor', () => {
+  test('próxima com contexto atual libera anterior e entrega outra', async () => {
     const primeira = await criarEmpresa('0181')
     const segunda = await criarEmpresa('0270')
     const [a] = await puxar(vendedorA)
@@ -92,16 +92,16 @@ describe('fila_puxar: uma reserva por vendedor', () => {
     expect(linhas.filter((l) => l.reservado_por === vendedorA)).toHaveLength(1)
   })
 
-  test('com uma empresa so, puxar de novo devolve zero linhas', async () => {
+  test('com uma empresa só, próxima retorna vazio e preserva reserva', async () => {
     await criarEmpresa('0181')
-    await puxar(vendedorA)
-    // A anterior é excluída da busca: sem isso, "puxar outra" devolveria a
-    // mesma e o botão não sairia do lugar.
+    const primeira = await puxar(vendedorA)
     expect(await puxar(vendedorA)).toEqual([])
+    const mantida = await banco.sql('SELECT empresa_id,reservado_ate FROM empresa_fila WHERE reservado_por=$1',[vendedorA])
+    expect(mantida).toEqual(primeira)
   })
 })
 
-describe('fila_puxar: a ordem', () => {
+describe('fila_reservar: a ordem', () => {
   test('nunca reservada vem antes de devolvida', async () => {
     // A devolvida entra PRIMEIRO na base, então ela ganharia por criado_em se
     // a primeira chave não fosse elegivel_em.
@@ -154,7 +154,7 @@ describe('fila_puxar: a ordem', () => {
   })
 })
 
-describe('fila_puxar: o piso e a posse', () => {
+describe('fila_reservar: o piso e a posse', () => {
   test('devolvida agora nao e elegivel', async () => {
     const id = await criarEmpresa('0181')
     await banco.sql(
@@ -204,7 +204,7 @@ describe('fila_puxar: o piso e a posse', () => {
   })
 })
 
-describe('fila_puxar: SKIP LOCKED', () => {
+describe('fila_reservar: SKIP LOCKED', () => {
   test('duas transacoes concorrentes recebem empresas DIFERENTES', async () => {
     const primeira = await criarEmpresa('0181')
     const segunda = await criarEmpresa('0270')
@@ -221,8 +221,8 @@ describe('fila_puxar: SKIP LOCKED', () => {
       }
       await c1.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
-      const r1 = await c1.query<{ empresa_id: string }>('SELECT empresa_id FROM fila_puxar()')
-      const r2 = await c2.query<{ empresa_id: string }>('SELECT empresa_id FROM fila_puxar()')
+      const r1 = await c1.query<{ empresa_id: string }>(SQL_RESERVAR_PROXIMA)
+      const r2 = await c2.query<{ empresa_id: string }>(SQL_RESERVAR_PROXIMA)
       await c1.query('COMMIT')
       await c2.query('COMMIT')
       expect(r1.rows).toHaveLength(1)

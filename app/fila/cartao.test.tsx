@@ -39,6 +39,17 @@ const BASE: EmpresaComigo = {
 }
 
 describe('Cartao', () => {
+  test('prazo expirado oculta detalhes e histórico preservando anotações bloqueadas', () => {
+    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={BASE.reservadoAte!} contatos={[]}
+      rascunho={{ tipo: 'interessado', nota: 'Preservada', proximoPasso: '', proximoPassoData: '' }} />)
+    expect(saida).toContain('Aurora Comercio LTDA')
+    expect(saida).toContain('Preservada')
+    expect(saida).toContain('Reserva expirada')
+    expect(saida).not.toContain(BASE.telefone)
+    expect(saida).not.toContain(BASE.cnpj)
+    expect(saida).not.toContain('Nenhum contato registrado')
+    expect(saida).toMatch(/<button[^>]*disabled/)
+  })
   test('mostra contato, telefone e cidade', () => {
     const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} />)
     expect(saida).toContain('Aurora Comercio LTDA')

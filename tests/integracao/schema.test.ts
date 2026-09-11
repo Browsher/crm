@@ -45,6 +45,7 @@ describe('migrações reais', () => {
       '0022_credencial_vigente.sql',
       '0023_empresa_cnae.sql',
       '0024_empresa_consulta.sql',
+      '0025_fila_reservar.sql',
     ])
   })
 

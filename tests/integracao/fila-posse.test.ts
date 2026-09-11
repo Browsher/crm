@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { conectarVerificado } from '@/src/server/db/pool'
-import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { criarBancoDeTeste, criarUsuario, SQL_RESERVAR_PROXIMA, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
 let vendedorA: string
@@ -90,7 +90,7 @@ describe('empresa_assumir: a ordem das checagens', () => {
 
   test('reserva propria vigente vira posse sem prazo', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     expect(await assumir(vendedorA, id)).toBe('ok')
     const [estado] = await banco.sql<{ vendedor_id: string; reservado_por: null; reservado_ate: null }>(
       'SELECT vendedor_id, reservado_por, reservado_ate FROM empresa_fila WHERE empresa_id = $1',
@@ -111,8 +111,8 @@ describe('empresa_assumir: a ordem das checagens', () => {
 // duas funções decidem sobre leitura velha (`now()` é o início da transação) e
 // a posse recém-tomada desaparece em silêncio. Sem este teste, o PERFORM
 // parece linha decorativa e o próximo a mexer o remove.
-describe('empresa_assumir x fila_puxar: a trava', () => {
-  test('assumir segurando a trava faz o fila_puxar concorrente PULAR a empresa', async () => {
+describe('empresa_assumir x fila_reservar: a trava', () => {
+  test('assumir segurando a trava faz o fila_reservar concorrente PULAR a empresa', async () => {
     const unica = await criarEmpresa('0181')
     await banco.sql(
       `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
@@ -129,7 +129,7 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
       await c2.query('BEGIN')
       await c2.query("SELECT set_config('role', 'app_usuario', true)")
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
-      const puxada = await c2.query('SELECT empresa_id FROM fila_puxar()')
+      const puxada = await c2.query(SQL_RESERVAR_PROXIMA)
       await c1.query('COMMIT')
       await c2.query('COMMIT')
       // A única empresa da base está travada: SKIP LOCKED pula e não há outra.
@@ -145,7 +145,7 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
     }
   })
 
-  test('fila_puxar segurando a trava faz o assumir concorrente esperar e recusar', async () => {
+  test('fila_reservar segurando a trava faz o assumir concorrente esperar e recusar', async () => {
     const unica = await criarEmpresa('0181')
     await banco.sql(
       `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
@@ -158,7 +158,7 @@ describe('empresa_assumir x fila_puxar: a trava', () => {
       await c1.query('BEGIN')
       await c1.query("SELECT set_config('role', 'app_usuario', true)")
       await c1.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
-      await c1.query('SELECT empresa_id FROM fila_puxar()')
+      await c1.query(SQL_RESERVAR_PROXIMA)
       await c2.query('BEGIN')
       await c2.query("SELECT set_config('role', 'app_usuario', true)")
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
@@ -195,7 +195,7 @@ function devolver(usuarioId: string, empresaId: string): Promise<string> {
 describe('empresa_devolver', () => {
   test('devolve posse, limpa tudo e grava o piso', async () => {
     const id = await criarEmpresa('0181')
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     await assumir(vendedorA, id)
     expect(await devolver(vendedorA, id)).toBe('ok')
     const [estado] = await banco.sql<{
@@ -219,15 +219,15 @@ describe('empresa_devolver', () => {
 
   test('devolve reserva vigente, sem ter assumido', async () => {
     const id = await criarEmpresa('0181')
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     expect(await devolver(vendedorA, id)).toBe('ok')
   })
 
   test('devolvida nao volta a ser puxavel na hora', async () => {
     const id = await criarEmpresa('0181')
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     await devolver(vendedorA, id)
-    const r = await banco.comoUsuario(vendedorB, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    const r = await banco.comoUsuario(vendedorB, (e) => e(SQL_RESERVAR_PROXIMA))
     expect(r.linhas).toEqual([])
   })
 

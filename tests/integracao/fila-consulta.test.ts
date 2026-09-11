@@ -1,11 +1,16 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { registrarContato } from '@/src/features/contato/repositorio'
-import { puxarProxima } from '@/src/features/fila/repositorio'
+import { reservarEmpresa } from '@/src/features/fila/repositorio'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
 let vendedor: string
+
+async function reservarProxima(usuarioId: string) {
+  const contexto = await banco.sql<{ versao: string }>('SELECT versao FROM fila_contexto WHERE usuario_id=$1', [usuarioId])
+  return reservarEmpresa(usuarioId, null, { nome: '', cnae: null, uf: null, cidade: null, bairro: null }, contexto[0]?.versao ?? null)
+}
 
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
@@ -52,12 +57,12 @@ const devolver = (usuarioId: string, empresaId: string) =>
 describe('lerMinhasEmpresas', () => {
   test('sem nada, devolve reserva nula e carteira vazia', async () => {
     const r = await lerMinhasEmpresas(vendedor)
-    expect(r).toEqual({ ok: true, reserva: null, carteira: [] })
+    expect(r).toEqual({ ok: true, reserva: null, carteira: [], contexto: null })
   })
 
   test('a reserva vem com contato e endereco resolvido', async () => {
     await criarEmpresa('01310100')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     const r = await lerMinhasEmpresas(vendedor)
     if (!r.ok) throw new Error('esperava ok')
     expect(r.carteira).toEqual([])
@@ -71,7 +76,7 @@ describe('lerMinhasEmpresas', () => {
   // resolve não é CEP ausente, e a tela diz coisas diferentes para os dois.
   test('CEP fora da base vira endereco nulo, sem lancar', async () => {
     await criarEmpresa('00000000')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     const r = await lerMinhasEmpresas(vendedor)
     if (!r.ok) throw new Error('esperava ok')
     expect(r.reserva?.cep).toBe('00000000')
@@ -80,7 +85,7 @@ describe('lerMinhasEmpresas', () => {
 
   test('empresa sem CEP tambem vem, com endereco nulo', async () => {
     await criarEmpresa(null)
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     const r = await lerMinhasEmpresas(vendedor)
     if (!r.ok) throw new Error('esperava ok')
     expect(r.reserva?.cep).toBeNull()
@@ -89,7 +94,7 @@ describe('lerMinhasEmpresas', () => {
 
   test('assumida sai da reserva e entra na carteira', async () => {
     const id = await criarEmpresa('01310100')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     expect(await assumir(vendedor, id)).toEqual({ ok: true })
     const r = await lerMinhasEmpresas(vendedor)
     if (!r.ok) throw new Error('esperava ok')
@@ -101,25 +106,25 @@ describe('lerMinhasEmpresas', () => {
 
   test('devolvida sai das duas', async () => {
     const id = await criarEmpresa('01310100')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     await assumir(vendedor, id)
     expect(await devolver(vendedor, id)).toEqual({ ok: true })
-    expect(await lerMinhasEmpresas(vendedor)).toEqual({ ok: true, reserva: null, carteira: [] })
+    expect(await lerMinhasEmpresas(vendedor)).toEqual({ ok: true, reserva: null, carteira: [], contexto: expect.any(String) })
   })
 
   test('reserva expirada nao aparece como reserva', async () => {
     const id = await criarEmpresa('01310100')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     await banco.sql("UPDATE empresa_fila SET reservado_ate = now() - interval '1 minute' WHERE empresa_id = $1", [id])
     const r = await lerMinhasEmpresas(vendedor)
-    expect(r).toEqual({ ok: true, reserva: null, carteira: [] })
+    expect(r).toEqual({ ok: true, reserva: null, carteira: [], contexto: expect.any(String) })
   })
 
   test('senha provisoria pendente vira sem_permissao, nao excecao', async () => {
     const pendente = await criarUsuario(banco, 'vendedor', 'PendenteConsulta')
     await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [pendente])
     await criarEmpresa('01310100')
-    expect(await puxarProxima(pendente)).toEqual({ ok: false, motivo: 'sem_permissao' })
+    expect(await reservarProxima(pendente)).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 })
 
@@ -154,7 +159,7 @@ function acompanhar(
 describe('carteira: o proximo passo derivado do contato mais recente', () => {
   test('empresa sem contato vem com proximo passo nulo e vencido falso', async () => {
     const id = await criarEmpresaN('0181', 'Aurora')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     expect(await assumir(vendedor, id)).toEqual({ ok: true })
     const r = await lerMinhasEmpresas(vendedor)
     if (!r.ok) throw new Error('esperava sucesso')
@@ -163,7 +168,7 @@ describe('carteira: o proximo passo derivado do contato mais recente', () => {
 
   test('o contato MAIS RECENTE manda', async () => {
     const id = await criarEmpresaN('0181', 'Aurora')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     await assumir(vendedor, id)
     await acompanhar(vendedor, id, 'antigo', '2026-01-01')
     await acompanhar(vendedor, id, 'recente', '2027-01-01')
@@ -177,7 +182,7 @@ describe('carteira: o proximo passo derivado do contato mais recente', () => {
   // próximo passo significa "não há próximo passo", e não "vale o anterior".
   test('contato mais recente SEM passo apaga o passo anterior', async () => {
     const id = await criarEmpresaN('0181', 'Aurora')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     await assumir(vendedor, id)
     await acompanhar(vendedor, id, 'combinado', '2027-01-01')
     await acompanhar(vendedor, id, null, null)
@@ -188,7 +193,7 @@ describe('carteira: o proximo passo derivado do contato mais recente', () => {
 
   test('data de ontem vem como vencido; a de amanha nao', async () => {
     const id = await criarEmpresaN('0181', 'Aurora')
-    await puxarProxima(vendedor)
+    await reservarProxima(vendedor)
     await assumir(vendedor, id)
     const [{ ontem, amanha }] = await banco.sql<{ ontem: string; amanha: string }>(
       `SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date - 1, 'YYYY-MM-DD') AS ontem,
@@ -210,7 +215,7 @@ describe('carteira: o proximo passo derivado do contato mais recente', () => {
     const vencida = await criarEmpresaN('0262', 'Boreal')
     const semPasso = await criarEmpresaN('0343', 'Cristal')
     for (const id of [futura, vencida, semPasso]) {
-      await puxarProxima(vendedor)
+      await reservarProxima(vendedor)
       await assumir(vendedor, id)
     }
     await acompanhar(vendedor, futura, 'futura', '2030-01-01')

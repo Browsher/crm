@@ -2,6 +2,7 @@ import { FormularioContato } from '@/src/features/contato/formulario'
 import type { Contato } from '@/src/features/contato/historico'
 import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { RascunhoContato } from '@/src/features/contato/rascunho'
 
 // `agora` entra por parâmetro em vez de a função chamar new Date() dentro: é o
 // que torna o render testável sem congelar o relógio do processo.
@@ -16,22 +17,33 @@ function minutosRestantes(ate: Date, agora: Date): number {
 function endereco(empresa: EmpresaComigo): string {
   if (empresa.endereco) {
     const e = empresa.endereco
-    return [e.logradouro, e.bairro, `${e.localidade} — ${e.uf}`].filter(Boolean).join(', ')
+    return [e.logradouro, e.bairro, `${e.localidade}, ${e.uf}`].filter(Boolean).join(', ')
   }
-  if (empresa.cep) return `CEP ${empresa.cep} — endereço não encontrado na base de CEP`
+  if (empresa.cep) return `CEP ${empresa.cep}. Endereço não encontrado na base de CEP`
   return 'Empresa sem CEP cadastrado'
 }
 
-type Props = { empresa: EmpresaComigo; agora: Date; contatos: Contato[] }
+type Props = {
+  empresa: EmpresaComigo
+  agora: Date
+  contatos: Contato[]
+  rascunho?: RascunhoContato
+  onDraftChange?: (rascunho: RascunhoContato) => void
+  onSaved?: (empresaId: string) => void
+  bloqueado?: boolean
+  somenteLeitura?: boolean
+  onPendingChange?: (pendente: boolean) => void
+}
 
-export function Cartao({ empresa, agora, contatos }: Props) {
+export function Cartao({ empresa, agora, contatos, bloqueado = false, ...formulario }: Props) {
+  const expirada = !empresa.posse && (!empresa.reservadoAte || empresa.reservadoAte.getTime() <= agora.getTime())
   return (
     <article className="flex flex-col gap-3 rounded border p-4">
       <header className="flex flex-col gap-1">
         <h2 className="text-lg font-semibold">{empresa.razaoSocial}</h2>
         {empresa.nomeFantasia ? <p className="text-sm text-neutral-600">{empresa.nomeFantasia}</p> : null}
       </header>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+      {!expirada && <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
         <dt className="text-neutral-600">Telefone</dt>
         <dd className="font-medium">{empresa.telefone}</dd>
         {empresa.contatoNome ? (
@@ -50,18 +62,19 @@ export function Cartao({ empresa, agora, contatos }: Props) {
         <dd>{endereco(empresa)}</dd>
         <dt className="text-neutral-600">CNPJ</dt>
         <dd>{empresa.cnpj}</dd>
-      </dl>
-      {empresa.reservadoAte && !empresa.posse ? (
-        <p className="text-sm text-amber-700">
+      </dl>}
+      {expirada ? <p role="status">Reserva expirada. Suas anotações foram preservadas. Tente reservar novamente para registrar.</p> : null}
+      {empresa.reservadoAte && !empresa.posse && !expirada ? (
+        <p role="timer" aria-label="Tempo restante da reserva" className="text-sm text-amber-700">
           Reservada para você por mais {minutosRestantes(empresa.reservadoAte, agora)} minutos. Assuma antes de a
           conversa esticar.
         </p>
       ) : null}
-      <section className="flex flex-col gap-2">
+      {!expirada && <section className="flex flex-col gap-2">
         <h3 className="text-sm font-medium">O que já aconteceu com esta empresa</h3>
         <LinhaDoTempo contatos={contatos} />
-      </section>
-      <FormularioContato empresaId={empresa.id} posse={empresa.posse} />
+      </section>}
+      <FormularioContato empresaId={empresa.id} posse={empresa.posse} bloqueado={bloqueado || expirada} {...formulario} />
     </article>
   )
 }

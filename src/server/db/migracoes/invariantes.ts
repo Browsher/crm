@@ -28,7 +28,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.senha_provisoria_de',
   'public.credencial_definir',
   'public.usuario_situacao_definir',
-  'public.fila_puxar',
+  'public.fila_reservar',
   'public.contato_registrar',
   'public.empresa_consultar',
   'public.empresa_filtros',

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
+import { SQL_RESERVAR_PROXIMA } from './ajuda'
 import { conectarVerificado } from '@/src/server/db/pool'
 import { criarBancoDeTeste, criarUsuario, criarUsuarioComSenha, type BancoDeTeste } from './ajuda'
 
@@ -64,7 +65,7 @@ describe('contato_registrar: quem pode', () => {
 
   test('empresa que nao esta com voce e 42501', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorB, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorB, (e) => e(SQL_RESERVAR_PROXIMA))
     await expect(registrar(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
   })
 
@@ -94,7 +95,7 @@ describe('contato_registrar: quem pode', () => {
   // recusada: não é 42501 e não entra no vocabulário.
   test('desfecho fora do vocabulario LANCA, e nao vira 42501', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     const erro = await registrar(vendedorA, id, { desfecho: 'talvez' }).catch((e: { code?: string }) => e)
     expect(erro).toBeInstanceOf(Error)
     expect((erro as { code?: string }).code).not.toBe('42501')
@@ -104,7 +105,7 @@ describe('contato_registrar: quem pode', () => {
 describe('contato_registrar: os três desfechos', () => {
   test('nenhum grava o contato e nao mexe na fila', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     expect(await registrar(vendedorA, id, { desfecho: 'nenhum' })).toBe('ok')
     const [f] = await banco.sql<{ vendedor_id: string | null; reservado_por: string | null }>(
       'SELECT vendedor_id, reservado_por FROM empresa_fila WHERE empresa_id = $1',
@@ -116,7 +117,7 @@ describe('contato_registrar: os três desfechos', () => {
 
   test('assumir grava posse E o contato', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     expect(await registrar(vendedorA, id, { tipo: 'interessado', desfecho: 'assumir' })).toBe('ok')
     const [f] = await banco.sql<{ vendedor_id: string | null }>(
       'SELECT vendedor_id FROM empresa_fila WHERE empresa_id = $1',
@@ -128,7 +129,7 @@ describe('contato_registrar: os três desfechos', () => {
 
   test('devolver grava o piso E o contato', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     expect(await registrar(vendedorA, id, { desfecho: 'devolver' })).toBe('ok')
     const [f] = await banco.sql<{ vendedor_id: string | null; elegivel_em: Date | null }>(
       'SELECT vendedor_id, elegivel_em FROM empresa_fila WHERE empresa_id = $1',
@@ -141,7 +142,7 @@ describe('contato_registrar: os três desfechos', () => {
 
   test('ja_e_sua vem propagado de empresa_assumir, e nao deixa contato', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     await registrar(vendedorA, id, { tipo: 'interessado', desfecho: 'assumir' })
     await banco.sql('DELETE FROM contato')
     expect(await registrar(vendedorA, id, { tipo: 'interessado', desfecho: 'assumir' })).toBe('ja_e_sua')
@@ -168,7 +169,7 @@ describe('contato_registrar: desfecho que falha nao deixa contato', () => {
 describe('contato_registrar: o conteudo gravado', () => {
   test('grava tipo, nota, passo e data como vieram, e criado_por e quem chamou', async () => {
     const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM fila_puxar()'))
+    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
     await registrar(vendedorA, id, {
       tipo: 'retornar_depois',
       nota: 'pediu para ligar em marco',
@@ -191,8 +192,8 @@ describe('contato_registrar: o conteudo gravado', () => {
 
 // A trava. `contato_registrar` escreve em `empresa_fila` pelo desfecho, então
 // vale para ela a mesma regra das três funções da 0016.
-describe('contato_registrar x fila_puxar: a trava', () => {
-  test('contato_registrar segurando a trava faz o fila_puxar concorrente PULAR a empresa', async () => {
+describe('contato_registrar x fila_reservar: a trava', () => {
+  test('contato_registrar segurando a trava faz o fila_reservar concorrente PULAR a empresa', async () => {
     const unica = await criarEmpresa('0181')
     await banco.sql(
       `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
@@ -209,7 +210,7 @@ describe('contato_registrar x fila_puxar: a trava', () => {
       await c2.query('BEGIN')
       await c2.query("SELECT set_config('role', 'app_usuario', true)")
       await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
-      const puxada = await c2.query('SELECT empresa_id FROM fila_puxar()')
+      const puxada = await c2.query(SQL_RESERVAR_PROXIMA)
       await c1.query('COMMIT')
       await c2.query('COMMIT')
       expect(puxada.rows).toEqual([])

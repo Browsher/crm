@@ -8,6 +8,7 @@ import { criarBancoDeTeste, criarUsuarioComSenha, type BancoDeTeste } from '../.
 import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal } from '../../tests/e2e/ambiente'
 import { iniciarProcesso, encerrarProcesso } from './processos'
 import { prepararEmpresasConsulta } from '../../tests/e2e/dados-consulta'
+import { prepararEmpresasReserva } from '../../tests/e2e/dados-reserva'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -57,6 +58,7 @@ try {
     await criarUsuarioComSenha(banco, papel, apelido, 'Senha-e2e-2026', { pendente })
   }
   await prepararEmpresasConsulta(banco)
+  await prepararEmpresasReserva(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined
