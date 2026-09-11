@@ -36,6 +36,8 @@ const sao = (): Estado => ({
     'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
     'public.fila_puxar',
     'public.contato_registrar',
+    'public.empresa_consultar',
+    'public.empresa_filtros',
   ],
   funcoesExecutaveisPorPublico: [],
 })

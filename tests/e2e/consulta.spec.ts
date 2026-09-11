@@ -1,0 +1,53 @@
+import { expect, test } from '@playwright/test'
+
+for (const papel of ['vendedore2e', 'gestore2e']) {
+  test(`${papel} localiza empresas sem receber contatos na consulta resumida`, async ({ page }, testInfo) => {
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill(`${papel}@teste.local`)
+    await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+    await expect(page).toHaveURL('/')
+    await page.goto('/fila')
+    await page.getByRole('link', { name: 'Localizar empresa' }).click()
+    await expect(page.getByText('Digite um nome ou escolha um filtro')).toBeVisible()
+    await expect(page.getByLabel('Cidade', { exact: true })).toBeDisabled()
+    await page.getByLabel('Nome', { exact: true }).fill('Consulta E2E')
+    await page.keyboard.press('Tab')
+    await expect(page.getByLabel('CNAE', { exact: true })).toBeFocused()
+    await page.getByLabel('CNAE', { exact: true }).selectOption('4742300')
+    await page.getByLabel('Estado', { exact: true }).selectOption('SP')
+    await expect(page).toHaveURL(/uf=SP/)
+    await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Consulta E2E')
+    await page.getByLabel('Cidade', { exact: true }).selectOption('3550308')
+    await expect(page).toHaveURL(/cidade=3550308/)
+    await page.getByLabel('Bairro', { exact: true }).selectOption('Centro de teste')
+    await page.getByRole('button', { name: 'Consultar', exact: true }).click()
+    const lista = page.getByRole('list', { name: 'Empresas encontradas' })
+    await expect(lista.locator('li')).toHaveCount(20)
+    await expect(lista.getByText('Com outro vendedor').first()).toBeVisible()
+    await expect(lista.getByText('Indisponível', { exact: true }).first()).toBeVisible()
+    for (const privado of ['11987650001', 'contato-secreto@teste.local', 'Pessoa privada E2E']) {
+      expect(await page.content()).not.toContain(privado)
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('consulta-mobile.png') })
+    await page.getByRole('link', { name: 'Próxima página', exact: true }).click()
+    await expect(page).toHaveURL(/pagina=2/)
+    await expect(lista.locator('li')).toHaveCount(3)
+    await page.getByLabel('Estado', { exact: true }).selectOption('RJ')
+    await expect(page).toHaveURL(/uf=RJ/)
+    expect(new URL(page.url()).searchParams.get('cidade')).toBe('')
+    expect(new URL(page.url()).searchParams.get('bairro')).toBe('')
+    expect(new URL(page.url()).searchParams.has('pagina')).toBe(false)
+    await expect(page.getByLabel('Bairro', { exact: true })).toBeDisabled()
+    await expect(page.getByText('Nenhuma empresa encontrada.')).toBeVisible()
+    await page.goto('/fila/localizar?uf=INVALIDO')
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('Um dos filtros é inválido')
+  })
+}
+
+test('visitante não acessa localização', async ({ page }) => {
+  await page.goto('/fila/localizar?nome=Consulta')
+  await expect(page).toHaveURL('/login')
+})

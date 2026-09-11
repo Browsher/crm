@@ -17,6 +17,9 @@ export default async function PaginaFila() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Fila</h1>
         <nav className="flex items-center gap-3">
+          <Link href="/fila/localizar" className="text-sm underline">
+            Localizar empresa
+          </Link>
           <Link href="/carteira" className="text-sm underline">
             Carteira
           </Link>

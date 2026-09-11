@@ -39,8 +39,9 @@ centrais e página de referência. Manter Next.js, autenticação existente e RL
   por contato_registrar, não por funções isoladas da interface.
 - empresa guarda CEP. Cidade, UF e bairro podem vir de cep (0013), com estados
   explícitos para CEP ausente, não encontrado ou bairro nulo.
-- Migrações e features consultadas não possuem CNAE nem histórico de abertura
-  de perfil. Não preencher esses recursos com dados fictícios na aplicação.
+- Na investigação inicial, CNAE e histórico de abertura de perfil ainda não
+  existiam. A migração 0023 acrescentou CNAE; abertura de perfil continua na
+  fatia de recentes. Não preencher esses recursos com dados fictícios.
 
 ## Divisão proposta
 
@@ -59,6 +60,13 @@ dados completos. Não habilitar registro sem posse ou reserva válida.
 A autorização desses campos é do banco, não apenas da renderização da tela.
 
 ### Busca e próxima
+
+A pesquisa por nome e filtros também mostra o cadastro resumido de empresas
+que estão com outro vendedor. Exibir "Indisponível" e, abaixo, "Com outro
+vendedor", sem travessão. Telefone, e-mail, contato e histórico continuam
+protegidos; não permitir reserva nem registro enquanto indisponível para
+esse vendedor. A pesquisa de cadastros não se confunde com a seleção
+automática de uma empresa disponível.
 
 Buscar cliente e Próxima respeitam os filtros e selecionam somente empresas
 disponíveis. Próxima libera a reserva atual e reserva outra sem registrar
