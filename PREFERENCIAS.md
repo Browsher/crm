@@ -27,6 +27,12 @@ ter que repetir a mesma escolha toda semana.
 - Mudança grande vem em passos que eu consiga revisar.
 - Uma pergunta por vez no brainstorm, com recomendação e motivo.
 
+## Textos da interface
+
+- Evitar travessões nos textos do site. Separar estado e explicação em
+  elementos distintos quando necessário: "Indisponível" e, abaixo,
+  "Com outro vendedor".
+
 ## Estilo de código
 
 - TypeScript sem ponto e vírgula, aspas simples.
