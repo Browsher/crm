@@ -46,11 +46,11 @@ test('preserva acento e espaco do nome', () => {
 // vacuidade. Com `/meu-dia`, apagar o guarda faz a função devolver `/meu-dia` e
 // o teste morre. A prova de mutação achou exatamente isso: três guardas
 // sobreviviam à primeira versão desta bateria.
-test.for([
+const RECUSADOS: [string, string][] = [
   ['host externo', 'https://exemplo.invalido/meu-dia'],
   ['sem protocolo', '//exemplo.invalido/meu-dia'],
-  ['barra invertida', '/\exemplo.invalido/meu-dia'],
-  ['duas barras invertidas', '\\exemplo.invalido/meu-dia'],
+  ['barra invertida depois da barra', '/\\exemplo.invalido/meu-dia'],
+  ['barra invertida no comeco', '\\exemplo.invalido/meu-dia'],
   ['javascript', 'javascript:alert(1)'],
   ['dados embutidos', 'data:text/html,<script>alert(1)</script>'],
   ['barra escapada', '/%2f%2fexemplo.invalido'],
@@ -67,8 +67,21 @@ test.for([
   ['filtro repetido', '/meu-dia?nome=a&nome=b'],
   ['nome acima do limite', `/meu-dia?nome=${'a'.repeat(121)}`],
   ['caractere de controle no filtro', '/meu-dia?nome=a%0Ab'],
-])('recusa %s', ([, bruto]) => {
+]
+
+test.for(RECUSADOS)('recusa %s', ([, bruto]) => {
   expect(destinoDeVolta(bruto)).toBe(SEGURO)
+})
+
+// O caso da barra invertida nasceu sem barra invertida nenhuma: em literal
+// JS, `\e` não é escape reconhecido e a barra é DESCARTADA na compilação, então
+// `'/\exemplo'` vale `/exemplo` e o caso exercitava outro caminho, o de rota
+// desconhecida. O teste passava e não provava o vetor que anunciava. Aqui a
+// condição do fixture é conferida no próprio teste, porque nada mais a vê.
+test('os casos de barra invertida contem barra invertida de verdade', () => {
+  const casos = RECUSADOS.filter(([nome]) => nome.includes('barra invertida'))
+  expect(casos).toHaveLength(2)
+  for (const [, bruto] of casos) expect(bruto).toContain(String.fromCharCode(92))
 })
 
 // A ordem sai canônica, não a ordem que o cliente mandou: o destino é
@@ -80,4 +93,14 @@ test('remonta o destino em ordem canonica', () => {
 test('nome no limite de 120 continua valendo', () => {
   const nome = 'a'.repeat(120)
   expect(destinoDeVolta(`/carteira?nome=${nome}`)).toBe(`/carteira?nome=${nome}`)
+})
+
+// `urlCarteira` e `urlMeuDia` só escrevem a chave quando há valor, então
+// `?nome=` não é forma que o servidor produza. Vazio é o mesmo que ausente, e
+// a remontagem deixa a chave de fora em vez de recusar o destino: recusar
+// mandaria para a carteira quem estava na agenda, por um filtro que não filtra
+// nada. O caso usa `/meu-dia` porque `/carteira` é o destino de recusa e a
+// asserção passaria pelos dois caminhos.
+test('filtro vazio sai do destino em vez de derrubar a volta', () => {
+  expect(destinoDeVolta('/meu-dia?nome=&retorno=hoje')).toBe('/meu-dia?retorno=hoje')
 })

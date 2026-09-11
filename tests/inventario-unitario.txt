@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 764
+# Total: 766
 
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
@@ -266,20 +266,22 @@ src/features/contato/acao.test.ts :: devolver pela ficha volta para o destino pr
 src/features/contato/acao.test.ts :: devolver pela fila, que nao manda destino, nao redireciona
 src/features/contato/destino.test.ts :: aceita a agenda sem filtro
 src/features/contato/destino.test.ts :: aceita a carteira sem filtro
+src/features/contato/destino.test.ts :: filtro vazio sai do destino em vez de derrubar a volta
 src/features/contato/destino.test.ts :: nome no limite de 120 continua valendo
+src/features/contato/destino.test.ts :: os casos de barra invertida contem barra invertida de verdade
 src/features/contato/destino.test.ts :: preserva acento e espaco do nome
 src/features/contato/destino.test.ts :: preserva os filtros da agenda
 src/features/contato/destino.test.ts :: preserva os filtros da carteira
 src/features/contato/destino.test.ts :: recusa a propria ficha, que deixa de existir
 src/features/contato/destino.test.ts :: recusa ancora
 src/features/contato/destino.test.ts :: recusa barra escapada
-src/features/contato/destino.test.ts :: recusa barra invertida
+src/features/contato/destino.test.ts :: recusa barra invertida depois da barra
+src/features/contato/destino.test.ts :: recusa barra invertida no comeco
 src/features/contato/destino.test.ts :: recusa barra no fim, forma que o servidor nao produz
 src/features/contato/destino.test.ts :: recusa caixa diferente da rota
 src/features/contato/destino.test.ts :: recusa caminho relativo
 src/features/contato/destino.test.ts :: recusa caractere de controle no filtro
 src/features/contato/destino.test.ts :: recusa dados embutidos
-src/features/contato/destino.test.ts :: recusa duas barras invertidas
 src/features/contato/destino.test.ts :: recusa filtro que a rota nao tem
 src/features/contato/destino.test.ts :: recusa filtro repetido
 src/features/contato/destino.test.ts :: recusa host externo

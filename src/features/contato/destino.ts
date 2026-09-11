@@ -11,7 +11,10 @@
 // app/meu-dia/agenda.ts. Ela é repetida aqui de propósito, e não importada
 // dessas telas: quem autoriza o redirecionamento tem que ser independente de
 // quem monta o link. `src/` também não importa de `app/`.
-const ROTAS: Record<string, readonly string[]> = {
+// O `| undefined` no valor não é decoração: sem ele o `tsc` considera
+// `chaves` sempre presente e a guarda de rota desconhecida vira código morto
+// aos olhos do tipo, embora seja ela que faz o trabalho (R-012).
+const ROTAS: Record<string, readonly string[] | undefined> = {
   '/carteira': ['nome', 'uf', 'retorno'],
   '/meu-dia': ['nome', 'retorno'],
 }
@@ -68,7 +71,9 @@ export function destinoDeVolta(bruto: string): string | null {
   const filtros = new URLSearchParams()
   for (const chave of chaves) {
     const valor = url.searchParams.get(chave)
-    if (valor === null) continue
+    // Ausente e vazio são a mesma coisa: nenhum dos dois montadores escreve a
+    // chave sem valor, e `?nome=` não filtra nada.
+    if (!valor) continue
     if (valor.length > LIMITE_FILTRO) return SEGURO
     if (temControle(valor)) return SEGURO
     filtros.set(chave, valor)
