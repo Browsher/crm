@@ -5,6 +5,7 @@ import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { Ficha } from './ficha'
+import { RegistrarVisita } from '../../fila/localizar/registrar-visita'
 
 // `params` tipado na mão, nunca com tipo gerado pelo build (R-004): o typecheck
 // do CI roda sem `next build`.
@@ -42,6 +43,7 @@ export default async function PaginaFicha({ params }: { params: Promise<{ id: st
         </nav>
       </header>
       <Ficha empresa={empresa} contatos={historico.ok ? historico.contatos : []} />
+      <RegistrarVisita empresaId={empresa.id} />
     </main>
   )
 }

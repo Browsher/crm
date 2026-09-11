@@ -9,7 +9,7 @@ for (const papel of ['vendedore2e', 'gestore2e']) {
     await expect(page).toHaveURL('/')
     await page.goto('/fila')
     await page.getByRole('link', { name: 'Localizar empresa' }).click()
-    await expect(page.getByText('Digite um nome ou escolha um filtro')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()
     await expect(page.getByLabel('Cidade', { exact: true })).toBeDisabled()
     await page.getByLabel('Nome', { exact: true }).fill('Consulta E2E')
     await page.keyboard.press('Tab')

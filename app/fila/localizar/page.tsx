@@ -7,6 +7,7 @@ import { Formulario } from './formulario'
 import { Resultados } from './resultados'
 import { Paginacao } from './paginacao'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
+import { listarRecentes, listarSugestoes } from '@/src/features/prospeccao/recentes'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -24,7 +25,11 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
   const temFiltro = Boolean(filtros.nome || filtros.cnae || filtros.uf || filtros.cidade || filtros.bairro)
   const opcoes = await listarOpcoes(eu.usuarioId, filtros.uf, filtros.cidade)
   const resultado = temFiltro && opcoes.ok ? await consultarEmpresas(eu.usuarioId, filtros) : null
-  const minhas = resultado?.ok ? await lerMinhasEmpresas(eu.usuarioId) : null
+  const recentes = !temFiltro && opcoes.ok ? await listarRecentes(eu.usuarioId) : null
+  const sugerir = recentes?.ok && recentes.empresas.length === 0
+  const inicial = sugerir ? await listarSugestoes(eu.usuarioId) : recentes
+  const lista = resultado ?? inicial
+  const minhas = lista?.ok ? await lerMinhasEmpresas(eu.usuarioId) : null
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -34,10 +39,10 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
       <p>Pesquise empresas e confira a disponibilidade para atendimento.</p>
       {opcoes.ok ? <Formulario key={JSON.stringify(filtros)} filtros={filtros} opcoes={opcoes.opcoes} />
         : <p role="alert">Você não tem permissão para consultar empresas.</p>}
-      {opcoes.ok && !temFiltro && <p>Digite um nome ou escolha um filtro para localizar empresas.</p>}
-      {resultado && (resultado.ok ? <>
-        <Resultados empresas={resultado.empresas} reserva={minhas?.ok ? {contexto:minhas.contexto,filtros,empresaAtual:minhas.reserva?.id ?? null} : undefined} />
-        <Paginacao filtros={filtros} temProxima={resultado.temProxima} />
+      {inicial?.ok && <h2 className="text-lg font-semibold">{sugerir ? 'Sugestões de empresas' : 'Empresas recentes'}</h2>}
+      {lista && (lista.ok ? <>
+        <Resultados empresas={lista.empresas} filtros={filtros} reserva={minhas?.ok ? {contexto:minhas.contexto,filtros,empresaAtual:minhas.reserva?.id ?? null} : undefined} />
+        {resultado?.ok && <Paginacao filtros={filtros} temProxima={resultado.temProxima} />}
       </> : <p role="alert">Você não tem permissão para consultar empresas.</p>)}
     </main>
   )

@@ -9,6 +9,7 @@ import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal } from '../../tes
 import { iniciarProcesso, encerrarProcesso } from './processos'
 import { prepararEmpresasConsulta } from '../../tests/e2e/dados-consulta'
 import { prepararEmpresasReserva } from '../../tests/e2e/dados-reserva'
+import { prepararRecentes } from '../../tests/e2e/dados-recentes'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -59,6 +60,7 @@ try {
   }
   await prepararEmpresasConsulta(banco)
   await prepararEmpresasReserva(banco)
+  await prepararRecentes(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined

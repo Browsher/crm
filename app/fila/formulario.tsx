@@ -11,6 +11,7 @@ import { agirNaFilaAcao, type EstadoFila } from './acoes'
 import { Cartao } from './cartao'
 import { CamposReserva } from './campos-reserva'
 import { useRascunhos } from './rascunhos'
+import { RegistrarVisita } from './localizar/registrar-visita'
 
 const INICIAL: EstadoFila = { erro: null, filaVazia: false }
 const SEM_FILTROS: Filtros = { nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1 }
@@ -67,6 +68,7 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
     {!reserva && <p className="text-sm">Nenhuma empresa reservada para você agora.</p>}
     {estado.filaVazia && !estado.erro && <p className="rounded border p-3 text-sm">Nenhuma empresa disponível agora. As demais estão com alguém ou foram trabalhadas nos últimos 30 dias.</p>}
     {reserva && <>
+      <RegistrarVisita empresaId={reserva.id} />
       <Cartao key={reserva.id} empresa={reserva} agora={agora} contatos={contatos}
         rascunho={rascunhos.entradas[reserva.id]?.valor}
         onDraftChange={valor => rascunhos.atualizar(reserva.id, reserva.razaoSocial, valor)}
