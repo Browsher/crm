@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react'
 import { RascunhosProvider } from './rascunhos'
-export default function LayoutFila({ children }: { children: ReactNode }) {
-  return <RascunhosProvider>{children}</RascunhosProvider>
+import { exigir } from '@/src/server/autenticacao/guarda'
+import { ShellFila } from './shell'
+import '@/src/styles/ui.css'
+export default async function LayoutFila({ children }: { children: ReactNode }) {
+  const eu = await exigir('usuario')
+  return <RascunhosProvider><ShellFila nome={eu.nome} papel={eu.papel}>{children}</ShellFila></RascunhosProvider>
 }

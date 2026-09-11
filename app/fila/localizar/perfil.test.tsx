@@ -22,6 +22,16 @@ test('perfil mostra resumo e retorno filtrado sem gravar durante render', async 
   expect(html).toContain('/fila/localizar?nome=Luz&amp;pagina=2')
   expect(html).not.toContain('Reservar para ligar')
   expect(mocks.registrar).not.toHaveBeenCalled()
+  expect(html).toContain('Consultar')
+})
+
+test('perfil disponível oferece reserva sem exibir dados privados', async () => {
+  mocks.perfil.mockResolvedValue({ ok: true, empresa: { id, razaoSocial: 'Perfil empresa', nomeFantasia: null, cnaePrincipal: null, cidade: null, uf: null, bairro: null, disponibilidade: 'disponivel', telefone: '11999999999', email: 'sigilo@teste.local' } })
+  const { default: Pagina } = await import('./[id]/page')
+  const html = renderToStaticMarkup(await Pagina({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) }))
+  expect(html).toContain('Reservar para ligar')
+  expect(html).not.toContain('11999999999')
+  expect(html).not.toContain('sigilo@teste.local')
 })
 test('perfil inválido ou inexistente responde 404', async () => {
   const { default: Pagina } = await import('./[id]/page')

@@ -6,6 +6,7 @@ const captura = vi.hoisted(() => ({
   action: null as null | ((estado: EstadoContato, form: FormData) => Promise<EstadoContato>),
   registrar: vi.fn(),
   pendente: false,
+  estado: { erro: null as string | null, ok: false },
 }))
 vi.mock('./acao', () => ({ registrarContatoAcao: captura.registrar }))
 
@@ -17,13 +18,31 @@ vi.mock('react', async () => {
   const real = await vi.importActual<typeof import('react')>('react')
   return { ...real, useActionState: (action: typeof captura.action) => {
     captura.action = action
-    return [{ erro: null, ok: false }, () => {}, captura.pendente]
+    return [captura.estado, () => {}, captura.pendente]
   } }
 })
 
 const { FormularioContato } = await import('./formulario')
 
 describe('FormularioContato', () => {
+  test('visual da fila usa os componentes de campo sem mudar o padrao legado', () => {
+    const fila = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} visual="fila" />)
+    const legado = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} />)
+    expect(fila).toContain('data-visual="fila"')
+    expect(fila).toContain('data-slot="textarea"')
+    expect(fila).toContain('data-slot="button"')
+    expect(legado).not.toContain('data-visual="fila"')
+  })
+
+  test('erro no visual da fila usa alerta tematico', () => {
+    captura.estado = { erro: 'Falha preservada', ok: false }
+    const fila = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} visual="fila" />)
+    captura.estado = { erro: null, ok: false }
+    expect(fila).toContain('data-slot="alert"')
+    expect(fila).toContain('Falha preservada')
+    expect(fila).not.toContain('bg-amber-50')
+  })
+
   test('troca pendente congela rascunho sem confundir com bloqueio por expiração', () => {
     const html = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} somenteLeitura />)
     expect(html).toMatch(/<textarea[^>]*readOnly=""/)

@@ -39,6 +39,20 @@ const BASE: EmpresaComigo = {
 }
 
 describe('Cartao', () => {
+  test('na etapa consultar mostra dados e historico sem montar o formulario', () => {
+    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} etapa="consultar" />)
+    expect(saida).toContain('Registrar resultado')
+    expect(saida).toContain('Nenhum contato registrado')
+    expect(saida).not.toContain('O que aconteceu na ligação')
+  })
+
+  test('na etapa registrar coloca os dados ao lado do formulario visual', () => {
+    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} etapa="registrar" />)
+    expect(saida).toContain('O que aconteceu na ligação')
+    expect(saida).toContain('data-visual="fila"')
+    expect(saida).toContain('Registrar')
+  })
+
   test('prazo expirado oculta detalhes e histórico preservando anotações bloqueadas', () => {
     const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={BASE.reservadoAte!} contatos={[]}
       rascunho={{ tipo: 'interessado', nota: 'Preservada', proximoPasso: '', proximoPassoData: '' }} />)

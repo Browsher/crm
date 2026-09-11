@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test, vi } from 'vitest'
 vi.mock('next/navigation', () => ({useRouter: () => ({push: () => {}})}))
 import { Formulario } from './formulario'
+import { Reservar } from './reservar'
 import { Resultados } from './resultados'
 import { Paginacao } from './paginacao'
 import { urlConsulta } from './navegacao'
@@ -21,6 +22,9 @@ test('formulário tem nome e seletores com rótulos e valores atuais', () => {
   expect(html).toContain('Luz &amp; Cia')
   expect(html).toMatch(/<option(?=[^>]*value="3550308")(?=[^>]*selected="")[^>]*>/)
   expect(html).not.toContain('name="pagina"')
+  expect(html).toContain('data-slot="input"')
+  expect(html.match(/data-slot="native-select"/g)).toHaveLength(4)
+  expect(html).toContain('data-slot="button"')
 })
 
 test('seletores dependentes ficam desabilitados sem seus pais', () => {
@@ -46,6 +50,15 @@ test('resultado de empresa alheia só contém cadastro resumido e estado separad
   expect(html).toContain('Não informado')
   for (const privado of ['11999998888', 'privado@teste.local', 'Contato privado', '—']) expect(html).not.toContain(privado)
   expect(html).not.toContain('<button')
+  expect(html).toContain('data-slot="card-footer"')
+})
+
+test('ação automática usa puxar sem empresa e preserva os filtros', () => {
+  const html = renderToStaticMarkup(<Reservar empresaId={null} contexto="00000000-0000-4000-8000-000000000002" filtros={filtros} empresaAtual={null} />)
+  expect(html).toContain('Buscar cliente')
+  expect(html).toMatch(/<button(?=[^>]*name="acao")(?=[^>]*value="puxar")[^>]*>/)
+  expect(html).not.toContain('name="empresaId"')
+  expect(html).toContain('name="nome" value="Luz &amp; Cia"')
 })
 
 test('resultado vazio informa ausência', () => {
