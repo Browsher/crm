@@ -61,3 +61,13 @@ test('a ficha diz para onde voltar depois de devolver', () => {
   const fonte = readFileSync('app/carteira/[id]/ficha.tsx', 'utf8')
   expect(fonte).toContain('voltarPara')
 })
+
+// O destino do redirecionamento chega do cliente, por input oculto. A regra
+// de "que destino é aceitável" mora em destino.ts, função pura, pelo mesmo
+// motivo de regras.ts: arquivo 'use server' só exporta função, e validação
+// copiada para dentro da action deixa de ser testável sozinha.
+test('a action confere o destino do redirecionamento em vez de confiar no formulario', () => {
+  const fonte = readFileSync('src/features/contato/acao.ts', 'utf8')
+  expect(fonte).toContain("from './destino'")
+  expect(fonte).toContain('destinoDeVolta(')
+})
