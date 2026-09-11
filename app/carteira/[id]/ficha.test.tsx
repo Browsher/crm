@@ -7,6 +7,7 @@ vi.mock('react', async () => {
   const real = await vi.importActual<typeof import('react')>('react')
   return { ...real, useActionState: () => [{ erro: null, ok: false }, () => {}, false] }
 })
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }))
 
 const { Ficha } = await import('./ficha')
 
@@ -41,12 +42,12 @@ describe('Ficha', () => {
   test('mostra o proximo passo que vale hoje', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('Mandar orçamento')
-    expect(saida).toContain('2026-10-01')
+    expect(saida).toContain('01/10/2026')
   })
 
   test('vencido aparece com palavra', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={{ ...EMPRESA, vencido: true }} contatos={[]} />)
-    expect(saida).toContain('vencido')
+    expect(saida).toContain('Atrasado')
   })
 
   test('sem proximo passo, diz que nao ha combinado', () => {
@@ -60,16 +61,30 @@ describe('Ficha', () => {
   // devolver empresa da carteira. Quem assume por engano fica com ela.
   test('tem o caminho de devolver, que a carteira nao tinha', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
-    expect(saida).toContain('value="devolver"')
+    expect(saida).toContain('Registrar atendimento')
+    expect(saida).not.toContain('value="devolver"')
   })
 
-  test('com posse, o formulario pede proximo passo', () => {
+  test('o formulario fica fechado inicialmente', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
-    expect(saida).toContain('Próximo passo')
+    expect(saida).not.toContain('O que aconteceu na ligação')
   })
 
   test('a linha do tempo vazia diz que ninguem ligou ainda', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
-    expect(saida).toContain('Nenhum contato registrado')
+    expect(saida).toContain('Ainda não há uma conversa registrada')
+  })
+
+  test('distingue erro de historico vazio', () => {
+    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} erroHistorico />)
+    expect(saida).toContain('Não foi possível carregar o histórico')
+    expect(saida).not.toContain('Ainda não há uma conversa registrada')
+  })
+
+  test('mostra ausencias e o CNAE sem inventar dados', () => {
+    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    expect(saida).toContain('E-mail não cadastrado')
+    expect(saida).toContain('CNAE não cadastrado')
+    expect(saida).not.toContain('—')
   })
 })

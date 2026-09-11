@@ -1,39 +1,7 @@
-.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; background: var(--ui-background); color: var(--ui-foreground); }
-.workspace { min-width: 0; }
-.sidebar { position: sticky; top: 0; height: 100vh; background: var(--ui-surface); border-right: 1px solid var(--ui-border); padding: 24px 16px; }
-.marca { display: flex; gap: 12px; align-items: center; margin-bottom: 32px; padding: 0 8px; text-decoration: none; }
-.marca > span { display: grid; place-items: center; width: 36px; height: 36px; background: var(--ui-primary); color: var(--ui-primary-foreground); border-radius: 8px; }
-.sidebar nav { display: grid; gap: 4px; }
-.sidebar nav a { padding: 12px; border-radius: 6px; text-decoration: none; color: var(--ui-muted-foreground); }
-.sidebar nav a[aria-current], .sidebar nav a:hover { background: var(--ui-background); color: var(--ui-foreground); }
-.topbar { position: sticky; top: 0; z-index: 10; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 24px; background: var(--ui-background); border-bottom: 1px solid var(--ui-border); }
-.titulo { font-weight: 600; }
-.controles { display: flex; align-items: center; gap: 16px; min-width: 0; }
-.controles select { max-width: 132px; }
-.nome { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-muted-foreground); }
-.shell .topbar .menu { display: none; }
-.conteudo { width: 100%; }
-.conteudo main { width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-.conteudo h1 { font-size: 28px; line-height: 36px; font-weight: 600; }
-.conteudo :global(.text-neutral-600) { color: var(--ui-muted-foreground); }
-.conteudo :global(.text-amber-700) { color: var(--ui-warning); }
 .etapas { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; gap: 4px; }
 .etapas > div { border-top: 2px solid var(--ui-border); text-align: center; padding-top: 8px; color: var(--ui-muted-foreground); }
 .etapas > div[aria-current] { border-color: var(--ui-primary); color: var(--ui-foreground); font-weight: 600; }
 .etapas a, .etapas button, .etapas span { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 4px 12px; border-radius: 6px; }
 .etapas button { cursor: pointer; }
 .etapas a, .etapas button { text-decoration: underline; }
-.shell a:focus-visible, .etapas button:focus-visible, .skip:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
-.skip { position: fixed; top: -100px; left: 16px; z-index: 60; padding: 12px; background: var(--ui-background); color: var(--ui-foreground); }
-.skip:focus { top: 12px; }
-@media (max-width: 700px) {
-  .shell { grid-template-columns: 1fr; }
-  .sidebar { position: fixed; inset: 64px auto 0 0; height: auto; width: min(280px, 85vw); z-index: 20; visibility: hidden; transform: translateX(-101%); }
-  .sidebar.aberto { visibility: visible; transform: translateX(0); }
-  .marca { display: none; }
-  .shell .topbar .menu { display: inline-flex; }
-  .topbar { padding: 8px 16px; }
-  .nome, .titulo { display: none; }
-  .conteudo main { padding: 24px 16px; }
-  .conteudo h1 { font-size: 24px; line-height: 32px; }
-}
+.etapas a:focus-visible, .etapas button:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; }

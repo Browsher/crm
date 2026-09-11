@@ -11,6 +11,7 @@ import { prepararEmpresasConsulta } from '../../tests/e2e/dados-consulta'
 import { prepararEmpresasReserva } from '../../tests/e2e/dados-reserva'
 import { prepararRecentes } from '../../tests/e2e/dados-recentes'
 import { prepararFilaVisual } from '../../tests/e2e/dados-fila-visual'
+import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -63,6 +64,7 @@ try {
   await prepararEmpresasReserva(banco)
   await prepararRecentes(banco)
   await prepararFilaVisual(banco)
+  await prepararCarteiraVisual(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined

@@ -1,7 +1,3 @@
 'use client'
-
-import { createContext, useContext } from 'react'
-
-export type TemaFila = 'light' | 'dark' | 'system'
-export const TemaFilaContext = createContext<TemaFila>('system')
-export function useTemaFila() { return useContext(TemaFilaContext) }
+export { TemaCrmContext as TemaFilaContext, useTemaCrm as useTemaFila } from '@/src/components/crm/tema'
+export type { TemaCrm as TemaFila } from '@/src/components/crm/tema'
