@@ -25,6 +25,17 @@ const boreal: LinhaMeuDia = {
   cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Enviar proposta', proximoPassoData: '2026-09-11',
   situacaoRetorno: 'hoje', vencido: false,
 }
+// Preenchimento só para testar a contagem quando `agenda` (a lista completa,
+// antes do filtro de nome/retorno) tem mais itens do que `linhas` (a lista
+// já filtrada). Não aparecem em nenhum `linhas` de teste.
+function preenchimento(indice: number): LinhaMeuDia {
+  return {
+    id: `99999999-9999-9999-9999-99999999999${indice}`, cnpj: '0', razaoSocial: `Fora do filtro ${indice}`, nomeFantasia: null,
+    cnaePrincipal: null, ultimoContato: null, contatoNome: null, telefone: '1', email: null,
+    cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: null, proximoPassoData: null,
+    situacaoRetorno: 'hoje', vencido: false,
+  }
+}
 const FILTROS = { nome: '', retorno: '' as const }
 
 let raiz: ReturnType<typeof createRoot> | null = null
@@ -37,11 +48,11 @@ afterEach(async () => {
   acaoMock.mockReset()
 })
 
-async function montar(linhas: LinhaMeuDia[], totalAgenda = linhas.length) {
+async function montar(linhas: LinhaMeuDia[], agenda = linhas) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await act(async () => raiz?.render(<PainelMeuDia linhas={linhas} totalAgenda={totalAgenda} filtros={FILTROS} />))
+  await act(async () => raiz?.render(<PainelMeuDia linhas={linhas} agenda={agenda} filtros={FILTROS} />))
   return host
 }
 
@@ -120,7 +131,7 @@ describe('PainelMeuDia no navegador', () => {
     await act(async () => { p1.resolver({ ok: true, contatos: [{ id:'c1', tipo:'ligacao', nota:'Nota da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-09-01T10:00:00Z'), autor:'Ana' }] }) })
     expect(tela.textContent).toContain('Nota da Aurora')
 
-    await act(async () => raiz?.render(<PainelMeuDia linhas={[]} totalAgenda={0} filtros={FILTROS} />))
+    await act(async () => raiz?.render(<PainelMeuDia linhas={[]} agenda={[]} filtros={FILTROS} />))
     expect(tela.textContent).not.toContain('Nota da Aurora')
     expect(tela.textContent).not.toContain('Aurora')
     expect(tela.textContent).toContain('Nenhum retorno pendente para hoje')
@@ -135,7 +146,7 @@ describe('PainelMeuDia no navegador', () => {
   test('posse negada remove a empresa da lista e do perfil, sem selecionar outra', async () => {
     const p1 = pendente()
     acaoMock.mockReturnValueOnce(p1.promessa)
-    const tela = await montar([aurora, boreal], 5)
+    const tela = await montar([aurora, boreal], [aurora, boreal, preenchimento(1), preenchimento(2), preenchimento(3)])
     await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
 
     const alerta = tela.querySelector('[role="alert"]')
@@ -162,7 +173,7 @@ describe('PainelMeuDia no navegador', () => {
   test('lista esvazia por posse negada cai no vazio que já existe', async () => {
     const p1 = pendente()
     acaoMock.mockReturnValueOnce(p1.promessa)
-    const tela = await montar([aurora], 1)
+    const tela = await montar([aurora])
     await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
     expect(tela.textContent).toContain('Nenhum retorno pendente para hoje')
     expect(tela.textContent).not.toContain('Aurora')
@@ -184,6 +195,25 @@ describe('PainelMeuDia no navegador', () => {
     // mesmo nó do DOM (React reconcilia a `<li>` removida, não recria o `<ul>`)
     expect(listaDepois).toBe(lista)
     expect(listaDepois.scrollTop).toBe(42)
+  })
+
+  // Equivalente, para quem navega por teclado, da preservação de rolagem
+  // acima: o botão da empresa removida sai do DOM. Sem cuidado, o foco cai
+  // no `body` e quem usa teclado perde o lugar. O foco precisa ir para o
+  // aviso que aparece no lugar do perfil.
+  test('remover empresa por posse negada manda o foco para o aviso, não para o body', async () => {
+    const p1 = pendente()
+    acaoMock.mockReturnValueOnce(p1.promessa)
+    const tela = await montar([aurora, boreal])
+    const botaoAurora = [...tela.querySelectorAll('button')].find(b => b.textContent?.includes('Aurora'))!
+    botaoAurora.focus()
+    expect(document.activeElement).toBe(botaoAurora)
+
+    await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
+
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement?.getAttribute('role')).toBe('alert')
+    expect(document.activeElement?.textContent).toContain('não está mais na sua carteira')
   })
 
   test('falha de carregamento não vira histórico vazio', async () => {
@@ -249,10 +279,48 @@ describe('PainelMeuDia no navegador', () => {
     expect(tela.textContent).not.toContain('Nota velha da Aurora')
   })
 
-  // Cobre o outro caminho para o mesmo perigo: a primeira resposta de A já
-  // tinha CHEGADO (não ficou pendente) antes de o usuário ir para B. Ao
-  // voltar para A, um pedido novo entra no ar, e a nota antiga (que já
-  // estava no estado) não pode ficar na tela enquanto ele não responde.
+  // O aviso oferece "Recarregar a agenda", um `Link` para a mesma rota: o
+  // painel não remonta, só recebe `linhas`/`agenda` novos do servidor. Isso
+  // prova que a contagem e o aviso reconciliam com a prop nova, em vez de
+  // descontar a mesma remoção duas vezes (uma no cliente, outra porque o
+  // servidor já não manda a empresa) — e sem nenhuma limpeza explícita de
+  // `removidos`: os dois números da contagem saem de FILTRAR `linhas`/
+  // `agenda` pelo id removido, não de subtrair um contador de um total
+  // congelado, então uma vez que o id some de `agenda` também, filtrar por
+  // ele já não muda nada.
+  test('recarregar depois de posse negada não desconta a remoção duas vezes, e o aviso some', async () => {
+    const p1 = pendente()
+    acaoMock.mockReturnValueOnce(p1.promessa)
+    const tela = await montar([aurora, boreal])
+    await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
+    expect(tela.textContent).toContain('1 de 1 retorno')
+    expect(tela.querySelector('[role="alert"]')).not.toBeNull()
+
+    // "recarregar a agenda": o servidor já não manda mais a Aurora
+    await act(async () => raiz?.render(<PainelMeuDia linhas={[boreal]} agenda={[boreal]} filtros={FILTROS} />))
+    expect(tela.textContent).toContain('1 de 1 retorno')
+    expect(tela.textContent).not.toContain('1 de 0')
+    expect(tela.querySelector('[role="alert"]')).toBeNull()
+    expect(tela.textContent).not.toContain('Aurora')
+    expect(tela.textContent).toContain('Boreal')
+  })
+
+  // Cobre o outro lado: uma revalidação que ainda devolve a MESMA lista
+  // (replicação atrasada, por exemplo) não pode trazer o item removido de
+  // volta.
+  test('revalidação que devolve a mesma lista não traz o item removido de volta', async () => {
+    const p1 = pendente()
+    acaoMock.mockReturnValueOnce(p1.promessa)
+    const tela = await montar([aurora, boreal])
+    await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
+    expect(tela.textContent).toContain('1 de 1 retorno')
+
+    // a mesma lista de antes chega de novo (nada mudou no servidor ainda)
+    await act(async () => raiz?.render(<PainelMeuDia linhas={[aurora, boreal]} agenda={[aurora, boreal]} filtros={FILTROS} />))
+    expect(tela.textContent).not.toContain('Aurora')
+    expect(tela.textContent).toContain('1 de 1 retorno')
+  })
+
   test('ida e volta A -> B -> A: nota antiga de A que já tinha chegado não reaparece durante o novo pedido', async () => {
     const p1a = pendente()
     acaoMock.mockReturnValueOnce(p1a.promessa)

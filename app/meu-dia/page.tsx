@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
+import { lerMinhasEmpresas, type EmpresaComigo } from '@/src/features/fila/consulta'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { agendaDoDia, filtrarAgenda, lerFiltrosMeuDia } from './agenda'
@@ -19,9 +19,13 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
   // type predicate de `agendaDoDia` em `app/meu-dia/agenda.ts`), mas a
   // assinatura pública das duas devolve `EmpresaComigo[]`. Reaplicar o mesmo
   // predicate aqui estreita o tipo sem cast, para `PainelMeuDia` receber
-  // `LinhaMeuDia[]` de verdade.
-  const linhasDoDia: LinhaMeuDia[] = filtradas.filter(
-    (l): l is LinhaMeuDia => l.situacaoRetorno === 'atrasado' || l.situacaoRetorno === 'hoje')
+  // `LinhaMeuDia[]` de verdade. Repetido para `agenda` (a lista completa,
+  // antes do filtro de nome/retorno): o painel precisa da lista, não só do
+  // tamanho, para a contagem reconciliar sozinha com prop nova depois de uma
+  // remoção no cliente (posse negada).
+  const ehLinhaDoDia = (l: EmpresaComigo): l is LinhaMeuDia => l.situacaoRetorno === 'atrasado' || l.situacaoRetorno === 'hoje'
+  const linhasDoDia: LinhaMeuDia[] = filtradas.filter(ehLinhaDoDia)
+  const agendaDoDiaEstreita: LinhaMeuDia[] = agenda.filter(ehLinhaDoDia)
 
   return <main className={styles.pagina}>
     <header>
@@ -34,7 +38,7 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
       <Link href="/meu-dia">Limpar filtros</Link>
     </div> : <>
       <FiltrosForm filtros={leitura.filtros} />
-      <PainelMeuDia linhas={linhasDoDia} totalAgenda={agenda.length} filtros={leitura.filtros} />
+      <PainelMeuDia linhas={linhasDoDia} agenda={agendaDoDiaEstreita} filtros={leitura.filtros} />
     </>}
   </main>
 }

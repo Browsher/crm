@@ -63,15 +63,37 @@ function Historico({ contatos }: { contatos: Contato[] }) {
   </li>)}</ol>
 }
 
-export function PainelMeuDia({ linhas, totalAgenda, filtros }: { linhas: LinhaMeuDia[]; totalAgenda: number; filtros: FiltrosMeuDia }) {
+export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[]; agenda: LinhaMeuDia[]; filtros: FiltrosMeuDia }) {
   const [selecionada, setSelecionada] = useState<string | null>(null)
   // Ids que a própria tela já sabe que saíram da carteira (posse negada),
-  // sem esperar a próxima revalidação do servidor. `linhas` continua sendo a
-  // prop do servidor; `linhasEfetivas` é o que a tela realmente mostra.
+  // sem esperar a próxima revalidação do servidor. `linhas`/`agenda`
+  // continuam sendo a prop do servidor a cada render; `linhasEfetivas` e
+  // `agendaEfetiva` são o que a tela realmente mostra.
+  //
+  // De propósito, NUNCA se limpa `removidos` a cada prop nova: um id que o
+  // servidor pare de mandar simplesmente não aparece mais em
+  // `linhas`/`agenda`, então filtrar por ele vira um não-operação sozinho
+  // (a linha já não estava lá para ser filtrada). Só isso já faz a contagem
+  // reconciliar sem subtrair a mesma remoção duas vezes: os dois números
+  // vêm de filtrar listas, nunca de um contador subtraído de um total
+  // congelado. E se uma revalidação devolver a MESMA lista de antes (atraso
+  // de réplica, por exemplo), o id continua em `removidos` e o item não
+  // volta a aparecer — não tem timer, não tem `useEffect` de sincronização,
+  // só a mesma filtragem em todo render.
   const [removidos, setRemovidos] = useState<ReadonlySet<string>>(() => new Set())
-  const [avisoPosse, setAvisoPosse] = useState(false)
   const linhasEfetivas = linhas.filter(l => !removidos.has(l.id))
-  const totalEfetivo = totalAgenda - removidos.size
+  const agendaEfetiva = agenda.filter(l => !removidos.has(l.id))
+  const totalEfetivo = agendaEfetiva.length
+
+  // O aviso guarda A QUAL EMPRESA ele se refere, não um booleano solto: fica
+  // ativo só enquanto esse id ainda está em `linhas` (a prop crua, antes do
+  // filtro de `removidos`). Assim que o servidor manda uma lista nova sem
+  // aquele id (o link "Recarregar a agenda" é só um `Link` para a mesma
+  // rota — o painel não remonta), `avisoAtivo` cai sozinho, no mesmo render
+  // que recebe a prop, sem efeito e sem limpeza explícita.
+  const [avisoParaId, setAvisoParaId] = useState<string | null>(null)
+  const avisoAtivo = avisoParaId !== null && linhas.some(l => l.id === avisoParaId)
+  const alertaRef = useRef<HTMLDivElement>(null)
 
   // `selecionada === null` é "nada escolhido ainda": cai na primeira da
   // lista, como sempre. Uma vez que existe uma escolha explícita (mesmo que
@@ -98,7 +120,7 @@ export function PainelMeuDia({ linhas, totalAgenda, filtros }: { linhas: LinhaMe
           // outro item vire seleção automática.
           setSelecionada(atualId)
           setRemovidos(prev => { const novo = new Set(prev); novo.add(atualId); return novo })
-          setAvisoPosse(true)
+          setAvisoParaId(atualId)
           return
         }
         setHistorico(r.ok
@@ -111,19 +133,38 @@ export function PainelMeuDia({ linhas, totalAgenda, filtros }: { linhas: LinhaMe
       })
   }, [atualId])
 
+  // Foco segue o aviso quando ele aparece: o botão que estava focado acabou
+  // de sair do DOM (a empresa saiu da lista), e sem isto o foco cairia no
+  // `body`, perdendo o lugar de quem navega por teclado — o equivalente, no
+  // teclado, da rolagem preservada para quem usa mouse. Só dispara na
+  // TRANSIÇÃO para `avisoAtivo === true` (dependência no array de deps),
+  // nunca em outro momento, então não sequestra foco enquanto o aviso já
+  // estava visível ou depois que ele some.
+  useEffect(() => {
+    if (avisoAtivo) alertaRef.current?.focus()
+  }, [avisoAtivo])
+
   if (linhasEfetivas.length === 0) {
     const semFiltro = filtros.nome === '' && filtros.retorno === ''
-    return semFiltro
-      ? <div className={styles.vazio}>
-          <h2>Nenhum retorno pendente para hoje</h2>
-          <p>Sua carteira não tem clientes atrasados ou com retorno hoje.</p>
-          <Link href="/carteira">Ver carteira completa</Link>
-        </div>
-      : <div className={styles.vazio}>
-          <h2>Nenhum cliente corresponde à busca</h2>
-          <p>Altere os campos ou limpe os filtros para ver a agenda de hoje.</p>
-          <Link href="/meu-dia">Limpar filtros</Link>
-        </div>
+    if (semFiltro) {
+      // Agenda vazia de verdade: "0 de 0 retornos" não ajuda ninguém.
+      return <div className={styles.vazio}>
+        <h2>Nenhum retorno pendente para hoje</h2>
+        <p>Sua carteira não tem clientes atrasados ou com retorno hoje.</p>
+        <Link href="/carteira">Ver carteira completa</Link>
+      </div>
+    }
+    // Busca sem resultado: a contagem continua acima do vazio, como sempre
+    // apareceu (a mudança de trazer a contagem para dentro do painel não
+    // deveria ter tirado isto — corrigido).
+    return <>
+      <p className={styles.contagem}>0 de {totalEfetivo} {totalEfetivo === 1 ? 'retorno' : 'retornos'}</p>
+      <div className={styles.vazio}>
+        <h2>Nenhum cliente corresponde à busca</h2>
+        <p>Altere os campos ou limpe os filtros para ver a agenda de hoje.</p>
+        <Link href="/meu-dia">Limpar filtros</Link>
+      </div>
+    </>
   }
 
   const historicoAtual = historico && atual && historico.empresaId === atual.id ? historico : null
@@ -138,7 +179,7 @@ export function PainelMeuDia({ linhas, totalAgenda, filtros }: { linhas: LinhaMe
             <button type="button" className={styles.item} aria-current={ehSelecionada ? 'true' : undefined}
               onClick={() => {
                 setSelecionada(empresa.id)
-                setAvisoPosse(false)
+                setAvisoParaId(null)
                 // Zera aqui, no clique (não no efeito, que só reage depois do
                 // commit): revisitar a MESMA empresa (ida e volta) não pode
                 // reexibir um `historico` velho enquanto o novo pedido está no
@@ -154,8 +195,8 @@ export function PainelMeuDia({ linhas, totalAgenda, filtros }: { linhas: LinhaMe
           </li>
         })}
       </ul>
-      {avisoPosse ? <div className={styles.colunaPerfil}>
-        <div role="alert" className={styles.perfil}>
+      {avisoAtivo ? <div className={styles.colunaPerfil}>
+        <div role="alert" tabIndex={-1} ref={alertaRef} className={styles.perfil}>
           <h2>Esta empresa não está mais na sua carteira</h2>
           <p>A posse mudou desde que a agenda foi carregada.</p>
           <Link href={urlMeuDia(filtros)}>Recarregar a agenda</Link>

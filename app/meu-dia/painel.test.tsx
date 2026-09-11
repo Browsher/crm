@@ -2,8 +2,6 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { PainelMeuDia, type LinhaMeuDia } from './painel'
 
-const TOTAL_AGENDA = 2
-
 const aurora: LinhaMeuDia = {
   id: '11111111-1111-1111-1111-111111111111', cnpj: '11222333000181', razaoSocial: 'Aurora', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Ana', telefone: '11999999999', email: 'ana@aurora.com',
@@ -18,18 +16,23 @@ const boreal: LinhaMeuDia = {
 }
 
 test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
-  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} totalAgenda={0} filtros={{ nome: '', retorno: '' }} />)
+  // Agenda vazia de verdade: "0 de 0" não ajuda ninguém, sem contagem.
+  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[]} filtros={{ nome: '', retorno: '' }} />)
   expect(vazia).toContain('Nenhum retorno pendente para hoje')
   expect(vazia).toContain('href="/carteira"')
+  expect(vazia).not.toContain('de 0 retorno')
 
-  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} totalAgenda={0} filtros={{ nome: 'zzz', retorno: '' }} />)
+  // Busca sem resultado: a agenda tem itens, só o filtro não bateu com
+  // nenhum. A contagem continua acima do vazio, como sempre apareceu.
+  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[aurora, boreal]} filtros={{ nome: 'zzz', retorno: '' }} />)
   expect(semResultado).toContain('Nenhum cliente corresponde à busca')
   expect(semResultado).toContain('href="/meu-dia"')
   expect(semResultado).not.toContain('Nenhum retorno pendente para hoje')
+  expect(semResultado).toContain('0 de 2 retornos')
 })
 
 test('primeira empresa já aparece selecionada e o link leva a ficha com os filtros', () => {
-  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} totalAgenda={TOTAL_AGENDA} filtros={{ nome: '', retorno: 'atrasado' }} />)
+  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} agenda={[aurora, boreal]} filtros={{ nome: '', retorno: 'atrasado' }} />)
   expect(html).toContain('Aurora')
   expect(html).toContain('Abrir atendimento')
   expect(html).toContain(`href="/carteira/${aurora.id}?de=meu-dia&amp;retorno=atrasado"`)
