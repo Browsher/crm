@@ -9,6 +9,7 @@ export type EmpresaNaLista = {
   nomeFantasia: string | null
   telefone: string
   email: string | null
+  cnaePrincipal: string | null
   // Os três estados de endereço, separados de propósito: com cidade, com CEP
   // que a base não resolveu, e sem CEP nenhum. A tela diz coisas diferentes
   // para cada um — é a lição de "Fatia empresas: o terceiro estado do CEP".
@@ -26,6 +27,7 @@ type LinhaCrua = {
   nome_fantasia: string | null
   telefone: string
   email: string | null
+  cnae_principal: string | null
   cep: string | null
   localidade: string | null
   uf: string | null
@@ -66,7 +68,7 @@ type LinhaCrua = {
 //
 // O corte é no banco, não no Node: com milhares de linhas, trazer tudo para
 // filtrar em memória é o erro que a paginação existe para não cometer.
-const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e.email, e.cep,
+const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e.email, e.cep, e.cnae_principal,
                     c.localidade, c.uf, count(*) OVER () AS total
                FROM empresa e
                LEFT JOIN cep c ON c.cep = e.cep
@@ -97,6 +99,7 @@ export async function listarEmpresas(gestorId: string, consulta: Consulta): Prom
           nomeFantasia: l.nome_fantasia,
           telefone: l.telefone,
           email: l.email,
+          cnaePrincipal: l.cnae_principal,
           cep: l.cep,
           localidade: l.localidade,
           uf: l.uf,

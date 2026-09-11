@@ -23,6 +23,7 @@ export function Linha({ empresa }: { empresa: EmpresaNaLista }) {
         <span>{formatarTelefone(empresa.telefone)}</span>
         {empresa.email && <span>{empresa.email}</span>}
         <span>{endereco(empresa)}</span>
+        <span>CNAE: {empresa.cnaePrincipal ?? 'Não informado'}</span>
       </div>
     </li>
   )

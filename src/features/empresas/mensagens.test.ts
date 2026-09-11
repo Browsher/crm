@@ -76,3 +76,14 @@ describe('textoDoEndereco: da a saida, nao so o diagnostico', () => {
     expect(dois).toContain('2 CEPs não encontrados')
   })
 })
+
+
+test.each([7, 8] as const)('recusa de colunas informa o formato esperado %s', (esperado) => {
+  expect(textoDaRecusa({ tipo: 'campo', linha: 2, motivo: 'colunas_erradas', valor: '9', esperado })).toContain(`o modelo tem ${esperado}`)
+})
+
+test('CNAE invalido explica as duas formas aceitas', () => {
+  const texto = textoDaRecusa({ tipo: 'campo', linha: 2, motivo: 'cnae_forma', valor: 'abc' })
+  expect(texto).toContain('7 dígitos')
+  expect(texto).toContain('4742-3/00')
+})

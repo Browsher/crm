@@ -11,6 +11,7 @@ const BASE: EmpresaNaLista = {
   telefone: '11987654321',
   email: 'contato@exemplo.com',
   cep: '01310100',
+  cnaePrincipal: null,
   localidade: 'São Paulo',
   uf: 'SP',
 }
@@ -18,6 +19,14 @@ const BASE: EmpresaNaLista = {
 const html = (e: Partial<EmpresaNaLista> = {}) => renderToStaticMarkup(<Linha empresa={{ ...BASE, ...e }} />)
 
 describe('Linha: o que sempre aparece', () => {
+  test('mostra o código do CNAE principal informado', () => {
+    expect(html({ cnaePrincipal: '4742300' })).toContain('CNAE: 4742300')
+  })
+
+  test('explicita quando o CNAE principal não foi informado', () => {
+    expect(html()).toContain('CNAE: Não informado')
+  })
+
   test('CNPJ e telefone formatados, não como estão no banco', () => {
     expect(html()).toContain('11.222.333/0001-81')
     expect(html()).toContain('(11) 98765-4321')
