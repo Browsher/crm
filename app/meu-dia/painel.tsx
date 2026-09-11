@@ -53,6 +53,14 @@ export function PainelMeuDia({ linhas, filtros }: { linhas: EmpresaComigo[]; fil
   // `historicoAtual` abaixo). Enquanto a empresa muda, some ou o pedido ainda
   // está em voo, a renderização cai no "Carregando histórico" por conta
   // disso, sem precisar zerar o estado sincronamente dentro do efeito.
+  //
+  // Sem cleanup de efeito: a identidade de `meu` já é o suficiente para
+  // descartar pedido velho (veja o guarda em `.then`/`.catch` abaixo), porque
+  // toda vez que `atualId` muda o efeito seguinte sobrescreve `pedido.current`
+  // incondicionalmente antes de qualquer resposta chegar, e depois que o
+  // componente desmonta o React 18 já ignora `setState` sem efeito colateral
+  // observável. Mesmo desenho de `app/fila/localizar/registrar-visita.tsx`,
+  // que também não tem cleanup.
   const [historico, setHistorico] = useState<EstadoHistorico | null>(null)
   const pedido = useRef<object | null>(null)
 
@@ -71,7 +79,6 @@ export function PainelMeuDia({ linhas, filtros }: { linhas: EmpresaComigo[]; fil
         if (pedido.current !== meu) return
         setHistorico({ fase: 'erro', empresaId: atualId, motivo: 'falha' })
       })
-    return () => { if (pedido.current === meu) pedido.current = null }
   }, [atualId])
 
   if (linhas.length === 0) {

@@ -6,6 +6,7 @@ import {
   lerFiltrosMeuDia,
   urlFichaDoMeuDia,
   urlMeuDia,
+  voltarDoMeuDia,
 } from './agenda'
 
 function linha(p: Partial<EmpresaComigo> & { id: string }): EmpresaComigo {
@@ -65,4 +66,42 @@ test('urls só carregam o que foi preenchido e marcam a origem', () => {
   expect(urlFichaDoMeuDia('abc', { nome: '', retorno: '' })).toBe('/carteira/abc?de=meu-dia')
   expect(urlFichaDoMeuDia('abc', { nome: 'A B', retorno: 'hoje' }))
     .toBe('/carteira/abc?de=meu-dia&nome=A+B&retorno=hoje')
+})
+
+// `voltarDoMeuDia` é a decisão de destino de volta da ficha quando a origem é
+// `?de=meu-dia`. Ela só pode devolver `urlMeuDia(filtros)` (que só monta
+// `nome`/`retorno` com `URLSearchParams`, nunca ecoa a query bruta) ou o
+// literal fixo `/meu-dia`. Nenhuma string vinda de `params` pode sair como
+// destino: é essa a invariante de segurança que este teste protege.
+test('filtros válidos do Meu dia viram a própria url da agenda', () => {
+  expect(voltarDoMeuDia({})).toBe('/meu-dia')
+  expect(voltarDoMeuDia({ nome: 'Aurora', retorno: 'atrasado' })).toBe('/meu-dia?nome=Aurora&retorno=atrasado')
+})
+
+test('filtro inválido cai no literal fixo /meu-dia', () => {
+  expect(voltarDoMeuDia({ retorno: 'futuro' })).toBe('/meu-dia')
+  expect(voltarDoMeuDia({ nome: 'x'.repeat(121) })).toBe('/meu-dia')
+})
+
+test('retorno repetido em array (query maliciosa ou mal formada) cai no literal fixo', () => {
+  expect(voltarDoMeuDia({ retorno: ['atrasado', 'hoje'] })).toBe('/meu-dia')
+  expect(voltarDoMeuDia({ nome: ['a', 'b'] })).toBe('/meu-dia')
+})
+
+test('nenhuma tentativa de destino arbitrário na query vira o caminho de volta', () => {
+  // `nome` é dado de busca, não destino: mesmo carregando algo parecido com
+  // URL, sai como valor de `nome` dentro de `urlMeuDia`, nunca como um novo
+  // caminho, protocolo ou host.
+  const comUrlAbsoluta = voltarDoMeuDia({ nome: 'https://exemplo.invalido' })
+  expect(comUrlAbsoluta).toBe('/meu-dia?nome=https%3A%2F%2Fexemplo.invalido')
+  expect(comUrlAbsoluta.startsWith('/meu-dia')).toBe(true)
+
+  const comProtocoloRelativo = voltarDoMeuDia({ nome: '//evil.example.com' })
+  expect(comProtocoloRelativo).toBe('/meu-dia?nome=%2F%2Fevil.example.com')
+  expect(comProtocoloRelativo.startsWith('/meu-dia')).toBe(true)
+
+  // Um parâmetro `de`/`href`/`voltarPara` (nome que não existe em
+  // `FiltrosMeuDia`) não é lido por `lerFiltrosMeuDia`, então não influencia
+  // o destino de jeito nenhum.
+  expect(voltarDoMeuDia({ de: 'meu-dia', href: 'https://exemplo.invalido/roubado' })).toBe('/meu-dia')
 })

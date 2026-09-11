@@ -87,13 +87,30 @@ describe('PainelMeuDia no navegador', () => {
     expect(tela.textContent).not.toContain('Nota da Aurora')
   })
 
-  test('desmontar cancela o pedido: resolver depois não chama setState', async () => {
+  // Nota sobre este teste: desde o React 18, chamar o `setState` de um
+  // componente já desmontado por `createRoot().unmount()` não lança e não
+  // atualiza nada, com ou sem o guarda (`pedido.current`) em `painel.tsx`.
+  // Verificado por mutação: removendo o guarda do `.then`, do `.catch` e
+  // até a checagem de `atualId` no início do efeito, o comportamento deste
+  // teste específico não muda em nenhum dos casos. As asserções abaixo (sem
+  // erro novo no console, DOM permanece vazio) são cinto e suspensório contra
+  // regressão futura do runtime, não prova de que o guarda existe: quem
+  // prova isso de verdade é 'resposta antiga é descartada quando a seleção
+  // muda' e sua irmã de rejeição, logo abaixo, onde o componente CONTINUA
+  // montado e a resposta velha teria efeito visível se o guarda sumisse.
+  test('desmontar cancela o pedido: resolver depois não lança nem atualiza o DOM', async () => {
+    const erro = vi.spyOn(console, 'error').mockImplementation(() => {})
     const p1 = pendente()
     acaoMock.mockReturnValueOnce(p1.promessa)
-    await montar([aurora])
+    const tela = await montar([aurora])
     await act(async () => raiz?.unmount())
     raiz = null
-    await expect(act(async () => { p1.resolver({ ok: true, contatos: [] }) })).resolves.not.toThrow()
+    await act(async () => { p1.resolver({ ok: true, contatos: [{ id:'c1', tipo:'ligacao', nota:'Nota da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-09-01T10:00:00Z'), autor:'Ana' }] }) })
+    const inesperados = erro.mock.calls.filter(([mensagem]) =>
+      typeof mensagem !== 'string' || !mensagem.includes('not configured to support act'))
+    expect(inesperados).toEqual([])
+    expect(tela.innerHTML).toBe('')
+    erro.mockRestore()
   })
 
   test('lista que esvazia não deixa perfil nem histórico antigos', async () => {
@@ -132,5 +149,28 @@ describe('PainelMeuDia no navegador', () => {
     await act(async () => { p1.resolver({ ok: false, motivo: 'falha' }) })
     expect(tela.querySelector('[role="alert"]')).not.toBeNull()
     expect(tela.textContent).not.toContain('Ainda não há uma conversa registrada')
+  })
+
+  // `historicoDaAgendaAcao` não rejeita na prática (ela resolve com
+  // `{ ok: false, motivo: 'falha' }`), mas o `.catch` do efeito é defesa
+  // contra rejeição de verdade (erro inesperado na promise). Este teste
+  // prova que essa defesa também descarta pedido velho: sem o guarda do
+  // `.catch`, a rejeição da Aurora (antiga) sobrescreve `historico` com o id
+  // dela, o que desalinha com a seleção corrente (Boreal) e troca a nota já
+  // exibida por "Carregando histórico".
+  test('rejeição de pedido antigo é descartada quando a seleção muda', async () => {
+    let rejeitarAurora!: (motivo: unknown) => void
+    const p1 = new Promise<ResultadoAgendaHistorico>((_resolve, reject) => { rejeitarAurora = reject })
+    acaoMock.mockReturnValueOnce(p1)
+    const tela = await montar([aurora, boreal])
+
+    const p2 = pendente()
+    acaoMock.mockReturnValueOnce(p2.promessa)
+    await clicar(tela, 'Boreal')
+    await act(async () => { p2.resolver({ ok: true, contatos: [{ id:'c2', tipo:'ligacao', nota:'Nota da Boreal', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-09-02T10:00:00Z'), autor:'Beto' }] }) })
+    expect(tela.textContent).toContain('Nota da Boreal')
+
+    await act(async () => { rejeitarAurora(new Error('falha de rede')) })
+    expect(tela.textContent).toContain('Nota da Boreal')
   })
 })

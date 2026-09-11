@@ -65,3 +65,14 @@ export function urlFichaDoMeuDia(id: string, filtros: FiltrosMeuDia): string {
   const base = `/carteira/${encodeURIComponent(id)}?de=meu-dia`
   return query ? `${base}&${query}` : base
 }
+
+// A decisão de "para onde volta" quando a ficha veio do Meu dia
+// (`?de=meu-dia`). `params` é a query bruta da ficha: nunca vira destino por
+// si só. Ou os filtros passam por `lerFiltrosMeuDia` e o destino é
+// `urlMeuDia(filtros)` (que só monta `nome`/`retorno` com `URLSearchParams`,
+// nunca ecoa a query), ou os filtros são recusados e o destino é o literal
+// fixo `/meu-dia`. Nenhum outro caminho, protocolo ou host sai daqui.
+export function voltarDoMeuDia(params: Params): string {
+  const entrada = lerFiltrosMeuDia(params)
+  return entrada.ok ? urlMeuDia(entrada.filtros) : '/meu-dia'
+}

@@ -7,7 +7,7 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { Ficha } from './ficha'
 import { RegistrarVisita } from '../../fila/localizar/registrar-visita'
 import { lerFiltrosCarteira, urlCarteira } from '../filtros'
-import { lerFiltrosMeuDia, urlMeuDia } from '../../meu-dia/agenda'
+import { voltarDoMeuDia } from '../../meu-dia/agenda'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
 
@@ -20,7 +20,6 @@ export default async function PaginaFicha({ params, searchParams }: {
   const { id } = await params
   const query = await searchParams ?? {}
   const doMeuDia = query.de === 'meu-dia'
-  const entradaMeuDia = doMeuDia ? lerFiltrosMeuDia(query) : null
   const entradaCarteira = doMeuDia ? null : lerFiltrosCarteira(query)
   const eu = await exigir('usuario')
   const r = await lerMinhasEmpresas(eu.usuarioId)
@@ -46,11 +45,12 @@ export default async function PaginaFicha({ params, searchParams }: {
     <Button asChild variant="outline"><Link href="/carteira">Limpar filtros</Link></Button>
   </main>
 
-  // A origem é valor de lista fechada e os filtros passam pelo validador
-  // correspondente: nenhuma URL vinda da query vira destino de volta.
+  // A origem é valor de lista fechada. Para o Meu dia, a decisão de destino
+  // (nunca uma URL vinda da query) mora em `voltarDoMeuDia`, testada em
+  // `app/meu-dia/agenda.test.tsx`.
   let voltarPara: string
   if (doMeuDia) {
-    voltarPara = entradaMeuDia?.ok ? urlMeuDia(entradaMeuDia.filtros) : '/meu-dia'
+    voltarPara = voltarDoMeuDia(query)
   } else {
     // Chegou até aqui sem ter voltado no `if` acima, então `entradaCarteira.ok` é sempre `true`.
     voltarPara = entradaCarteira?.ok ? urlCarteira(entradaCarteira.filtros) : '/carteira'
