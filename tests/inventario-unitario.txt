@@ -3,27 +3,63 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 428
+# Total: 725
 
+app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
+app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
+app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador voltar do navegador pede confirmação quando existe rascunho
+app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador voltar durante envio mantém o editor e não abre descarte
 app/carteira/[id]/ficha.test.tsx :: Ficha a linha do tempo vazia diz que ninguem ligou ainda
-app/carteira/[id]/ficha.test.tsx :: Ficha com posse, o formulario pede proximo passo
+app/carteira/[id]/ficha.test.tsx :: Ficha distingue erro de historico vazio
+app/carteira/[id]/ficha.test.tsx :: Ficha mostra ausencias e o CNAE sem inventar dados
 app/carteira/[id]/ficha.test.tsx :: Ficha mostra cadastro, telefone e CNPJ
 app/carteira/[id]/ficha.test.tsx :: Ficha mostra o proximo passo que vale hoje
+app/carteira/[id]/ficha.test.tsx :: Ficha o formulario fica fechado inicialmente
 app/carteira/[id]/ficha.test.tsx :: Ficha sem proximo passo, diz que nao ha combinado
 app/carteira/[id]/ficha.test.tsx :: Ficha tem o caminho de devolver, que a carteira nao tinha
 app/carteira/[id]/ficha.test.tsx :: Ficha vencido aparece com palavra
+app/carteira/filtros.test.tsx :: filtros da carteira aceita filtros conhecidos e normaliza estado
+app/carteira/filtros.test.tsx :: filtros da carteira busca por razao ou fantasia e combina estado e retorno
+app/carteira/filtros.test.tsx :: filtros da carteira devolve array novo ordenado por nome e id
+app/carteira/filtros.test.tsx :: filtros da carteira monta URLs seguras e preserva somente filtros conhecidos
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { …(1) }
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { nome: [ 'a', 'b' ] }
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { retorno: 'amanha' }
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { retorno: [ 'hoje', 'futuro' ] }
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { uf: '12' }
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { uf: 'S' }
+app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { uf: [ 'SP', 'PR' ] }
+app/carteira/filtros.test.tsx :: filtros da carteira renderiza formulario GET com opcoes derivadas da carteira autorizada
 app/carteira/lista.test.tsx :: ListaCarteira cada empresa linka para a ficha
 app/carteira/lista.test.tsx :: ListaCarteira com empresas, monta uma lista
+app/carteira/lista.test.tsx :: ListaCarteira distingue filtro sem resultado de carteira vazia e conta filtradas sobre total
+app/carteira/lista.test.tsx :: ListaCarteira explicita ausencias sem inventar contato ou historico
 app/carteira/lista.test.tsx :: ListaCarteira marca a vencida com palavra, nao so com cor
+app/carteira/lista.test.tsx :: ListaCarteira mostra contato, localizacao, resumo da ultima conversa e data legivel
 app/carteira/lista.test.tsx :: ListaCarteira mostra o proximo passo e a data de cada empresa
 app/carteira/lista.test.tsx :: ListaCarteira nao mostra o aviso de grupo quando todas tem proximo passo
 app/carteira/lista.test.tsx :: ListaCarteira o grupo sem proximo passo aparece contado e nomeado
 app/carteira/lista.test.tsx :: ListaCarteira vazia, diz o que fazer em vez de so dizer que esta vazia
+app/design/galeria.test.tsx :: abre o exemplo no próprio card sem o rótulo Ausente
+app/design/galeria.test.tsx :: aplica os filtros aos dados fictícios e limpar restaura a lista
+app/design/galeria.test.tsx :: avança apenas pelas ações e preserva anotações ao voltar
+app/design/galeria.test.tsx :: carregamento aparece na busca e termina com o resultado
+app/design/galeria.test.tsx :: expõe as seções e dados fictícios da referência
+app/design/galeria.test.tsx :: falha ao salvar preserva a nota e permite tentar novamente
+app/design/galeria.test.tsx :: registra a confirmação junto à seção do diálogo
+app/design/galeria.test.tsx :: simula busca com carregamento e resposta explícita
+app/design/galeria.test.tsx :: troca o tema no escopo da galeria
+app/design/page.test.tsx :: pagina e galeria nao importam caminhos de escrita de negocio
+app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render explica o CNAE opcional e a compatibilidade do modelo antigo
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o botão de conferir
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o campo de arquivo
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render não mostra o botão de confirmar antes de haver relatório
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta exportar CSV UTF-8 preservando zeros à esquerda
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece razão social e nome fantasia
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem e-mail, não sobra rótulo vazio
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem nome fantasia, não sobra rótulo vazio
@@ -45,12 +81,94 @@ app/fila/cartao.test.tsx :: Cartao conta os minutos que faltam a partir do insta
 app/fila/cartao.test.tsx :: Cartao em posse, nao mostra prazo, e o formulario pede proximo passo
 app/fila/cartao.test.tsx :: Cartao empresa sem CEP diz que nao ha endereco
 app/fila/cartao.test.tsx :: Cartao mostra contato, telefone e cidade
+app/fila/cartao.test.tsx :: Cartao na etapa consultar mostra dados e historico sem montar o formulario
+app/fila/cartao.test.tsx :: Cartao na etapa registrar coloca os dados ao lado do formulario visual
 app/fila/cartao.test.tsx :: Cartao o cartao mostra o historico de quem ligou antes
 app/fila/cartao.test.tsx :: Cartao o cartao NAO tem mais botoes soltos de assumir e devolver
+app/fila/cartao.test.tsx :: Cartao prazo expirado oculta detalhes e histórico preservando anotações bloqueadas
+app/fila/entrada-reserva.test.tsx :: puxar usa filtros e contexto original, sem aceitar identidade do formulário
+app/fila/entrada-reserva.test.tsx :: recusa alvo/contexto inválidos e filtros inválidos sem ampliar busca
+app/fila/entrada-reserva.test.tsx :: resultado sem candidata explica preservação e não usa travessão
+app/fila/entrada-sem-reserva.test.tsx :: entrada vazia oferece localizar empresa
+app/fila/entrada-sem-reserva.test.tsx :: mantém anotações sem reserva atual
+app/fila/entrada-sem-reserva.test.tsx :: mantém editor quando a reserva expirou mesmo com nota vazia
+app/fila/etapas.test.tsx :: durante gravação, não permite sair pelas etapas
+app/fila/etapas.test.tsx :: em Puxar, etapas futuras não são links nem botões
+app/fila/etapas.test.tsx :: em Registrar, volta à consulta e à busca preservando filtros
 app/fila/formulario.test.tsx :: Formulario erro aparece na tela
 app/fila/formulario.test.tsx :: Formulario fila vazia diz POR QUE, e nao usa a palavra quarentena
+app/fila/formulario.test.tsx :: Formulario gravação de contato bloqueia voltar pela etapa sem bloquear o envio por si mesma
+app/fila/formulario.test.tsx :: Formulario permite tentar novamente após perder reserva expirada mesmo sem anotações
+app/fila/formulario.test.tsx :: Formulario reserva mostra próxima sem form aninhado e mantém contexto
 app/fila/formulario.test.tsx :: Formulario sem reserva, oferece puxar e nao fala de fila vazia
+app/fila/formulario.test.tsx :: Formulario troca com anotacoes usa dialogo tematico e cancelar preserva a tela
+app/fila/formulario.test.tsx :: Formulario uma reserva nova começa em consultar sem renderizar o formulario de registro
+app/fila/formulario.test.tsx :: Formulario voltar para uma empresa anterior reinicia em consultar
+app/fila/localizar/componentes.test.tsx :: ação automática usa puxar sem empresa e preserva os filtros
+app/fila/localizar/componentes.test.tsx :: filtro de URL antiga ausente nas opções continua visível e selecionado
+app/fila/localizar/componentes.test.tsx :: formulário tem nome e seletores com rótulos e valores atuais
+app/fila/localizar/componentes.test.tsx :: paginação preserva filtros e oferece retorno mesmo em página vazia
+app/fila/localizar/componentes.test.tsx :: resultado de empresa alheia só contém cadastro resumido e estado separado
+app/fila/localizar/componentes.test.tsx :: resultado vazio informa ausência
+app/fila/localizar/componentes.test.tsx :: seletores dependentes ficam desabilitados sem seus pais
+app/fila/localizar/componentes.test.tsx :: URL usa codificação segura e mudança de filtro volta para página um
+app/fila/localizar/perfil.test.tsx :: ação valida UUID, usa sessão e revalida lista somente no sucesso
+app/fila/localizar/perfil.test.tsx :: perfil disponível oferece reserva sem exibir dados privados
+app/fila/localizar/perfil.test.tsx :: perfil inválido ou inexistente responde 404
+app/fila/localizar/perfil.test.tsx :: perfil mostra resumo e retorno filtrado sem gravar durante render
+app/fila/localizar/recentes.test.tsx :: busca filtrada não mistura recentes e preserva filtros no perfil
+app/fila/localizar/recentes.test.tsx :: reserva atual oferece retorno para a fila com os filtros preservados
+app/fila/localizar/recentes.test.tsx :: sem filtros mostra recentes com link para o perfil
+app/fila/localizar/recentes.test.tsx :: sem recentes mostra sugestões
+app/fila/localizar/recentes.test.tsx :: sem reserva atual não oferece avanço para a fila
+app/fila/localizar/registrar-visita.test.tsx :: mount registra uma vez, revalidação não repete e falha mantém aviso
+app/fila/localizar/registrar-visita.test.tsx :: resposta atrasada da empresa anterior não apaga aviso da empresa atual
+app/fila/localizar/reservar.test.tsx :: aceitar troca mantém o submitter reservar e chama a action uma vez
+app/fila/localizar/reservar.test.tsx :: cancelar troca no diálogo preserva rascunho e não chama a action
+app/fila/localizar/visitas-ficha.test.tsx :: ficha autorizada monta registro de visita
+app/fila/shell.test.tsx :: gestor tem links administrativos reais
+app/fila/shell.test.tsx :: menu do vendedor não oferece administração e mantém conteúdo
+app/meu-dia/agenda.test.tsx :: agenda traz só atrasado e hoje, atrasados primeiro
+app/meu-dia/agenda.test.tsx :: busca por nome ignora acento e caixa, e o filtro de retorno recorta
+app/meu-dia/agenda.test.tsx :: dentro do mesmo estado ordena por data, nome e id
+app/meu-dia/agenda.test.tsx :: filtro inválido cai no literal fixo /meu-dia
+app/meu-dia/agenda.test.tsx :: filtro recusa valor fora da lista, repetido e nome longo
+app/meu-dia/agenda.test.tsx :: filtros válidos do Meu dia viram a própria url da agenda
+app/meu-dia/agenda.test.tsx :: nenhuma tentativa de destino arbitrário na query vira o caminho de volta
+app/meu-dia/agenda.test.tsx :: parâmetro desconhecido é ignorado, não invalida a agenda
+app/meu-dia/agenda.test.tsx :: retorno repetido em array (query maliciosa ou mal formada) cai no literal fixo
+app/meu-dia/agenda.test.tsx :: urls só carregam o que foi preenchido e marcam a origem
+app/meu-dia/historico-acao.test.tsx :: id inválido (../../etc) é recusado sem tocar no banco
+app/meu-dia/historico-acao.test.tsx :: id inválido () é recusado sem tocar no banco
+app/meu-dia/historico-acao.test.tsx :: id inválido (abc) é recusado sem tocar no banco
+app/meu-dia/historico-acao.test.tsx :: id válido delega com a identidade da sessão, nunca com id vindo do cliente
+app/meu-dia/historico-acao.test.tsx :: sem sessão a action não lê nada: a guarda interrompe antes
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador desmontar cancela o pedido: resolver depois não lança nem atualiza o DOM
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador durante o carregamento nenhum histórico de outro cliente fica na tela
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador falha de carregamento não vira histórico vazio
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista que esvazia não deixa perfil nem histórico antigos
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador posse negada limpa o perfil e avisa
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador rejeição de pedido antigo é descartada quando a seleção muda
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador resposta antiga é descartada quando a seleção muda
+app/meu-dia/painel.test.tsx :: agenda vazia e busca sem resultado dizem coisas diferentes
+app/meu-dia/painel.test.tsx :: primeira empresa já aparece selecionada e o link leva a ficha com os filtros
+src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
+src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
+src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
+src/ci-conferencia.test.ts :: URL=false fork=true autor=alguem: pular
+src/ci-conferencia.test.ts :: URL=true fork=false autor=Browsher: conferir
+src/ci-conferencia.test.ts :: URL=true fork=false autor=dependabot[bot]: conferir
+src/ci-conferencia.test.ts :: URL=true fork=true autor=alguem: conferir
+src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
+src/components/crm/shell.test.tsx :: fila mantém seu menu ativo e opções do gestor
+src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
+src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
+src/components/ui/controles.test.tsx :: componentes de formulario botao desabilitado preserva a semantica nativa
+src/components/ui/controles.test.tsx :: componentes de formulario campos preservam aria-invalid e atributos nativos
+src/components/ui/controles.test.tsx :: componentes de formulario label mantem a associacao explicita com o campo
+src/docs.test.ts :: documentos sem caractere de controle AGENTS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle CLAUDE.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle CONTINUIDADE-CODEX.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0000.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0001.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0002.md não tem caractere de controle literal
@@ -72,8 +190,15 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0017.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0018.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0019.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0020.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0021.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0022.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0023.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0024.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0025.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0026.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-fundacao-banco.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-login-sessao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-usuarios.md não tem caractere de controle literal
@@ -81,8 +206,24 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-empresas-2.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-empresas.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-09-usuarios-correcoes.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-app-teste.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-backup-diario-drive.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-cnae-importacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-consulta-empresas.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-contato.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-fila-1.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-fila-interface-etapas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-login-credencial-vigente.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-postgres-18.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-reserva-filtrada.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-10-setup-playwright.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-base-visual-validacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-base-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-carteira-dados.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-carteira-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-empresas-recentes.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-fila-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-meu-dia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -90,20 +231,46 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-09-cep-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-09-empresas-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-09-usuarios-correcoes-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-app-teste-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-backup-diario-drive-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-contato-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-fila-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-fila-interface-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-login-credencial-vigente-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-postgres-18-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-setup-playwright-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-11-carteira-meu-dia-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-11-padrao-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
+src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle README.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle REGRAS.md não tem caractere de controle literal
+src/e2e-ambiente.test.ts :: isola credenciais e SSL herdados sem alterar o ambiente pai
+src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@localhost/crm
+src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@railway.internal/teste_0123456789ab
+src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://postgres:teste@localhost/teste_0123456789ab
+src/e2e-ambiente.test.ts :: URL admin recusa host sobrescrito por parâmetro antes de criar banco
+src/e2e-processos.test.ts :: encerra grupo mesmo quando líder já saiu
+src/e2e-processos.test.ts :: encerra processo próprio e descendente que ignora SIGTERM
+src/features/contato/acao.test.ts :: contato bem sucedido atualiza lista de empresas recentes
 src/features/contato/formulario.test.tsx :: FormularioContato avisa que a data de retornar_depois nao agenda nada
+src/features/contato/formulario.test.tsx :: FormularioContato bloqueio também recusa dispatch da action
 src/features/contato/formulario.test.tsx :: FormularioContato com comDevolver, oferece o segundo botao de desfecho
 src/features/contato/formulario.test.tsx :: FormularioContato com posse oferece acompanhamento e nenhum tipo de reserva
 src/features/contato/formulario.test.tsx :: FormularioContato com posse, PEDE proximo passo e data
+src/features/contato/formulario.test.tsx :: FormularioContato enquanto grava congela os campos sem impedir copiar anotações
+src/features/contato/formulario.test.tsx :: FormularioContato erro no visual da fila usa alerta tematico
+src/features/contato/formulario.test.tsx :: FormularioContato falha preserva rascunho e sempre encerra envio
+src/features/contato/formulario.test.tsx :: FormularioContato label da nota tem texto fixo e associação única mesmo com rascunho
 src/features/contato/formulario.test.tsx :: FormularioContato leva o id da empresa e a posse como campos ocultos
+src/features/contato/formulario.test.tsx :: FormularioContato rascunho bloqueado mantém campos editáveis e impede registrar
 src/features/contato/formulario.test.tsx :: FormularioContato sem comDevolver, o desfecho e o sugerido pelo tipo, em campo oculto
 src/features/contato/formulario.test.tsx :: FormularioContato sem posse oferece os cinco tipos de reserva, e nao o de posse
 src/features/contato/formulario.test.tsx :: FormularioContato sem posse, NAO pede proximo passo obrigatorio
+src/features/contato/formulario.test.tsx :: FormularioContato sucesso notifica empresa submetida antes de encerrar envio
+src/features/contato/formulario.test.tsx :: FormularioContato troca pendente congela rascunho sem confundir com bloqueio por expiração
+src/features/contato/formulario.test.tsx :: FormularioContato visual da fila usa os componentes de campo sem mudar o padrao legado
 src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado diz que a empresa vai para a sua carteira
 src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado NAO avisa dos 30 dias, porque assume em vez de devolver
 src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse na ficha, o botao de devolver avisa dos 30 dias ao lado dele
@@ -123,6 +290,8 @@ src/features/contato/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto
 src/features/contato/mensagens.test.ts :: textoDoMotivo reserva_expirada explica que o tempo acabou, e nao fala em permissao
 src/features/contato/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto proprio e nao vazio
 src/features/contato/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto proprio e nao vazio
+src/features/contato/rascunho.test.ts :: qualquer campo ou escolha diferente identifica anotações a preservar
+src/features/contato/rascunho.test.ts :: rascunho inicial escolhe o tipo compatível com posse
 src/features/contato/regras.test.ts :: validar com posse e proximo passo completo, passa
 src/features/contato/regras.test.ts :: validar com posse, proximo passo e EXIGIDO
 src/features/contato/regras.test.ts :: validar data sem passo e recusado antes do banco, e nao vira 23514 na tela
@@ -153,6 +322,16 @@ src/features/contato/um-chamador.test.ts :: a action redireciona quando o desfec
 src/features/contato/um-chamador.test.ts :: a ficha diz para onde voltar depois de devolver
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só existe pelo menos um arquivo com o literal, senão esta catraca não vigia nada
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só o literal aparece em exatamente um arquivo fora de tests/
+src/features/empresas/cnae.test.ts :: normaliza 
+src/features/empresas/cnae.test.ts :: normaliza   
+src/features/empresas/cnae.test.ts :: normaliza  4742300 
+src/features/empresas/cnae.test.ts :: normaliza 0111301
+src/features/empresas/cnae.test.ts :: normaliza 4742 300
+src/features/empresas/cnae.test.ts :: normaliza 4742-3/00
+src/features/empresas/cnae.test.ts :: normaliza 4742/3-00
+src/features/empresas/cnae.test.ts :: normaliza 474230
+src/features/empresas/cnae.test.ts :: normaliza 47423000
+src/features/empresas/cnae.test.ts :: normaliza abc4742300
 src/features/empresas/cnpj.test.ts :: normalizarCnpj "  11222333000181  " vira "11222333000181"
 src/features/empresas/cnpj.test.ts :: normalizarCnpj "" vira null
 src/features/empresas/cnpj.test.ts :: normalizarCnpj "11.222.333/0001-81" vira "11222333000181"
@@ -226,6 +405,9 @@ src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai co
 src/features/empresas/formato.test.ts :: formatarTelefone celular, 11 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone fixo, 10 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone valor fora de forma sai como veio
+src/features/empresas/mensagens.test.ts :: CNAE invalido explica as duas formas aceitas
+src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 7
+src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 8
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo excede limite mostra os dois numeros
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo nao utf-8 diz exatamente o que fazer no Excel
@@ -238,10 +420,24 @@ src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o
 src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico base nao carregada e nenhum CEP no arquivo: nao diz nada
 src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico base nao carregada manda rodar o carregador
 src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o diagnostico singular e plural
+src/features/empresas/modelo.test.ts :: modelo de importação a oitava coluna contém o cabeçalho e um exemplo de CNAE
 src/features/empresas/modelo.test.ts :: modelo de importação existe e é um zip, que é o que um xlsx é
 src/features/empresas/modelo.test.ts :: modelo de importação o arquivo versionado é o que o gerador produz hoje
 src/features/empresas/modelo.test.ts :: modelo de importação o cabeçalho do modelo é o CABECALHO da fase 1
 src/features/empresas/modelo.test.ts :: modelo de importação o exemplo tem CEP com zero à esquerda
+src/features/empresas/modelo.test.ts :: modelo de importação todas as oito colunas são Texto, inclusive nas linhas ainda vazias
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho cabecalho novo acrescenta somente cnae_principal
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho CNAE invalido recusa a linha
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho duplicatas com CNAE 
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho duplicatas com CNAE 0111301
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho duplicatas com CNAE 4742300
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho legado normaliza CNAE ausente para null
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo aceita CNAE 
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo aceita CNAE 0111301
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo aceita CNAE 4742-3/00
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo exige oito campos: 11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo exige oito campos: 11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100,4742300,extra
+src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho NUL em CNAE informa a coluna
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro acima do limite recusa o arquivo
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro arquivo vazio
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro aspas nao fechadas recusam o arquivo
@@ -303,6 +499,45 @@ src/features/fila/repositorio.test.ts :: traduzirResultado nome de propriedade h
 src/features/fila/repositorio.test.ts :: traduzirResultado ok vira sucesso
 src/features/fila/repositorio.test.ts :: traduzirResultado reserva_expirada vira falha com motivo proprio
 src/features/fila/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
+src/features/prospeccao/filtros.test.ts :: lerFiltros aceita ausência e campos vazios do formulário
+src/features/prospeccao/filtros.test.ts :: lerFiltros aceita os limites de texto e página
+src/features/prospeccao/filtros.test.ts :: lerFiltros preserva os filtros combinados e literais de busca
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa bairro só com espaços sem alterar rótulos reais
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"bairro":"\u0000"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"bairro":"Centro"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"cidade":"\u0000"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"cidade":"3550308"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"cnae":"\u0000"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"cnae":"123456"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"cnae":"12345678"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"cnae":"abc"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"nome":"\u0000"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"nome":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":" 2 "}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"-1"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"\u0000"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"0"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"0x10"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"1.5"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"10001"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"1e2"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"abc"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"Infinity"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"pagina":"NaN"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"\u0000"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"S"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SP","bairro":"Centro"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SP","cidade":"123456"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SP","cidade":"12345678"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SP","cidade":"3550308","bairro":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"sp"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SPX"}
+src/features/prospeccao/filtros.test.ts :: lerFiltros usa apenas o primeiro parâmetro duplicado
+src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz comigo em texto acessível sem travessão
+src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz disponivel em texto acessível sem travessão
+src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz em_descanso em texto acessível sem travessão
+src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz outro_vendedor em texto acessível sem travessão
+src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz reservada_comigo em texto acessível sem travessão
 src/features/usuarios/mensagens.test.ts :: um texto por motivo
 src/features/usuarios/regras.test.ts :: acoesDe a própria linha não oferece nada
 src/features/usuarios/regras.test.ts :: acoesDe ativo: nova senha, mudar papel, desativar
@@ -336,6 +571,45 @@ src/server/autenticacao/senha.test.ts :: gerarSenhaProvisoria três blocos de qu
 src/server/autenticacao/senha.test.ts :: validarSenha 8 a 128 caracteres, não só espaço, diferente da atual
 src/server/autenticacao/sessao.test.ts :: hash do token é sha256 hex, determinístico
 src/server/autenticacao/sessao.test.ts :: token: 32 bytes em base64url, sem padding, sempre diferente
+src/server/backup/executar.test.ts :: configuração privada aceita apenas base64 canônico de exatamente 32 bytes
+src/server/backup/executar.test.ts :: configuração privada lê somente o arquivo solicitado sem herdar variáveis do processo
+src/server/backup/executar.test.ts :: configuração privada resolve o proxy pelo resolvedor do sistema forçando IPv4
+src/server/backup/executar.test.ts :: executarBackup grava o alvo saudável e registra falha sanitizada do outro
+src/server/backup/executar.test.ts :: executarBackup lock existente impede concorrência e permanece intacto
+src/server/backup/executar.test.ts :: executarBackup não remove cópias anteriores sem confirmação remota
+src/server/backup/executar.test.ts :: executarBackup não remove lock que foi substituído durante a execução
+src/server/backup/executar.test.ts :: executarBackup publica por renomeação e não deixa temporário
+src/server/backup/executar.test.ts :: executarBackup recusa cada coleta que excede 64 MiB
+src/server/backup/executar.test.ts :: executarBackup recusa destino que não existe sem criá-lo
+src/server/backup/executar.test.ts :: prepararAlvo aceita somente o banco local conhecido
+src/server/backup/executar.test.ts :: prepararAlvo excesso de saída também remove somente o container da coleta
+src/server/backup/executar.test.ts :: prepararAlvo exige proxy, banco, CA e nome TLS conhecidos da Railway
+src/server/backup/executar.test.ts :: prepararAlvo passa segredos ao Docker somente por ambiente herdado
+src/server/backup/executar.test.ts :: prepararAlvo pg_dump preserva donos e privilégios
+src/server/backup/executar.test.ts :: prepararAlvo timeout remove forçadamente somente o container nomeado pela coleta
+src/server/backup/executar.test.ts :: recuperarPacote recupera somente os três arquivos fixos após validar hashes
+src/server/backup/executar.test.ts :: recuperarPacote recusa pacote grande pelo stat antes de ler e confere novamente após a leitura
+src/server/backup/executar.test.ts :: recuperarPacote recusa pasta de recuperação existente
+src/server/backup/pacote.test.ts :: pacote criptografado a mesma chave e conteúdo produzem pacotes distintos recuperáveis
+src/server/backup/pacote.test.ts :: pacote criptografado não devolve conteúdo com chave errada
+src/server/backup/pacote.test.ts :: pacote criptografado recupera todos os bytes, inclusive conteúdo vazio ({"type":"Buffer","data":[]})
+src/server/backup/pacote.test.ts :: pacote criptografado recupera todos os bytes, inclusive conteúdo vazio ({"type":"Buffer","data":[0,255,1,13,10]})
+src/server/backup/pacote.test.ts :: pacote criptografado recusa adulteração de qualquer byte: cabeçalho, nonce, ciphertext e tag
+src/server/backup/pacote.test.ts :: pacote criptografado recusa chave de 0 bytes na cifra e decifra
+src/server/backup/pacote.test.ts :: pacote criptografado recusa chave de 16 bytes na cifra e decifra
+src/server/backup/pacote.test.ts :: pacote criptografado recusa chave de 31 bytes na cifra e decifra
+src/server/backup/pacote.test.ts :: pacote criptografado recusa chave de 33 bytes na cifra e decifra
+src/server/backup/pacote.test.ts :: pacote criptografado recusa chave de 64 bytes na cifra e decifra
+src/server/backup/pacote.test.ts :: pacote criptografado recusa qualquer truncamento ou byte excedente
+src/server/backup/pacote.test.ts :: selecionarExpirados preserva nomes alheios, caminhos, temporários e datas inválidas
+src/server/backup/pacote.test.ts :: selecionarExpirados recusa quantidade de retenção inválida: -1
+src/server/backup/pacote.test.ts :: selecionarExpirados recusa quantidade de retenção inválida: 0
+src/server/backup/pacote.test.ts :: selecionarExpirados recusa quantidade de retenção inválida: 1.5
+src/server/backup/pacote.test.ts :: selecionarExpirados recusa quantidade de retenção inválida: Infinity
+src/server/backup/pacote.test.ts :: selecionarExpirados recusa quantidade de retenção inválida: NaN
+src/server/backup/pacote.test.ts :: selecionarExpirados seleciona os antigos por data sem modificar a lista recebida
+src/server/backup/windows.test.ts :: preparo do backup Windows gera chave recuperável, protege operacionalmente e não sobrescreve preparo
+src/server/backup/windows.test.ts :: preparo do backup Windows recusa estado fora de LOCALAPPDATA antes de gerar chave
 src/server/cep/linha.test.ts :: campoCsv null vira 
 src/server/cep/linha.test.ts :: campoCsv null vira campo vazio SEM aspas, que é como o COPY CSV lê NULL
 src/server/cep/linha.test.ts :: campoCsv Rua
@@ -375,6 +649,14 @@ src/server/db/env.test.ts :: lerEnv PG_SSL_NOME_SERVIDOR é opcional e vazio vir
 src/server/db/env.test.ts :: lerEnv recusa qualquer outro valor, inclusive inseguro
 src/server/db/env.test.ts :: lerEnv string vazia conta como ausente
 src/server/db/env.test.ts :: lerEnv URLs são opcionais na leitura e exigidas por quem usa
+src/server/db/host-local.test.ts :: exigirHostLocal a mensagem diz o motivo e nomeia o host recusado
+src/server/db/host-local.test.ts :: exigirHostLocal a mensagem não vaza a senha da URL
+src/server/db/host-local.test.ts :: exigirHostLocal aceita ::1
+src/server/db/host-local.test.ts :: exigirHostLocal aceita 127.0.0.1
+src/server/db/host-local.test.ts :: exigirHostLocal aceita localhost
+src/server/db/host-local.test.ts :: exigirHostLocal recusa host desconhecido qualquer
+src/server/db/host-local.test.ts :: exigirHostLocal recusa host remoto
+src/server/db/host-local.test.ts :: exigirHostLocal URL que não parseia é recusada, não aceita por engano
 src/server/db/migracoes/arquivos.test.ts :: corpoDe comentário de uma linha no topo fica antes do BEGIN e é removido junto
 src/server/db/migracoes/arquivos.test.ts :: corpoDe ignora linhas vazias nas pontas e mantém o miolo intacto
 src/server/db/migracoes/arquivos.test.ts :: corpoDe remoção é posicional: não procura BEGIN no meio
@@ -393,6 +675,19 @@ src/server/db/migracoes/checar.test.ts :: checarMigracoes nome fora do padrão
 src/server/db/migracoes/checar.test.ts :: checarMigracoes numeração precisa começar em 0000 e ser contígua
 src/server/db/migracoes/checar.test.ts :: checarMigracoes schema ou papel de fornecedor é recusado
 src/server/db/migracoes/checar.test.ts :: checarMigracoes sem BEGIN; na primeira linha de código ou COMMIT; na última
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness a ordem do setconfig não conta
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness app_teste BYPASSRLS
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness app_teste dona de tabela
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness app_teste superusuário
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness configuração de sessão diferente do app_conexao
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness CONNECTION LIMIT diferente do app_conexao, com os dois números na mensagem
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness membresia além do app_conexao é violação
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness membro de app_conexao sem herança: o piso cai em silêncio
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness não é membro de app_conexao
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness papel ausente não é violação: ele não deve existir na Railway
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness papel são não é violação
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness privilégio concedido direto é violação, um por objeto
+src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness rolinherit não entra no Estado: quem manda é o inherit_option do grant (R-010)
 src/server/db/migracoes/invariantes.test.ts :: avaliar _migracao alcançável por papel da aplicação
 src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao ausente é violação única
 src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao BYPASSRLS
@@ -430,7 +725,9 @@ src/server/db/ssl.test.ts :: configSsl verify sem CA valida contra as CAs do sis
 src/server/diretivas.test.ts :: arquivos 'use server' a varredura enxerga a action que mora em src/
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\importar\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\fila\localizar\registrar-visita-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\login\acao.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\meu-dia\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\trocar-senha\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\usuarios\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
