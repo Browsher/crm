@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
@@ -164,14 +164,14 @@ export function Galeria() {
           <Secao id="empresas" titulo="Empresas" descricao="Situação sempre escrita, sem depender apenas da cor.">
             <div className={styles.companyGrid} data-testid="company-list">
               {empresasFiltradas.map((empresa) => (
-                <Card key={empresa.nome}>
+                <Card key={empresa.nome} className={styles.companyCard}>
                   <CardHeader><CardTitle>{empresa.nome}</CardTitle><CardDescription>{empresa.cidade}, {empresa.uf}</CardDescription></CardHeader>
                   <CardContent>
                     <Badge variant={empresa.variante}>{empresa.estado}</Badge>
-                    {empresa.detalhe && <><p className={styles.companyDetail}>{empresa.detalhe}</p><Badge variant="outline">Ausente</Badge></>}
+                    {empresa.detalhe && <p className={styles.companyDetail}>{empresa.detalhe}</p>}
                     {empresaAberta === empresa.nome && <dl className={styles.companyExample}><div><dt>Telefone fictício</dt><dd>(15) 3333-0184</dd></div><div><dt>CNAE</dt><dd>{empresa.cnae}</dd></div><div><dt>Bairro</dt><dd>{empresa.bairro}</dd></div></dl>}
                   </CardContent>
-                  <CardFooter><Button variant="outline" size="sm" aria-expanded={empresaAberta === empresa.nome} onClick={() => setEmpresaAberta(empresaAberta === empresa.nome ? null : empresa.nome)}>{empresaAberta === empresa.nome ? 'Fechar exemplo' : 'Ver exemplo'}</Button></CardFooter>
+                  <CardFooter className={styles.companyFooter}><Button variant="outline" size="sm" aria-expanded={empresaAberta === empresa.nome} onClick={() => setEmpresaAberta(empresaAberta === empresa.nome ? null : empresa.nome)}>{empresaAberta === empresa.nome ? 'Fechar exemplo' : 'Ver exemplo'}</Button></CardFooter>
                 </Card>
               ))}
             </div>
@@ -181,23 +181,27 @@ export function Galeria() {
             </Card>}
           </Secao>
 
-          <Secao id="avisos" titulo="Avisos e carregamento" descricao="Estados que orientam a próxima ação.">
-            <div className={styles.alertGrid}>
-              <Alert variant="warning"><AlertTitle>Reserva expirada</AlertTitle><AlertDescription>A tentativa continua registrada. As anotações permanecem editáveis e podem ser copiadas.</AlertDescription><div className={styles.expiredNotes}><Label htmlFor="anotacoes-expiradas">Anotações da tentativa</Label><Textarea id="anotacoes-expiradas" defaultValue="Responsável retorna depois das 15h." /></div></Alert>
-              <Alert variant="success"><AlertTitle>Resultado registrado</AlertTitle><AlertDescription>A empresa voltou para a fila conforme o resultado escolhido.</AlertDescription></Alert>
-            </div>
-            <div className={styles.loadingCard} aria-label="Exemplo de carregamento"><Skeleton className={styles.skeletonTitle} /><Skeleton className={styles.skeletonLine} /><Skeleton className={styles.skeletonShort} /></div>
+          <Secao id="avisos" titulo="Avisos e carregamento" descricao="Veja onde cada mensagem entra na tela. As ações abaixo simulam a rotina, sem enviar dados.">
+            <ExemplosAvisos />
           </Secao>
 
-          <Secao id="dialogo" titulo="Diálogo" descricao="Uma confirmação curta mantém a decisão e as ações no mesmo contexto.">
+          <Secao id="dialogo" titulo="Diálogo: confirmar antes de trocar" descricao="Aparece sobre a tela quando você clica em Próxima e há anotações não salvas. Cancelar mantém a empresa e as anotações; continuar confirma o descarte.">
+            <Card>
+              <CardHeader><CardTitle>Consultar empresa</CardTitle><CardDescription>Exemplo do passo 2 da Fila</CardDescription></CardHeader>
+              <CardContent className={styles.scenarioContent}>
+                <strong>Aurora Papelaria Ltda.</strong>
+                <div className={styles.notePreview}><strong>Anotações não salvas</strong><p>Enviar proposta e retornar na sexta de manhã.</p></div>
+                <p>Experimente clicar em Próxima. A confirmação aparece no centro da tela para você decidir antes de trocar de cliente.</p>
             <Dialog>
-              <DialogTrigger asChild><Button variant="outline">Abrir confirmação</Button></DialogTrigger>
+              <DialogTrigger asChild><Button variant="outline">Próxima</Button></DialogTrigger>
               <DialogContent theme={tema}>
-                <DialogHeader><DialogTitle>Devolver empresa para a fila?</DialogTitle><DialogDescription>Este é um exemplo local. Nenhuma reserva real será alterada.</DialogDescription></DialogHeader>
-                <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><DialogClose asChild><Button onClick={() => setRespostaDialogo('Exemplo confirmado. Nenhuma reserva real foi alterada.')}>Confirmar exemplo</Button></DialogClose></DialogFooter>
+                <DialogHeader><DialogTitle>Trocar de empresa e descartar as anotações?</DialogTitle><DialogDescription>As anotações não salvas de Aurora Papelaria serão descartadas se você continuar. Esta é uma simulação; nenhum cliente real será alterado.</DialogDescription></DialogHeader>
+                <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><DialogClose asChild><Button onClick={() => setRespostaDialogo('Troca confirmada. A próxima empresa de exemplo seria aberta; nenhum cliente real foi alterado.')}>Descartar e continuar</Button></DialogClose></DialogFooter>
               </DialogContent>
             </Dialog>
             {respostaDialogo && <p className={styles.feedback} role="status">{respostaDialogo}</p>}
+              </CardContent>
+            </Card>
           </Secao>
 
           <Secao id="fluxo" titulo="Fluxo simulado" descricao="Demonstração de componentes. O avanço ocorre somente pelas ações do atendimento.">
@@ -224,6 +228,60 @@ export function Galeria() {
       </div>
     </div>
   )
+}
+
+function ExemplosAvisos() {
+  const [busca, setBusca] = useState<'inicio' | 'carregando' | 'pronto' | 'vazio'>('inicio')
+  const [salvamento, setSalvamento] = useState<'inicio' | 'erro' | 'salvando' | 'pronto'>('inicio')
+
+  useEffect(() => {
+    if (busca !== 'carregando') return
+    const timer = window.setTimeout(() => setBusca('pronto'), 900)
+    return () => window.clearTimeout(timer)
+  }, [busca])
+  useEffect(() => {
+    if (salvamento !== 'salvando') return
+    const timer = window.setTimeout(() => setSalvamento('pronto'), 900)
+    return () => window.clearTimeout(timer)
+  }, [salvamento])
+
+  return <div className={styles.alertGrid}>
+    <Card>
+      <CardHeader><CardTitle>Ao localizar empresas</CardTitle><CardDescription>Passo 1: Puxar. O carregamento ocupa o lugar da lista enquanto a busca acontece.</CardDescription></CardHeader>
+      <CardContent className={styles.scenarioContent}>
+        <div className={styles.row}><Button onClick={() => setBusca('carregando')} disabled={busca === 'carregando'} aria-busy={busca === 'carregando'}>Simular busca</Button><Button variant="outline" disabled={busca === 'carregando'} onClick={() => setBusca('vazio')}>Simular lista vazia</Button></div>
+        <div className={styles.resultPreview} aria-busy={busca === 'carregando'}>
+          {busca === 'inicio' && <p>Clique em Simular busca para ver a lista carregar.</p>}
+          {busca === 'carregando' && <><p role="status">Buscando empresas…</p><Skeleton className={styles.skeletonTitle} /><Skeleton className={styles.skeletonLine} /><Skeleton className={styles.skeletonShort} /></>}
+          {busca === 'pronto' && <><p role="status">1 empresa encontrada</p><strong>Aurora Papelaria Ltda.</strong><p>Campinas, SP</p><Badge variant="success">Disponível</Badge></>}
+          {busca === 'vazio' && <><p role="status">Nenhum resultado para estes filtros</p><p>Altere o nome ou amplie os filtros para pesquisar novamente.</p><Button variant="outline" onClick={() => setBusca('carregando')}>Ampliar busca de exemplo</Button></>}
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader><CardTitle>Ao registrar uma ligação</CardTitle><CardDescription>Passo 3: Registrar. A resposta aparece junto ao formulário, mantendo suas anotações.</CardDescription></CardHeader>
+      <CardContent className={styles.scenarioContent}>
+        <Label htmlFor="nota-salvamento">Anotações do resultado</Label>
+        <Textarea id="nota-salvamento" defaultValue="Enviar proposta amanhã pela manhã." readOnly={salvamento === 'salvando'} />
+        {salvamento === 'erro' && <Alert variant="danger"><AlertTitle>Não foi possível salvar</AlertTitle><AlertDescription>Suas anotações continuam aqui. Tente novamente quando a conexão voltar.</AlertDescription></Alert>}
+        {salvamento === 'salvando' && <p role="status">Salvando resultado… Aguarde a confirmação.</p>}
+        {salvamento === 'pronto' && <Alert variant="success"><AlertTitle>Resultado salvo na demonstração</AlertTitle><AlertDescription>Este aviso aparece após a confirmação do salvamento. Nenhum dado real foi enviado.</AlertDescription></Alert>}
+        <div className={styles.row}>
+          <Button variant="outline" disabled={salvamento === 'salvando'} onClick={() => setSalvamento('erro')}>Simular falha ao salvar</Button>
+          <Button disabled={salvamento === 'salvando'} aria-busy={salvamento === 'salvando'} onClick={() => setSalvamento('salvando')}>{salvamento === 'erro' ? 'Tentar salvar novamente' : 'Simular salvamento'}</Button>
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader><CardTitle>Quando a reserva expira</CardTitle><CardDescription>Durante o atendimento. O aviso fica acima das anotações para explicar por que o registro está bloqueado.</CardDescription></CardHeader>
+      <CardContent className={styles.scenarioContent}>
+        <Alert variant="warning"><AlertTitle>Reserva expirada</AlertTitle><AlertDescription>Você não tem mais esta reserva ativa. Suas anotações foram preservadas e podem ser copiadas.</AlertDescription></Alert>
+        <Label htmlFor="anotacoes-expiradas">Anotações da tentativa</Label><Textarea id="anotacoes-expiradas" defaultValue="Responsável retorna depois das 15h." />
+        <Button disabled>Registrar ligação</Button>
+        <p className={styles.help}>Para registrar, é necessário conseguir a reserva novamente. O aviso não renova a reserva sozinho.</p>
+      </CardContent>
+    </Card>
+  </div>
 }
 
 function Secao({ id, titulo, descricao, children }: { id: string, titulo: string, descricao: string, children: React.ReactNode }) {

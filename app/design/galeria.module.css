@@ -34,6 +34,14 @@
 .stateExamples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 8px; }
 .error { color: var(--ui-danger); font-size: 12px; line-height: 18px; }
 .companyGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.companyCard { display: flex; flex-direction: column; }
+.companyCard .companyFooter { margin-top: auto; }
+.scenarioContent { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+.scenarioContent > button { align-self: flex-start; }
+.resultPreview, .notePreview { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--ui-border); border-radius: 6px; background: var(--ui-surface); }
+.resultPreview { min-height: 170px; }
+.resultPreview > button { justify-self: start; }
+.notePreview p { margin: 0; }
 .companyDetail { padding-top: 8px; color: var(--ui-muted-foreground); font-size: 12px; }
 .companyExample { display: grid; gap: 8px; margin: 16px 0 0; font-size: 14px; }.companyExample div { display: flex; justify-content: space-between; gap: 16px; }.companyExample dt { color: var(--ui-muted-foreground); }.companyExample dd { margin: 0; text-align: right; }
 .alertGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }

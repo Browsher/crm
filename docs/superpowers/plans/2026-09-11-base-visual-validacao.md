@@ -29,7 +29,7 @@ da interface. A inspeção no navegador confere sua aplicação real.
 | Foco claro sobre fundo branco | 5,17:1 |
 | Foco escuro sobre fundo escuro | 7,83:1 |
 
-## Resultado final local
+## Primeira entrega local (5c24539)
 
 - Unitários: 645 passaram, 1 ignorado, em 70 arquivos.
 - Integração: 404 passaram, 1 ignorado, em Postgres 18 temporário.
@@ -49,3 +49,19 @@ nenhum prazo de teste foi relaxado.
 As bordas interativas usam `#71717A`, distintas das bordas decorativas de cards.
 O menu móvel fechado deixa seus links invisíveis também para navegação por foco.
 A aprovação visual do usuário antecede aplicar estes componentes à Fila.
+
+## Ajustes após a primeira validação visual
+
+O usuário pediu retirar Ausente, alinhar os botões no rodapé dos cards e
+contextualizar os avisos e o diálogo. A galeria agora demonstra busca em
+andamento e vazia, falha/salvamento/sucesso junto ao formulário e expiração
+acima das notas. Próxima abre o diálogo sobre descarte de anotações não salvas.
+
+TDD: quatro testes falharam antes das alterações; os 11 testes locais da
+galeria/guarda passaram após implementá-las. Tipos, lint e build passaram.
+O teste de filtros foi restrito à lista de empresas: o exemplo independente
+do diálogo usa o mesmo nome e não deve desaparecer quando a lista é filtrada.
+
+Playwright final: 18 jornadas passaram. A checagem geométrica dos três botões
+em desktop aceitou diferença inferior a 2 px na base, e a galeria continuou
+sem rolagem horizontal em 390/1000 px. Imagens de avisos e diálogo inspecionadas.

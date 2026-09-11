@@ -139,3 +139,15 @@ Validar visualmente, por teclado e em largura de 390 px; conferir contraste e
 
 Próximo passo: especificação executável e plano da base de componentes com
 Superpowers, seguido da galeria e de sua validação pelo usuário.
+
+## Ajustes solicitados na validação da galeria
+
+- Remover o rótulo Ausente do exemplo de empresa com outro vendedor.
+- Alinhar as ações Ver exemplo no rodapé dos cards, independentemente do
+  tamanho do conteúdo. Preservar alinhamento também ao expandir detalhes.
+- Mostrar avisos e carregamento em contexto: busca com lista carregando/vazia,
+  formulário com erro, tentativa de salvar e confirmação, e reserva expirada
+  acima das anotações preservadas.
+- Explicar o diálogo por uma ação da rotina: Próxima com anotações não salvas
+  pede confirmação antes de descartá-las. A galeria apenas demonstra essa
+  confirmação; não altera a Fila operacional.

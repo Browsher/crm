@@ -65,7 +65,7 @@ test('aplica os filtros aos dados fictícios e limpar restaura a lista', async (
   expect(container.querySelector('[data-testid="company-list"]')?.textContent).toContain('Aurora Papelaria Ltda.')
 })
 
-test('abre o exemplo no próprio card e identifica vendedor ausente', async () => {
+test('abre o exemplo no próprio card sem o rótulo Ausente', async () => {
   const card = [...container.querySelectorAll('[data-testid="company-list"] > *')]
     .find((item) => item.textContent?.includes('Café Cedro'))
   const abrir = [...(card?.querySelectorAll('button') ?? [])].find((item) => item.textContent === 'Ver exemplo')
@@ -73,16 +73,36 @@ test('abre o exemplo no próprio card e identifica vendedor ausente', async () =
   await act(async () => abrir?.click())
 
   expect(card?.textContent).toContain('Telefone fictício')
-  expect(card?.textContent).toContain('Ausente')
+  expect(card?.textContent).not.toContain('Ausente')
   expect(card?.textContent).toContain('Fechar exemplo')
 })
 
 test('registra a confirmação junto à seção do diálogo', async () => {
-  await act(async () => botao('Abrir confirmação').click())
-  const confirmar = [...document.body.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Confirmar exemplo')
+  await act(async () => botao('Próxima').click())
+  expect(document.body.textContent).toContain('Trocar de empresa e descartar as anotações?')
+  const confirmar = [...document.body.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Descartar e continuar')
   await act(async () => confirmar?.click())
 
-  expect(container.querySelector('#dialogo [role="status"]')?.textContent).toContain('confirmado')
+  expect(container.querySelector('#dialogo [role="status"]')?.textContent).toContain('empresa de exemplo')
+})
+
+test('carregamento aparece na busca e termina com o resultado', async () => {
+  await act(async () => botao('Simular busca').click())
+  expect(botao('Simular busca').disabled).toBe(true)
+  expect(container.querySelector('#avisos')?.textContent).toContain('Buscando empresas')
+  await act(async () => vi.advanceTimersByTimeAsync(900))
+  expect(botao('Simular busca').disabled).toBe(false)
+  expect(container.querySelector('#avisos')?.textContent).toContain('1 empresa encontrada')
+})
+
+test('falha ao salvar preserva a nota e permite tentar novamente', async () => {
+  await act(async () => botao('Simular falha ao salvar').click())
+  expect(container.querySelector('#avisos')?.textContent).toContain('Não foi possível salvar')
+  expect(container.querySelector<HTMLTextAreaElement>('#nota-salvamento')?.value).toContain('Enviar proposta')
+  await act(async () => botao('Tentar salvar novamente').click())
+  expect(container.querySelector('#avisos')?.textContent).toContain('Salvando resultado')
+  await act(async () => vi.advanceTimersByTimeAsync(900))
+  expect(container.querySelector('#avisos')?.textContent).toContain('Resultado salvo na demonstração')
 })
 
 test('troca o tema no escopo da galeria', async () => {
