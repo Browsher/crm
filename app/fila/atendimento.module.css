@@ -1,0 +1,51 @@
+.cartao {
+  background: var(--ui-background);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 24px;
+  padding: 24px;
+  container-type: inline-size;
+}
+
+.conteudo {
+  display: grid;
+  gap: 16px;
+}
+
+.registro {
+  align-items: start;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+}
+
+.formulario {
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .cartao,
+  .formulario { padding: 16px; }
+}
+
+@container (max-width: 680px) {
+  .registro { grid-template-columns: minmax(0, 1fr); }
+}

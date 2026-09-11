@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { Alert } from '@/src/components/ui/alert'
+import { EntradaSemReserva } from './entrada-sem-reserva'
 import { lerHistorico } from '@/src/features/contato/historico'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
@@ -18,24 +20,19 @@ export default async function PaginaFila({ searchParams }: { searchParams: Promi
   const contatos = historico?.ok ? historico.contatos : []
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Fila</h1>
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Atendimento</h1>
         <nav className="flex items-center gap-3">
           <Link href={urlConsulta(entrada.filtros,1)} className="text-sm underline">
             Localizar empresa
           </Link>
-          <Link href="/carteira" className="text-sm underline">
-            Carteira
-          </Link>
-          <Link href="/" className="text-sm underline">
-            Início
-          </Link>
         </nav>
       </header>
       {r.ok ? (
-        <Formulario reserva={r.reserva} contatos={contatos} contexto={r.contexto} filtros={entrada.filtros} />
+        r.reserva ? <Formulario reserva={r.reserva} contatos={contatos} contexto={r.contexto} filtros={entrada.filtros} />
+          : <EntradaSemReserva contexto={r.contexto} filtros={entrada.filtros} />
       ) : (
-        <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{textoDoMotivo(r.motivo)}</p>
+        <Alert variant="warning">{textoDoMotivo(r.motivo)}</Alert>
       )}
     </main>
   )

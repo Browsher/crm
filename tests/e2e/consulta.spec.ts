@@ -8,7 +8,7 @@ for (const papel of ['vendedore2e', 'gestore2e']) {
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
     await expect(page).toHaveURL('/')
     await page.goto('/fila')
-    await page.getByRole('link', { name: 'Localizar empresa' }).click()
+    await expect(page).toHaveURL(/\/fila\/localizar/)
     await expect(page.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()
     await expect(page.getByLabel('Cidade', { exact: true })).toBeDisabled()
     await page.getByLabel('Nome', { exact: true }).fill('Consulta E2E')

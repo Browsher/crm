@@ -42,7 +42,8 @@ test('perfil não reserva, recentes persistem e pertencem somente ao usuário', 
   await page.getByRole('link', { name: 'Voltar para localizar', exact: true }).click()
   await expect(page.getByRole('listitem')).toHaveCount(1)
   await page.goto('/fila')
-  await expect(page.getByText('Nenhuma empresa reservada para você agora.', { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(/\/fila\/localizar/)
+  await expect(page.getByRole('button', { name: 'Buscar cliente', exact: true })).toBeVisible()
 
   const outroComputador = await browser.newContext({ baseURL: new URL(page.url()).origin })
   try {

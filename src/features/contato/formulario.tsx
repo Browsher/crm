@@ -4,6 +4,11 @@ import { useActionState, useId, useState } from 'react'
 import { registrarContatoAcao, type EstadoContato } from './acao'
 import { DESFECHO_SUGERIDO, EXIGE_POSSE, ROTULO, TIPOS_CONTATO, type TipoContato } from './tipos'
 import { rascunhoInicial, type RascunhoContato } from './rascunho'
+import { Button } from '@/src/components/ui/button'
+import { Input } from '@/src/components/ui/input'
+import { Label } from '@/src/components/ui/label'
+import { Textarea } from '@/src/components/ui/textarea'
+import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 
 // Estado inicial DENTRO do componente cliente, nunca exportado de um arquivo
 // 'use server': o Next transformaria a constante numa referência de servidor e
@@ -26,10 +31,11 @@ type Props = {
   bloqueado?: boolean
   somenteLeitura?: boolean
   onPendingChange?: (pendente: boolean) => void
+  visual?: 'fila'
 }
 
 export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, voltarPara,
-  rascunho, onDraftChange, onSaved, bloqueado = false, somenteLeitura = false, onPendingChange }: Props) {
+  rascunho, onDraftChange, onSaved, bloqueado = false, somenteLeitura = false, onPendingChange, visual }: Props) {
   const camposId = useId()
   const oferecidos = TIPOS_CONTATO.filter((t) => EXIGE_POSSE[t] === posse)
   const [interno, setInterno] = useState<RascunhoContato>(() => ({ ...rascunhoInicial(posse), tipo: tipoInicial ?? oferecidos[0] }))
@@ -59,18 +65,25 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
   // aviso era fixo por posse e mentia em `interessado`, que assume a empresa em
   // vez de devolvê-la — achado da verificação manual.
   const desfecho = DESFECHO_SUGERIDO[tipo]
+  const CampoTexto = visual === 'fila' ? Input : 'input'
+  const CampoNota = visual === 'fila' ? Textarea : 'textarea'
+  const Rotulo = visual === 'fila' ? Label : 'label'
+  const Botao = visual === 'fila' ? Button : 'button'
 
   return (
-    <form action={agir} onSubmit={evento => {
+    <form data-visual={visual} action={agir} onSubmit={evento => {
       if (bloqueado || pendente) evento.preventDefault()
-    }} className="flex flex-col gap-3 border-t pt-3">
+    }} className={visual === 'fila' ? 'flex flex-col gap-4' : 'flex flex-col gap-3 border-t pt-3'}>
       <input type="hidden" name="id" value={empresaId} />
       <input type="hidden" name="posse" value={posse ? 'sim' : 'nao'} />
       {voltarPara ? <input type="hidden" name="voltarPara" value={voltarPara} /> : null}
 
-      {estado.erro ? (
-        <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{estado.erro}</p>
-      ) : null}
+      {estado.erro ? visual === 'fila' ? (
+        <Alert variant="danger">
+          <AlertTitle>Não foi possível registrar</AlertTitle>
+          <AlertDescription>{estado.erro}</AlertDescription>
+        </Alert>
+      ) : <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{estado.erro}</p> : null}
 
       <fieldset className="flex flex-col gap-1">
         <legend className="text-sm font-medium">O que aconteceu na ligação</legend>
@@ -83,30 +96,30 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
       </fieldset>
 
       <div className="flex flex-col gap-1 text-sm">
-        <label htmlFor={`${camposId}-nota`}>Nota</label>
-        <textarea id={`${camposId}-nota`} name="nota" readOnly={pendente || somenteLeitura} rows={2} value={atual.nota} onChange={e => alterar({ nota: e.target.value })} className="rounded border p-2" />
+        <Rotulo htmlFor={`${camposId}-nota`}>Nota</Rotulo>
+        <CampoNota id={`${camposId}-nota`} name="nota" readOnly={pendente || somenteLeitura} rows={2} value={atual.nota} onChange={e => alterar({ nota: e.target.value })} className="rounded border p-2" />
       </div>
 
       {posse ? (
         <>
           <label className="flex flex-col gap-1 text-sm">
             Próximo passo
-            <input type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             Data do próximo passo
-            <input type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
           </label>
         </>
       ) : (
         <>
           <label className="flex flex-col gap-1 text-sm">
             Combinado (opcional)
-            <input type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             Data combinada (opcional)
-            <input type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
           </label>
           {desfecho === 'devolver' ? (
             /* A promessa que o sistema NÃO cumpre, dita com todas as letras.
@@ -128,7 +141,7 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
           Devolver tira a empresa da sua carteira e ela volta para a fila em 30 dias.
         </p>
         <div className="flex gap-2">
-          <button
+          <Botao
             type="submit"
             name="desfecho"
             value={desfecho}
@@ -136,8 +149,8 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
             className="rounded border px-3 py-2 text-sm font-medium"
           >
             {pendente ? 'Registrando…' : 'Registrar'}
-          </button>
-          <button
+          </Botao>
+          <Botao
             type="submit"
             name="desfecho"
             value="devolver"
@@ -145,19 +158,19 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
             className="rounded border px-3 py-2 text-sm"
           >
             Registrar e devolver
-          </button>
+          </Botao>
         </div>
         </>
       ) : (
         <>
           <input type="hidden" name="desfecho" value={desfecho} />
-          <button
+          <Botao
             type="submit"
             disabled={pendente || bloqueado}
             className="self-start rounded border px-3 py-2 text-sm font-medium"
           >
             {pendente ? 'Registrando…' : 'Registrar'}
-          </button>
+          </Botao>
         </>
       )}
     </form>

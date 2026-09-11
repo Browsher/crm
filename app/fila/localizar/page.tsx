@@ -8,6 +8,10 @@ import { Resultados } from './resultados'
 import { Paginacao } from './paginacao'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { listarRecentes, listarSugestoes } from '@/src/features/prospeccao/recentes'
+import { EtapasFila } from '../etapas'
+import { Reservar } from './reservar'
+import styles from './localizar.module.css'
+import { Button } from '@/src/components/ui/button'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -15,8 +19,8 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
   const eu = await exigir('usuario')
   const r = lerFiltros(await searchParams)
   if (!r.ok) return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
-      <h1 className="text-2xl font-semibold">Localizar empresa</h1>
+    <main className={styles.pagina}>
+      <h1>Começar a prospecção</h1>
       <p role="alert">Um dos filtros é inválido. Limpe os filtros e tente novamente.</p>
       <Link href="/fila/localizar" className="underline">Limpar filtros</Link>
     </main>
@@ -31,14 +35,20 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
   const lista = resultado ?? inicial
   const minhas = lista?.ok ? await lerMinhasEmpresas(eu.usuarioId) : null
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Localizar empresa</h1>
-        <Link href={urlConsulta(filtros, 1).replace('/fila/localizar', '/fila')} className="text-sm underline">Voltar para a fila</Link>
+    <main className={styles.pagina}>
+      <EtapasFila etapa="puxar" filtros={filtros} />
+      <header className={styles.cabecalho}>
+        <h1>Começar a prospecção</h1>
+        <p>Puxe a próxima empresa disponível. A reserva mantém o cliente com você enquanto registra a conversa.</p>
+        {minhas?.ok && minhas.reserva && <Button asChild variant="outline" className={styles.acaoCabecalho}><Link href={urlConsulta(filtros, filtros.pagina).replace('/fila/localizar', '/fila')}>Voltar para a fila</Link></Button>}
       </header>
-      <p>Pesquise empresas e confira a disponibilidade para atendimento.</p>
-      {opcoes.ok ? <Formulario key={JSON.stringify(filtros)} filtros={filtros} opcoes={opcoes.opcoes} />
+      <section className={styles.painel} aria-labelledby="titulo-localizar">
+      <h2 id="titulo-localizar">Localizar empresa</h2>
+      <p className={styles.ajuda}>Pesquise pelo nome ou refine os resultados pelos filtros.</p>
+      {opcoes.ok ? <><Formulario key={JSON.stringify(filtros)} filtros={filtros} opcoes={opcoes.opcoes} />
+        {minhas?.ok && <Reservar empresaId={null} contexto={minhas.contexto} filtros={filtros} empresaAtual={minhas.reserva?.id ?? null} />}</>
         : <p role="alert">Você não tem permissão para consultar empresas.</p>}
+      </section>
       {inicial?.ok && <h2 className="text-lg font-semibold">{sugerir ? 'Sugestões de empresas' : 'Empresas recentes'}</h2>}
       {lista && (lista.ok ? <>
         <Resultados empresas={lista.empresas} filtros={filtros} reserva={minhas?.ok ? {contexto:minhas.contexto,filtros,empresaAtual:minhas.reserva?.id ?? null} : undefined} />
