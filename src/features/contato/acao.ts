@@ -44,6 +44,7 @@ export async function registrarContatoAcao(
   revalidatePath('/fila/localizar')
   revalidatePath('/carteira')
   revalidatePath(`/carteira/${empresaId}`)
+  revalidatePath('/meu-dia')
 
   // Devolver tira a empresa da carteira, e `/carteira/[id]` passa a responder
   // 404 para ela. Sem isto, a ação dava certo e a revalidação da própria rota
