@@ -7,6 +7,8 @@ export type EmpresaComigo = {
   cnpj: string
   razaoSocial: string
   nomeFantasia: string | null
+  cnaePrincipal: string | null
+  ultimoContato: { nota: string | null; criadoEm: Date } | null
   contatoNome: string | null
   telefone: string
   email: string | null
@@ -23,6 +25,7 @@ export type EmpresaComigo = {
   // em data civil de São Paulo — nenhuma comparação de data em TypeScript.
   proximoPasso: string | null
   proximoPassoData: string | null
+  situacaoRetorno: 'atrasado' | 'hoje' | 'futuro' | 'sem_data'
   vencido: boolean
 }
 
@@ -34,6 +37,10 @@ type LinhaCrua = {
   cnpj: string
   razao_social: string
   nome_fantasia: string | null
+  cnae_principal: string | null
+  ultimo_contato_id: string | null
+  ultima_nota: string | null
+  ultimo_contato_em: Date | null
   contato_nome: string | null
   telefone: string
   email: string | null
@@ -42,6 +49,7 @@ type LinhaCrua = {
   posse: boolean
   proximo_passo: string | null
   proximo_passo_data: string | null
+  situacao_retorno: EmpresaComigo['situacaoRetorno']
   vencido: boolean
 }
 
@@ -58,15 +66,22 @@ type LinhaCrua = {
 // A ordem é `proximo_passo_data ASC NULLS LAST`: vencido cai no topo sozinho,
 // porque data menor vem antes. NULLS LAST é decisão — empresa sem próximo
 // passo precisa de atenção, mas menos que um combinado vencido há três dias.
-const SQL = `WITH minhas AS (SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.contato_nome, e.telefone, e.email, e.cep,
+const SQL = `WITH minhas AS (SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.cnae_principal, e.contato_nome, e.telefone, e.email, e.cep,
                     f.reservado_ate, f.vendedor_id IS NOT NULL AS posse,
+                    ultimo.id AS ultimo_contato_id, ultimo.nota AS ultima_nota, ultimo.criado_em AS ultimo_contato_em,
                     ultimo.proximo_passo,
                     to_char(ultimo.proximo_passo_data, 'YYYY-MM-DD') AS proximo_passo_data,
+                    CASE
+                      WHEN ultimo.proximo_passo_data IS NULL THEN 'sem_data'
+                      WHEN ultimo.proximo_passo_data < (now() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'atrasado'
+                      WHEN ultimo.proximo_passo_data = (now() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'hoje'
+                      ELSE 'futuro'
+                    END AS situacao_retorno,
                     coalesce(ultimo.proximo_passo_data < (now() AT TIME ZONE 'America/Sao_Paulo')::date, false) AS vencido
                FROM empresa_fila f
                JOIN empresa e ON e.id = f.empresa_id
                LEFT JOIN LATERAL (
-                 SELECT c.proximo_passo, c.proximo_passo_data
+                 SELECT c.id, c.nota, c.criado_em, c.proximo_passo, c.proximo_passo_data
                    FROM contato c
                   WHERE c.empresa_id = e.id
                   ORDER BY c.criado_em DESC, c.id DESC
@@ -92,6 +107,11 @@ export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMin
         cnpj: l.cnpj,
         razaoSocial: l.razao_social,
         nomeFantasia: l.nome_fantasia,
+        cnaePrincipal: l.cnae_principal,
+        ultimoContato: l.ultimo_contato_id === null ? null : {
+          nota: l.ultima_nota,
+          criadoEm: l.ultimo_contato_em!,
+        },
         contatoNome: l.contato_nome,
         telefone: l.telefone,
         email: l.email,
@@ -101,6 +121,7 @@ export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMin
         posse: l.posse,
         proximoPasso: l.proximo_passo,
         proximoPassoData: l.proximo_passo_data,
+        situacaoRetorno: l.situacao_retorno,
         vencido: l.vencido,
       }))
       return {

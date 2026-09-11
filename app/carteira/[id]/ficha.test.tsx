@@ -24,6 +24,9 @@ const EMPRESA: EmpresaComigo = {
   posse: true,
   proximoPasso: 'Mandar orçamento',
   proximoPassoData: '2026-10-01',
+  cnaePrincipal: null,
+  ultimoContato: null,
+  situacaoRetorno: 'sem_data',
   vencido: false,
 }
 
