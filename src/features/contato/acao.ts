@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { exigir } from '../../server/autenticacao/guarda'
 import { textoDaFalta, textoDoMotivo } from './mensagens'
+import { destinoDeVolta } from './destino'
 import { validar } from './regras'
 import { registrarContato } from './repositorio'
 
@@ -26,7 +27,11 @@ export async function registrarContatoAcao(
   // Só a ficha manda `voltarPara`: ela é a única tela cuja ROTA deixa de
   // existir quando a empresa sai da mão do vendedor. A fila não manda, porque
   // /fila continua sendo /fila depois de devolver.
-  const voltarPara = String(form.get('voltarPara') ?? '')
+  //
+  // O campo vem do cliente e nunca vai cru para o `redirect`: `destinoDeVolta`
+  // devolve `null` quando não veio destino, e um destino previsto, remontado,
+  // quando veio. Ver src/features/contato/destino.ts.
+  const voltarPara = destinoDeVolta(String(form.get('voltarPara') ?? ''))
   const r = validar({
     tipo: String(form.get('tipo') ?? ''),
     desfecho: String(form.get('desfecho') ?? ''),
