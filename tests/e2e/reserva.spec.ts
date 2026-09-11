@@ -61,6 +61,9 @@ test('reserva escolhida troca com confirmação e recusa contexto antigo de outr
   await expect(page.getByText('Nenhuma empresa reservada para você agora.', { exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Reserva E2E B', exact: true })).not.toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Nota', exact: true })).toHaveCount(0)
+  await page.goto('/fila/localizar')
+  await expect(page.getByRole('heading', { name: 'Empresas recentes', exact: true })).toBeVisible()
+  await expect(page.getByRole('listitem').first().getByRole('heading', { name: 'Reserva E2E B', exact: true })).toBeVisible()
 })
 
 test('fila sem próxima e expiração visual preservam texto sem renovação automática', async ({ page }) => {

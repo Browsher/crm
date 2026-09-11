@@ -5,7 +5,7 @@ import { Reservar } from './reservar'
 import Link from 'next/link'
 import { urlConsulta } from './navegacao'
 
-export function Resultados({ empresas, reserva }: { empresas: ResumoEmpresa[]; reserva?: {contexto:string|null; filtros:Filtros;empresaAtual:string|null} }) {
+export function Resultados({ empresas, reserva, filtros = reserva?.filtros, mostrarPerfil = true }: { empresas: ResumoEmpresa[]; filtros?: Filtros; mostrarPerfil?: boolean; reserva?: {contexto:string|null; filtros:Filtros;empresaAtual:string|null} }) {
   if (!empresas.length) return <p role="status">Nenhuma empresa encontrada.</p>
   return (
     <ul className="flex flex-col gap-3" aria-label="Empresas encontradas">
@@ -24,6 +24,7 @@ export function Resultados({ empresas, reserva }: { empresas: ResumoEmpresa[]; r
             <div><p className="font-medium">{mensagem.titulo}</p>
               {mensagem.detalhe && <p className="text-sm">{mensagem.detalhe}</p>}
             </div>
+            {mostrarPerfil && <Link href={filtros ? urlConsulta(filtros, filtros.pagina).replace('/fila/localizar?', `/fila/localizar/${empresa.id}?`) : `/fila/localizar/${empresa.id}`} className="text-sm underline">Ver perfil</Link>}
             {reserva && empresa.disponibilidade === 'disponivel' && <Reservar empresaId={empresa.id} {...reserva} />}
             {empresa.disponibilidade === 'reservada_comigo' && <Link href={reserva ? urlConsulta(reserva.filtros, 1).replace('/fila/localizar', '/fila') : '/fila'} className="text-sm underline">Abrir atendimento</Link>}
             {empresa.disponibilidade === 'comigo' && <Link href={`/carteira/${empresa.id}`} className="text-sm underline">Abrir na carteira</Link>}

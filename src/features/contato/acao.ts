@@ -41,6 +41,7 @@ export async function registrarContatoAcao(
   if (!gravado.ok) return { erro: textoDoMotivo(gravado.motivo), ok: false }
 
   revalidatePath('/fila')
+  revalidatePath('/fila/localizar')
   revalidatePath('/carteira')
   revalidatePath(`/carteira/${empresaId}`)
 

@@ -11,6 +11,7 @@ vi.mock('react', async () => {
   return { ...react, useActionState: () => [estado.atual, () => {}, false] }
 })
 vi.mock('./acoes', () => ({ agirNaFilaAcao: () => {} }))
+vi.mock('./localizar/registrar-visita', () => ({ RegistrarVisita: ({ empresaId }: { empresaId: string }) => <span data-visita={empresaId} /> }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: () => {} }) }))
 const memoria = vi.hoisted(() => ({ entradas: {} as Record<string, unknown> }))
 vi.mock('./rascunhos', () => ({ useRascunhos: () => ({ entradas: memoria.entradas, gravando: false, setGravando: () => {}, marcarExpirada: () => {} }) }))
@@ -55,6 +56,7 @@ describe('Formulario', () => {
       posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
     }} contatos={[]} />)
     expect(saida).toContain('Próxima')
+    expect(saida).toContain('data-visita="e1"')
     expect(saida).toContain('name="contexto" value="versao"')
     expect(saida).not.toMatch(/<form[^>]*>(?:(?!<\/form>)[\s\S])*<form/)
   })
