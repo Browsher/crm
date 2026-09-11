@@ -16,6 +16,18 @@ import { FormularioImportar } from './formulario'
 const html = () => renderToStaticMarkup(<FormularioImportar />)
 
 describe('FormularioImportar: o primeiro render', () => {
+  test('explica o CNAE opcional e a compatibilidade do modelo antigo', () => {
+    expect(html()).toContain('CNAE principal é opcional')
+    expect(html()).toContain('sete colunas continua válido')
+    expect(html()).toContain('oitava coluna')
+  })
+
+  test('orienta exportar CSV UTF-8 preservando zeros à esquerda', () => {
+    expect(html()).toContain('CSV UTF-8')
+    expect(html()).toContain('Texto')
+    expect(html()).toContain('zeros à esquerda')
+  })
+
   test('mostra o campo de arquivo', () => {
     expect(html()).toContain('type="file"')
   })

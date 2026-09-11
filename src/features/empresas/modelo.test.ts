@@ -31,6 +31,19 @@ describe('modelo de importação', () => {
   test('o exemplo tem CEP com zero à esquerda', () => {
     expect(montarModelo().toString('latin1')).toContain('<t>01310100</t>')
   })
+
+  test('a oitava coluna contém o cabeçalho e um exemplo de CNAE', () => {
+    const sheet = montarModelo().toString('latin1')
+    expect(sheet).toContain('<c r="H1" s="2" t="inlineStr"><is><t>cnae_principal</t>')
+    expect(sheet).toContain('<c r="H2" s="1" t="inlineStr"><is><t>4742300</t>')
+    expect(sheet).toContain('<dimension ref="A1:H2"/>')
+  })
+
+  test('todas as oito colunas são Texto, inclusive nas linhas ainda vazias', () => {
+    const sheet = montarModelo().toString('latin1')
+    expect(sheet).toContain('<col min="1" max="8" width="22" style="1" customWidth="1"/>')
+    expect(sheet).toContain('<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>')
+  })
 })
 
 // O LIMITE DECLARADO: nada aqui prova que o EXCEL renderiza as colunas como

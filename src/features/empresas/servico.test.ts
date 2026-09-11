@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Endereco } from '../../server/cep/resolver'
-import { CABECALHO, type LinhaAceita } from './planilha'
+import { CABECALHO_LEGADO as CABECALHO, type LinhaAceita } from './planilha'
 import type { RepositorioEmpresas } from './repositorio'
 import { analisar, importar } from './servico'
 

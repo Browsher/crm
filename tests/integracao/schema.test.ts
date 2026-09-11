@@ -43,6 +43,7 @@ describe('migrações reais', () => {
       '0020_usuario_publico.sql',
       '0021_papel_teste.sql',
       '0022_credencial_vigente.sql',
+      '0023_empresa_cnae.sql',
     ])
   })
 

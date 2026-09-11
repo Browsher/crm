@@ -17,7 +17,7 @@ export function textoDoMotivo(m: Motivo): string {
 // As mensagens de estrago do Excel explicam a CAUSA. Sem isso o gestor lê
 // "CNPJ inválido" e não descobre que a culpa é da formatação da coluna — e o
 // conserto de trinta segundos vira uma tarde.
-const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string) => string> = {
+const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8) => string> = {
   cnpj_vazio: () => 'CNPJ em branco.',
   cnpj_notacao_cientifica: (v) =>
     `CNPJ em notação científica (${v}) — os dígitos se perderam. Formate a coluna como Texto na planilha e preencha de novo.`,
@@ -30,12 +30,13 @@ const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string) => string> = {
   cep_curto: (v) =>
     `CEP com 7 dígitos (${v}) — o zero à esquerda foi comido. Formate a coluna como Texto na planilha.`,
   cep_forma: (v) => `CEP inválido (${v}). São 8 dígitos.`,
+  cnae_forma: (v) => `CNAE inválido (${v}). Informe 7 dígitos ou a forma 4742-3/00.`,
   caractere_invalido: (v) => `A coluna ${v} tem um caractere que o banco não aceita (byte nulo). Reescreva a célula.`,
-  colunas_erradas: (v) => `A linha tem ${v} colunas; o modelo tem 7. Confira se sobrou ou faltou separador.`,
+  colunas_erradas: (v, esperado = 7) => `A linha tem ${v} colunas; o modelo tem ${esperado}. Confira se sobrou ou faltou separador.`,
 }
 
 export function textoDaRecusa(r: Recusa): string {
-  if (r.tipo === 'campo') return `Linha ${r.linha}: ${TEXTO_DO_CAMPO[r.motivo](r.valor)}`
+  if (r.tipo === 'campo') return `Linha ${r.linha}: ${TEXTO_DO_CAMPO[r.motivo](r.valor, r.esperado)}`
   const fim =
     r.divergencia === null
       ? 'as duas linhas são iguais, então apague uma.'

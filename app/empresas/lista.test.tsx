@@ -11,6 +11,7 @@ const UMA: EmpresaNaLista = {
   telefone: '11987654321',
   email: null,
   cep: null,
+  cnaePrincipal: null,
   localidade: null,
   uf: null,
 }

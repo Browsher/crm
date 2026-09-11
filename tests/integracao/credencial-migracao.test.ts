@@ -18,7 +18,7 @@ test('0022 atualiza banco povoado em 0021 preservando sessões e atribuindo vers
     const id = await criarUsuario(banco, 'vendedor', 'Existente')
     await banco.sql('INSERT INTO autenticacao.credencial (usuario_id, senha_hash) VALUES ($1, $2)', [id, 'hash-anterior'])
     await banco.sql("SELECT autenticacao.sessao_criar($1, 'sessao-existente', now() + interval '1 hour')", [id])
-    expect(await aplicar(banco.urlAdmin, PASTA_MIGRACOES)).toEqual({ ok: true, aplicadas: ['0022_credencial_vigente.sql'] })
+    expect(await aplicar(banco.urlAdmin, PASTA_MIGRACOES)).toEqual({ ok: true, aplicadas: ['0022_credencial_vigente.sql', '0023_empresa_cnae.sql'] })
     expect(await banco.sql('SELECT senha_hash, versao FROM autenticacao.credencial WHERE usuario_id = $1', [id]))
       .toEqual([{ senha_hash: 'hash-anterior', versao: '1' }])
     expect(await banco.sql("SELECT usuario_id FROM autenticacao.sessao_atual('sessao-existente')")).toEqual([{ usuario_id: id }])

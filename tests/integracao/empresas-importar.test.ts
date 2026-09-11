@@ -17,6 +17,7 @@ const linha = (n: number, cnpj: string, extra: Partial<LinhaAceita> = {}): Linha
   telefone: '11987654321',
   email: null,
   cep: null,
+  cnaePrincipal: null,
   ...extra,
 })
 

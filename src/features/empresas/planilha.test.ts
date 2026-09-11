@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { analisarPlanilha, CABECALHO, type Analise } from './planilha'
+import { analisarPlanilha, CABECALHO_LEGADO as CABECALHO, CABECALHO as CABECALHO_NOVO, type Analise } from './planilha'
 
 const bytes = (texto: string) => new TextEncoder().encode(texto)
 const comCabecalho = (...linhas: string[]) => bytes([CABECALHO, ...linhas].join('\n'))
@@ -70,6 +70,7 @@ describe('fase 1: a linha valida', () => {
         telefone: '11987654321',
         email: 'contato@aurora.com.br',
         cep: '01310100',
+        cnaePrincipal: null,
       },
     ])
     expect(a.recusadas).toEqual([])
@@ -108,7 +109,7 @@ describe('fase 1: as recusas de campo', () => {
     test(`recusa ${motivo}`, () => {
       const a = ok(analisarPlanilha(comCabecalho(linha)))
       expect(a.aceitas).toEqual([])
-      expect(a.recusadas).toEqual([{ tipo: 'campo', linha: 2, motivo, valor }])
+      expect(a.recusadas).toEqual([{ tipo: 'campo', linha: 2, motivo, valor, ...(motivo === 'colunas_erradas' ? { esperado: 7 } : {}) }])
     })
   }
 })
@@ -228,5 +229,46 @@ describe('fase 1: byte NUL', () => {
     const a = ok(analisarPlanilha(bytes([CABECALHO, VALIDA, suja].join('\n'))))
     expect(a.aceitas.map((l) => l.cnpj)).toEqual(['11222333000181'])
     expect(a.recusadas.map((r) => r.linha)).toEqual([3])
+  })
+})
+
+
+describe('CNAE e formatos de cabecalho', () => {
+  const novo = (...linhas: string[]) => bytes([CABECALHO_NOVO, ...linhas].join('\n'))
+
+  test('cabecalho novo acrescenta somente cnae_principal', () => {
+    expect(CABECALHO_NOVO).toBe(`${CABECALHO},cnae_principal`)
+  })
+
+  test('legado normaliza CNAE ausente para null', () => {
+    expect(ok(analisarPlanilha(comCabecalho(VALIDA))).aceitas[0].cnaePrincipal).toBe(null)
+  })
+
+  test.each([['', null], ['4742-3/00', '4742300'], ['0111301', '0111301']])('novo aceita CNAE %s', (bruto, valor) => {
+    expect(ok(analisarPlanilha(novo(`${VALIDA},${bruto}`))).aceitas[0].cnaePrincipal).toBe(valor)
+  })
+
+  test('CNAE invalido recusa a linha', () => {
+    expect(ok(analisarPlanilha(novo(`${VALIDA},abc4742300`))).recusadas).toEqual([
+      { tipo: 'campo', linha: 2, motivo: 'cnae_forma', valor: 'abc4742300' },
+    ])
+  })
+
+  test.each([[VALIDA, '7'], [`${VALIDA},4742300,extra`, '9']])('novo exige oito campos: %s', (linha, valor) => {
+    expect(ok(analisarPlanilha(novo(linha))).recusadas).toEqual([
+      { tipo: 'campo', linha: 2, motivo: 'colunas_erradas', valor, esperado: 8 },
+    ])
+  })
+
+  test('NUL em CNAE informa a coluna', () => {
+    expect(ok(analisarPlanilha(novo(`${VALIDA},474\u00002300`))).recusadas).toEqual([
+      { tipo: 'campo', linha: 2, motivo: 'caractere_invalido', valor: 'cnae_principal' },
+    ])
+  })
+
+  test.each([['4742300', null], ['0111301', 'cnae_principal'], ['', 'cnae_principal']])('duplicatas com CNAE %s', (segundo, divergencia) => {
+    const a = ok(analisarPlanilha(novo(`${VALIDA},4742-3/00`, `${VALIDA},${segundo}`)))
+    expect(a.aceitas).toEqual([])
+    expect(a.recusadas.map((r) => r.tipo === 'repetido' ? r.divergencia : 'campo')).toEqual([divergencia, divergencia])
   })
 })

@@ -31,6 +31,16 @@ export function FormularioImportar() {
 
   return (
     <form action={acao} className="flex flex-col gap-4 rounded border p-4">
+      <div className="text-sm text-neutral-600">
+        <p>
+          O CNAE principal é opcional: preencha a oitava coluna cnae_principal com sete dígitos
+          (4742300) ou no formato 4742-3/00. Se não souber, deixe em branco.
+          O modelo antigo de sete colunas continua válido.
+        </p>
+        <p>
+          Mantenha as colunas como Texto para preservar zeros à esquerda e exporte a planilha como CSV UTF-8.
+        </p>
+      </div>
       <label className="flex flex-col gap-1 text-sm">
         Arquivo CSV
         <input name="arquivo" type="file" accept=".csv,text/csv" required className="text-sm" />

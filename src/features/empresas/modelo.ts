@@ -2,7 +2,7 @@ import { CABECALHO } from './planilha'
 
 // Monta o .xlsx do modelo de importação, sem dependência nenhuma.
 //
-// Um .xlsx é um zip de XMLs. O que importa neste arquivo é UMA coisa: as sete
+// Um .xlsx é um zip de XMLs. O que importa neste arquivo é UMA coisa: as oito
 // colunas nascerem formatadas como Texto, para o Excel não comer o zero à
 // esquerda do CEP nem transformar o CNPJ em notação científica quando alguém
 // digitar as próximas linhas. Isso é o `style="1"` no <col>, apontando para um
@@ -21,6 +21,7 @@ const EXEMPLO = [
   '11987654321',
   'contato@aurora.com.br',
   '01310100',
+  '4742300',
 ]
 
 const escapar = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -85,7 +86,8 @@ const PARTES: [string, string][] = [
     // células já preenchidas. É disso que depende a linha 3 em diante, digitada
     // pelo gestor, manter o zero à esquerda do CEP.
     `${XML}<worksheet xmlns="${NS}">` +
-      '<cols><col min="1" max="7" width="22" style="1" customWidth="1"/></cols><sheetData>' +
+      '<dimension ref="A1:H2"/>' +
+      '<cols><col min="1" max="8" width="22" style="1" customWidth="1"/></cols><sheetData>' +
       linha(1, CABECALHO.split(','), 2) +
       linha(2, EXEMPLO, 1) +
       '</sheetData></worksheet>',
