@@ -1,0 +1,59 @@
+.shell { min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); background: var(--ui-background); color: var(--ui-foreground); font-family: 'Segoe UI', system-ui, sans-serif; }
+.sidebar { position: sticky; top: 0; height: 100vh; padding: 24px 16px; border-right: 1px solid var(--ui-border); background: var(--ui-surface); }
+.brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 24px; }
+.brandMark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 8px; background: var(--ui-primary); color: var(--ui-primary-foreground); font-weight: 600; }
+.brand div { display: grid; font-size: 14px; }
+.brand span:last-child { color: var(--ui-muted-foreground); font-size: 12px; }
+.sidebar nav { display: grid; gap: 4px; }
+.sidebar nav a { padding: 10px 12px; border-radius: 6px; color: var(--ui-muted-foreground); font-size: 14px; text-decoration: none; }
+.sidebar nav a:hover, .sidebar nav a:focus-visible { background: var(--ui-surface); color: var(--ui-foreground); }
+.sidebar nav a:focus-visible, .steps button:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
+.workspace { min-width: 0; }
+.topbar { position: sticky; z-index: 5; top: 0; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--ui-border); background: color-mix(in srgb, var(--ui-background) 94%, transparent); backdrop-filter: blur(8px); }
+.topbarTitle { font-size: 14px; font-weight: 600; }
+.themeControl { display: flex; align-items: center; gap: 8px; }
+.themeControl select { width: 128px; }
+.shell .topbar .menuButton { display: none; }
+.main { width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+.intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.intro h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -.02em; }
+.intro p, .section > header p { margin: 4px 0 0; color: var(--ui-muted-foreground); font-size: 14px; line-height: 21px; }
+.section { scroll-margin-top: 80px; padding: 32px 0; border-bottom: 1px solid var(--ui-border); }
+.section > header { max-width: 680px; margin-bottom: 20px; }
+.section > header h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.sectionBody { display: grid; gap: 16px; }
+.typeSample { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 24px; border: 1px solid var(--ui-border); border-radius: 8px; }
+.typeSample div { display: grid; align-content: start; gap: 6px; }
+.typeSample span, .typeSample small, .help { color: var(--ui-muted-foreground); font-size: 12px; line-height: 18px; }
+.typeSample h2, .typeSample h3, .typeSample p { margin: 0; }
+.typeSample h2 { font-size: 28px; line-height: 36px; }.typeSample h3 { font-size: 18px; line-height: 26px; }.typeSample p { font-size: 14px; line-height: 21px; }
+.row, .filterActions, .flowActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.help, .companyDetail { margin: 0; }.feedback { margin: 0; color: var(--ui-success); font-size: 14px; }
+.filters { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 16px; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.stateExamples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 8px; }
+.error { color: var(--ui-danger); font-size: 12px; line-height: 18px; }
+.companyGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.companyDetail { padding-top: 8px; color: var(--ui-muted-foreground); font-size: 12px; }
+.companyExample { display: grid; gap: 8px; margin: 16px 0 0; font-size: 14px; }.companyExample div { display: flex; justify-content: space-between; gap: 16px; }.companyExample dt { color: var(--ui-muted-foreground); }.companyExample dd { margin: 0; text-align: right; }
+.alertGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.expiredNotes { display: grid; gap: 8px; margin-top: 16px; }
+.loadingCard { display: grid; gap: 10px; padding: 24px; border: 1px solid var(--ui-border); border-radius: 8px; }
+.skeletonTitle { width: 36%; height: 22px; }.skeletonLine { width: 100%; height: 14px; }.skeletonShort { width: 62%; height: 14px; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; padding: 0; list-style: none; }
+.steps li { position: relative; display: flex; justify-content: center; border-top: 2px solid var(--ui-border); padding-top: 12px; color: var(--ui-muted-foreground); font-size: 14px; }
+.steps li[aria-current='step'] { border-color: var(--ui-primary); color: var(--ui-foreground); font-weight: 600; }
+.steps button { border: 0; padding: 0; background: transparent; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.currentStep { margin: 0; font-size: 12px; color: var(--ui-muted-foreground); }
+.flowPanel { min-height: 180px; padding: 24px; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-background); }
+.flowPanel h3, .flowPanel p { margin: 0; }.flowPanel > p { margin-top: 4px; color: var(--ui-muted-foreground); }
+.callHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }.callHeader p { color: var(--ui-muted-foreground); }.callHeader strong { font-variant-numeric: tabular-nums; }
+.inlineLoading { display: grid; gap: 10px; margin-top: 24px; }
+
+@media (max-width: 1100px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }.companyGrid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .shell { grid-template-columns: 1fr; }.sidebar { position: fixed; z-index: 20; inset: 64px auto 0 0; width: min(300px, 85vw); height: auto; visibility: hidden; transform: translateX(-101%); transition: transform 150ms ease, visibility 0s linear 150ms; box-shadow: 12px 0 30px rgb(0 0 0 / .12); }.sidebarOpen { visibility: visible; transform: translateX(0); transition-delay: 0s; }
+  .brand { display: none; }.shell .topbar .menuButton { display: inline-flex; }.topbar { padding: 0 16px; }.topbarTitle { display: none; }.main { padding: 24px 16px 48px; }.intro { display: grid; gap: 12px; }.intro h1 { font-size: 24px; line-height: 32px; }
+  .typeSample, .alertGrid, .filters, .stateExamples { grid-template-columns: 1fr; }.typeSample, .flowPanel, .loadingCard { padding: 16px; }.themeControl label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }.themeControl select { width: 132px; }.callHeader { display: grid; }.flowActions > * { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
