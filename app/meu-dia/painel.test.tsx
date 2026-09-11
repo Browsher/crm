@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { PainelMeuDia, type LinhaMeuDia } from './painel'
 
+const TOTAL_AGENDA = 2
+
 const aurora: LinhaMeuDia = {
   id: '11111111-1111-1111-1111-111111111111', cnpj: '11222333000181', razaoSocial: 'Aurora', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Ana', telefone: '11999999999', email: 'ana@aurora.com',
@@ -16,20 +18,27 @@ const boreal: LinhaMeuDia = {
 }
 
 test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
-  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} filtros={{ nome: '', retorno: '' }} />)
+  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} totalAgenda={0} filtros={{ nome: '', retorno: '' }} />)
   expect(vazia).toContain('Nenhum retorno pendente para hoje')
   expect(vazia).toContain('href="/carteira"')
 
-  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} filtros={{ nome: 'zzz', retorno: '' }} />)
+  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} totalAgenda={0} filtros={{ nome: 'zzz', retorno: '' }} />)
   expect(semResultado).toContain('Nenhum cliente corresponde à busca')
   expect(semResultado).toContain('href="/meu-dia"')
   expect(semResultado).not.toContain('Nenhum retorno pendente para hoje')
 })
 
 test('primeira empresa já aparece selecionada e o link leva a ficha com os filtros', () => {
-  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} filtros={{ nome: '', retorno: 'atrasado' }} />)
+  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} totalAgenda={TOTAL_AGENDA} filtros={{ nome: '', retorno: 'atrasado' }} />)
   expect(html).toContain('Aurora')
   expect(html).toContain('Abrir atendimento')
   expect(html).toContain(`href="/carteira/${aurora.id}?de=meu-dia&amp;retorno=atrasado"`)
   expect(html).not.toContain('—')
+
+  // "Abrir atendimento" é a ação principal: usa o componente `Button` (como
+  // as telas irmãs, `<Button asChild><Link href=...>`), não um link nu.
+  // Confere que É a mesma tag que carrega o href da ficha, não outro botão.
+  const linkAbrir = html.match(/<a[^>]*href="\/carteira\/[^"]*"[^>]*>Abrir atendimento<\/a>/)?.[0] ?? ''
+  expect(linkAbrir).not.toBe('')
+  expect(linkAbrir).toContain('data-slot="button"')
 })

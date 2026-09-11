@@ -34,8 +34,7 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
       <Link href="/meu-dia">Limpar filtros</Link>
     </div> : <>
       <FiltrosForm filtros={leitura.filtros} />
-      <p className={styles.contagem}>{filtradas.length} de {agenda.length} {agenda.length === 1 ? 'retorno' : 'retornos'}</p>
-      <PainelMeuDia linhas={linhasDoDia} filtros={leitura.filtros} />
+      <PainelMeuDia linhas={linhasDoDia} totalAgenda={agenda.length} filtros={leitura.filtros} />
     </>}
   </main>
 }

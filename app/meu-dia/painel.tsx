@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { Contato } from '@/src/features/contato/historico'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import { Button } from '@/src/components/ui/button'
 import { urlFichaDoMeuDia, urlMeuDia, type FiltrosMeuDia } from './agenda'
 import { historicoDaAgendaAcao } from './historico-acao'
 import styles from './meu-dia.module.css'
@@ -37,12 +38,22 @@ function localizacao(empresa: EmpresaComigo): string {
   return 'Localização não informada'
 }
 
-// Sem fase "carregando": enquanto não existe resposta para a seleção
-// corrente, `historicoAtual` (abaixo) já é `null`, e é isso que a
-// renderização usa para mostrar "Carregando histórico".
+// `historicoAtual` (abaixo) só usa `historico` quando o `empresaId` bate com
+// a seleção corrente. Isso cobre troca para OUTRA empresa, mas sozinho não
+// cobre ida e volta: reselecionar a MESMA empresa (A -> B -> A) dispara um
+// pedido novo com o MESMO empresaId de um `historico` que já existe em
+// estado (de uma resposta anterior), e só comparar id deixaria esse dado
+// velho vazar de volta para a tela enquanto o pedido novo está no ar. Por
+// isso o clique que muda a seleção (não o efeito: `setState` síncrono no
+// corpo de um efeito é código que o projeto proíbe, por bom motivo — ver
+// `react-hooks/set-state-in-effect`) também zera `historico` na hora: a tela
+// cai em "Carregando histórico" no mesmo render do clique, sem esperar o
+// efeito rodar. Quem decide se o novo pedido "ganha" o direito de preencher
+// `historico` de novo é o guarda de identidade (`pedido.current`) dentro do
+// `.then`/`.catch`.
 type EstadoHistorico =
   | { fase: 'pronto'; empresaId: string; contatos: Contato[] }
-  | { fase: 'erro'; empresaId: string; motivo: 'fora_da_carteira' | 'falha' }
+  | { fase: 'erro'; empresaId: string; motivo: 'falha' }
 
 function Historico({ contatos }: { contatos: Contato[] }) {
   if (!contatos.length) return <p>Ainda não há uma conversa registrada</p>
@@ -52,22 +63,23 @@ function Historico({ contatos }: { contatos: Contato[] }) {
   </li>)}</ol>
 }
 
-export function PainelMeuDia({ linhas, filtros }: { linhas: LinhaMeuDia[]; filtros: FiltrosMeuDia }) {
+export function PainelMeuDia({ linhas, totalAgenda, filtros }: { linhas: LinhaMeuDia[]; totalAgenda: number; filtros: FiltrosMeuDia }) {
   const [selecionada, setSelecionada] = useState<string | null>(null)
-  const atual = linhas.find(l => l.id === selecionada) ?? linhas[0]
+  // Ids que a própria tela já sabe que saíram da carteira (posse negada),
+  // sem esperar a próxima revalidação do servidor. `linhas` continua sendo a
+  // prop do servidor; `linhasEfetivas` é o que a tela realmente mostra.
+  const [removidos, setRemovidos] = useState<ReadonlySet<string>>(() => new Set())
+  const [avisoPosse, setAvisoPosse] = useState(false)
+  const linhasEfetivas = linhas.filter(l => !removidos.has(l.id))
+  const totalEfetivo = totalAgenda - removidos.size
+
+  // `selecionada === null` é "nada escolhido ainda": cai na primeira da
+  // lista, como sempre. Uma vez que existe uma escolha explícita (mesmo que
+  // essa empresa tenha acabado de sumir da lista por posse negada), não há
+  // fallback para outra: escolher sozinho disparia um pedido de histórico
+  // que o usuário não pediu.
+  const atual = selecionada === null ? linhasEfetivas[0] : linhasEfetivas.find(l => l.id === selecionada)
   const atualId = atual?.id
-  // `historico` só é lido quando `empresaId` bate com a seleção corrente (veja
-  // `historicoAtual` abaixo). Enquanto a empresa muda, some ou o pedido ainda
-  // está em voo, a renderização cai no "Carregando histórico" por conta
-  // disso, sem precisar zerar o estado sincronamente dentro do efeito.
-  //
-  // Sem cleanup de efeito: a identidade de `meu` já é o suficiente para
-  // descartar pedido velho (veja o guarda em `.then`/`.catch` abaixo), porque
-  // toda vez que `atualId` muda o efeito seguinte sobrescreve `pedido.current`
-  // incondicionalmente antes de qualquer resposta chegar, e depois que o
-  // componente desmonta o React 18 já ignora `setState` sem efeito colateral
-  // observável. Mesmo desenho de `app/fila/localizar/registrar-visita.tsx`,
-  // que também não tem cleanup.
   const [historico, setHistorico] = useState<EstadoHistorico | null>(null)
   const pedido = useRef<object | null>(null)
 
@@ -78,9 +90,20 @@ export function PainelMeuDia({ linhas, filtros }: { linhas: LinhaMeuDia[]; filtr
     void historicoDaAgendaAcao(atualId)
       .then(r => {
         if (pedido.current !== meu) return
+        if (!r.ok && r.motivo === 'fora_da_carteira') {
+          // A posse mudou: a empresa sai da lista e do perfil, sem escolher
+          // outra sozinho. Trava a seleção no id que acabou de sumir (mesmo
+          // que tenha chegado aqui pelo fallback implícito de `linhas[0]`),
+          // para que `atual` vire `undefined` depois da remoção e nenhum
+          // outro item vire seleção automática.
+          setSelecionada(atualId)
+          setRemovidos(prev => { const novo = new Set(prev); novo.add(atualId); return novo })
+          setAvisoPosse(true)
+          return
+        }
         setHistorico(r.ok
           ? { fase: 'pronto', empresaId: atualId, contatos: r.contatos }
-          : { fase: 'erro', empresaId: atualId, motivo: r.motivo })
+          : { fase: 'erro', empresaId: atualId, motivo: 'falha' })
       })
       .catch(() => {
         if (pedido.current !== meu) return
@@ -88,7 +111,7 @@ export function PainelMeuDia({ linhas, filtros }: { linhas: LinhaMeuDia[]; filtr
       })
   }, [atualId])
 
-  if (linhas.length === 0) {
+  if (linhasEfetivas.length === 0) {
     const semFiltro = filtros.nome === '' && filtros.retorno === ''
     return semFiltro
       ? <div className={styles.vazio}>
@@ -104,52 +127,65 @@ export function PainelMeuDia({ linhas, filtros }: { linhas: LinhaMeuDia[]; filtr
   }
 
   const historicoAtual = historico && atual && historico.empresaId === atual.id ? historico : null
-  const semPosse = historicoAtual?.fase === 'erro' && historicoAtual.motivo === 'fora_da_carteira'
 
-  return <div className={styles.corpo}>
-    <ul className={styles.colunaLista} data-testid="lista-meu-dia">
-      {linhas.map(empresa => {
-        const ehSelecionada = empresa.id === atual?.id
-        return <li key={empresa.id}>
-          <button type="button" className={styles.item} aria-current={ehSelecionada ? 'true' : undefined}
-            onClick={() => setSelecionada(empresa.id)}>
-            <strong>{empresa.razaoSocial}</strong>
-            <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
-            <span>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</span>
-            {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
-          </button>
-        </li>
-      })}
-    </ul>
-    {atual ? <div className={styles.colunaPerfil}>
-      {semPosse ? <div role="alert" className={styles.perfil}>
-        <h2>Esta empresa não está mais na sua carteira</h2>
-        <p>A posse mudou desde que a agenda foi carregada.</p>
-        <Link href={urlMeuDia(filtros)}>Recarregar a agenda</Link>
-      </div> : <article className={styles.perfil}>
-        <header>
-          <h2>{atual.razaoSocial}</h2>
-          {atual.nomeFantasia ? <p>{atual.nomeFantasia}</p> : null}
-        </header>
-        <dl className={styles.dados}>
-          <div><dt>Contato principal</dt><dd>{atual.contatoNome ?? 'Contato principal não informado'}</dd></div>
-          <div><dt>Telefone</dt><dd>{atual.telefone || 'Telefone não cadastrado'}</dd></div>
-          <div><dt>E-mail</dt><dd>{atual.email ?? 'E-mail não cadastrado'}</dd></div>
-          <div><dt>Localização</dt><dd>{localizacao(atual)}</dd></div>
-        </dl>
-        <section className={styles.bloco} aria-label="Próximo passo">
-          <h3>Próximo passo</h3>
-          <p>{atual.proximoPasso ?? 'Sem próximo passo combinado'}</p>
-          {atual.proximoPassoData ? <time dateTime={atual.proximoPassoData}>{dataCivil(atual.proximoPassoData)}</time> : null}
-        </section>
-        <section className={styles.bloco} aria-label="Histórico">
-          <h3>Histórico</h3>
-          {!historicoAtual ? <p>Carregando histórico</p>
-            : historicoAtual.fase === 'pronto' ? <Historico contatos={historicoAtual.contatos} />
-            : <p role="alert">Não foi possível carregar o histórico.</p>}
-        </section>
-        <Link href={urlFichaDoMeuDia(atual.id, filtros)}>Abrir atendimento</Link>
-      </article>}
-    </div> : null}
-  </div>
+  return <>
+    <p className={styles.contagem}>{linhasEfetivas.length} de {totalEfetivo} {totalEfetivo === 1 ? 'retorno' : 'retornos'}</p>
+    <div className={styles.corpo}>
+      <ul className={styles.colunaLista} data-testid="lista-meu-dia">
+        {linhasEfetivas.map(empresa => {
+          const ehSelecionada = empresa.id === atual?.id
+          return <li key={empresa.id}>
+            <button type="button" className={styles.item} aria-current={ehSelecionada ? 'true' : undefined}
+              onClick={() => {
+                setSelecionada(empresa.id)
+                setAvisoPosse(false)
+                // Zera aqui, no clique (não no efeito, que só reage depois do
+                // commit): revisitar a MESMA empresa (ida e volta) não pode
+                // reexibir um `historico` velho enquanto o novo pedido está no
+                // ar. `historicoAtual` já filtra por id para empresas
+                // diferentes; isto cobre o caso em que o id bate de novo.
+                setHistorico(null)
+              }}>
+              <strong>{empresa.razaoSocial}</strong>
+              <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
+              <span>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</span>
+              {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
+            </button>
+          </li>
+        })}
+      </ul>
+      {avisoPosse ? <div className={styles.colunaPerfil}>
+        <div role="alert" className={styles.perfil}>
+          <h2>Esta empresa não está mais na sua carteira</h2>
+          <p>A posse mudou desde que a agenda foi carregada.</p>
+          <Link href={urlMeuDia(filtros)}>Recarregar a agenda</Link>
+        </div>
+      </div> : atual ? <div className={styles.colunaPerfil}>
+        <article className={styles.perfil}>
+          <header>
+            <h2>{atual.razaoSocial}</h2>
+            {atual.nomeFantasia ? <p>{atual.nomeFantasia}</p> : null}
+          </header>
+          <dl className={styles.dados}>
+            <div><dt>Contato principal</dt><dd>{atual.contatoNome ?? 'Contato principal não informado'}</dd></div>
+            <div><dt>Telefone</dt><dd>{atual.telefone || 'Telefone não cadastrado'}</dd></div>
+            <div><dt>E-mail</dt><dd>{atual.email ?? 'E-mail não cadastrado'}</dd></div>
+            <div><dt>Localização</dt><dd>{localizacao(atual)}</dd></div>
+          </dl>
+          <section className={styles.bloco} aria-label="Próximo passo">
+            <h3>Próximo passo</h3>
+            <p>{atual.proximoPasso ?? 'Sem próximo passo combinado'}</p>
+            {atual.proximoPassoData ? <time dateTime={atual.proximoPassoData}>{dataCivil(atual.proximoPassoData)}</time> : null}
+          </section>
+          <section className={styles.bloco} aria-label="Histórico">
+            <h3>Histórico</h3>
+            {!historicoAtual ? <p>Carregando histórico</p>
+              : historicoAtual.fase === 'pronto' ? <Historico contatos={historicoAtual.contatos} />
+              : <p role="alert">Não foi possível carregar o histórico.</p>}
+          </section>
+          <Button asChild><Link href={urlFichaDoMeuDia(atual.id, filtros)}>Abrir atendimento</Link></Button>
+        </article>
+      </div> : null}
+    </div>
+  </>
 }

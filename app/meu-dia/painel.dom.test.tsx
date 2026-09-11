@@ -37,11 +37,11 @@ afterEach(async () => {
   acaoMock.mockReset()
 })
 
-async function montar(linhas: LinhaMeuDia[]) {
+async function montar(linhas: LinhaMeuDia[], totalAgenda = linhas.length) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await act(async () => raiz?.render(<PainelMeuDia linhas={linhas} filtros={FILTROS} />))
+  await act(async () => raiz?.render(<PainelMeuDia linhas={linhas} totalAgenda={totalAgenda} filtros={FILTROS} />))
   return host
 }
 
@@ -120,26 +120,70 @@ describe('PainelMeuDia no navegador', () => {
     await act(async () => { p1.resolver({ ok: true, contatos: [{ id:'c1', tipo:'ligacao', nota:'Nota da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-09-01T10:00:00Z'), autor:'Ana' }] }) })
     expect(tela.textContent).toContain('Nota da Aurora')
 
-    await act(async () => raiz?.render(<PainelMeuDia linhas={[]} filtros={FILTROS} />))
+    await act(async () => raiz?.render(<PainelMeuDia linhas={[]} totalAgenda={0} filtros={FILTROS} />))
     expect(tela.textContent).not.toContain('Nota da Aurora')
     expect(tela.textContent).not.toContain('Aurora')
     expect(tela.textContent).toContain('Nenhum retorno pendente para hoje')
   })
 
-  test('posse negada limpa o perfil e avisa', async () => {
+  // Mudança de comportamento pedida pelo usuário (revoga uma decisão de
+  // rodada anterior): quando a posse é negada, a empresa sai da LISTA e não
+  // só do perfil. O aviso continua aparecendo, no lugar do perfil, mas sem
+  // selecionar outra empresa sozinho (isso disparia um pedido de histórico
+  // que o usuário não pediu — por isso a asserção de `toHaveBeenCalledTimes(1)`
+  // no fim, provando que nenhum novo pedido saiu depois da remoção).
+  test('posse negada remove a empresa da lista e do perfil, sem selecionar outra', async () => {
     const p1 = pendente()
     acaoMock.mockReturnValueOnce(p1.promessa)
-    const tela = await montar([aurora])
+    const tela = await montar([aurora, boreal], 5)
     await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
+
     const alerta = tela.querySelector('[role="alert"]')
     expect(alerta).not.toBeNull()
     expect(alerta?.textContent ?? '').toContain('não está mais na sua carteira')
-    // A empresa ainda pode aparecer na lista da agenda (não revalidada), mas o
-    // perfil não deve carregar dado nenhum dela: nem nome, nem contato.
     expect(alerta?.textContent ?? '').not.toContain('Ana')
     expect(alerta?.textContent ?? '').not.toContain('ana@aurora.com')
     expect(tela.querySelector('dl')).toBeNull()
     expect(tela.querySelector('a[href="/meu-dia"]')).not.toBeNull()
+
+    // saiu da lista de verdade, não só do perfil
+    expect(tela.textContent).not.toContain('Aurora')
+    expect(tela.textContent).toContain('Boreal')
+    expect(tela.querySelectorAll('[data-testid="lista-meu-dia"] li').length).toBe(1)
+
+    // a contagem (movida para o painel) reflete a lista sem a empresa
+    // removida, nos dois números: "1 de 4 retornos" (era "2 de 5")
+    expect(tela.textContent).toContain('1 de 4 retornos')
+
+    // nenhuma seleção automática: só o pedido da Aurora foi feito
+    expect(acaoMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('lista esvazia por posse negada cai no vazio que já existe', async () => {
+    const p1 = pendente()
+    acaoMock.mockReturnValueOnce(p1.promessa)
+    const tela = await montar([aurora], 1)
+    await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
+    expect(tela.textContent).toContain('Nenhum retorno pendente para hoje')
+    expect(tela.textContent).not.toContain('Aurora')
+    expect(tela.querySelector('[role="alert"]')).toBeNull()
+  })
+
+  test('remover empresa por posse negada preserva a rolagem dos itens restantes', async () => {
+    const p1 = pendente()
+    acaoMock.mockReturnValueOnce(p1.promessa)
+    const tela = await montar([aurora, boreal])
+    const lista = tela.querySelector('[data-testid="lista-meu-dia"]') as HTMLUListElement
+    lista.scrollTop = 42
+    await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
+    // a remoção precisa ter acontecido de verdade, senão a preservação de
+    // `scrollTop` abaixo seria vácua (nada mudou, então óbvio que não mudou)
+    expect(tela.querySelectorAll('[data-testid="lista-meu-dia"] li').length).toBe(1)
+    expect(tela.textContent).not.toContain('Aurora')
+    const listaDepois = tela.querySelector('[data-testid="lista-meu-dia"]') as HTMLUListElement
+    // mesmo nó do DOM (React reconcilia a `<li>` removida, não recria o `<ul>`)
+    expect(listaDepois).toBe(lista)
+    expect(listaDepois.scrollTop).toBe(42)
   })
 
   test('falha de carregamento não vira histórico vazio', async () => {
@@ -172,5 +216,62 @@ describe('PainelMeuDia no navegador', () => {
 
     await act(async () => { rejeitarAurora(new Error('falha de rede')) })
     expect(tela.textContent).toContain('Nota da Boreal')
+  })
+
+  // O caso mais perigoso do componente: A -> B -> A de novo, com três
+  // pedidos distintos em voo ao longo do caminho. A resposta do PRIMEIRO
+  // pedido de A (que tem o MESMO empresaId da seleção corrente quando volta
+  // a cair em A) precisa ser ignorada mesmo assim — só a identidade do
+  // pedido (não o id da empresa) decide o que é válido.
+  test('ida e volta A -> B -> A: primeira resposta de A não reaparece quando o novo pedido de A está no ar', async () => {
+    const p1a = pendente() // primeiro pedido de Aurora
+    acaoMock.mockReturnValueOnce(p1a.promessa)
+    const tela = await montar([aurora, boreal])
+
+    const pb = pendente() // pedido de Boreal
+    acaoMock.mockReturnValueOnce(pb.promessa)
+    await clicar(tela, 'Boreal')
+
+    const p2a = pendente() // segundo (terceiro, contando o de Boreal) pedido, ao voltar para Aurora
+    acaoMock.mockReturnValueOnce(p2a.promessa)
+    await clicar(tela, 'Aurora')
+    expect(tela.textContent).toContain('Carregando histórico')
+
+    // a primeira resposta de Aurora chega tarde: mesmo empresaId da seleção
+    // corrente, mas de um pedido diferente (identidade velha)
+    await act(async () => { p1a.resolver({ ok: true, contatos: [{ id:'velho', tipo:'ligacao', nota:'Nota velha da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-08-01T10:00:00Z'), autor:'Ana' }] }) })
+    expect(tela.textContent).toContain('Carregando histórico')
+    expect(tela.textContent).not.toContain('Nota velha da Aurora')
+
+    // só a resposta do pedido novo aparece
+    await act(async () => { p2a.resolver({ ok: true, contatos: [{ id:'novo', tipo:'ligacao', nota:'Nota nova da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-09-05T10:00:00Z'), autor:'Ana' }] }) })
+    expect(tela.textContent).toContain('Nota nova da Aurora')
+    expect(tela.textContent).not.toContain('Nota velha da Aurora')
+  })
+
+  // Cobre o outro caminho para o mesmo perigo: a primeira resposta de A já
+  // tinha CHEGADO (não ficou pendente) antes de o usuário ir para B. Ao
+  // voltar para A, um pedido novo entra no ar, e a nota antiga (que já
+  // estava no estado) não pode ficar na tela enquanto ele não responde.
+  test('ida e volta A -> B -> A: nota antiga de A que já tinha chegado não reaparece durante o novo pedido', async () => {
+    const p1a = pendente()
+    acaoMock.mockReturnValueOnce(p1a.promessa)
+    const tela = await montar([aurora, boreal])
+    await act(async () => { p1a.resolver({ ok: true, contatos: [{ id:'velho', tipo:'ligacao', nota:'Nota velha da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-08-01T10:00:00Z'), autor:'Ana' }] }) })
+    expect(tela.textContent).toContain('Nota velha da Aurora')
+
+    const pb = pendente()
+    acaoMock.mockReturnValueOnce(pb.promessa)
+    await clicar(tela, 'Boreal')
+
+    const p2a = pendente()
+    acaoMock.mockReturnValueOnce(p2a.promessa)
+    await clicar(tela, 'Aurora')
+    expect(tela.textContent).toContain('Carregando histórico')
+    expect(tela.textContent).not.toContain('Nota velha da Aurora')
+
+    await act(async () => { p2a.resolver({ ok: true, contatos: [{ id:'novo', tipo:'ligacao', nota:'Nota nova da Aurora', proximoPasso:null, proximoPassoData:null, criadoEm:new Date('2026-09-05T10:00:00Z'), autor:'Ana' }] }) })
+    expect(tela.textContent).toContain('Nota nova da Aurora')
+    expect(tela.textContent).not.toContain('Nota velha da Aurora')
   })
 })
