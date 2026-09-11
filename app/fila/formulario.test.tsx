@@ -29,7 +29,7 @@ describe('Formulario', () => {
     const saida = renderToStaticMarkup(<Formulario reserva={{
       id:'e1',cnpj:'11222333000181',razaoSocial:'Cliente',nomeFantasia:null,contatoNome:null,
       telefone:'11987654321',email:null,cep:null,endereco:null,reservadoAte:new Date('2099-01-01'),
-      posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
+      situacaoRetorno:'sem_data' as const,cnaePrincipal:null,ultimoContato:null,posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
     }} contatos={[]} />)
     expect(saida).toContain('data-etapa="consultar"')
     expect(saida).toContain('Registrar resultado')
@@ -41,7 +41,7 @@ describe('Formulario', () => {
     const saida = renderToStaticMarkup(<Formulario reserva={{
       id:'e1',cnpj:'11222333000181',razaoSocial:'Cliente',nomeFantasia:null,contatoNome:null,
       telefone:'11987654321',email:null,cep:null,endereco:null,reservadoAte:new Date('2099-01-01'),
-      posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
+      situacaoRetorno:'sem_data' as const,cnaePrincipal:null,ultimoContato:null,posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
     }} contatos={[]} />)
     memoria.gravando = false
     expect(saida).toContain('data-bloqueado="true"')
@@ -51,7 +51,7 @@ describe('Formulario', () => {
     const empresa = (id: string) => ({
       id,cnpj:'11222333000181',razaoSocial:`Cliente ${id}`,nomeFantasia:null,contatoNome:null,
       telefone:'11987654321',email:null,cep:null,endereco:null,reservadoAte:new Date('2099-01-01'),
-      posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
+      situacaoRetorno:'sem_data' as const,cnaePrincipal:null,ultimoContato:null,posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
     })
     const host = document.createElement('div')
     const root = createRoot(host)
@@ -72,7 +72,7 @@ describe('Formulario', () => {
     await act(async () => root.render(<Formulario reserva={{
       id:'e1',cnpj:'11222333000181',razaoSocial:'Cliente',nomeFantasia:null,contatoNome:null,
       telefone:'11987654321',email:null,cep:null,endereco:null,reservadoAte:new Date('2099-01-01'),
-      posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
+      situacaoRetorno:'sem_data' as const,cnaePrincipal:null,ultimoContato:null,posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
     }} contatos={[]} />))
     await act(async () => host.querySelector<HTMLButtonElement>('button[value="puxar"]')!.click())
     expect(document.body.textContent).toContain('Trocar de empresa e descartar as anotações?')
@@ -119,7 +119,7 @@ describe('Formulario', () => {
     const saida = renderToStaticMarkup(<Formulario contexto="versao" reserva={{
       id:'e1',cnpj:'11222333000181',razaoSocial:'Cliente',nomeFantasia:null,contatoNome:null,
       telefone:'11987654321',email:null,cep:null,endereco:null,reservadoAte:new Date('2099-01-01'),
-      posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
+      situacaoRetorno:'sem_data' as const,cnaePrincipal:null,ultimoContato:null,posse:false,proximoPasso:null,proximoPassoData:null,vencido:false,
     }} contatos={[]} />)
     expect(saida).toContain('Próxima')
     expect(saida).toContain('data-visita="e1"')

@@ -35,6 +35,9 @@ const BASE: EmpresaComigo = {
   posse: false,
   proximoPasso: null,
   proximoPassoData: null,
+  cnaePrincipal: null,
+  ultimoContato: null,
+  situacaoRetorno: 'sem_data',
   vencido: false,
 }
 
