@@ -9,12 +9,13 @@ import {
   EMPRESA_MEU_DIA_REAGENDA,
   NOME_MEU_DIA_BUSCA_UNICA,
   NOME_MEU_DIA_ROLAGEM,
+  NOME_MEU_DIA_ULTIMO,
 } from './dados-meu-dia'
 
 const ORDEM_AGENDA = [
   'Meu Dia Atraso A14', 'Meu Dia Atraso A13', 'Meu Dia Atraso A12', 'Meu Dia Atraso A11', 'Meu Dia Atraso A10',
-  'Meu Dia Atraso A09', 'Meu Dia Posse Perdida', NOME_MEU_DIA_BUSCA_UNICA, 'Meu Dia Atraso Devolucao', 'Meu Dia Atraso Reagenda',
-  'Meu Dia Hoje Aurora', 'Meu Dia Hoje Cedro', 'Meu Dia Hoje Dourada', NOME_MEU_DIA_ROLAGEM,
+  NOME_MEU_DIA_ROLAGEM, 'Meu Dia Posse Perdida', NOME_MEU_DIA_BUSCA_UNICA, 'Meu Dia Atraso Devolucao', 'Meu Dia Atraso Reagenda',
+  'Meu Dia Aurora', 'Meu Dia Cedro', 'Meu Dia Dourada', NOME_MEU_DIA_ULTIMO,
 ]
 
 // A única forma real de simular "outra sessão mudou a posse enquanto a
@@ -71,11 +72,23 @@ async function conferirTamanhos(page: Page, tela: string) {
     for (const width of [390, 820, 1280]) {
       await page.setViewportSize({ width, height: 844 })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+
+      // "Abrir atendimento" precisa existir e caber inteiro na largura, dos
+      // dois lados: nem cortado à direita, nem começando fora à esquerda.
       const abrir = page.getByRole('link', { name: 'Abrir atendimento', exact: true })
-      if (await abrir.count()) {
-        const caixa = await abrir.boundingBox()
-        if (caixa) expect(caixa.x + caixa.width).toBeLessThanOrEqual(width)
+      await expect(abrir).toBeVisible()
+      const caixa = (await abrir.boundingBox())!
+      expect(caixa.x).toBeGreaterThanOrEqual(0)
+      expect(caixa.x + caixa.width).toBeLessThanOrEqual(width)
+
+      if (width === 390) {
+        // Empilhamento de verdade no celular: o perfil começa depois do fim
+        // da lista, não ao lado dela.
+        const listaBox = (await page.getByTestId('lista-meu-dia').boundingBox())!
+        const perfilBox = (await perfilAtual(page).boundingBox())!
+        expect(perfilBox.y).toBeGreaterThanOrEqual(listaBox.y + listaBox.height)
       }
+
       await page.screenshot({ path: `test-results/meu-dia-${tela}-${tema}-${width}.png`, fullPage: true })
     }
   }
@@ -90,7 +103,7 @@ test('Meu dia recorta a agenda, prova a rolagem, filtra e preserva os filtros na
   await expect(lista.getByRole('button')).toHaveCount(14)
   expect(await lista.locator('li strong').allTextContents()).toEqual(ORDEM_AGENDA)
   await expect(lista.getByRole('listitem').filter({ hasText: 'Meu Dia Atraso A14' })).toContainText('Atrasado')
-  await expect(lista.getByRole('listitem').filter({ hasText: NOME_MEU_DIA_ROLAGEM })).toContainText('Hoje')
+  await expect(lista.getByRole('listitem').filter({ hasText: NOME_MEU_DIA_ULTIMO })).toContainText('Hoje')
 
   // Recorte: a futura e a sem contato existem na carteira, mas não na agenda.
   await expect(page.getByRole('main')).not.toContainText('Meu Dia Futuro Ignorado')
@@ -104,27 +117,45 @@ test('Meu dia recorta a agenda, prova a rolagem, filtra e preserva os filtros na
 
   await conferirTamanhos(page, 'lista')
   await page.setViewportSize({ width: 1280, height: 800 })
+  await lista.evaluate((el) => { el.scrollTop = 0 })
 
   // Rolagem provada, não presumida: a lista TRANSBORDA de verdade antes de
   // qualquer medição de posição.
   const medida = await lista.evaluate((el) => ({ scroll: el.scrollHeight, cliente: el.clientHeight }))
   expect(medida.scroll).toBeGreaterThan(medida.cliente)
-  const alvoScroll = medida.scroll - medida.cliente
-  await lista.evaluate((el, alvo) => { el.scrollTop = alvo }, alvoScroll)
-  expect(await lista.evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+
+  // O item de rolagem não é o último: precisa ficar dentro do viewport do
+  // NAVEGADOR (não só do container) depois de uma rolagem moderada, para que
+  // o clique NATIVO logo abaixo exerça a própria acionabilidade (visível,
+  // sem overlay, hit-test no lugar certo) em vez de contorná-la. "Dentro do
+  // container" não basta: o container começa em y≈351 (depois do cabeçalho e
+  // dos filtros) e é mais alto que a fatia do viewport de 800px que sobra
+  // para ele, então uma rolagem calculada só pela caixa do container ainda
+  // pode deixar o item fora da tela — a rolagem abaixo mira o viewport.
+  const viewportAltura = 800
+  const listaBox = (await lista.boundingBox())!
+  const alvoRolagem = lista.getByRole('button', { name: NOME_MEU_DIA_ROLAGEM })
+  const antesAlvo = (await alvoRolagem.boundingBox())!
+  // Fora da tela antes de rolar: só existe visível depois.
+  expect(antesAlvo.y + antesAlvo.height).toBeGreaterThan(viewportAltura)
+
+  const margem = 8
+  const rolagemNecessaria = Math.ceil(antesAlvo.y + antesAlvo.height - viewportAltura + margem)
+  await lista.evaluate((el, alvo) => { el.scrollTop = alvo }, rolagemNecessaria)
+  const scrollAplicado = await lista.evaluate((el) => el.scrollTop)
+  expect(scrollAplicado).toBeGreaterThan(0)
+  const depoisAlvo = (await alvoRolagem.boundingBox())!
+  // Dentro do viewport do navegador E do container depois de rolar: acionável de verdade.
+  expect(depoisAlvo.y).toBeGreaterThanOrEqual(Math.max(0, listaBox.y))
+  expect(depoisAlvo.y + depoisAlvo.height).toBeLessThanOrEqual(Math.min(viewportAltura, listaBox.y + listaBox.height))
 
   const perfil = perfilAtual(page)
   const antesPerfil = await perfil.boundingBox()
   const antesPagina = await page.evaluate(() => window.scrollY)
-  // O item de rolagem é o último da lista: só existe visível depois de rolar
-  // a lista. O clique é despachado no DOM (não via Playwright) de propósito:
-  // um `.click()` normal traria a página inteira para ver o botão fora da
-  // dobra, mascarando exatamente o que este teste prova (a seleção sozinha
-  // não move nada — nem a lista, nem o perfil, nem a página).
-  await lista.getByRole('button', { name: NOME_MEU_DIA_ROLAGEM }).evaluate((el) => (el as HTMLElement).click())
+  await alvoRolagem.click()
   await expect(perfil.getByRole('heading', { name: NOME_MEU_DIA_ROLAGEM, exact: true })).toBeVisible()
 
-  expect(await lista.evaluate((el) => el.scrollTop)).toBe(alvoScroll)
+  expect(await lista.evaluate((el) => el.scrollTop)).toBe(scrollAplicado)
   expect((await perfil.boundingBox())?.y).toBe(antesPerfil?.y)
   expect(await page.evaluate(() => window.scrollY)).toBe(antesPagina)
 
@@ -271,7 +302,9 @@ test('Posse perdida durante a sessão avisa sem expor dado nenhum da empresa', a
 
   await expect(page.getByRole('alert').getByRole('heading', { name: 'Esta empresa não está mais na sua carteira', exact: true })).toBeVisible()
   await expect(perfil).toHaveCount(0)
-  await expect(page.getByRole('main')).not.toContainText('Telefone não cadastrado')
+  // '11999990401' é o telefone real de "Meu Dia Posse Perdida" na fixture:
+  // ele só apareceria na tela se o perfil vazasse os dados da empresa.
+  await expect(page.getByRole('main')).not.toContainText('11999990401')
   // O item continua na lista até a agenda recarregar: só o perfil foi limpo.
   await expect(lista.getByRole('button', { name: 'Meu Dia Posse Perdida' })).toBeVisible()
 

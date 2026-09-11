@@ -12,7 +12,13 @@ export const EMPRESA_MEU_DIA_POSSE_PERDIDA = idDe(508)
 export const EMPRESA_MEU_DIA_DEVOLUCAO = idDe(510)
 export const EMPRESA_MEU_DIA_REAGENDA = idDe(511)
 export const NOME_MEU_DIA_BUSCA_UNICA = 'Meu Dia Unico Girassol'
-export const NOME_MEU_DIA_ROLAGEM = 'Meu Dia Hoje Zular'
+// Item que só existe dentro do viewport depois de uma rolagem moderada (não
+// o último item, para que o clique nativo ainda encontre o botão dentro do
+// container rolável sem precisar de mais rolagem).
+export const NOME_MEU_DIA_ROLAGEM = 'Meu Dia Atraso A09'
+// Último item da agenda: nome sem a palavra "Hoje" de propósito, para que a
+// checagem do rótulo de estado ("Hoje") no teste não passe por vacuidade.
+export const NOME_MEU_DIA_ULTIMO = 'Meu Dia Zular'
 
 // [numero, razaoSocial, dias]. `dias` é o deslocamento em dias civis de São
 // Paulo a partir de hoje (null = sem contato nenhum, empresa fica sem_data).
@@ -25,15 +31,15 @@ const AGENDA: Array<[numero: number, nome: string, dias: number | null]> = [
   [504, 'Meu Dia Atraso A12', -12],
   [505, 'Meu Dia Atraso A11', -11],
   [506, 'Meu Dia Atraso A10', -10],
-  [507, 'Meu Dia Atraso A09', -9],
+  [507, NOME_MEU_DIA_ROLAGEM, -9],
   [508, 'Meu Dia Posse Perdida', -8],
   [509, NOME_MEU_DIA_BUSCA_UNICA, -7],
   [510, 'Meu Dia Atraso Devolucao', -2],
   [511, 'Meu Dia Atraso Reagenda', -1],
-  [512, 'Meu Dia Hoje Aurora', 0],
-  [513, 'Meu Dia Hoje Cedro', 0],
-  [514, 'Meu Dia Hoje Dourada', 0],
-  [515, NOME_MEU_DIA_ROLAGEM, 0],
+  [512, 'Meu Dia Aurora', 0],
+  [513, 'Meu Dia Cedro', 0],
+  [514, 'Meu Dia Dourada', 0],
+  [515, NOME_MEU_DIA_ULTIMO, 0],
   [516, 'Meu Dia Futuro Ignorado', 5],
   [517, 'Meu Dia SemContato Ignorado', null],
 ]
