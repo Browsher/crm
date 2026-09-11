@@ -12,6 +12,7 @@ import { prepararEmpresasReserva } from '../../tests/e2e/dados-reserva'
 import { prepararRecentes } from '../../tests/e2e/dados-recentes'
 import { prepararFilaVisual } from '../../tests/e2e/dados-fila-visual'
 import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
+import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -65,6 +66,7 @@ try {
   await prepararRecentes(banco)
   await prepararFilaVisual(banco)
   await prepararCarteiraVisual(banco)
+  await prepararMeuDia(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined
@@ -82,7 +84,12 @@ try {
     if (Date.now() >= prazo) throw new Error('Servidor E2E não ficou pronto em 30 segundos')
     await esperar(200, undefined, { signal: interrupcao.signal })
   }
-  await executar(['node_modules/@playwright/test/cli.js', 'test'], ambiente)
+  // O E2E do Meu dia revoga posse "por fora" (tests/e2e/meu-dia.spec.ts): a
+  // única forma de simular a mudança de outra sessão é falar com o próprio
+  // banco temporário como admin, fora do app. `DATABASE_URL_ADMIN` some do
+  // ambiente do servidor (`ambienteDoServidor`) de propósito; aqui ela volta
+  // só para o processo do Playwright, que roda local e nunca é o app servido.
+  await executar(['node_modules/@playwright/test/cli.js', 'test'], { ...ambiente, DATABASE_URL_ADMIN: banco.urlAdmin })
 } catch (erro) {
   console.error(erro instanceof Error ? erro.message : erro)
   process.exitCode = 1

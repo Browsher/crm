@@ -7,7 +7,10 @@ import { NativeSelect } from '@/src/components/ui/native-select'
 import { TemaCrmContext, type TemaCrm } from './tema'
 import styles from './shell.module.css'
 
-export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: 'fila' | 'carteira' }) {
+const TITULO = { fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia' } as const
+const TEMA = { fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia' } as const
+
+export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: 'fila' | 'carteira' | 'meu-dia' }) {
   const [tema, setTema] = useState<TemaCrm>('system')
   const [aberto, setAberto] = useState(false)
   return <TemaCrmContext.Provider value={tema}>
@@ -17,6 +20,7 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
         <Link href="/" className={styles.marca}><span aria-hidden="true">C</span><strong>CRM</strong></Link>
         <nav aria-label="Navegação do CRM" onClick={() => setAberto(false)}>
           <Link href="/fila" aria-current={area === 'fila' ? 'page' : undefined}>Prospecção</Link>
+          <Link href="/meu-dia" aria-current={area === 'meu-dia' ? 'page' : undefined}>Meu dia</Link>
           <Link href="/carteira" aria-current={area === 'carteira' ? 'page' : undefined}>Carteira</Link>
           {papel === 'gestor' && <><Link href="/empresas">Empresas</Link><Link href="/usuarios">Usuários</Link></>}
           <Link href="/">Início</Link>
@@ -25,8 +29,8 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
       <div className={styles.workspace}>
         <header className={styles.topbar}>
           <Button className={styles.menu} variant="ghost" size="icon" aria-label="Menu do CRM" aria-controls="menu-fila" aria-expanded={aberto} onClick={() => setAberto(!aberto)}>☰</Button>
-          <span className={styles.titulo}>{area === 'fila' ? 'Prospecção' : 'Carteira'}</span>
-          <div className={styles.controles}><span className={styles.nome}>{nome}</span><NativeSelect aria-label={area === 'fila' ? 'Tema da Fila' : 'Tema da Carteira'} value={tema} onChange={e => setTema(e.target.value as TemaCrm)}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></NativeSelect></div>
+          <span className={styles.titulo}>{TITULO[area]}</span>
+          <div className={styles.controles}><span className={styles.nome}>{nome}</span><NativeSelect aria-label={TEMA[area]} value={tema} onChange={e => setTema(e.target.value as TemaCrm)}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></NativeSelect></div>
         </header>
         <div id="conteudo-fila" tabIndex={-1} className={styles.conteudo}>{children}</div>
       </div>
