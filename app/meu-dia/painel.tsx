@@ -8,6 +8,13 @@ import { urlFichaDoMeuDia, urlMeuDia, type FiltrosMeuDia } from './agenda'
 import { historicoDaAgendaAcao } from './historico-acao'
 import styles from './meu-dia.module.css'
 
+// Mesmo estreitamento do type predicate de `agendaDoDia`
+// (`app/meu-dia/agenda.ts`), repetido aqui porque a assinatura exportada de
+// `agendaDoDia`/`filtrarAgenda` devolve `EmpresaComigo[]`, então o
+// estreitamento não atravessa a fronteira do módulo sem isto. A página
+// (`app/meu-dia/page.tsx`) reaplica o mesmo predicate antes de passar a prop.
+export type LinhaMeuDia = EmpresaComigo & { situacaoRetorno: 'atrasado' | 'hoje' }
+
 const ROTULO_RETORNO: Record<'atrasado' | 'hoje', string> = { atrasado: 'Atrasado', hoje: 'Hoje' }
 
 function dataCivil(valor: string): string {
@@ -45,7 +52,7 @@ function Historico({ contatos }: { contatos: Contato[] }) {
   </li>)}</ol>
 }
 
-export function PainelMeuDia({ linhas, filtros }: { linhas: EmpresaComigo[]; filtros: FiltrosMeuDia }) {
+export function PainelMeuDia({ linhas, filtros }: { linhas: LinhaMeuDia[]; filtros: FiltrosMeuDia }) {
   const [selecionada, setSelecionada] = useState<string | null>(null)
   const atual = linhas.find(l => l.id === selecionada) ?? linhas[0]
   const atualId = atual?.id
@@ -103,12 +110,11 @@ export function PainelMeuDia({ linhas, filtros }: { linhas: EmpresaComigo[]; fil
     <ul className={styles.colunaLista} data-testid="lista-meu-dia">
       {linhas.map(empresa => {
         const ehSelecionada = empresa.id === atual?.id
-        const retorno = empresa.situacaoRetorno as 'atrasado' | 'hoje'
         return <li key={empresa.id}>
           <button type="button" className={styles.item} aria-current={ehSelecionada ? 'true' : undefined}
             onClick={() => setSelecionada(empresa.id)}>
             <strong>{empresa.razaoSocial}</strong>
-            <span className={styles.itemEstado}>{ROTULO_RETORNO[retorno]}</span>
+            <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
             <span>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</span>
             {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
           </button>

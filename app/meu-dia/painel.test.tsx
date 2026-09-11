@@ -1,15 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
-import { PainelMeuDia } from './painel'
+import { PainelMeuDia, type LinhaMeuDia } from './painel'
 
-const aurora: EmpresaComigo = {
+const aurora: LinhaMeuDia = {
   id: '11111111-1111-1111-1111-111111111111', cnpj: '11222333000181', razaoSocial: 'Aurora', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Ana', telefone: '11999999999', email: 'ana@aurora.com',
   cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Ligar', proximoPassoData: '2026-09-10',
   situacaoRetorno: 'atrasado', vencido: true,
 }
-const boreal: EmpresaComigo = {
+const boreal: LinhaMeuDia = {
   id: '22222222-2222-2222-2222-222222222222', cnpj: '22333444000162', razaoSocial: 'Boreal', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Beto', telefone: '11988888888', email: 'beto@boreal.com',
   cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Enviar proposta', proximoPassoData: '2026-09-11',

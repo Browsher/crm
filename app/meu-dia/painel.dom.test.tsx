@@ -3,8 +3,8 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
 import type { ResultadoAgendaHistorico } from './historico'
+import type { LinhaMeuDia } from './painel'
 
 vi.mock('./historico-acao', () => ({ historicoDaAgendaAcao: vi.fn() }))
 
@@ -13,13 +13,13 @@ const { PainelMeuDia } = await import('./painel')
 
 const acaoMock = historicoDaAgendaAcao as unknown as ReturnType<typeof vi.fn>
 
-const aurora: EmpresaComigo = {
+const aurora: LinhaMeuDia = {
   id: '11111111-1111-1111-1111-111111111111', cnpj: '11222333000181', razaoSocial: 'Aurora', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Ana', telefone: '11999999999', email: 'ana@aurora.com',
   cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Ligar', proximoPassoData: '2026-09-10',
   situacaoRetorno: 'atrasado', vencido: true,
 }
-const boreal: EmpresaComigo = {
+const boreal: LinhaMeuDia = {
   id: '22222222-2222-2222-2222-222222222222', cnpj: '22333444000162', razaoSocial: 'Boreal', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Beto', telefone: '11988888888', email: 'beto@boreal.com',
   cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Enviar proposta', proximoPassoData: '2026-09-11',
@@ -37,7 +37,7 @@ afterEach(async () => {
   acaoMock.mockReset()
 })
 
-async function montar(linhas: EmpresaComigo[]) {
+async function montar(linhas: LinhaMeuDia[]) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)

@@ -4,7 +4,7 @@ import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { agendaDoDia, filtrarAgenda, lerFiltrosMeuDia } from './agenda'
 import { FiltrosForm } from './filtros-form'
-import { PainelMeuDia } from './painel'
+import { PainelMeuDia, type LinhaMeuDia } from './painel'
 import styles from './meu-dia.module.css'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
@@ -15,6 +15,13 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
   const leitura = lerFiltrosMeuDia(params)
   const agenda = r.ok ? agendaDoDia(r.carteira) : []
   const filtradas = leitura.ok ? filtrarAgenda(agenda, leitura.filtros) : []
+  // `agendaDoDia`/`filtrarAgenda` só deixam passar `atrasado`/`hoje` (veja o
+  // type predicate de `agendaDoDia` em `app/meu-dia/agenda.ts`), mas a
+  // assinatura pública das duas devolve `EmpresaComigo[]`. Reaplicar o mesmo
+  // predicate aqui estreita o tipo sem cast, para `PainelMeuDia` receber
+  // `LinhaMeuDia[]` de verdade.
+  const linhasDoDia: LinhaMeuDia[] = filtradas.filter(
+    (l): l is LinhaMeuDia => l.situacaoRetorno === 'atrasado' || l.situacaoRetorno === 'hoje')
 
   return <main className={styles.pagina}>
     <header>
@@ -28,7 +35,7 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
     </div> : <>
       <FiltrosForm filtros={leitura.filtros} />
       <p className={styles.contagem}>{filtradas.length} de {agenda.length} {agenda.length === 1 ? 'retorno' : 'retornos'}</p>
-      <PainelMeuDia linhas={filtradas} filtros={leitura.filtros} />
+      <PainelMeuDia linhas={linhasDoDia} filtros={leitura.filtros} />
     </>}
   </main>
 }
