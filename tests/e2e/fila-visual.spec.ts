@@ -5,7 +5,7 @@ test('Fila real separa etapas, preserva notas ao voltar e troca somente após co
   await page.getByLabel('E-mail').fill('visuale2e@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL('/meu-dia')
   await page.goto('/fila/localizar?cnae=8888888')
   const etapas = page.getByRole('navigation', { name: 'Etapas da prospecção' })
   await expect(etapas.getByRole('link')).toHaveCount(0)

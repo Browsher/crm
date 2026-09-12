@@ -25,4 +25,8 @@ test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   expect(html).not.toContain('href="/usuarios"')
   expect(html).toContain('Tema do Meu dia')
   expect(html).toContain('Agenda')
+  expect(html).not.toContain('>Início</a>')
+  expect(html).toContain('action="/sair"')
+  expect(html).toContain('method="post"')
+  expect(html).toContain('>Sair</button>')
 })

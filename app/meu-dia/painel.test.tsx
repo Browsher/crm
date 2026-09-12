@@ -20,6 +20,8 @@ test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
   const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[]} filtros={{ nome: '', retorno: '' }} />)
   expect(vazia).toContain('Nenhum retorno pendente para hoje')
   expect(vazia).toContain('href="/carteira"')
+  expect(vazia).toContain('href="/fila"')
+  expect(vazia).toContain('Ir para Prospecção')
   expect(vazia).not.toContain('de 0 retorno')
 
   // Busca sem resultado: a agenda tem itens, só o filtro não bateu com
