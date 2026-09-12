@@ -23,7 +23,9 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
           <Link href="/meu-dia" aria-current={area === 'meu-dia' ? 'page' : undefined}>Meu dia</Link>
           <Link href="/carteira" aria-current={area === 'carteira' ? 'page' : undefined}>Carteira</Link>
           {papel === 'gestor' && <><Link href="/empresas">Empresas</Link><Link href="/usuarios">Usuários</Link></>}
-          <Link href="/">Início</Link>
+          <form action="/sair" method="post">
+            <Button type="submit" variant="ghost">Sair</Button>
+          </form>
         </nav>
       </aside>
       <div className={styles.workspace}>

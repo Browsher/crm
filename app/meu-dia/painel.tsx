@@ -151,6 +151,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
       return <div className={styles.vazio}>
         <h2>Nenhum retorno pendente para hoje</h2>
         <p>Sua carteira não tem clientes atrasados ou com retorno hoje.</p>
+        <Link href="/fila">Ir para Prospecção</Link>
         <Link href="/carteira">Ver carteira completa</Link>
       </div>
     }

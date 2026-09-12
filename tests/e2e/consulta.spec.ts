@@ -6,7 +6,7 @@ for (const papel of ['vendedore2e', 'gestore2e']) {
     await page.getByLabel('E-mail').fill(`${papel}@teste.local`)
     await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-    await expect(page).toHaveURL('/')
+    await expect(page).toHaveURL('/meu-dia')
     await page.goto('/fila')
     await expect(page).toHaveURL(/\/fila\/localizar/)
     await expect(page.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()

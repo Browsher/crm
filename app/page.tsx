@@ -1,39 +1,7 @@
-import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 
 export default async function Inicio() {
-  const eu = await exigir('usuario')
-  return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">CRM</h1>
-        <nav className="flex items-center gap-3">
-          <Link href="/fila" className="text-sm underline">
-            Fila
-          </Link>
-          <Link href="/carteira" className="text-sm underline">
-            Carteira
-          </Link>
-          {eu.papel === 'gestor' && (
-            <>
-              <Link href="/empresas" className="text-sm underline">
-                Empresas
-              </Link>
-              <Link href="/usuarios" className="text-sm underline">
-                Usuários
-              </Link>
-            </>
-          )}
-          <form action="/sair" method="post">
-            <button type="submit" className="rounded border px-3 py-1 text-sm">
-              Sair
-            </button>
-          </form>
-        </nav>
-      </header>
-      <p>
-        Olá, {eu.nome}. Você é {eu.papel}.
-      </p>
-    </main>
-  )
+  await exigir('usuario')
+  redirect('/meu-dia')
 }

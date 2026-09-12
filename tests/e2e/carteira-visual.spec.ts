@@ -6,7 +6,7 @@ async function entrar(page: Page) {
   await page.getByLabel('E-mail').fill('carteiravisuale2e@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/')
+  await expect(page).toHaveURL('/meu-dia')
   await page.goto('/carteira')
 }
 
