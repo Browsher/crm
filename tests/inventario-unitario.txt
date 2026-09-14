@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 904
+# Total: 910
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -55,6 +55,9 @@ app/design/galeria.test.tsx :: simula busca com carregamento e resposta explíci
 app/design/galeria.test.tsx :: troca o tema no escopo da galeria
 app/design/page.test.tsx :: pagina e galeria nao importam caminhos de escrita de negocio
 app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
+app/empresas/[id]/page.test.tsx :: falha no histórico não se apresenta como histórico vazio
+app/empresas/[id]/page.test.tsx :: ficha de consulta sem ações de vendedor e volta preserva filtros
+app/empresas/[id]/page.test.tsx :: inexistente não consulta histórico
 app/empresas/formulario.dom.test.tsx :: limpar na própria URL reseta controles sem alterar clique modificado do link
 app/empresas/formulario.dom.test.tsx :: mudar somente a página descarta edições locais ainda não submetidas
 app/empresas/formulario.dom.test.tsx :: nova busca conserva os selects e não carrega a página antiga
@@ -100,6 +103,7 @@ app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro rend
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
+app/empresas/linha.test.tsx :: Linha: o que sempre aparece nome abre ficha administrativa da empresa
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece razão social e nome fantasia
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem e-mail, não sobra rótulo vazio
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem nome fantasia, não sobra rótulo vazio
@@ -297,6 +301,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-meu-dia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-12-empresas-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-dashboard-gestor.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresa-perfil-gestor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresas-excel-filtros.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-grupos-importacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
@@ -319,6 +324,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-empresas-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-dashboard-gestor-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresa-perfil-gestor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-gestor-administracao-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-grupos-importacao-design.md não tem caractere de controle literal

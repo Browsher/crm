@@ -19,6 +19,9 @@ const BASE: EmpresaNaLista = {
 const html = (e: Partial<EmpresaNaLista> = {}) => renderToStaticMarkup(<Linha empresa={{ ...BASE, ...e }} />)
 
 describe('Linha: o que sempre aparece', () => {
+  test('nome abre ficha administrativa da empresa', () => {
+    expect(html()).toContain(`href="/empresas/${BASE.id}"`)
+  })
   test('mostra o código do CNAE principal informado', () => {
     expect(html({ cnaePrincipal: '4742300' })).toContain('CNAE: 4742300')
   })
