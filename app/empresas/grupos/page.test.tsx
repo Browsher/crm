@@ -30,6 +30,16 @@ test('estado vazio oferece importação', async () => {
   expect(html).toContain('Nenhum grupo')
   expect(html).toContain('href="/empresas/importar"')
 })
+
+test('página além do fim orienta voltar sem apresentar a base como vazia', async () => {
+  deps.listar.mockResolvedValue({ ok: true, grupos: [], resumo: { total: 51, ativos: 49, desativados: 2, empresas: 300 } })
+  const html = renderToStaticMarkup(await Pagina({ searchParams: Promise.resolve({ pagina: '3' }) }))
+  expect(html).toContain('Nenhum grupo nesta página')
+  expect(html).toContain('Volte à primeira página para consultar os grupos existentes.')
+  expect(html).not.toContain('Importe uma planilha para criar um grupo.')
+  expect(html).toContain('href="/empresas/grupos"')
+  expect(html).toContain('300')
+})
 test('detalhe identifica responsável inativo, outras origens e paginação', async () => {
   const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({ pagina: '2', gruposPagina: '2' }) }))
   expect(html).toContain('José (inativo)')

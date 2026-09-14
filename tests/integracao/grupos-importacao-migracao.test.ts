@@ -6,6 +6,19 @@ import { aplicar } from '@/src/server/db/migracoes/aplicar'
 import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { criarBancoDeTeste, criarUsuario } from './ajuda'
 
+test('0027 em banco vazio não cria Base de testes antes de qualquer limpeza de cenário', async () => {
+  const banco = await criarBancoDeTeste()
+  try {
+    // Não há beforeEach nem DELETE: uma criação incondicional na migração
+    // deixa evidência aqui, mesmo quando nenhuma empresa foi vinculada.
+    expect(await banco.sql('SELECT cnpj FROM empresa')).toEqual([])
+    expect(await banco.sql('SELECT nome FROM grupo_importacao')).toEqual([])
+    expect(await banco.sql('SELECT empresa_id FROM grupo_importacao_empresa')).toEqual([])
+  } finally {
+    await banco.derrubar()
+  }
+})
+
 test('0027 preserva empresas, contatos, carteira, reserva e recentes na Base de testes, sem autovínculo futuro', async () => {
   const banco = await criarBancoDeTeste({semMigracoes:true})
   const pasta = await mkdtemp(join(tmpdir(), 'crm-migracao-0027-'))

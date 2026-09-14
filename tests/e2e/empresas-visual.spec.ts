@@ -134,6 +134,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
 
   await page.getByRole('link', { name: 'Importar empresas', exact: true }).click()
   await expect(page).toHaveURL('/empresas/importar')
+  await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação visual E2E')
   const arquivo = page.getByLabel('Arquivo Excel ou CSV')
   await arquivo.setInputFiles({
     name: 'empresas-mistas-e2e.csv',
@@ -148,12 +149,12 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
 
   const tituloConferencia = page.getByRole('heading', { name: 'Confira antes de importar', exact: true })
   await expect(tituloConferencia).toBeFocused()
-  await expect(page.getByText('Nada foi gravado. A confirmação adiciona somente as novas empresas aceitas.', { exact: true })).toBeVisible()
+  await expect(page.getByText('Nada foi gravado. A confirmação cria o grupo e vincula todas as empresas aceitas, incluindo as já cadastradas.', { exact: true })).toBeVisible()
   await expect(valorDoResumo(page, 'Novas empresas')).toHaveText('1')
   await expect(valorDoResumo(page, 'Já cadastradas')).toHaveText('1')
   await expect(valorDoResumo(page, 'Linhas recusadas')).toHaveText('1')
   await expect(page.getByText(`Linha 4: CNPJ com dígito verificador errado (${CNPJ_RECUSADO}). Confira na origem.`, { exact: true })).toBeVisible()
-  const confirmar = page.getByRole('button', { name: 'Importar 1 empresa', exact: true })
+  const confirmar = page.getByRole('button', { name: 'Confirmar importação', exact: true })
   await expect(confirmar).toBeVisible()
   expect(await contarCnpj(CNPJ_NOVA)).toBe(0)
   expect(await contarCnpj(CNPJ_EXISTENTE)).toBe(1)
@@ -169,10 +170,10 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   await expect(confirmar).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
-  await page.getByRole('button', { name: 'Importar 1 empresa', exact: true }).click()
+  await page.getByRole('button', { name: 'Confirmar importação', exact: true }).click()
   const tituloConclusao = page.getByRole('heading', { name: 'Importação concluída', exact: true })
   await expect(tituloConclusao).toBeFocused()
-  await expect(page.getByText('1 empresa importada.', { exact: true })).toBeVisible()
+  await expect(page.getByText('1 empresa nova.', { exact: true })).toBeVisible()
   expect(await contarCnpj(CNPJ_NOVA)).toBe(1)
   expect(await contarCnpj(CNPJ_EXISTENTE)).toBe(1)
   expect(await contarCnpj(CNPJ_RECUSADO)).toBe(0)
@@ -183,15 +184,16 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   await expect(page.getByRole('table')).toContainText(NOME_NOVA)
 })
 
-test('troca de arquivo invalida relatório, zero novas não confirma e CSV inválido recebe foco', async ({ page }, testInfo) => {
+test('troca de arquivo invalida relatório, somente existentes permite grupo e CSV inválido recebe foco', async ({ page }, testInfo) => {
   expect(await contarCnpj(CNPJ_TROCA)).toBe(0)
   await entrar(page, 'gestore2e')
   await page.goto('/empresas/importar')
+  await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação de regressão E2E')
   const arquivo = page.getByLabel('Arquivo Excel ou CSV')
   await arquivo.setInputFiles({ name: 'arquivo-inicial.csv', mimeType: 'text/csv', buffer: Buffer.from(CSV_TROCA, 'utf8') })
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
   await expect(valorDoResumo(page, 'Novas empresas')).toHaveText('1')
-  await expect(page.getByRole('button', { name: 'Importar 1 empresa', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirmar importação', exact: true })).toBeVisible()
   expect(await contarCnpj(CNPJ_TROCA)).toBe(0)
 
   await page.getByRole('button', { name: 'Voltar ao arquivo', exact: true }).click()
@@ -201,14 +203,13 @@ test('troca de arquivo invalida relatório, zero novas não confirma e CSV invá
   await expect(page.getByRole('heading', { name: 'Enviar arquivo', exact: true })).toBeVisible()
   await expect(arquivo).toBeFocused()
   await expect(page.locator('dl')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Importar \d+ empresas?$/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Confirmar importação' })).toHaveCount(0)
   expect(await arquivo.evaluate((elemento) => (elemento as HTMLInputElement).files?.[0]?.name)).toBe('sem-novas.csv')
 
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
   await expect(valorDoResumo(page, 'Novas empresas')).toHaveText('0')
   await expect(valorDoResumo(page, 'Já cadastradas')).toHaveText('1')
-  await expect(page.getByText('Não há novas empresas para importar. Volte a Enviar para conferir outro arquivo.', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: /Importar \d+ empresas?$/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Confirmar importação' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Enviar', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Enviar arquivo', exact: true })).toBeFocused()
@@ -223,7 +224,7 @@ test('troca de arquivo invalida relatório, zero novas não confirma e CSV invá
   await expect(erro).toContainText('O cabeçalho não confere.')
   await expect(erro).toBeFocused()
   await expect(page.locator('dl')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /Importar \d+ empresas?$/ })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Confirmar importação' })).toHaveCount(0)
 
   for (const tema of ['light', 'dark'] as const) {
     await page.getByRole('combobox', { name: 'Tema de Empresas' }).selectOption(tema)

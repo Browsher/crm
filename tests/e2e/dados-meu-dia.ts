@@ -1,4 +1,5 @@
 import { criarUsuarioComSenha, type BancoDeTeste } from '../integracao/ajuda'
+import { vincularGrupoAtivo } from '../integracao/grupos-fixtures'
 
 function idDe(n: number): string {
   return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -68,4 +69,5 @@ export async function prepararMeuDia(banco: BancoDeTeste) {
         [id, `Nota de ${nome}`, `Retorno de ${nome}`, dias])
     }
   }
+  await vincularGrupoAtivo(banco, [EMPRESA_MEU_DIA_PRIVADA, ...AGENDA.map(([numero]) => idDe(numero))])
 }

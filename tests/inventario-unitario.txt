@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 839
+# Total: 882
 
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
@@ -57,22 +57,42 @@ app/empresas/formulario.dom.test.tsx :: nova busca conserva os selects e não ca
 app/empresas/formulario.dom.test.tsx :: novas props depois de navegação reiniciam os controles
 app/empresas/formulario.dom.test.tsx :: trocar estado limpa cidade e bairro, preserva busca e CNAE e reinicia página
 app/empresas/formulario.test.tsx :: expõe busca e selects acessíveis com dependências desabilitadas
+app/empresas/grupos/acoes.test.tsx :: ação desconhecida e SQL negado permanecem recuperáveis sem invalidar cache
+app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação desativar e invalida todos os consumidores
+app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação reativar e invalida todos os consumidores
+app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação renomear e invalida todos os consumidores
+app/empresas/grupos/acoes.test.tsx :: guarda recusada não altera nada
+app/empresas/grupos/controles.dom.test.tsx :: desativação abre confirmação com retrato atual, cancelamento e Escape restauram foco
+app/empresas/grupos/controles.dom.test.tsx :: erro fica no diálogo com nome editado e permite tentar de novo; sucesso fecha
+app/empresas/grupos/controles.dom.test.tsx :: pendente impede duplo envio e fecha só após resultado; reativar envia ação correta
+app/empresas/grupos/page.test.tsx :: detalhe identifica responsável inativo, outras origens e paginação
+app/empresas/grupos/page.test.tsx :: estado vazio oferece importação
+app/empresas/grupos/page.test.tsx :: lista compacta usa totais globais, origem migrada e navegação real
+app/empresas/grupos/page.test.tsx :: página além do fim orienta voltar sem apresentar a base como vazia
+app/empresas/grupos/page.test.tsx :: recurso ausente vira 404
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo 22023 volta como erro recuperavel que exige nova conferencia
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo conferencia envia formato e bytes ao servico
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo confirmacao chama importar com o arquivo original para reanalise
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo faz a guarda de gestor antes de ler o arquivo
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo formato desconhecido volta como erro recuperavel
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo tamanho acima do limite volta como erro recuperavel sem ler bytes
-app/empresas/importar/formulario.dom.test.tsx :: conferir e voltar preservam o mesmo input e File, trocar invalida o relatório
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { chave: 'nao-e-uuid' }
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { nome: '   ' }
+app/empresas/importar/formulario.dom.test.tsx :: conferir e confirmar usam a mesma chave, nome e arquivo
+app/empresas/importar/formulario.dom.test.tsx :: mudar arquivo invalida a conferência e inicia outra operação
 app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
+app/empresas/importar/formulario.dom.test.tsx :: reiniciar limpa nome e arquivo e gera outra chave
 app/empresas/importar/formulario.dom.test.tsx :: retornos explícitos à etapa Enviar movem o foco para o título
+app/empresas/importar/formulario.dom.test.tsx :: somente existentes ainda permite confirmar e mostra o total do grupo
 app/empresas/importar/formulario.dom.test.tsx :: trocar o arquivo preserva o foco no input
-app/empresas/importar/formulario.dom.test.tsx :: zero novas não confirma; conclusão usa número real e não volta à gravação
+app/empresas/importar/formulario.dom.test.tsx :: voltar mantém o File; mudar nome invalida a conferência e inicia outra operação
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render campo aceita XLSX e CSV
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render explica o CNAE opcional e a compatibilidade do modelo antigo
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o botão de conferir
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render não mostra o botão de confirmar antes de haver relatório
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render pede um nome para o grupo
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
@@ -230,6 +250,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0023.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0024.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0025.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0026.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0027.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
@@ -260,6 +281,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-meu-dia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-12-empresas-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresas-excel-filtros.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-grupos-importacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -280,6 +302,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-empresas-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-grupos-importacao-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
@@ -516,7 +539,20 @@ src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai co
 src/features/empresas/formato.test.ts :: formatarTelefone celular, 11 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone fixo, 10 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone valor fora de forma sai como veio
+src/features/empresas/grupos.test.ts :: id malformado nunca chega ao banco
+src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: " "
+src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: "nome\nnovo"
+src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+src/features/empresas/grupos.test.ts :: página válida mantém navegação
+src/features/empresas/grupos.test.ts :: paginação malformada -1 recupera primeira página
+src/features/empresas/grupos.test.ts :: paginação malformada 0 recupera primeira página
+src/features/empresas/grupos.test.ts :: paginação malformada 1.5 recupera primeira página
+src/features/empresas/grupos.test.ts :: paginação malformada 1000001 recupera primeira página
+src/features/empresas/grupos.test.ts :: paginação malformada Infinity recupera primeira página
+src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
+src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
 src/features/empresas/mensagens.test.ts :: CNAE invalido explica as duas formas aceitas
+src/features/empresas/mensagens.test.ts :: falhas recuperaveis de confirmacao orientam nova conferencia
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 7
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 8
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
@@ -584,6 +620,9 @@ src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo re
 src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo todo nome de coluna do relatorio existe no CABECALHO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio a recusa aponta para a linha do ARQUIVO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio duplicata depois de linha em branco cita as linhas certas
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar confirma o grupo com todas as linhas e devolve o relatorio persistido pelo banco
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar propaga falha de infraestrutura
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar traduz 22023 em falha recuperavel
 src/features/empresas/servico.test.ts :: analisar aceita a fonte XLSX explicita e reaproveita o mesmo relatorio
 src/features/empresas/servico.test.ts :: analisar arquivo invalido devolve a falha do arquivo
 src/features/empresas/servico.test.ts :: analisar conta novas, ja cadastradas e ceps nao encontrados
@@ -593,8 +632,10 @@ src/features/empresas/servico.test.ts :: analisar sem_permissao do repositorio s
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada arquivo sem nenhum CEP pede zero
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada basePublicadaEm nulo e todos os ceps pedidos sem resposta
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada cepsPedidos conta CEP distinto, nao linha
-src/features/empresas/servico.test.ts :: importar grava so as novas, nunca as ja cadastradas
-src/features/empresas/servico.test.ts :: importar o relatorio devolvido e o mesmo que analisar daria
+src/features/empresas/servico.test.ts :: importar confirma todas as aceitas, inclusive as ja cadastradas
+src/features/empresas/servico.test.ts :: importar devolve o relatorio persistido pelo repositorio em vez da reanalise atual
+src/features/empresas/servico.test.ts :: importar nao confirma quando todas as linhas foram recusadas
+src/features/empresas/servico.test.ts :: importar so CNPJs existentes ainda cria o grupo e devolve zero inseridas
 src/features/empresas/telefone.test.ts :: normalizarTelefone "  11987654321 " vira "11987654321"
 src/features/empresas/telefone.test.ts :: normalizarTelefone "" vira null
 src/features/empresas/telefone.test.ts :: normalizarTelefone "(11) 98765-4321" vira "11987654321"
@@ -789,6 +830,7 @@ src/server/db/migracoes/checar.test.ts :: checarMigracoes nome fora do padrão
 src/server/db/migracoes/checar.test.ts :: checarMigracoes numeração precisa começar em 0000 e ser contígua
 src/server/db/migracoes/checar.test.ts :: checarMigracoes schema ou papel de fornecedor é recusado
 src/server/db/migracoes/checar.test.ts :: checarMigracoes sem BEGIN; na primeira linha de código ou COMMIT; na última
+src/server/db/migracoes/checar.test.ts :: PK composta aceita apenas colunas UUID que referenciam entidades
 src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness a ordem do setconfig não conta
 src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness app_teste BYPASSRLS
 src/server/db/migracoes/invariantes.test.ts :: app_teste, o papel do harness app_teste dona de tabela
@@ -837,6 +879,7 @@ src/server/db/ssl.test.ts :: configSsl verify com CA inline usa o PEM
 src/server/db/ssl.test.ts :: configSsl verify com nome de servidor valida o certificado contra o nome pinado, não contra o host
 src/server/db/ssl.test.ts :: configSsl verify sem CA valida contra as CAs do sistema
 src/server/diretivas.test.ts :: arquivos 'use server' a varredura enxerga a action que mora em src/
+src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\grupos\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\importar\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\localizar\registrar-visita-acao.ts só exporta função

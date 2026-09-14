@@ -21,7 +21,7 @@ export default async function PaginaGrupos({ searchParams }: { searchParams: Pro
         <div><dt>Desativados</dt><dd>{r.resumo.desativados}</dd></div>
         <div><dt>Empresas únicas vinculadas</dt><dd>{r.resumo.empresas}</dd></div>
       </dl>
-      {r.grupos.length === 0 ? <div className={styles.vazio}><h2>{r.resumo.total === 0 ? 'Nenhum grupo de importação' : 'Nenhum grupo nesta página'}</h2><p>Importe uma planilha para criar um grupo.</p><Link href={r.resumo.total === 0 ? '/empresas/importar' : '/empresas/grupos'}>{r.resumo.total === 0 ? 'Importar planilha' : 'Voltar à primeira página'}</Link></div> :
+      {r.grupos.length === 0 ? <div className={styles.vazio}><h2>{r.resumo.total === 0 ? 'Nenhum grupo de importação' : 'Nenhum grupo nesta página'}</h2><p>{r.resumo.total === 0 ? 'Importe uma planilha para criar um grupo.' : 'Volte à primeira página para consultar os grupos existentes.'}</p><Link href={r.resumo.total === 0 ? '/empresas/importar' : '/empresas/grupos'}>{r.resumo.total === 0 ? 'Importar planilha' : 'Voltar à primeira página'}</Link></div> :
         <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Grupos de importação"><table className={styles.tabela}>
           <thead><tr><th scope="col">Grupo / Planilha</th><th scope="col">Situação</th><th scope="col">Empresas</th><th scope="col">Importado em</th><th scope="col">Ação</th></tr></thead>
           <tbody>{r.grupos.map(g => <tr key={g.id}>

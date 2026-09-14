@@ -16,7 +16,7 @@
 .tabela td { padding:.85rem 1rem; border-top:1px solid var(--ui-border); vertical-align:top; overflow-wrap:anywhere; max-width:24rem; }
 .tabela td>strong,.tabela td>span { display:block; }
 .tabela td>strong+span,.tabela td>time+span { margin-top:.25rem; }
-.ativo,.desativado { width:fit-content; padding:.1rem .5rem; border-radius:999px; font-size:.8rem; font-weight:600; }
+.ativo,.desativado { white-space:nowrap; width:fit-content; padding:.1rem .5rem; border-radius:999px; font-size:.8rem; font-weight:600; }
 .ativo { color:var(--ui-success); background:var(--ui-success-background); }
 .desativado { color:var(--ui-muted-foreground); background:var(--ui-surface); border:1px solid var(--ui-border); }
 .pagina a { text-underline-offset:3px; }

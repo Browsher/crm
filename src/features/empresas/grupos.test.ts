@@ -11,7 +11,7 @@ test('id malformado nunca chega ao banco', async () => {
   expect(await detalharGrupo('gestor', 'qualquer coisa')).toEqual({ ok: false, motivo: 'nao_encontrado' })
   expect(comoUsuario).not.toHaveBeenCalled()
 })
-test.each([' ', 'x'.repeat(101), 'nome\nnovo'])('nome inválido não envia mutação: %s', async nome => {
+test.each([' ', 'x'.repeat(101), 'nome\nnovo'])('nome inválido não envia mutação: %j', async nome => {
   expect(await renomearGrupo('gestor', 'id', nome)).toEqual({ ok: false, motivo: 'nome_invalido' })
   expect(comoUsuario).not.toHaveBeenCalled()
 })
