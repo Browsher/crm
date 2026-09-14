@@ -22,7 +22,7 @@ export async function registrarContatoAcao(
   _anterior: EstadoContato,
   form: FormData,
 ): Promise<EstadoContato> {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const empresaId = String(form.get('id') ?? '')
   // Só a ficha manda `voltarPara`: ela é a única tela cuja ROTA deixa de
   // existir quando a empresa sai da mão do vendedor. A fila não manda, porque

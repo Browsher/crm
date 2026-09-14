@@ -10,7 +10,7 @@ import styles from './meu-dia.module.css'
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 export default async function PaginaMeuDia({ searchParams }: Props) {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const [r, params] = await Promise.all([lerMinhasEmpresas(eu.usuarioId), searchParams])
   const leitura = lerFiltrosMeuDia(params)
   const agenda = r.ok ? agendaDoDia(r.carteira) : []

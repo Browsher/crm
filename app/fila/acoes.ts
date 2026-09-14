@@ -9,7 +9,7 @@ import { lerEntradaReserva, mensagemReserva } from './entrada-reserva'
 export type EstadoFila = { erro: string | null; filaVazia: boolean; resultado?: string; empresaId?: string | null }
 
 export async function agirNaFilaAcao(_anterior: EstadoFila, form: FormData): Promise<EstadoFila> {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const entrada = lerEntradaReserva(form)
   if (!entrada.ok) return { erro: 'Ação ou filtros inválidos. Confira os dados e tente novamente.', filaVazia: false }
   const r = await reservarEmpresa(eu.usuarioId, entrada.alvo, entrada.filtros, entrada.contexto)

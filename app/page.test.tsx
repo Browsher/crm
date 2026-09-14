@@ -6,6 +6,11 @@ import Inicio from './page'
 
 beforeEach(() => { vi.resetAllMocks() })
 
+test('gestor entra na gestão sem passar pela agenda do vendedor', async () => {
+  exigir.mockResolvedValue({ nome: 'Ana', papel: 'gestor' })
+  await expect(Inicio()).rejects.toMatchObject({ digest: 'NEXT_REDIRECT;replace;/gestao;307;' })
+})
+
 test('entrada autenticada encaminha para Meu dia', async () => {
   exigir.mockResolvedValue({ nome: 'Ana', papel: 'vendedor' })
   await expect(Inicio()).rejects.toMatchObject({ digest: 'NEXT_REDIRECT;replace;/meu-dia;307;' })

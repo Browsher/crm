@@ -5,7 +5,7 @@ test('gestor administra usuário em diálogos, combina filtros e mantém foco ap
   await page.getByLabel('E-mail').fill('gestore2e@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
+  await expect(page).toHaveURL('/gestao')
   await page.goto('/usuarios')
   await expect(page.locator('nav a[aria-current=page]')).toHaveAttribute('href', '/usuarios')
   const dialogo = page.getByRole('dialog')

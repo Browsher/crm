@@ -54,7 +54,7 @@ async function entrar(page: Page, apelido: string) {
   await page.getByLabel('E-mail').fill(`${apelido}@teste.local`)
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
+  await expect(page).toHaveURL(apelido.includes('gestor') ? '/gestao' : '/meu-dia')
 }
 
 function valorDoResumo(page: Page, rotulo: string): Locator {

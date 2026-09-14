@@ -5,7 +5,7 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { registrarRecente } from '@/src/features/prospeccao/recentes'
 
 export async function registrarVisitaAcao(empresaId: string): Promise<{ erro: string | null }> {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   if (typeof empresaId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(empresaId)) {
     return { erro: 'Empresa inválida. Não foi possível atualizar as empresas recentes.' }
   }
