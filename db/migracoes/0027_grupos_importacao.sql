@@ -364,14 +364,11 @@ BEGIN
     ORDER BY e.razao_social, e.id LIMIT 10;
 END;
 $$;
-CREATE OR REPLACE FUNCTION empresa_filtros(p_uf text, p_cidade text)
+CREATE FUNCTION empresa_filtros_interno(p_uf text, p_cidade text, p_administracao boolean)
 RETURNS TABLE (tipo text, valor text, rotulo text)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
 AS $$
 BEGIN
-  IF NOT public.pode_ler() THEN
-    RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE = '42501';
-  END IF;
   IF (p_uf IS NOT NULL AND p_uf !~ '^[A-Z]{2}$')
      OR (p_cidade IS NOT NULL AND (p_uf IS NULL OR p_cidade !~ '^[0-9]{7}$')) THEN
     RAISE EXCEPTION 'filtro invalido' USING ERRCODE = '22023';
@@ -380,7 +377,7 @@ BEGIN
     WITH importadas AS (
       SELECT e.cnae_principal, c.uf::text AS estado, c.ibge, c.localidade, nullif(btrim(c.bairro), '') AS bairro
         FROM public.empresa e LEFT JOIN public.cep c ON c.cep = e.cep
-       WHERE public.empresa_visivel_prospeccao(e.id)
+       WHERE p_administracao OR public.empresa_visivel_prospeccao(e.id)
     ), opcoes AS (
       SELECT 'cnae'::text AS tipo, coalesce(i.cnae_principal, 'nao_informado') AS valor,
              coalesce(i.cnae_principal, 'Não informado') AS rotulo FROM importadas i
@@ -395,6 +392,19 @@ BEGIN
     SELECT o.tipo, o.valor, o.rotulo FROM opcoes o ORDER BY o.rotulo, o.valor, o.tipo;
 END;
 $$;
+REVOKE EXECUTE ON FUNCTION empresa_filtros_interno(text,text,boolean) FROM PUBLIC;
+CREATE OR REPLACE FUNCTION empresa_filtros(p_uf text, p_cidade text)
+RETURNS TABLE (tipo text, valor text, rotulo text)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+  IF NOT public.pode_ler() THEN
+    RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY SELECT f.tipo, f.valor, f.rotulo
+    FROM public.empresa_filtros_interno(p_uf, p_cidade, false) f;
+END;
+$$;
 CREATE FUNCTION empresa_filtros_administracao(p_uf text, p_cidade text)
 RETURNS TABLE (tipo text, valor text, rotulo text)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
@@ -403,26 +413,8 @@ BEGIN
   IF NOT public.eh_gestor() THEN
     RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE = '42501';
   END IF;
-  IF (p_uf IS NOT NULL AND p_uf !~ '^[A-Z]{2}$')
-     OR (p_cidade IS NOT NULL AND (p_uf IS NULL OR p_cidade !~ '^[0-9]{7}$')) THEN
-    RAISE EXCEPTION 'filtro invalido' USING ERRCODE = '22023';
-  END IF;
-  RETURN QUERY
-    WITH importadas AS (
-      SELECT e.cnae_principal, c.uf::text AS estado, c.ibge, c.localidade, nullif(btrim(c.bairro), '') AS bairro
-        FROM public.empresa e LEFT JOIN public.cep c ON c.cep = e.cep
-    ), opcoes AS (
-      SELECT 'cnae'::text AS tipo, coalesce(i.cnae_principal, 'nao_informado') AS valor,
-             coalesce(i.cnae_principal, 'Não informado') AS rotulo FROM importadas i
-      UNION
-      SELECT 'uf', i.estado, i.estado FROM importadas i WHERE i.estado IS NOT NULL
-      UNION
-      SELECT 'cidade', i.ibge, i.localidade FROM importadas i WHERE i.estado = p_uf
-      UNION
-      SELECT 'bairro', i.bairro, i.bairro FROM importadas i
-       WHERE i.estado = p_uf AND i.ibge = p_cidade AND i.bairro IS NOT NULL
-    )
-    SELECT o.tipo, o.valor, o.rotulo FROM opcoes o ORDER BY o.rotulo, o.valor, o.tipo;
+  RETURN QUERY SELECT f.tipo, f.valor, f.rotulo
+    FROM public.empresa_filtros_interno(p_uf, p_cidade, true) f;
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION empresa_filtros_administracao(text,text) FROM PUBLIC;

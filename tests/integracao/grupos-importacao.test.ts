@@ -74,6 +74,36 @@ test('vendedor não lê nem administra grupos e helpers internos não são conce
   await expect(banco.comoUsuario(gestor, e => e("UPDATE grupo_importacao SET ativo=false"))).rejects.toMatchObject({ code: '42501' })
   await expect(banco.comoUsuario(gestor, e => e('SELECT empresa_origem_ativa($1)', [randomUUID()]))).rejects.toMatchObject({ code: '42501' })
 })
+
+test('helper comum de filtros existe sem execução para aplicação, mesmo escolhendo universo administrativo', async () => {
+  expect(await banco.sql("SELECT has_function_privilege('app_usuario','empresa_filtros_interno(text,text,boolean)','EXECUTE') AS concedido")).toEqual([{concedido:false}])
+  for (const usuario of [gestor,vendedor]) {
+    for (const administracao of [true,false]) {
+      await expect(banco.comoUsuario(usuario,e=>e('SELECT * FROM empresa_filtros_interno(NULL,NULL,$1)',[administracao]))).rejects.toMatchObject({code:'42501'})
+    }
+  }
+})
+
+test('filtros públicos conservam geografia, ordenação e universos distintos com validação comum', async () => {
+  await banco.sql("INSERT INTO cep(cep,bairro,localidade,uf,ibge) VALUES ('01310999','  Centro  ','Cidade do cenário','SP','3550308')")
+  const grupo = await confirmar([{...linha(),cep:'01310999'}])
+  const esperadas = [
+    {tipo:'cnae',valor:'1234567',rotulo:'1234567'},
+    {tipo:'bairro',valor:'Centro',rotulo:'Centro'},
+    {tipo:'cidade',valor:'3550308',rotulo:'Cidade do cenário'},
+    {tipo:'uf',valor:'SP',rotulo:'SP'},
+  ]
+  for (const funcao of ['empresa_filtros','empresa_filtros_administracao']) {
+    expect((await banco.comoUsuario(gestor,e=>e(`SELECT * FROM ${funcao}('SP','3550308')`))).linhas).toEqual(esperadas)
+    for (const params of [['sp',null],[null,'3550308'],['SP','abc']]) {
+      await expect(banco.comoUsuario(gestor,e=>e(`SELECT * FROM ${funcao}($1,$2)`,params))).rejects.toMatchObject({code:'22023'})
+    }
+  }
+  await expect(banco.comoUsuario(vendedor,e=>e("SELECT * FROM empresa_filtros_administracao('sp',NULL)"))).rejects.toMatchObject({code:'42501'})
+  await situacao(grupo.grupo_id,false)
+  expect((await banco.comoUsuario(gestor,e=>e("SELECT * FROM empresa_filtros('SP','3550308')"))).linhas).toEqual([])
+  expect((await banco.comoUsuario(gestor,e=>e("SELECT * FROM empresa_filtros_administracao('SP','3550308')"))).linhas).toEqual(esperadas)
+})
 test('gestor inativo ou com senha pendente não confirma nem muda grupo', async () => {
   const r = await confirmar([linha()])
   for (const campo of ['ativo=false', 'senha_provisoria_pendente=true']) {
