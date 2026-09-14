@@ -95,8 +95,8 @@ type ContagensGrupo = { total:number; disponiveis:number; carteiras:number;
 // total = disponiveis + carteiras + reservadas + outros
 ```
 
-- [ ] RED nas leituras reais: base prévia com autoria/arquivoNULL exibida como Migração/Cadastros anteriores; deduplicar vínculos; outrogrupoativo preserva disponibilidade; gestorlista todos, vendedornegado. Contagem de carteiras reflete vínculo atual (inclusive vendedor desativado), disponíveis exclui toda posse para não somar duas vezes; detalhe identifica responsável e outrosgrupos.
-- [ ] Página tabela compacta com Grupo/Planilha,Situação,Empresas,Importado em,Ver grupo. Link Todas as empresas e Importar planilha. Estado vazio recuperável com acesso à importação. Não acrescentar controles de mockup nem grupos fictícios.
+- [ ] RED nas leituras reais: base prévia com autoria/arquivoNULL exibida como Migração/Cadastros anteriores; deduplicar vínculos; outrogrupoativo preserva disponibilidade; gestorlista todos, vendedornegado. Carteiras conta vínculo com vendedor ativo. Disponíveis segue a elegibilidade real da Fila, inclusive a regra já existente para vendedor inativo, sem contar a empresa em duas categorias. Detalhe identifica responsável inativo quando houver, além dos outros grupos.
+- [ ] Página tabela compacta com Grupo/Planilha,Situação,Empresas,Importado em,Ver grupo. Link Todas as empresas e Importar planilha. Faixa de resumo da prévia aprovada: total de grupos, ativos, desativados e empresas únicas vinculadas; os totais abrangem todos os grupos e não apenas a página atual, sem contar duas vezes uma empresa de vários grupos. Estado vazio recuperável com acesso à importação. Não acrescentar controles de mockup nem grupos fictícios.
 - [ ] Detalhe com breadcrumb, nome/origem/data/autor, contagens e tabela de membros. Situacao de atendimento identifica posse,reserva,descanso,origem bloqueada. Mostrar outrosgrupos sem duplicar linhas. Ação Renomear simples e Desativar/Reativar com confirmação.
 - [ ] Prévia de desativação conta empresas atualmente livres/elegíveis sem outrogrupoativo, comunica preservação de carteiras/reservas. Mostrar que a quantidade é retrato atual. Action sempre revalida guarda gestor e SQL, invalida /empresas/grupos, detalhe, /fila,/fila/localizar; não confiar no número do cliente. Focus trap, Escape,cancelar,pendente/erro/foco preservados.
 - [ ] Unitários/DOM/actions/integração, typecheck/lint e revisão. Manter /empresas e todos seus filtros no layout original.
@@ -110,3 +110,35 @@ type ContagensGrupo = { total:number; disponiveis:number; carteiras:number;
 - [ ] Screenshots390/820/1280 claro/escuro, tabela de grupos e detalhe, dialog e vazio. Inspecionar visualmente. Sem mudar layout da Carteira/Meu dia.
 - [ ] Rodar inventário/unitários, integração, typecheck,lint,db:checar,build:e2e,E2E serializando suítes pesadas no Windows. Revisão final independente; corrigir achados com regressões não vacuosas.
 - [ ] Commit branch, abrir PRcontra main comCI noSHAexato. Semmerge automático. Não aplicarRailway. Registrar que migração énecessária para servidorlocal; só aplicar no banco de desenvolvimento local após confirmarhost e guardas, preservando dados. Fornecer entrega e instrução de validação.
+
+## Registro de execução
+
+### Banco concluído e revisado
+
+Commits60f3096 e a1b0c6a. Migração0027 implementada; migrações anteriores preservadas. Testes focados de grupos e upgrade, regressões de fixtures, invariantes e convenções passaram no PostgreSQL local temporário. Após correção da revisão, 57 testes de integração e 88 de documentação passaram. Typecheck passou na etapa. Nenhuma migração aplicada na Railway nem no banco de desenvolvimento.
+
+A revisão independente confirmou os contratos funcionais e pediu eliminar a duplicação de opções de filtros. Helper privado compartilhado introduzido sem GRANT à aplicação; re-revisão aprovou. Permanece pequena lacuna de teste carregada para tarefa4: verificar ausência de Base de testes antes da limpeza das fixtures de banco vazio.
+
+Decisões de implementação: preservar INSERT legado em empresa sem promover registros sem grupo; comparar pedido canônico no replay, mas devolver relatório persistido, pois a reanálise posterior muda as contagens de novos/existentes; permitir no checador somente PK composta de colunas UUID que são FKs. Contagens administrativas seguirão elegibilidade real de dono inativo e os totais globais da prévia aprovada.
+
+### Importação concluída e revisada
+
+Commit82259f4. Nome e chave da operação no formulário, reanálise e hash no servidor, todas as linhas aceitas no contrato SQL e resultado persistido no retry. Conferência somente leitura e conclusão com acesso ao grupo. 57 unitários/DOM e21 integrações locais passaram; typecheck e lint focado passaram. Revisão independente aprovou sem achados.
+
+### Administração concluída e revisada
+
+Commit2358ab1. Lista e detalhe separados, totais globais sem duplicação, paginação50, controles de renomear/ativar/desativar e opções administrativas. A troca para empresa_filtros_administracao resolveu a regressão anterior sem vincular artificialmente suas fixtures. 30 testes de integração, conjunto unitário/actions/páginas28, DOM final3 e diretivas11 passaram; typecheck e lint focado passaram. Revisão independente aprovou, com ajuste pequeno de texto da página fora da faixa carregado para a tarefa4. Warning Vite preexistente no teste de diretivas fica registrado para manutenção.
+
+### Jornada implementada, revisão em andamento
+
+Commitc6561f4. 881 unitários passaram e um caso exclusivo de Linux foi pulado no Windows. 454 integrações passaram e o caso de versão esperada do PostgreSQL foi pulado por variável local ausente. Typecheck, lint, convenções e build E2E passaram. O lint local excluiu apenas diretórios não versionados de outra tarefa, .artifact-work/ e outputs/, sem alterar configuração do projeto.
+
+As32 jornadas anteriores passaram em duas rodadas completas. Três jornadas novas passaram depois de corrigir seletores/esperas dos próprios testes. A inspeção visual encontrou quebra na badge Desativado em390px; teste de medição reproduziu o erro, CSS localizado corrigiu e os três testes de grupos passaram novamente após novo build. Capturas24 em390/820/1280, claro e escuro, cobrem lista, detalhe, confirmação e paginação vazia. O vazio absoluto será validado ao iniciar a demonstração isolada, antes de semear seus grupos.
+
+As duas pequenas lacunas das revisões anteriores foram corrigidas com regressões: banco vazio é observado antes de qualquer limpeza e página além do fim explica que os grupos estão em outras páginas. Testes de importação medem ausência de escrita durante conferência e preservação dos cadastros existentes. Fixtures de cenários antigos receberam somente vínculos explícitos dos seus próprios IDs.
+
+Observação não diagnosticada: mensagem de servidor destination stream closed early durante navegação, sem rota ou cancelamento identificável no log, mesmo com testes aprovados. Incluída na revisão independente; não foi suprimida. Warnings de Vite e lockfile externo permanecem registrados sem mudança fora do escopo.
+
+Revisão da tarefa4 concluída: produto/testes aprovados; a espera sem prazo do script descartável de demonstração recebeu limite10s e cancelamento. Teste focado provocou destino de login impossível e comprovou timeout e remoção real do banco temporário; re-revisão aprovou. A execução permanente da demonstração ainda não começou.
+
+Revisão final, demonstração e PR ainda pendentes neste registro. Nenhuma aplicação da migração em banco de desenvolvimento ou Railway até aqui. Cinco bancos E2E desta tarefa e os dois bancos da prova de timeout foram removidos; sobra teste_4d072e625239 anterior ao PR35 foi preservada.
