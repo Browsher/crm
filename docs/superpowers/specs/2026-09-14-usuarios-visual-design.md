@@ -1,0 +1,13 @@
+# Usuários: atualização visual aprovada
+
+Escopo aprovado: preservar domínio, servidor e banco de Usuários e aplicar ShellCrm, componentes e temas existentes. Tabela compacta com nome/e-mail, papel, situação, senha pendente e ações permitidas por acoesDe. Mostrar Você na conta atual, sem ações próprias. Ativos e inativos visíveis inicialmente; busca local por nome/e-mail e filtros combinados de papel e situação, com limpar e estado sem resultados.
+
+Novo usuário abre Dialog com nome, e-mail e papel (vendedor inicialmente). Preservar campos em erro, bloquear reenvio e fechamento enquanto pendente. Após sucesso, mostrar senha provisória e copiar, sem fechar automaticamente. Senha não vai para armazenamento/URL e desaparece ao fechar; falha de clipboard oferece cópia manual. Aviso antes de fechar informa impossibilidade de consultar novamente.
+
+Trocar papel, desativar, reativar e gerar senha usam confirmação identificando a pessoa e ação. Cancelar não chama servidor. Mesmas Server Actions e guardas atuais; nenhum novo privilégio, migração, exclusão, analytics ou log. Resultado de senha fica no diálogo; demais sucessos fecham. Erro permanece acessível. Foco volta ao acionador ou à busca se a linha sair por filtro após a atualização.
+
+Teste focado durante implementação: navegação ativa, filtros, cancelamento, payload correto, campos preservados, pendência, senha/cópia e descarte. Jornada real em banco temporário local cobre criação/ações e apresentação claro/escuro desktop/mobile. Suíte completa uma vez antes do PR, CI obrigatório e uma revisão final. Sem repetir checks aprovados sem mudança relevante. Sem dados fictícios ou testes na Railway. Arquivos pessoais/alheios preservados. Merge depende de validação visual.
+
+Verificação em 14/09/2026: RED observado nos cinco comportamentos novos antes do código; 9 testes focados verdes. Suíte unitária completa: 887 passando e 1 skip de plataforma (inventário de 888). Lint, typecheck, db:checar e build isolado aprovados. Integração completa: 453 passaram, 1 skip e 1 falha no teste antigo de ordenação da Carteira (recebeu três próximos passos nulos); o arquivo passou 13/13 na repetição isolada sem alterações, causa intermitente não confirmada. Não esconder essa ocorrência nem alterar regra de negócio para fazê-la passar.
+
+Navegador: 35 jornadas anteriores passaram. A jornada nova revelou retorno de foco antes da revalidação; corrigido fechando após commit da resposta. Jornada de Usuários passou após correção, com capturas 390/1280 claro/escuro. Revisão independente global e focal sem pendências importantes. Bancos temporários removidos pelo próprio harness; Railway não usada nas verificações locais. CI e validação visual ainda necessários antes do merge.

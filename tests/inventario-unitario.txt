@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 882
+# Total: 888
 
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
@@ -202,6 +202,10 @@ app/meu-dia/painel.test.tsx :: agenda vazia e busca sem resultado dizem coisas d
 app/meu-dia/painel.test.tsx :: primeira empresa já aparece selecionada e o link leva a ficha com os filtros
 app/page.test.tsx :: entrada autenticada encaminha para Meu dia
 app/page.test.tsx :: entrada respeita a interrupção da guarda antes de encaminhar
+app/usuarios/usuarios.dom.test.tsx :: cancelamento não envia ação, confirmação envia alvo e novo papel, erro permite nova tentativa
+app/usuarios/usuarios.dom.test.tsx :: criação preserva campos no erro, mostra senha, copia e descarta ao fechar
+app/usuarios/usuarios.dom.test.tsx :: lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias
+app/usuarios/usuarios.dom.test.tsx :: pendência bloqueia botões e Escape; nova senha aguarda confirmação e falha de cópia orienta cópia manual
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
@@ -216,6 +220,7 @@ src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não exp
 src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: fila mantém seu menu ativo e opções do gestor
 src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
+src/components/crm/shell.test.tsx :: usuários ativa seu menu e oferece tema próprio ao gestor
 src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
 src/components/ui/controles.test.tsx :: componentes de formulario botao desabilitado preserva a semantica nativa
 src/components/ui/controles.test.tsx :: componentes de formulario campos preservam aria-invalid e atributos nativos
@@ -303,6 +308,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-grupos-importacao-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-usuarios-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
