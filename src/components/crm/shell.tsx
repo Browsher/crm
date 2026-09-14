@@ -7,10 +7,10 @@ import { NativeSelect } from '@/src/components/ui/native-select'
 import { TemaCrmContext, type TemaCrm } from './tema'
 import styles from './shell.module.css'
 
-const TITULO = { fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia' } as const
-const TEMA = { fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia' } as const
+const TITULO = { fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas' } as const
+const TEMA = { fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia', empresas: 'Tema de Empresas' } as const
 
-export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: 'fila' | 'carteira' | 'meu-dia' }) {
+export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: keyof typeof TITULO }) {
   const [tema, setTema] = useState<TemaCrm>('system')
   const [aberto, setAberto] = useState(false)
   return <TemaCrmContext.Provider value={tema}>
@@ -22,7 +22,7 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
           <Link href="/fila" aria-current={area === 'fila' ? 'page' : undefined}>Prospecção</Link>
           <Link href="/meu-dia" aria-current={area === 'meu-dia' ? 'page' : undefined}>Meu dia</Link>
           <Link href="/carteira" aria-current={area === 'carteira' ? 'page' : undefined}>Carteira</Link>
-          {papel === 'gestor' && <><Link href="/empresas">Empresas</Link><Link href="/usuarios">Usuários</Link></>}
+          {papel === 'gestor' && <><Link href="/empresas" aria-current={area === 'empresas' ? 'page' : undefined}>Empresas</Link><Link href="/usuarios">Usuários</Link></>}
           <form action="/sair" method="post">
             <Button type="submit" variant="ghost">Sair</Button>
           </form>

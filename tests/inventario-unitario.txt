@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 769
+# Total: 783
 
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
@@ -51,6 +51,11 @@ app/design/galeria.test.tsx :: simula busca com carregamento e resposta explíci
 app/design/galeria.test.tsx :: troca o tema no escopo da galeria
 app/design/page.test.tsx :: pagina e galeria nao importam caminhos de escrita de negocio
 app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
+app/empresas/importar/formulario.dom.test.tsx :: conferir e voltar preservam o mesmo input e File, trocar invalida o relatório
+app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
+app/empresas/importar/formulario.dom.test.tsx :: retornos explícitos à etapa Enviar movem o foco para o título
+app/empresas/importar/formulario.dom.test.tsx :: trocar o arquivo preserva o foco no input
+app/empresas/importar/formulario.dom.test.tsx :: zero novas não confirma; conclusão usa número real e não volta à gravação
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render explica o CNAE opcional e a compatibilidade do modelo antigo
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o botão de conferir
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o campo de arquivo
@@ -69,6 +74,9 @@ app/empresas/linha.test.tsx :: Linha: os três estados do endereço empresa sem 
 app/empresas/lista.test.tsx :: Lista com empresas, monta uma lista
 app/empresas/lista.test.tsx :: Lista vazia, diz que não achou
 app/empresas/lista.test.tsx :: Lista vazia, oferece o caminho de volta para a lista inteira
+app/empresas/page.test.tsx :: busca tem nome acessível, conserva termo e reinicia paginação
+app/empresas/page.test.tsx :: layout exige gestor antes de renderizar o shell
+app/empresas/page.test.tsx :: layout não renderiza conteúdo se guarda recusa acesso
 app/empresas/paginacao.test.tsx :: Paginacao diz onde a pessoa está
 app/empresas/paginacao.test.tsx :: Paginacao na primeira, "Anterior" não é link
 app/empresas/paginacao.test.tsx :: Paginacao na última, "Próxima" não é link
@@ -168,7 +176,11 @@ src/ci-conferencia.test.ts :: URL=false fork=true autor=alguem: pular
 src/ci-conferencia.test.ts :: URL=true fork=false autor=Browsher: conferir
 src/ci-conferencia.test.ts :: URL=true fork=false autor=dependabot[bot]: conferir
 src/ci-conferencia.test.ts :: URL=true fork=true autor=alguem: conferir
+src/components/crm/etapas.test.tsx :: identifica a navegação e somente a etapa atual
+src/components/crm/etapas.test.tsx :: renderiza a ação de retorno fornecida pela tela
+src/components/crm/etapas.test.tsx :: sem ações fornecidas, os indicadores são texto sem navegação
 src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
+src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: fila mantém seu menu ativo e opções do gestor
 src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
 src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
@@ -233,6 +245,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-empresas-recentes.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-fila-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-meu-dia.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-12-empresas-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -250,6 +263,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-10-setup-playwright-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-11-carteira-meu-dia-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-11-padrao-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-empresas-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal

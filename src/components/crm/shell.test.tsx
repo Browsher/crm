@@ -2,6 +2,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { ShellCrm } from './shell'
 
+test('empresas ativa seu menu e oferece tema próprio ao gestor', () => {
+  const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="empresas">Tabela</ShellCrm>)
+  expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/empresas"')
+  expect(html).toContain('Tema de Empresas')
+})
+
 test('carteira ativa seu próprio menu e não expõe administração ao vendedor', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="vendedor" area="carteira">Conteúdo</ShellCrm>)
   expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/carteira"')

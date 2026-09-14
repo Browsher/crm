@@ -1,4 +1,4 @@
-.etapas { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; gap: 4px; }
+.etapas { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; width: 100%; gap: 4px; }
 .etapas > div { border-top: 2px solid var(--ui-border); text-align: center; padding-top: 8px; color: var(--ui-muted-foreground); }
 .etapas > div[aria-current] { border-color: var(--ui-primary); color: var(--ui-foreground); font-weight: 600; }
 .etapas a, .etapas button, .etapas span { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 4px 12px; border-radius: 6px; }
