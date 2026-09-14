@@ -1,5 +1,7 @@
 # Fundação de banco
 
+> Grupos e origem ativa de Prospecção: [0027](0027.md). Administração conserva acesso a grupos desativados; carteiras e reservas válidas são preservadas.
+
 Como o CRM fala com o Postgres, e por quê. A spec completa está em
 `docs/superpowers/specs/2026-09-08-fundacao-banco-design.md`; este arquivo é o
 resumo para quem vai escrever a próxima migração ou o próximo repositório.

@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { comAdmin } from '@/src/server/db/admin'
@@ -9,7 +10,9 @@ let seq = 0
 const registrar = (id: string, usuario = eu) => banco.comoUsuario(usuario, e => e('SELECT empresa_recente_registrar($1::uuid) AS registrado', [id]))
 const recentes = (usuario = eu) => banco.comoUsuario(usuario, e => e<{ id: string; disponibilidade: string }>('SELECT * FROM empresa_recentes()'))
 async function empresa() {
-  return (await banco.sql<{ id: string }>('INSERT INTO empresa(cnpj,razao_social,telefone,email) VALUES ($1,\'Empresa\',\'11999999999\',\'privado@teste.local\') RETURNING id', [String(++seq).padStart(14, '0')]))[0].id
+  const id = (await banco.sql<{ id: string }>('INSERT INTO empresa(cnpj,razao_social,telefone,email) VALUES ($1,\'Empresa\',\'11999999999\',\'privado@teste.local\') RETURNING id', [String(++seq).padStart(14, '0')]))[0].id
+  await vincularGrupoAtivo(banco, [id])
+  return id
 }
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
@@ -20,6 +23,8 @@ afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM grupo_importacao_empresa')
+  await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa')
 })
 test('primeiro acesso, repetição sobe sem duplicar e identidade separada', async () => {

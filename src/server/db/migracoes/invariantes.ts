@@ -36,6 +36,10 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.empresa_recentes',
   'public.empresa_sugestoes',
   'public.empresa_recente_registrar',
+  'public.grupo_importacao_confirmar',
+  'public.grupo_importacao_situacao_definir',
+  'public.grupo_importacao_renomear',
+  'public.empresa_filtros_administracao',
 ] as const
 
 // Pergunta 3: quais políticas podem liberar a tabela inteira. `USING (true)`

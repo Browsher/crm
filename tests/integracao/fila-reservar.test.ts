@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { Client } from 'pg'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
@@ -21,12 +22,15 @@ afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM grupo_importacao_empresa')
+  await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa')
   // Contexto pode ainda não existir durante a rodada RED.
   await banco.sql("DO $$ BEGIN IF to_regclass('fila_contexto') IS NOT NULL THEN DELETE FROM fila_contexto; END IF; END $$")
 })
 async function empresa(nome = 'Empresa') {
   const [r] = await banco.sql<{id:string}>(`INSERT INTO empresa (cnpj,razao_social,telefone) VALUES ($1,$2,'11987654321') RETURNING id`,[String(++numero).padStart(14,'0'),nome])
+  await vincularGrupoAtivo(banco, [r.id])
   return r.id
 }
 

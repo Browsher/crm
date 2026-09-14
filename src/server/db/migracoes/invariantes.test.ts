@@ -42,6 +42,10 @@ const sao = (): Estado => ({
     'public.empresa_recentes',
     'public.empresa_sugestoes',
     'public.empresa_recente_registrar',
+    'public.grupo_importacao_confirmar',
+    'public.grupo_importacao_situacao_definir',
+    'public.grupo_importacao_renomear',
+    'public.empresa_filtros_administracao',
   ],
   funcoesExecutaveisPorPublico: [],
 })

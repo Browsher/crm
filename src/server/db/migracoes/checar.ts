@@ -53,7 +53,10 @@ function checarUm(arq: Arquivo): string[] {
     const uuidGerado = /uuid\s+PRIMARY\s+KEY\s+DEFAULT\s+gen_random_uuid\(\)/i.test(pk)
     const pkQueEhFk = /uuid\s+PRIMARY\s+KEY\s+REFERENCES/i.test(pk)
     const pkTextual = /text\s+PRIMARY\s+KEY/i.test(pk)
-    if (!uuidGerado && !pkQueEhFk && !pkTextual) p.push(pre('CREATE TABLE sem PK uuid DEFAULT gen_random_uuid()'))
+    const composta = pk.match(/PRIMARY\s+KEY\s*\((\w+\s*,\s*\w+(?:\s*,\s*\w+)*)\)/i)?.[1].split(',').map(c => c.trim())
+    const fksUuid = new Set([...m[1].matchAll(/(?:^|\n)\s*(\w+)\s+uuid\s+(?:NOT\s+NULL\s+)?REFERENCES\s+[\w.]+\s*\(/gi)].map(c => c[1]))
+    const pkCompostaDeFks = composta && new Set(composta).size === composta.length && composta.every(c => fksUuid.has(c))
+    if (!uuidGerado && !pkQueEhFk && !pkTextual && !pkCompostaDeFks) p.push(pre('CREATE TABLE sem PK uuid DEFAULT gen_random_uuid()'))
   }
   return p
 }

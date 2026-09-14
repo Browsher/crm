@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
@@ -26,12 +27,15 @@ afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM grupo_importacao_empresa')
+  await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa')
 })
 async function empresa(nome = 'Empresa', cep: string | null = null, cnae: string | null = null) {
   const [r] = await banco.sql<{ id: string }>(`INSERT INTO empresa (cnpj,razao_social,nome_fantasia,telefone,email,contato_nome,cep,cnae_principal)
     VALUES ($1,$2,'Fantasia','11987654321','sigilo@teste.local','Pessoa privada',$3,$4) RETURNING id`,
   [String(++sequencia).padStart(14, '0'), nome, cep, cnae])
+  await vincularGrupoAtivo(banco, [r.id])
   return r.id
 }
 

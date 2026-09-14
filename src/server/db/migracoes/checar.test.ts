@@ -96,3 +96,9 @@ describe('checarMigracoes', () => {
     expect(checarMigracoes([{ nome: '0000_a.sql', conteudo: 'BEGIN;\nSELECT 1;\nCOMMIT;\n' }]).ok).toBe(true)
   })
 })
+test('PK composta aceita apenas colunas UUID que referenciam entidades', () => {
+  const verificar = (colunas: string) => checarMigracoes([ok('0000_vinculo.sql', `CREATE TABLE vinculo (\n${colunas}\n);`)]).ok
+  expect(verificar('grupo_id uuid NOT NULL REFERENCES grupo(id),\nempresa_id uuid NOT NULL REFERENCES empresa(id),\nPRIMARY KEY (grupo_id, empresa_id)')).toBe(true)
+  expect(verificar('grupo_id uuid NOT NULL REFERENCES grupo(id),\nempresa_id uuid NOT NULL,\nPRIMARY KEY (grupo_id, empresa_id)')).toBe(false)
+  expect(verificar('grupo_id uuid NOT NULL REFERENCES grupo(id),\nempresa_id text NOT NULL REFERENCES empresa(id),\nPRIMARY KEY (grupo_id, empresa_id)')).toBe(false)
+})
