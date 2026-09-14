@@ -5,9 +5,9 @@ import type { Relatorio } from './servico'
 // Record, não if encadeado: motivo novo sem texto quebra o build.
 const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
   sem_permissao: 'Você não tem permissão para importar empresas.',
-  cnpj_ja_gravado:
-    'Outra importação gravou um destes CNPJs enquanto você conferia. Nada foi gravado. Confira de novo e reenvie.',
   texto_invalido: 'O arquivo tem um caractere que o banco não aceita. Reescreva as células com acento ou símbolo estranho.',
+  sem_linhas_aceitas: 'O arquivo não tem nenhuma linha aceita para vincular ao grupo. Corrija as linhas recusadas e confira novamente.',
+  confirmacao_invalida: 'A confirmação não corresponde mais ao arquivo conferido. Confira novamente antes de importar.',
 }
 
 export function textoDoMotivo(m: Motivo): string {

@@ -16,11 +16,15 @@ vi.mock('@/src/features/empresas/servico', () => ({
 }))
 
 const { importarAcao } = await import('./acao')
-const INICIAL = { erro: null, relatorio: null, inseridas: null }
+const INICIAL = { erro: null, relatorio: null, inseridas: null, grupoId: null }
+const CHAVE = '11111111-1111-4111-8111-111111111111'
 
-function formCom(arquivo: File, confirmar = false) {
+function formCom(arquivo: File, confirmar = false, dados: { nome?: string; chave?: string } = {}) {
   const form = new FormData()
   form.set('arquivo', arquivo)
+  form.set('nome', dados.nome ?? 'Mooca')
+  form.set('chave', dados.chave ?? CHAVE)
+  form.set('assinatura', 'hash-enviado-pelo-navegador-nao-e-confiavel')
   if (confirmar) form.set('confirmar', '1')
   return form
 }
@@ -53,6 +57,19 @@ describe('importarAcao: arquivo', () => {
     expect(dependencias.analisar).not.toHaveBeenCalled()
   })
 
+  test.each([
+    [{ nome: '   ' }, 'nome'],
+    [{ chave: 'nao-e-uuid' }, 'operação'],
+  ])('valida grupo e chave antes de ler bytes: %s', async (dados, trecho) => {
+    const arquivo = new File(['conteudo'], 'empresas.csv')
+    const ler = vi.spyOn(arquivo, 'arrayBuffer')
+
+    const resultado = await importarAcao(INICIAL, formCom(arquivo, false, dados))
+
+    expect(resultado.erro?.toLocaleLowerCase('pt-BR')).toContain(trecho)
+    expect(ler).not.toHaveBeenCalled()
+  })
+
   test('formato desconhecido volta como erro recuperavel', async () => {
     const resultado = await importarAcao(INICIAL, formCom(new File(['pdf'], 'empresas.pdf', { type: 'application/pdf' })))
     expect(resultado.erro).toContain('Excel')
@@ -79,7 +96,9 @@ describe('importarAcao: arquivo', () => {
     dependencias.importar.mockResolvedValue({
       ok: true,
       relatorio: { novas: 1, jaCadastradas: 0, recusadas: [], cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null },
+      grupoId: '77777777-7777-4777-8777-777777777777',
       inseridas: 1,
+      vinculadas: 1,
     })
     const arquivo = new File(['csv'], 'empresas.csv', { type: 'text/csv' })
 
@@ -88,8 +107,24 @@ describe('importarAcao: arquivo', () => {
     expect(dependencias.importar).toHaveBeenCalledWith(
       { nome: 'repo' },
       { formato: 'csv', bytes: new TextEncoder().encode('csv') },
+      {
+        chave: CHAVE,
+        nome: 'Mooca',
+        arquivoNome: 'empresas.csv',
+        assinatura: '53bb9b0b38ac812554abeb88ea6d56760d07ec147a75e8761c4f57ecc298218f',
+      },
     )
     expect(dependencias.analisar).not.toHaveBeenCalled()
     expect(resultado.inseridas).toBe(1)
+    expect(resultado.grupoId).toBe('77777777-7777-4777-8777-777777777777')
+  })
+
+  test('22023 volta como erro recuperavel que exige nova conferencia', async () => {
+    dependencias.importar.mockResolvedValue({ ok: false, motivo: 'confirmacao_invalida' })
+
+    const resultado = await importarAcao(INICIAL, formCom(new File(['csv'], 'empresas.csv'), true))
+
+    expect(resultado).toMatchObject({ relatorio: null, inseridas: null, grupoId: null })
+    expect(resultado.erro).toContain('Confira novamente')
   })
 })

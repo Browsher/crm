@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import type { LinhaAceita } from '@/src/features/empresas/planilha'
-import { repositorioPostgres } from '@/src/features/empresas/repositorio'
-import { analisar } from '@/src/features/empresas/servico'
+import { CABECALHO_LEGADO } from '@/src/features/empresas/planilha'
+import { repositorioPostgres, type OperacaoGrupo } from '@/src/features/empresas/repositorio'
+import { analisar, importar, type Relatorio } from '@/src/features/empresas/servico'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -19,6 +21,22 @@ const linha = (n: number, cnpj: string, extra: Partial<LinhaAceita> = {}): Linha
   cep: null,
   cnaePrincipal: null,
   ...extra,
+})
+
+const relatorio = (novas: number, jaCadastradas = 0): Relatorio => ({
+  novas,
+  jaCadastradas,
+  recusadas: [],
+  cepsPedidos: 0,
+  cepsNaoEncontrados: 0,
+  basePublicadaEm: '2024-07-08',
+})
+
+const operacao = (nome = 'Mooca', chave = randomUUID()): OperacaoGrupo => ({
+  chave,
+  nome,
+  arquivoNome: `${nome.toLocaleLowerCase('pt-BR')}.csv`,
+  assinatura: 'a'.repeat(64),
 })
 
 beforeAll(async () => {
@@ -41,7 +59,10 @@ afterAll(async () => {
 describe('preparar', () => {
   test('devolve a data da base, os cnpjs ja cadastrados e os enderecos', async () => {
     const repo = repositorioPostgres(gestor)
-    await repo.gravar([linha(2, '11222333000181')])
+    await banco.sql(
+      `INSERT INTO empresa (cnpj, razao_social, telefone)
+       VALUES ('11222333000181', 'Aurora Comercio LTDA', '11987654321')`,
+    )
     const p = await repo.preparar(['11222333000181', '11444777000161'], ['01310100', '00000000'])
     if ('motivo' in p) throw new Error(p.motivo)
     expect([...p.jaCadastrados]).toEqual(['11222333000181'])
@@ -66,12 +87,12 @@ describe('preparar', () => {
 })
 
 describe('gravar', () => {
-  test('insere em lote e a auditoria registra o gestor', async () => {
-    const r = await repositorioPostgres(gestor).gravar([
+  test('confirma grupo, insere em lote e registra o gestor', async () => {
+    const r = await repositorioPostgres(gestor).gravar(operacao(), [
       linha(2, '11444777000161', { cep: '01310100' }),
       linha(3, '11555777000160', { nomeFantasia: 'Bela Luz', email: 'oi@bela.com.br' }),
-    ])
-    expect(r).toEqual({ ok: true, inseridas: 2 })
+    ], relatorio(2))
+    expect(r).toMatchObject({ ok: true, inseridas: 2, vinculadas: 2, relatorio: relatorio(2) })
     const linhas = await banco.sql<{ cnpj: string; criado_por: string; cep: string | null }>(
       "SELECT cnpj, criado_por, cep FROM empresa WHERE cnpj IN ('11444777000161', '11555777000160') ORDER BY cnpj",
     )
@@ -81,37 +102,64 @@ describe('gravar', () => {
     ])
   })
 
-  test('lista vazia nao vai ao banco', async () => {
-    expect(await repositorioPostgres(gestor).gravar([])).toEqual({ ok: true, inseridas: 0 })
-  })
-
   test('vendedor recebe sem_permissao, nao excecao', async () => {
-    const r = await repositorioPostgres(vendedor).gravar([linha(2, '11666777000169')])
+    const r = await repositorioPostgres(vendedor).gravar(operacao(), [linha(2, '11666777000169')], relatorio(1))
     expect(r).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 
-  // 23505 deixou de subir como excecao na empresas.1: vira { ok: false }, como
-  // manda o contrato de erro do projeto. O tudo-ou-nada continua valendo, e e a
-  // segunda afirmacao que prova isso.
-  test('cnpj repetido no lote: devolve cnpj_ja_gravado e nao grava nenhuma', async () => {
+  test('cnpj repetido no pedido: devolve confirmacao_invalida e nao grava nenhuma', async () => {
     const antes = await banco.sql<{ n: string }>('SELECT count(*)::text AS n FROM empresa')
-    const r = await repositorioPostgres(gestor).gravar([linha(2, '11777777000183'), linha(3, '11777777000183')])
-    expect(r).toEqual({ ok: false, motivo: 'cnpj_ja_gravado' })
+    const r = await repositorioPostgres(gestor).gravar(
+      operacao(),
+      [linha(2, '11777777000183'), linha(3, '11777777000183')],
+      relatorio(2),
+    )
+    expect(r).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
     const depois = await banco.sql<{ n: string }>('SELECT count(*)::text AS n FROM empresa')
     expect(depois[0].n).toBe(antes[0].n)
   })
 
-  // A corrida de verdade: o CNPJ ja esta no banco quando gravar roda, e nao
-  // estava quando o gestor conferiu.
-  test('cnpj gravado por outra importacao no meio do caminho', async () => {
+  test('CNPJ existente e novo entram juntos no grupo sem sobrescrever o existente', async () => {
     const repo = repositorioPostgres(gestor)
-    expect(await repo.gravar([linha(2, '11666777000106')])).toEqual({ ok: true, inseridas: 1 })
-    const r = await repo.gravar([linha(2, '11666777000106'), linha(3, '11888777000150')])
-    expect(r).toEqual({ ok: false, motivo: 'cnpj_ja_gravado' })
-    const sobrou = await banco.sql<{ n: string }>(
-      "SELECT count(*)::text AS n FROM empresa WHERE cnpj = '11888777000150'",
+    const existente = linha(2, '11666777000106', { razaoSocial: 'Original LTDA' })
+    expect(await repo.gravar(operacao('Primeiro'), [existente], relatorio(1))).toMatchObject({ ok: true, inseridas: 1 })
+    const r = await repo.gravar(
+      operacao('Segundo'),
+      [linha(2, '11666777000106', { razaoSocial: 'Tentativa de troca LTDA' }), linha(3, '11888777000150')],
+      relatorio(1, 1),
     )
-    expect(sobrou[0].n).toBe('0')
+    expect(r).toMatchObject({ ok: true, inseridas: 1, vinculadas: 2 })
+    expect(await banco.sql<{ razao_social: string }>(
+      "SELECT razao_social FROM empresa WHERE cnpj = '11666777000106'",
+    )).toEqual([{ razao_social: 'Original LTDA' }])
+  })
+})
+
+describe('importar: confirmação idempotente', () => {
+  const csv = (...linhas: string[]) => new TextEncoder().encode([CABECALHO_LEGADO, ...linhas].join('\n'))
+  const duas = csv(
+    '11222333000262,Replay Um LTDA,,,1134567801,,',
+    '11222333000343,Replay Dois LTDA,,,1134567802,,',
+  )
+
+  test('retry após o primeiro commit devolve grupo, contagens e relatório originais', async () => {
+    const repo = repositorioPostgres(gestor)
+    const op = operacao('Replay')
+    const primeira = await importar(repo, duas, op)
+    const segunda = await importar(repo, duas, op)
+
+    if (!primeira.ok || !segunda.ok) throw new Error('esperava duas confirmações válidas')
+    expect(primeira.relatorio).toMatchObject({ novas: 2, jaCadastradas: 0 })
+    expect(segunda).toEqual(primeira)
+    expect(await banco.sql<{ n: string }>(
+      'SELECT count(*)::text AS n FROM grupo_importacao WHERE chave = $1',
+      [op.chave],
+    )).toEqual([{ n: '1' }])
+  })
+
+  test('arquivo somente com existentes ainda cria grupo e vínculos', async () => {
+    const r = await importar(repositorioPostgres(gestor), duas, operacao('Somente existentes'))
+    expect(r).toMatchObject({ ok: true, inseridas: 0, vinculadas: 2 })
   })
 })
 

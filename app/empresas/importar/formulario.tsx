@@ -8,11 +8,13 @@ import { EtapasImportacao, type EtapaImportacao } from './etapas-importacao'
 import { RelatorioImportacao } from './relatorio'
 import styles from './importar.module.css'
 
-const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null }
+const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null }
 
 export function FormularioImportar() {
   const [etapa, setEtapa] = useState<EtapaImportacao>('enviar')
   const [limpo, setLimpo] = useState(true)
+  const [nome, setNome] = useState('')
+  const [chave, setChave] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const tituloRef = useRef<HTMLHeadingElement>(null)
   const erroRef = useRef<HTMLParagraphElement>(null)
@@ -40,10 +42,18 @@ export function FormularioImportar() {
     setLimpo(true)
     setEtapa('enviar')
   }
+  function iniciarOperacao() {
+    setChave(globalThis.crypto.randomUUID())
+    voltar()
+  }
   function reiniciar() {
     if (inputRef.current) inputRef.current.value = ''
+    setNome('')
+    setChave(globalThis.crypto.randomUUID())
     voltar(true)
   }
+
+  const totalAceitas = estado.relatorio ? estado.relatorio.novas + estado.relatorio.jaCadastradas : 0
 
   return <form action={acao} className={styles.formulario} onReset={e => e.preventDefault()}>
     {/* React pode resetar campos não controlados após uma action bem-sucedida.
@@ -56,11 +66,25 @@ export function FormularioImportar() {
       </h2>
       {erro && <p ref={erroRef} tabIndex={-1} role="alert" className={styles.erro}>{erro}</p>}
       <fieldset disabled={pendente}>
+        <input type="hidden" name="chave" value={chave} />
         <div hidden={etapa !== 'enviar'}>
           <p>Preencha o modelo Excel e envie o arquivo diretamente. Se preferir, o CSV UTF-8 continua aceito.</p>
+          <label className={styles.campo}>
+            Nome do grupo
+            <input
+              name="nome"
+              value={nome}
+              maxLength={100}
+              required
+              onChange={(evento) => {
+                setNome(evento.target.value)
+                iniciarOperacao()
+              }}
+            />
+          </label>
           <label className={styles.arquivo}>
             Arquivo Excel ou CSV
-            <input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={() => voltar()} />
+            <input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={iniciarOperacao} />
           </label>
           <details className={styles.orientacoes}>
             <summary>Modelo e orientações de preenchimento</summary>
@@ -74,16 +98,18 @@ export function FormularioImportar() {
           <div className={styles.acoes}><Button type="submit">{pendente ? 'Conferindo…' : 'Conferir arquivo'}</Button></div>
         </div>
         {etapa === 'conferir' && estado.relatorio && <>
+          <p className={styles.grupo}>Grupo <strong>{nome}</strong></p>
           <RelatorioImportacao relatorio={estado.relatorio} />
           <div className={styles.acoes}>
-            {estado.relatorio.novas > 0 && <Button type="submit" name="confirmar" value="1">{pendente ? 'Importando…' : `Importar ${estado.relatorio.novas} ${estado.relatorio.novas === 1 ? 'empresa' : 'empresas'}`}</Button>}
+            {totalAceitas > 0 && <Button type="submit" name="confirmar" value="1">{pendente ? 'Importando…' : 'Confirmar importação'}</Button>}
             <Button type="button" variant="outline" onClick={() => voltar(true)}>Voltar ao arquivo</Button>
           </div>
         </>}
-        {etapa === 'concluir' && <>
-          <p>{estado.inseridas} {estado.inseridas === 1 ? 'empresa importada' : 'empresas importadas'}.</p>
-          <p>As empresas já podem ser consultadas na base.</p>
+        {etapa === 'concluir' && estado.relatorio && <>
+          <p>{estado.inseridas} {estado.inseridas === 1 ? 'empresa nova' : 'empresas novas'}.</p>
+          <p>{totalAceitas} {totalAceitas === 1 ? 'empresa no grupo' : 'empresas no grupo'}.</p>
           <div className={styles.acoes}>
+            {estado.grupoId && <Button asChild><Link href={`/empresas/grupos/${estado.grupoId}`}>Ver grupo</Link></Button>}
             <Button asChild><Link href="/empresas">Ver empresas</Link></Button>
             <Button type="button" variant="outline" onClick={reiniciar}>Importar outro arquivo</Button>
           </div>

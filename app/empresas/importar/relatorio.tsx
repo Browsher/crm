@@ -3,6 +3,7 @@ import { textoDaRecusa, textoDoEndereco } from '@/src/features/empresas/mensagen
 import styles from './importar.module.css'
 
 export function RelatorioImportacao({ relatorio: r }: { relatorio: Relatorio }) {
+  const totalAceitas = r.novas + r.jaCadastradas
   return <div className={styles.relatorio}>
     <dl className={styles.resumo}>
       <div><dt>Novas empresas</dt><dd>{r.novas}</dd></div>
@@ -14,7 +15,7 @@ export function RelatorioImportacao({ relatorio: r }: { relatorio: Relatorio }) 
       <h3>Corrija estas linhas na planilha</h3>
       <ul className={styles.recusas}>{r.recusadas.map(rec => <li key={`${rec.linha}-${rec.tipo}`}>{textoDaRecusa(rec)}</li>)}</ul>
     </section>}
-    <p>Nada foi gravado. A confirmação adiciona somente as novas empresas aceitas.</p>
-    {r.novas === 0 && <p>Não há novas empresas para importar. Volte a Enviar para conferir outro arquivo.</p>}
+    <p>Nada foi gravado. A confirmação cria o grupo e vincula todas as empresas aceitas, incluindo as já cadastradas.</p>
+    {totalAceitas === 0 && <p>Não há nenhuma linha aceita para vincular. Corrija as linhas recusadas ou confira outro arquivo.</p>}
   </div>
 }
