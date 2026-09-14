@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { lerConsulta, POR_PAGINA } from '@/src/features/empresas/consulta'
-import { listarEmpresas } from '@/src/features/empresas/listagem'
+import { aplicarFiltrosEmpresas, lerConsulta, POR_PAGINA } from '@/src/features/empresas/consulta'
+import { listarEmpresas, listarOpcoesEmpresas } from '@/src/features/empresas/listagem'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -206,5 +206,73 @@ describe('listarEmpresas: quem pode ler', () => {
     const r = await listarEmpresas(vendedor, lerConsulta({}))
     if (!r.ok) throw new Error(r.motivo)
     expect(r.total).toBe(0)
+  })
+})
+
+describe('listarEmpresas: filtros combinados', () => {
+  beforeAll(async () => {
+    await banco.sql(
+      `INSERT INTO cep (cep, bairro, localidade, uf, ibge) VALUES
+       ('30110000', 'Savassi', 'Belo Horizonte', 'MG', '3106200'),
+       ('13010000', 'Centro', 'Campinas', 'SP', '3509502'),
+       ('03104000', 'Mooca', 'São Paulo', 'SP', '3550308')`,
+    )
+    await banco.sql(
+      `INSERT INTO empresa (cnpj, razao_social, telefone, cep, cnae_principal) VALUES
+       ($1, 'Filtro Belo Horizonte', '1133300201', '30110000', '4742300'),
+       ($2, 'Filtro Campinas', '1133300202', '13010000', '4742300'),
+       ($3, 'Filtro Mooca sem CNAE', '1133300203', '03104000', NULL)`,
+      [cnpjDe(201), cnpjDe(202), cnpjDe(203)],
+    )
+  })
+
+  test('cada filtro restringe no banco e a interseção usa AND', async () => {
+    const consulta = aplicarFiltrosEmpresas(lerConsulta({ q: 'Filtro' }), {
+      cnae: '4742300',
+      uf: 'MG',
+      cidade: '3106200',
+      bairro: 'Savassi',
+    })
+    const r = await listarEmpresas(gestor, consulta)
+    if (!r.ok) throw new Error(r.motivo)
+    expect(r.linhas.map(linha => linha.razaoSocial)).toEqual(['Filtro Belo Horizonte'])
+  })
+
+  test.each([
+    [{ cnae: '4742300', uf: null, cidade: null, bairro: null }, ['Filtro Belo Horizonte', 'Filtro Campinas']],
+    [{ cnae: null, uf: 'SP', cidade: null, bairro: null }, ['Filtro Campinas', 'Filtro Mooca sem CNAE']],
+    [{ cnae: null, uf: 'SP', cidade: '3550308', bairro: null }, ['Filtro Mooca sem CNAE']],
+    [{ cnae: null, uf: 'MG', cidade: '3106200', bairro: 'Savassi' }, ['Filtro Belo Horizonte']],
+  ] as const)('restringe pelo filtro %j', async (filtros, esperadas) => {
+    const r = await listarEmpresas(
+      gestor,
+      aplicarFiltrosEmpresas(lerConsulta({ q: 'Filtro' }), { ...filtros }),
+    )
+    if (!r.ok) throw new Error(r.motivo)
+    expect(r.linhas.map(linha => linha.razaoSocial)).toEqual([...esperadas])
+  })
+
+  test('CNAE não informado seleciona somente empresas sem CNAE', async () => {
+    const consulta = aplicarFiltrosEmpresas(lerConsulta({ q: 'Filtro' }), {
+      cnae: 'nao_informado',
+      uf: 'SP',
+      cidade: '3550308',
+      bairro: 'Mooca',
+    })
+    const r = await listarEmpresas(gestor, consulta)
+    if (!r.ok) throw new Error(r.motivo)
+    expect(r.linhas.map(linha => linha.razaoSocial)).toEqual(['Filtro Mooca sem CNAE'])
+  })
+
+  test('opções respeitam as dependências de estado e cidade', async () => {
+    const semLocal = await listarOpcoesEmpresas(gestor, null, null)
+    const emSp = await listarOpcoesEmpresas(gestor, 'SP', null)
+    const emSaoPaulo = await listarOpcoesEmpresas(gestor, 'SP', '3550308')
+    if (!semLocal.ok || !emSp.ok || !emSaoPaulo.ok) throw new Error('opções negadas')
+    expect(semLocal.opcoes).toContainEqual({ tipo: 'cnae', valor: 'nao_informado', rotulo: 'Não informado' })
+    expect(semLocal.opcoes.some(opcao => opcao.tipo === 'cidade')).toBe(false)
+    expect(emSp.opcoes).toContainEqual({ tipo: 'cidade', valor: '3550308', rotulo: 'São Paulo' })
+    expect(emSp.opcoes.some(opcao => opcao.tipo === 'bairro')).toBe(false)
+    expect(emSaoPaulo.opcoes).toContainEqual({ tipo: 'bairro', valor: 'Mooca', rotulo: 'Mooca' })
   })
 })

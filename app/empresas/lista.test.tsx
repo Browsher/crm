@@ -19,7 +19,11 @@ const UMA: EmpresaNaLista = {
 describe('Lista', () => {
   test('com empresas, monta uma lista', () => {
     const saida = renderToStaticMarkup(<Lista linhas={[UMA]} />)
-    expect(saida).toContain('<ul')
+    expect(saida).toContain('<table')
+    expect(saida).toContain('scope="col"')
+    expect(saida).toContain('aria-label="Empresas cadastradas"')
+    expect(saida).toContain('tabindex="0"')
+    for (const coluna of ['Empresa', 'Localização', 'Contato', 'CNAE']) expect(saida).toContain(coluna)
     expect(saida).toContain('Iluminação São João')
   })
 

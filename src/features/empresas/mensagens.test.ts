@@ -39,6 +39,17 @@ describe('textoDaFalhaDeArquivo', () => {
     expect(t).toContain('7000')
     expect(t).toContain('5000')
   })
+
+  test('formula informa a linha e a coluna que precisam virar valor', () => {
+    const t = textoDaFalhaDeArquivo({ motivo: 'formula_nao_permitida', linha: 9, coluna: 'telefone' })
+    expect(t).toContain('linha 9')
+    expect(t).toContain('telefone')
+    expect(t).toContain('valor')
+  })
+
+  test('workbook ambiguo pede uma unica planilha de dados', () => {
+    expect(textoDaFalhaDeArquivo({ motivo: 'planilhas_ambiguas' })).toContain('uma única planilha')
+  })
 })
 
 describe('textoDoEndereco: da a saida, nao so o diagnostico', () => {

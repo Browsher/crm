@@ -6,7 +6,7 @@ import type { Relatorio } from './servico'
 const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
   sem_permissao: 'Você não tem permissão para importar empresas.',
   cnpj_ja_gravado:
-    'Outra importação gravou um destes CNPJs enquanto você conferia. Nada foi gravado — confira de novo e reenvie.',
+    'Outra importação gravou um destes CNPJs enquanto você conferia. Nada foi gravado. Confira de novo e reenvie.',
   texto_invalido: 'O arquivo tem um caractere que o banco não aceita. Reescreva as células com acento ou símbolo estranho.',
 }
 
@@ -20,7 +20,7 @@ export function textoDoMotivo(m: Motivo): string {
 const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8) => string> = {
   cnpj_vazio: () => 'CNPJ em branco.',
   cnpj_notacao_cientifica: (v) =>
-    `CNPJ em notação científica (${v}) — os dígitos se perderam. Formate a coluna como Texto na planilha e preencha de novo.`,
+    `CNPJ em notação científica (${v}). Os dígitos se perderam. Formate a coluna como Texto na planilha e preencha de novo.`,
   cnpj_forma: (v) => `CNPJ com formato inválido (${v}). São 14 caracteres.`,
   cnpj_dv: (v) => `CNPJ com dígito verificador errado (${v}). Confira na origem.`,
   razao_social_vazia: () => 'Razão social em branco.',
@@ -28,7 +28,7 @@ const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8) =>
   telefone_forma: (v) => `Telefone inválido (${v}). Informe DDD + número, com 10 ou 11 dígitos.`,
   email_forma: (v) => `E-mail inválido (${v}).`,
   cep_curto: (v) =>
-    `CEP com 7 dígitos (${v}) — o zero à esquerda foi comido. Formate a coluna como Texto na planilha.`,
+    `CEP com 7 dígitos (${v}). O zero à esquerda foi comido. Formate a coluna como Texto na planilha.`,
   cep_forma: (v) => `CEP inválido (${v}). São 8 dígitos.`,
   cnae_forma: (v) => `CNAE inválido (${v}). Informe 7 dígitos ou a forma 4742-3/00.`,
   caractere_invalido: (v) => `A coluna ${v} tem um caractere que o banco não aceita (byte nulo). Reescreva a célula.`,
@@ -41,21 +41,33 @@ export function textoDaRecusa(r: Recusa): string {
     r.divergencia === null
       ? 'as duas linhas são iguais, então apague uma.'
       : `as duas divergem na coluna ${r.divergencia}, então alguém precisa decidir qual está certa.`
-  return `Linha ${r.linha}: CNPJ ${r.cnpj} repetido na linha ${r.par} — ${fim}`
+  return `Linha ${r.linha}: CNPJ ${r.cnpj} repetido na linha ${r.par}. ${fim}`
 }
 
 export function textoDaFalhaDeArquivo(f: FalhaDeArquivo): string {
   switch (f.motivo) {
     case 'nao_utf8':
-      return 'O arquivo não está em UTF-8. No Excel use Salvar como > CSV UTF-8 (delimitado por vírgulas) — a opção "CSV" comum grava em outro formato e estraga os acentos.'
+      return 'O arquivo não está em UTF-8. No Excel use Salvar como > CSV UTF-8 (delimitado por vírgulas). A opção "CSV" comum grava em outro formato e estraga os acentos.'
     case 'vazio':
       return 'O arquivo não tem nenhuma linha de dados.'
     case 'cabecalho_diferente':
       return `O cabeçalho não confere. Veio "${f.encontrado}". Baixe o modelo e use as colunas dele, na mesma ordem.`
     case 'aspas_nao_fechadas':
-      return `Aspas não fechadas na linha ${f.linha}. Quebra de linha dentro de um campo não é aceita — deixe cada empresa em uma linha só.`
+      return `Aspas não fechadas na linha ${f.linha}. Quebra de linha dentro de um campo não é aceita. Deixe cada empresa em uma linha só.`
     case 'excede_limite':
       return `O arquivo tem ${f.linhas} linhas e o limite é ${LIMITE_DE_LINHAS}. Divida em arquivos menores.`
+    case 'formato_nao_suportado':
+      return 'Escolha um arquivo Excel (.xlsx) ou CSV UTF-8 (.csv).'
+    case 'excede_tamanho':
+      return 'O arquivo é grande demais para ser processado com segurança. Divida os dados em arquivos menores.'
+    case 'xlsx_corrompido':
+      return 'O arquivo Excel está corrompido ou não é um XLSX válido. Baixe o modelo novamente e copie os dados para ele.'
+    case 'estrutura_nao_suportada':
+      return 'O arquivo Excel usa nomes definidos que não são aceitos na importação. Copie somente os dados para um modelo novo e envie novamente.'
+    case 'planilhas_ambiguas':
+      return 'O arquivo tem mais de uma planilha com dados. Deixe uma única planilha de empresas e envie novamente.'
+    case 'formula_nao_permitida':
+      return `A célula da linha ${f.linha}, coluna ${f.coluna}, contém uma fórmula. Substitua a fórmula pelo valor e envie novamente.`
   }
 }
 
@@ -74,7 +86,7 @@ export function textoDaFalhaDeArquivo(f: FalhaDeArquivo): string {
 export function textoDoEndereco(r: Relatorio): string | null {
   if (r.cepsPedidos === 0) return null
   if (r.basePublicadaEm === null) {
-    return 'A base de CEP não está carregada neste banco — rode `npm run db:cep:carregar`. Nenhum endereço será resolvido, e as empresas entram sem endereço.'
+    return 'A base de CEP não está carregada neste banco. Rode `npm run db:cep:carregar`. Nenhum endereço será resolvido, e as empresas entram sem endereço.'
   }
   if (r.cepsNaoEncontrados === 0) return null
   const quantos =

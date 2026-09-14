@@ -1,11 +1,15 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { destinoCanonico, lerConsulta, totalDePaginas } from '@/src/features/empresas/consulta'
-import { listarEmpresas } from '@/src/features/empresas/listagem'
+import { aplicarFiltrosEmpresas, destinoCanonico, lerConsulta, totalDePaginas } from '@/src/features/empresas/consulta'
+import { lerFiltrosEmpresas } from '@/src/features/empresas/filtros'
+import { listarEmpresas, listarOpcoesEmpresas } from '@/src/features/empresas/listagem'
 import { textoDoMotivo } from '@/src/features/empresas/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
+import { Button } from '@/src/components/ui/button'
+import { Formulario } from './formulario'
 import { Lista } from './lista'
 import { Paginacao } from './paginacao'
+import styles from './empresas.module.css'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -16,46 +20,47 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
   // jogada fora pelo redirecionamento.
   const destino = destinoCanonico(params)
   if (destino) redirect(destino)
-  const consulta = lerConsulta(params)
-  const resultado = await listarEmpresas(eu.usuarioId, consulta)
+  const filtros = lerFiltrosEmpresas(params)
+  if (!filtros.ok) {
+    return (
+      <main className={styles.pagina}>
+        <header className={styles.cabecalho}>
+          <div><h1>Empresas</h1><p>Consulte os cadastros e importe novas empresas.</p></div>
+          <Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button>
+        </header>
+        <div role="alert" className={styles.vazio}>
+          <h2>Não foi possível aplicar os filtros</h2>
+          <p>Revise os filtros informados e tente novamente.</p>
+          <Link href="/empresas">Limpar filtros</Link>
+        </div>
+      </main>
+    )
+  }
+  const consulta = aplicarFiltrosEmpresas(lerConsulta(params), filtros.filtros)
+  const [resultado, resultadoOpcoes] = await Promise.all([
+    listarEmpresas(eu.usuarioId, consulta),
+    listarOpcoesEmpresas(eu.usuarioId, consulta.uf, consulta.cidade),
+  ])
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Empresas</h1>
-        <nav className="flex items-center gap-3">
-          <Link href="/empresas/importar" className="text-sm underline">
-            Importar
-          </Link>
-          <Link href="/" className="text-sm underline">
-            Início
-          </Link>
-        </nav>
+    <main className={styles.pagina}>
+      <header className={styles.cabecalho}>
+        <div><h1>Empresas</h1><p>Consulte os cadastros e importe novas empresas.</p></div>
+        <Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button>
       </header>
-      {/* O formulário não carrega `pagina`: buscar volta para a primeira
-          página, que é o que se espera de uma busca nova. */}
-      <form method="get" className="flex gap-2">
-        <input
-          type="search"
-          name="q"
-          defaultValue={consulta.termo}
-          placeholder="Razão social, nome fantasia ou CNPJ"
-          className="flex-1 rounded border px-3 py-2 text-sm"
-        />
-        <button type="submit" className="rounded border px-3 py-2 text-sm">
-          Buscar
-        </button>
-      </form>
-      {resultado.ok ? (
+      {resultadoOpcoes.ok ? <Formulario consulta={consulta} opcoes={resultadoOpcoes.opcoes} /> : (
+        <div role="alert" className={styles.vazio}><p>{textoDoMotivo(resultadoOpcoes.motivo)}</p></div>
+      )}
+      {!resultado.ok ? (
+        <div role="alert" className={styles.vazio}><h2>Não foi possível consultar as empresas</h2><p>{textoDoMotivo(resultado.motivo)}</p><Link href="/empresas">Voltar para empresas</Link></div>
+      ) : resultadoOpcoes.ok ? (
         <>
-          <p className="text-sm text-neutral-600">
+          <p className={styles.contagem}>
             {resultado.total} {resultado.total === 1 ? 'empresa' : 'empresas'}
           </p>
           <Lista linhas={resultado.linhas} />
-          <Paginacao pagina={consulta.pagina} paginas={totalDePaginas(resultado.total)} termo={consulta.termo} />
+          <Paginacao consulta={consulta} paginas={totalDePaginas(resultado.total)} />
         </>
-      ) : (
-        <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{textoDoMotivo(resultado.motivo)}</p>
-      )}
+      ) : null}
     </main>
   )
 }

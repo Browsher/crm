@@ -22,14 +22,17 @@ describe('FormularioImportar: o primeiro render', () => {
     expect(html()).toContain('oitava coluna')
   })
 
-  test('orienta exportar CSV UTF-8 preservando zeros à esquerda', () => {
+  test('orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8', () => {
+    expect(html()).toContain('diretamente')
     expect(html()).toContain('CSV UTF-8')
     expect(html()).toContain('Texto')
     expect(html()).toContain('zeros à esquerda')
   })
 
-  test('mostra o campo de arquivo', () => {
-    expect(html()).toContain('type="file"')
+  test('campo aceita XLSX e CSV', () => {
+    const input = html().match(/<input[^>]*type="file"[^>]*>/)?.[0]
+    expect(input).toBeDefined()
+    expect(input).toContain('accept=".xlsx,.csv,')
   })
 
   test('mostra o botão de conferir', () => {

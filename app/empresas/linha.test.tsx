@@ -44,6 +44,9 @@ describe('Linha: o que sempre aparece', () => {
 
   test('sem e-mail, não sobra rótulo vazio', () => {
     expect(html({ email: null })).not.toContain('contato@exemplo.com')
+    expect(html({ email: null })).toContain('E-mail não informado')
+    expect(html()).toContain('<tr')
+    expect(html().match(/<td/g)).toHaveLength(4)
   })
 })
 

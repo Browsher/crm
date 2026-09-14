@@ -1,93 +1,95 @@
 'use client'
 
-import { useActionState } from 'react'
-import { textoDaRecusa, textoDoEndereco } from '@/src/features/empresas/mensagens'
+import Link from 'next/link'
+import { useActionState, useEffect, useRef, useState } from 'react'
+import { Button } from '@/src/components/ui/button'
 import { importarAcao, type EstadoImportar } from './acao'
+import { EtapasImportacao, type EtapaImportacao } from './etapas-importacao'
+import { RelatorioImportacao } from './relatorio'
+import styles from './importar.module.css'
 
-// Aqui, e não em acao.ts: arquivo com 'use server' só exporta função, senão o
-// Next transforma a constante numa referência de servidor e este componente
-// recebe uma função no lugar do objeto. O tipo pode vir de lá porque tipo é
-// apagado na compilação. Mesmo desenho de app/usuarios/formulario-criar.tsx.
 const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null }
 
 export function FormularioImportar() {
-  const [estado, acao, pendente] = useActionState(importarAcao, inicial)
-  const r = estado.relatorio
+  const [etapa, setEtapa] = useState<EtapaImportacao>('enviar')
+  const [limpo, setLimpo] = useState(true)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const tituloRef = useRef<HTMLHeadingElement>(null)
+  const erroRef = useRef<HTMLParagraphElement>(null)
+  const focarAoVoltarRef = useRef(false)
+  const [estado, acao, pendente] = useActionState(async (anterior: EstadoImportar, form: FormData) => {
+    const resultado = await importarAcao(anterior, form)
+    setLimpo(false)
+    setEtapa(resultado.inseridas !== null ? 'concluir' : resultado.relatorio ? 'conferir' : 'enviar')
+    return resultado
+  }, inicial)
+  const erro = limpo ? null : estado.erro
 
-  // Terceiro estado: gravado. Só aqui a base mudou.
-  if (estado.inseridas !== null) {
-    return (
-      <form action={acao} className="flex flex-col gap-3 rounded border p-4">
-        <p className="text-sm">
-          <strong>{estado.inseridas}</strong> {estado.inseridas === 1 ? 'empresa importada' : 'empresas importadas'}.
-        </p>
-        <input type="hidden" name="limpar" value="1" />
-        <button type="submit" disabled={pendente} className="self-start rounded border px-3 py-1 text-sm">
-          Importar outro arquivo
-        </button>
-      </form>
-    )
+  useEffect(() => {
+    if (limpo) {
+      if (focarAoVoltarRef.current) tituloRef.current?.focus()
+      focarAoVoltarRef.current = false
+      return
+    }
+    if (erro) erroRef.current?.focus()
+    else tituloRef.current?.focus()
+  }, [estado, etapa, erro, limpo])
+
+  function voltar(focar = false) {
+    focarAoVoltarRef.current = focar
+    setLimpo(true)
+    setEtapa('enviar')
+  }
+  function reiniciar() {
+    if (inputRef.current) inputRef.current.value = ''
+    voltar(true)
   }
 
-  return (
-    <form action={acao} className="flex flex-col gap-4 rounded border p-4">
-      <div className="text-sm text-neutral-600">
-        <p>
-          O CNAE principal é opcional: preencha a oitava coluna cnae_principal com sete dígitos
-          (4742300) ou no formato 4742-3/00. Se não souber, deixe em branco.
-          O modelo antigo de sete colunas continua válido.
-        </p>
-        <p>
-          Mantenha as colunas como Texto para preservar zeros à esquerda e exporte a planilha como CSV UTF-8.
-        </p>
-      </div>
-      <label className="flex flex-col gap-1 text-sm">
-        Arquivo CSV
-        <input name="arquivo" type="file" accept=".csv,text/csv" required className="text-sm" />
-      </label>
-
-      {estado.erro && (
-        <p role="alert" className="text-sm text-red-700">
-          {estado.erro}
-        </p>
-      )}
-
-      {r && (
-        <div className="flex flex-col gap-2 rounded bg-neutral-50 p-3 text-sm">
-          <p>
-            <strong>{r.novas}</strong> novas · <strong>{r.jaCadastradas}</strong> já cadastradas ·{' '}
-            <strong>{r.recusadas.length}</strong> recusadas
-          </p>
-          {textoDoEndereco(r) && <p>{textoDoEndereco(r)}</p>}
-          {r.recusadas.length > 0 && (
-            <ul className="flex flex-col gap-1 text-red-700">
-              {r.recusadas.map((rec) => (
-                <li key={`${rec.linha}-${rec.tipo}`}>{textoDaRecusa(rec)}</li>
-              ))}
-            </ul>
-          )}
+  return <form action={acao} className={styles.formulario} onReset={e => e.preventDefault()}>
+    {/* React pode resetar campos não controlados após uma action bem-sucedida.
+        Conferir também é sucesso: impedir esse reset mantém o File para confirmar.
+        O input nunca desmonta ao voltar. Apenas reiniciar limpa explicitamente. */}
+    <EtapasImportacao etapa={etapa} voltar={() => voltar(true)} bloqueado={pendente} />
+    <div className={styles.painel}>
+      <h2 ref={tituloRef} tabIndex={-1} className={styles.titulo}>
+        {etapa === 'enviar' ? 'Enviar arquivo' : etapa === 'conferir' ? 'Confira antes de importar' : 'Importação concluída'}
+      </h2>
+      {erro && <p ref={erroRef} tabIndex={-1} role="alert" className={styles.erro}>{erro}</p>}
+      <fieldset disabled={pendente}>
+        <div hidden={etapa !== 'enviar'}>
+          <p>Preencha o modelo Excel e envie o arquivo diretamente. Se preferir, o CSV UTF-8 continua aceito.</p>
+          <label className={styles.arquivo}>
+            Arquivo Excel ou CSV
+            <input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={() => voltar()} />
+          </label>
+          <details className={styles.orientacoes}>
+            <summary>Modelo e orientações de preenchimento</summary>
+            <ol>
+              <li><a href="/modelo-empresas.xlsx" download>Baixe o modelo Excel</a> e preencha uma empresa por linha.</li>
+              <li>Mantenha as colunas como Texto para preservar zeros à esquerda.</li>
+              <li>Envie o XLSX diretamente. Para usar CSV, escolha Salvar como &gt; CSV UTF-8 (delimitado por vírgulas).</li>
+            </ol>
+            <p>O CNAE principal é opcional: preencha a oitava coluna cnae_principal com sete dígitos (4742300) ou no formato 4742-3/00. Se não souber, deixe em branco. O modelo antigo de sete colunas continua válido.</p>
+          </details>
+          <div className={styles.acoes}><Button type="submit">{pendente ? 'Conferindo…' : 'Conferir arquivo'}</Button></div>
         </div>
-      )}
-
-      <div className="flex gap-2">
-        <button type="submit" disabled={pendente} className="rounded border px-3 py-2 text-sm">
-          {pendente ? 'Conferindo…' : 'Conferir'}
-        </button>
-        {r && r.novas > 0 && (
-          // O mesmo <input type="file"> segue no formulário, então este botão
-          // reenvia o mesmo arquivo. É por isso que a página é uma só, em dois
-          // estados — navegar para longe perde o arquivo escolhido.
-          <button
-            type="submit"
-            name="confirmar"
-            value="1"
-            disabled={pendente}
-            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-          >
-            {pendente ? 'Gravando…' : `Importar ${r.novas}`}
-          </button>
-        )}
-      </div>
-    </form>
-  )
+        {etapa === 'conferir' && estado.relatorio && <>
+          <RelatorioImportacao relatorio={estado.relatorio} />
+          <div className={styles.acoes}>
+            {estado.relatorio.novas > 0 && <Button type="submit" name="confirmar" value="1">{pendente ? 'Importando…' : `Importar ${estado.relatorio.novas} ${estado.relatorio.novas === 1 ? 'empresa' : 'empresas'}`}</Button>}
+            <Button type="button" variant="outline" onClick={() => voltar(true)}>Voltar ao arquivo</Button>
+          </div>
+        </>}
+        {etapa === 'concluir' && <>
+          <p>{estado.inseridas} {estado.inseridas === 1 ? 'empresa importada' : 'empresas importadas'}.</p>
+          <p>As empresas já podem ser consultadas na base.</p>
+          <div className={styles.acoes}>
+            <Button asChild><Link href="/empresas">Ver empresas</Link></Button>
+            <Button type="button" variant="outline" onClick={reiniciar}>Importar outro arquivo</Button>
+          </div>
+        </>}
+      </fieldset>
+      {pendente && <p role="status" className={styles.pendente}>Aguarde a conclusão antes de sair desta página.</p>}
+    </div>
+  </form>
 }
