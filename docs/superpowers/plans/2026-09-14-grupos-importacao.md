@@ -142,3 +142,9 @@ Observação não diagnosticada: mensagem de servidor destination stream closed 
 Revisão da tarefa4 concluída: produto/testes aprovados; a espera sem prazo do script descartável de demonstração recebeu limite10s e cancelamento. Teste focado provocou destino de login impossível e comprovou timeout e remoção real do banco temporário; re-revisão aprovou. A execução permanente da demonstração ainda não começou.
 
 Revisão final, demonstração e PR ainda pendentes neste registro. Nenhuma aplicação da migração em banco de desenvolvimento ou Railway até aqui. Cinco bancos E2E desta tarefa e os dois bancos da prova de timeout foram removidos; sobra teste_4d072e625239 anterior ao PR35 foi preservada.
+
+### Revisão final e operação local concluídas
+
+Revisão global da base66e0935 atéca9c877 concluída, sem achados críticos ou importantes. Mantidas as duas pendências diagnósticas de stream e warnings descritas acima. Aplicação local executada depois da revisão, com guardas de host loopback, banco crm/porta5432, ambiente explícito e recusa de qualquer pendência diferente da0027. Invariantes passaram; antes/depois preservaram66 empresas,31 contatos e4 usuários. A Base de testes ativa recebeu as66 empresas. Nenhuma aplicação na Railway.
+
+Demonstração isolada iniciada em crm-grupos.localhost:3101, com seis grupos fictícios e outro banco temporário. Login e hostname foram comprovados no Chromium. As seis capturas de vazio absoluto nos dois temas/3larguras foram geradas antes da semente; amostras390escuro/1280claro e a lista dos seis grupos foram inspecionadas. O script tem encerramento com remoção do seu banco específico. A demonstração permanece disponível para validação do usuário; não equivale a aprovação visual já recebida. PR e CIexato são a próxima etapa; merge aguarda aprovação.
