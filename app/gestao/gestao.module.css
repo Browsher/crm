@@ -1,9 +1,39 @@
 .pagina { width: 100%; max-width: 1280px; padding: 2rem; margin: auto; }
 .pagina h1 { font-size: 1.75rem; font-weight: 650; margin-bottom: .5rem; }
 .pagina p { color: var(--ui-muted-foreground); line-height: 1.6; }
-.grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
-.card { display: flex; flex-direction: column; align-items: start; gap: 1rem; padding: 1.5rem; border: 1px solid var(--ui-border); border-radius: .75rem; background: var(--ui-surface); }
-.card h2 { font-size: 1.125rem; font-weight: 600; }
-.card p { flex: 1; }
-@media (max-width: 900px) { .grade { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .pagina { padding: 1rem; } }
+.pagina h2 { font-size: 1.125rem; font-weight: 600; }
+.cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+.indicador, .card { border: 1px solid var(--ui-border); border-radius: .75rem; background: var(--ui-surface); padding: 1.25rem; min-width: 0; }
+.indicador h2 { font-size: .875rem; font-weight: 500; }
+.indicador > strong { display: block; font-size: 2rem; font-weight: 650; margin: .75rem 0 .25rem; font-variant-numeric: tabular-nums; }
+.indicador p { font-size: .75rem; }
+.secao { margin-top: 2rem; }
+.grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.vendedor { display: flex; align-items: center; gap: .75rem; }
+.vendedor h3 { font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.avatar { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex-shrink: 0; border: 1px solid var(--ui-border); border-radius: 50%; }
+.numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1.5rem; }
+.numeros dt { font-size: .75rem; color: var(--ui-muted-foreground); }
+.numeros dd { font-size: 1.5rem; font-weight: 600; margin-top: .25rem; font-variant-numeric: tabular-nums; }
+.alerta { color: #b45309; }
+:global([data-theme='dark']) .alerta { color: #fbbf24; }
+.contatos { border-top: 1px solid var(--ui-border); margin-top: 1.25rem; padding-top: 1rem; display: flex; justify-content: space-between; gap: .5rem; font-size: .875rem; }
+.contatos strong { color: var(--ui-foreground); }
+.atividade { list-style: none; margin-top: 1rem; border: 1px solid var(--ui-border); border-radius: .75rem; overflow: hidden; }
+.atividade li { padding: 1rem 1.25rem; display: flex; justify-content: space-between; gap: 1rem; background: var(--ui-surface); }
+.atividade li + li { border-top: 1px solid var(--ui-border); }
+.atividade li > div { min-width: 0; overflow-wrap: anywhere; }
+.atividade span, .atividade time { color: var(--ui-muted-foreground); font-size: .75rem; }
+.atividade time { flex-shrink: 0; }
+.vazio { border: 1px dashed var(--ui-border); border-radius: .75rem; padding: 1.5rem; margin-top: 1rem; }
+.vazio h3 { font-weight: 600; }
+.atalhos { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+@media (max-width: 1000px) { .resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .pagina { padding: 1rem; }
+  .grade { grid-template-columns: 1fr; }
+  .resumo { gap: .75rem; }
+  .indicador { padding: 1rem; }
+  .atividade li { flex-direction: column; gap: .5rem; }
+}
