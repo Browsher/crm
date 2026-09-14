@@ -1,60 +1,45 @@
 'use client'
-
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
+import { Button } from '@/src/components/ui/button'
+import { Input } from '@/src/components/ui/input'
+import { Alert } from '@/src/components/ui/alert'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
+import { useTemaCrm } from '@/src/components/crm/tema'
 import { criarUsuarioAcao, type EstadoCriar } from './acoes'
+import { SenhaProvisoria } from './senha'
+import styles from './usuarios.module.css'
 
 const inicial: EstadoCriar = { erro: null, criado: null }
-const campo = 'rounded border px-3 py-2'
-
 export function FormularioCriar() {
-  const [estado, acao, pendente] = useActionState(criarUsuarioAcao, inicial)
-
-  if (estado.criado) {
-    return (
-      <form action={acao} className="flex flex-col gap-3 rounded border p-4">
-        <p className="text-sm">
-          Senha provisória de <strong>{estado.criado.nome}</strong>:
-        </p>
-        <code className="select-all rounded bg-neutral-100 px-3 py-2 font-mono text-lg">{estado.criado.senhaProvisoria}</code>
-        <p className="text-sm">
-          Anote agora e entregue a {estado.criado.nome}. A senha não fica guardada; se perder, gere uma nova senha provisória na lista.
-        </p>
-        <input type="hidden" name="limpar" value="1" />
-        <button type="submit" disabled={pendente} className="self-start rounded border px-3 py-1 text-sm">
-          Criar outro
-        </button>
-      </form>
-    )
-  }
-
-  return (
-    <form action={acao} className="flex flex-col gap-4 rounded border p-4">
-      <h2 className="font-semibold">Novo usuário</h2>
-      <label className="flex flex-col gap-1 text-sm">
-        Nome
-        <input name="nome" type="text" required className={campo} />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        E-mail
-        <input name="email" type="email" required className={campo} />
-      </label>
-      <fieldset className="flex gap-4 text-sm">
-        <legend className="mb-1">Papel</legend>
-        <label className="flex items-center gap-1">
-          <input type="radio" name="papel" value="vendedor" defaultChecked /> Vendedor
-        </label>
-        <label className="flex items-center gap-1">
-          <input type="radio" name="papel" value="gestor" /> Gestor
-        </label>
-      </fieldset>
-      {estado.erro && (
-        <p role="alert" className="text-sm text-red-700">
-          {estado.erro}
-        </p>
-      )}
-      <button type="submit" disabled={pendente} className="self-start rounded bg-black px-4 py-2 text-white disabled:opacity-50">
-        {pendente ? 'Criando…' : 'Criar'}
-      </button>
-    </form>
-  )
+  const [aberto, setAberto] = useState(false)
+  const [pendente, setPendente] = useState(false)
+  return <Dialog open={aberto} onOpenChange={valor => { if (!pendente) setAberto(valor) }}>
+    <DialogTrigger asChild><Button>Novo usuário</Button></DialogTrigger>
+    {aberto && <Criacao fechar={() => setAberto(false)} informarPendencia={setPendente} />}
+  </Dialog>
+}
+function Criacao({ fechar, informarPendencia }: { fechar: () => void; informarPendencia: (valor: boolean) => void }) {
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [papel, setPapel] = useState('vendedor')
+  const [estado, acao, pendente] = useActionState(async (anterior: EstadoCriar, form: FormData) => {
+    informarPendencia(true)
+    try { return await criarUsuarioAcao(anterior, form) }
+    finally { informarPendencia(false) }
+  }, inicial)
+  return <DialogContent theme={useTemaCrm()} showCloseButton={!pendente}
+    onEscapeKeyDown={e => { if (pendente) e.preventDefault() }} onPointerDownOutside={e => { if (pendente) e.preventDefault() }}>
+    <DialogHeader><DialogTitle>{estado.criado ? 'Usuário criado' : 'Novo usuário'}</DialogTitle><DialogDescription>Crie o acesso e entregue a senha provisória à pessoa.</DialogDescription></DialogHeader>
+    {estado.criado ? <SenhaProvisoria nome={estado.criado.nome} senha={estado.criado.senhaProvisoria} concluir={fechar} /> :
+      <form action={acao} className={styles.formulario}>
+        <label>Nome<Input name="nome" required value={nome} onChange={e => setNome(e.target.value)} disabled={pendente} /></label>
+        <label>E-mail<Input name="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} disabled={pendente} /></label>
+        <fieldset disabled={pendente}><legend>Papel</legend><div className={styles.acoes}>
+          <label><input type="radio" name="papel" value="vendedor" checked={papel === 'vendedor'} onChange={() => setPapel('vendedor')} /> Vendedor</label>
+          <label><input type="radio" name="papel" value="gestor" checked={papel === 'gestor'} onChange={() => setPapel('gestor')} /> Gestor</label>
+        </div></fieldset>
+        {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
+        <DialogFooter><Button type="button" variant="outline" disabled={pendente} onClick={fechar}>Cancelar</Button><Button type="submit" disabled={pendente}>{pendente ? 'Criando…' : 'Criar usuário'}</Button></DialogFooter>
+      </form>}
+  </DialogContent>
 }
