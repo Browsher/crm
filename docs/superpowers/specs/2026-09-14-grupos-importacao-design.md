@@ -2,7 +2,7 @@
 
 ## Estado e objetivo
 
-Regras de negócio aprovadas pelo usuário em 14/09/2026, após a integração do PR38. Este documento registra a decisão e os impactos encontrados no código. O desenho das telas e o plano técnico serão preparados antes da implementação.
+Regras de negócio e prévia interativa aprovadas pelo usuário em 14/09/2026, após a integração do PR38. Implementar a tabela compacta da prévia e o detalhe de grupo, reutilizando os componentes reais. A alternativa de cards é apenas exploração visual, não uma segunda interface a implementar.
 
 Cada importação confirmada forma um grupo nomeado pelo gestor, por exemplo, "Mooca · Setembro". O gestor consulta a origem das empresas e controla a disponibilidade para novas prospecções sem interromper atendimentos existentes.
 
@@ -43,21 +43,21 @@ Decisão reforçada pelo usuário em 14/09: preservar `/empresas` como visão de
 
 A gestão de planilhas fica em uma tela separada, proposta em `/empresas/grupos`, com acesso "Grupos de importação" a partir de Empresas. Mostrar grupos com nome, situação, data e quantidade de empresas. Abrir um grupo permite consultar somente suas empresas e voltar para a lista de grupos. A listagem geral continua disponível independentemente desse caminho.
 
-Preservar o padrão visual aprovado de Empresas e o fluxo Enviar, Conferir e Concluir. O nome do grupo entra no envio; ao concluir, oferecer acesso ao grupo criado e à visão geral. O layout dessa tela separada será validado antes de implementar.
+Preservar o padrão visual aprovado de Empresas e o fluxo Enviar, Conferir e Concluir. O nome do grupo entra no envio; ao concluir, oferecer acesso ao grupo criado e à visão geral. Na implementação, a visão geral mantém também todos os filtros existentes, omitidos apenas na prévia resumida.
 
 O gestor consegue distinguir empresas disponíveis, reservadas e em carteiras. Empresas em descanso ou sem origem ativa não podem ser contadas como disponíveis. A classificação e os rótulos finais serão apresentados no desenho da tela, sem somas que contem a mesma empresa duas vezes dentro do grupo.
 
 Antes de desativar, mostrar o impacto em novas prospecções e informar que atendimentos iniciados continuam. Os totais de grupos diferentes podem incluir a mesma empresa; um total geral de empresas usa CNPJs distintos.
 
-## Limpeza das empresas de teste
+## Transição das empresas de teste
 
-O usuário informou que as empresas atuais são de teste e autorizou preparar a limpeza para começar uma base nova. Não criar automaticamente um grupo "Base anterior" como alternativa a essa decisão.
+Decisão posterior aprovada pelo usuário: preservar as empresas atuais em um grupo "Base de testes" para validar carteiras, reservas e retornos. Isso substitui a intenção anterior de limpar agora. Não executar exclusão nesta fatia.
 
-A limpeza é uma operação separada da funcionalidade e da migração. Antes de executá-la, identificar o ambiente escolhido, contar as empresas e vínculos afetados e registrar o resultado. A pergunta sobre Docker somente ou Docker e Railway está pendente nesta etapa; nenhuma exclusão foi executada.
+Na migração, vincular as empresas preexistentes a "Base de testes", inicialmente ativo para preservar disponibilidade. Não atribuir um nome de arquivo ou gestor fictício a essa carga anterior: mostrar origem "Cadastros anteriores" e autoria "Migração". O grupo só precisa existir se houver empresas anteriores. Novas importações pertencem somente ao grupo criado por sua confirmação, sem vínculo automático à base de testes.
 
-Preservar usuários, credenciais, sessões, base de CEP e migrações. Conferir explicitamente os registros dependentes de empresas, incluindo contatos, fila e recentes. Não usar limpeza geral de banco nem remoção em cascata sem inventário do alcance.
+Preservar todos os usuários, credenciais, sessões, CEPs, contatos, posses, reservas e recentes. Os seis grupos com nomes de regiões aprovados na prévia são demonstração, não dados a semear automaticamente no banco real. Usar esses cenários em fixtures isoladas de navegador.
 
-A transição para grupos deve ser definida para cada ambiente depois de conferir se restaram empresas. A migração não pode apagar registros nem inventar uma origem ativa silenciosamente. Essa decisão operacional precede a aplicação da regra de grupos no ambiente correspondente.
+A futura limpeza exige inventário dos vínculos e definição do ambiente. A autorização desta etapa cobre implementação e testes locais; aplicar migração na Railway é uma operação separada, depois de revisão e integração. Não transferir notas fictícias para cadastros reais sem conferir eventual coincidência de CNPJ.
 
 ## Evidências do código atual
 
