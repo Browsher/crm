@@ -1,6 +1,7 @@
 'use server'
 
 import { textoDaFalhaDeArquivo, textoDoMotivo } from '@/src/features/empresas/mensagens'
+import { formatoDoArquivo, LIMITE_BYTES_ARQUIVO } from '@/src/features/empresas/arquivo'
 import { repositorioPostgres } from '@/src/features/empresas/repositorio'
 import {
   analisar,
@@ -31,10 +32,17 @@ export async function importarAcao(_anterior: EstadoImportar, form: FormData): P
 
   const arquivo = form.get('arquivo')
   if (!(arquivo instanceof File) || arquivo.size === 0) {
-    return { ...INICIAL, erro: 'Escolha um arquivo CSV.' }
+    return { ...INICIAL, erro: 'Escolha um arquivo Excel (.xlsx) ou CSV UTF-8 (.csv).' }
+  }
+
+  const formato = formatoDoArquivo(arquivo.name, arquivo.type)
+  if (formato === null) return { ...INICIAL, erro: textoDaFalhaDeArquivo({ motivo: 'formato_nao_suportado' }) }
+  if (arquivo.size > LIMITE_BYTES_ARQUIVO) {
+    return { ...INICIAL, erro: textoDaFalhaDeArquivo({ motivo: 'excede_tamanho' }) }
   }
 
   const bytes = new Uint8Array(await arquivo.arrayBuffer())
+  const fonte = { formato, bytes }
   const repo = repositorioPostgres(eu.usuarioId)
 
   // Os dois caminhos ficam separados, e não num `'inseridas' in r`, pelo mesmo
@@ -45,12 +53,12 @@ export async function importarAcao(_anterior: EstadoImportar, form: FormData): P
   // Confirmar reenvia o MESMO arquivo e refaz as três fases. Sem estado no
   // servidor entre a conferência e a gravação: nada a expirar, nada a limpar.
   if (form.get('confirmar') !== null) {
-    const r = await importar(repo, bytes)
+    const r = await importar(repo, fonte)
     if (!r.ok) return { ...INICIAL, erro: aoFalhar(r) }
     return { erro: null, relatorio: r.relatorio, inseridas: r.inseridas }
   }
 
-  const r = await analisar(repo, bytes)
+  const r = await analisar(repo, fonte)
   if (!r.ok) return { ...INICIAL, erro: aoFalhar(r) }
   return { erro: null, relatorio: r.relatorio, inseridas: null }
 }

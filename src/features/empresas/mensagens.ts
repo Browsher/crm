@@ -56,6 +56,18 @@ export function textoDaFalhaDeArquivo(f: FalhaDeArquivo): string {
       return `Aspas não fechadas na linha ${f.linha}. Quebra de linha dentro de um campo não é aceita. Deixe cada empresa em uma linha só.`
     case 'excede_limite':
       return `O arquivo tem ${f.linhas} linhas e o limite é ${LIMITE_DE_LINHAS}. Divida em arquivos menores.`
+    case 'formato_nao_suportado':
+      return 'Escolha um arquivo Excel (.xlsx) ou CSV UTF-8 (.csv).'
+    case 'excede_tamanho':
+      return 'O arquivo é grande demais para ser processado com segurança. Divida os dados em arquivos menores.'
+    case 'xlsx_corrompido':
+      return 'O arquivo Excel está corrompido ou não é um XLSX válido. Baixe o modelo novamente e copie os dados para ele.'
+    case 'estrutura_nao_suportada':
+      return 'O arquivo Excel usa nomes definidos que não são aceitos na importação. Copie somente os dados para um modelo novo e envie novamente.'
+    case 'planilhas_ambiguas':
+      return 'O arquivo tem mais de uma planilha com dados. Deixe uma única planilha de empresas e envie novamente.'
+    case 'formula_nao_permitida':
+      return `A célula da linha ${f.linha}, coluna ${f.coluna}, contém uma fórmula. Substitua a fórmula pelo valor e envie novamente.`
   }
 }
 

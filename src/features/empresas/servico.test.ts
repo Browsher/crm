@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Endereco } from '../../server/cep/resolver'
+import { montarModelo } from './modelo'
 import { CABECALHO_LEGADO as CABECALHO, type LinhaAceita } from './planilha'
 import type { RepositorioEmpresas } from './repositorio'
 import { analisar, importar } from './servico'
@@ -43,6 +44,13 @@ const BELA = '11444777000161,Bela Luz LTDA,,,1134567890,,'
 const SEM_CEP_NA_BASE = '11555777000139,Nova LTDA,,,1134567891,,00000000'
 
 describe('analisar', () => {
+  test('aceita a fonte XLSX explicita e reaproveita o mesmo relatorio', async () => {
+    const { repo } = repoFalso()
+    const r = await analisar(repo, { formato: 'xlsx', bytes: montarModelo() })
+    if (!r.ok) throw new Error('esperava ok')
+    expect(r.relatorio).toMatchObject({ novas: 1, jaCadastradas: 0, recusadas: [] })
+  })
+
   test('conta novas, ja cadastradas e ceps nao encontrados', async () => {
     const { repo, gravadas } = repoFalso(['11444777000161'])
     const r = await analisar(repo, bytes(AURORA, BELA, SEM_CEP_NA_BASE))

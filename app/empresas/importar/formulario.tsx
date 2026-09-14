@@ -57,17 +57,17 @@ export function FormularioImportar() {
       {erro && <p ref={erroRef} tabIndex={-1} role="alert" className={styles.erro}>{erro}</p>}
       <fieldset disabled={pendente}>
         <div hidden={etapa !== 'enviar'}>
-          <p>Preencha o modelo e salve como CSV UTF-8 antes de enviar.</p>
+          <p>Preencha o modelo Excel e envie o arquivo diretamente. Se preferir, o CSV UTF-8 continua aceito.</p>
           <label className={styles.arquivo}>
-            Arquivo CSV
-            <input ref={inputRef} name="arquivo" type="file" accept=".csv,text/csv" required={etapa !== 'concluir'} onChange={() => voltar()} />
+            Arquivo Excel ou CSV
+            <input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={() => voltar()} />
           </label>
           <details className={styles.orientacoes}>
             <summary>Modelo e orientações de preenchimento</summary>
             <ol>
               <li><a href="/modelo-empresas.xlsx" download>Baixe o modelo Excel</a> e preencha uma empresa por linha.</li>
               <li>Mantenha as colunas como Texto para preservar zeros à esquerda.</li>
-              <li>No Excel, use Salvar como &gt; CSV UTF-8 (delimitado por vírgulas). A opção CSV comum pode estragar os acentos.</li>
+              <li>Envie o XLSX diretamente. Para usar CSV, escolha Salvar como &gt; CSV UTF-8 (delimitado por vírgulas).</li>
             </ol>
             <p>O CNAE principal é opcional: preencha a oitava coluna cnae_principal com sete dígitos (4742300) ou no formato 4742-3/00. Se não souber, deixe em branco. O modelo antigo de sete colunas continua válido.</p>
           </details>

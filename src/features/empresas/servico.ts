@@ -1,4 +1,5 @@
-import { analisarPlanilha, type FalhaDeArquivo, type LinhaAceita, type Recusa } from './planilha'
+import { analisarArquivo, type FonteEmpresas } from './arquivo'
+import type { FalhaDeArquivo, LinhaAceita, Recusa } from './planilha'
 import type { Falha, RepositorioEmpresas } from './repositorio'
 
 export type Relatorio = {
@@ -31,9 +32,9 @@ type Preparado = { relatorio: Relatorio; novas: LinhaAceita[] }
 // guardado no servidor entre uma coisa e outra.
 async function preparar(
   repo: RepositorioEmpresas,
-  bytes: Uint8Array,
+  fonte: FonteEmpresas,
 ): Promise<Preparado | Exclude<ResultadoAnalise, { ok: true }>> {
-  const analise = analisarPlanilha(bytes)
+  const analise = await analisarArquivo(fonte)
   if (!analise.ok) return { ok: false, motivo: 'arquivo_invalido', falha: analise.falha }
 
   const cnpjs = analise.aceitas.map((l) => l.cnpj)
@@ -60,14 +61,14 @@ async function preparar(
   }
 }
 
-export async function analisar(repo: RepositorioEmpresas, bytes: Uint8Array): Promise<ResultadoAnalise> {
-  const p = await preparar(repo, bytes)
+export async function analisar(repo: RepositorioEmpresas, fonte: FonteEmpresas): Promise<ResultadoAnalise> {
+  const p = await preparar(repo, fonte)
   if ('ok' in p) return p
   return { ok: true, relatorio: p.relatorio }
 }
 
-export async function importar(repo: RepositorioEmpresas, bytes: Uint8Array): Promise<ResultadoImportar> {
-  const p = await preparar(repo, bytes)
+export async function importar(repo: RepositorioEmpresas, fonte: FonteEmpresas): Promise<ResultadoImportar> {
+  const p = await preparar(repo, fonte)
   if ('ok' in p) return p
   const r = await repo.gravar(p.novas)
   if (!r.ok) return r
