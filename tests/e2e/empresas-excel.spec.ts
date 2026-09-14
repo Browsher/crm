@@ -25,7 +25,7 @@ test('modelo Excel baixado passa pela conferência e só grava ao confirmar', as
   await page.getByLabel('E-mail').fill('gestore2e@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
+  await expect(page).toHaveURL('/gestao')
   await page.goto('/empresas/importar')
   await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação de regressão E2E')
   await page.getByText('Modelo e orientações de preenchimento', { exact: true }).click()

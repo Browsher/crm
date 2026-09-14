@@ -23,11 +23,12 @@ test('carteira ativa seu próprio menu e não expõe administração ao vendedor
   expect(html).toContain('Conteúdo')
 })
 
-test('fila mantém seu menu ativo e opções do gestor', () => {
-  const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="fila">Fila</ShellCrm>)
-  expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/fila"')
+test('gestor tem início e administração sem links de atendimento', () => {
+  const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="gestao">Gestão</ShellCrm>)
+  expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/gestao"')
   expect(html).toContain('href="/usuarios"')
-  expect(html).toContain('Tema da Fila')
+  expect(html).toContain('href="/empresas/grupos"')
+  for (const rota of ['/fila', '/carteira', '/meu-dia']) expect(html).not.toContain(`href="${rota}"`)
 })
 
 test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {

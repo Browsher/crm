@@ -10,7 +10,7 @@ import styles from './carteira.module.css'
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 export default async function PaginaCarteira({ searchParams }: Props) {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const [r, params] = await Promise.all([lerMinhasEmpresas(eu.usuarioId), searchParams])
   const leitura = lerFiltrosCarteira(params)
 

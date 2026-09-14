@@ -25,7 +25,7 @@ test('gestor combina selects, conserva filtros na paginação e limpa dependente
   await page.getByLabel('E-mail').fill('gestore2e@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
+  await expect(page).toHaveURL('/gestao')
   await page.goto('/empresas?q=Filtros+E2E')
   const estado = page.getByLabel('Estado', { exact: true })
   const cidade = page.getByLabel('Cidade', { exact: true })

@@ -10,7 +10,7 @@ import { lerFiltros } from '@/src/features/prospeccao/filtros'
 import { urlConsulta } from './localizar/navegacao'
 
 export default async function PaginaFila({ searchParams }: { searchParams: Promise<Record<string,string|string[]|undefined>> }) {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const entrada = lerFiltros(await searchParams)
   if (!entrada.ok) return <main className="p-6"><p role="alert">Filtros inválidos. A busca não foi executada.</p><Link href="/fila">Limpar filtros</Link></main>
   const r = await lerMinhasEmpresas(eu.usuarioId)

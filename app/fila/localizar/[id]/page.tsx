@@ -14,7 +14,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
   params: Promise<{ id: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const { id } = await params
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) notFound()
   const entrada = lerFiltros(await searchParams)

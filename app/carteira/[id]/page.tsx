@@ -21,7 +21,7 @@ export default async function PaginaFicha({ params, searchParams }: {
   const query = await searchParams ?? {}
   const doMeuDia = query.de === 'meu-dia'
   const entradaCarteira = doMeuDia ? null : lerFiltrosCarteira(query)
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const r = await lerMinhasEmpresas(eu.usuarioId)
 
   if (!r.ok) {

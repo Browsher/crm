@@ -1,0 +1,9 @@
+.pagina { width: 100%; max-width: 1280px; padding: 2rem; margin: auto; }
+.pagina h1 { font-size: 1.75rem; font-weight: 650; margin-bottom: .5rem; }
+.pagina p { color: var(--ui-muted-foreground); line-height: 1.6; }
+.grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+.card { display: flex; flex-direction: column; align-items: start; gap: 1rem; padding: 1.5rem; border: 1px solid var(--ui-border); border-radius: .75rem; background: var(--ui-surface); }
+.card h2 { font-size: 1.125rem; font-weight: 600; }
+.card p { flex: 1; }
+@media (max-width: 900px) { .grade { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .pagina { padding: 1rem; } }

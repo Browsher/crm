@@ -16,7 +16,7 @@ import { Button } from '@/src/components/ui/button'
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 export default async function PaginaLocalizar({ searchParams }: Props) {
-  const eu = await exigir('usuario')
+  const eu = await exigir('vendedor')
   const r = lerFiltros(await searchParams)
   if (!r.ok) return (
     <main className={styles.pagina}>

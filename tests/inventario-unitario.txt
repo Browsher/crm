@@ -3,8 +3,12 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 888
+# Total: 896
 
+app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
+app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
+app/acesso-atendimento.test.tsx :: reserva exige vendedor antes de processar dados
+app/acesso-atendimento.test.tsx :: visita exige vendedor antes de processar dados
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador voltar do navegador pede confirmação quando existe rascunho
@@ -202,6 +206,7 @@ app/meu-dia/painel.test.tsx :: agenda vazia e busca sem resultado dizem coisas d
 app/meu-dia/painel.test.tsx :: primeira empresa já aparece selecionada e o link leva a ficha com os filtros
 app/page.test.tsx :: entrada autenticada encaminha para Meu dia
 app/page.test.tsx :: entrada respeita a interrupção da guarda antes de encaminhar
+app/page.test.tsx :: gestor entra na gestão sem passar pela agenda do vendedor
 app/usuarios/usuarios.dom.test.tsx :: cancelamento não envia ação, confirmação envia alvo e novo papel, erro permite nova tentativa
 app/usuarios/usuarios.dom.test.tsx :: criação preserva campos no erro, mostra senha, copia e descarta ao fechar
 app/usuarios/usuarios.dom.test.tsx :: lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias
@@ -218,7 +223,7 @@ src/components/crm/etapas.test.tsx :: renderiza a ação de retorno fornecida pe
 src/components/crm/etapas.test.tsx :: sem ações fornecidas, os indicadores são texto sem navegação
 src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
 src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
-src/components/crm/shell.test.tsx :: fila mantém seu menu ativo e opções do gestor
+src/components/crm/shell.test.tsx :: gestor tem início e administração sem links de atendimento
 src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
 src/components/crm/shell.test.tsx :: usuários ativa seu menu e oferece tema próprio ao gestor
 src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
@@ -307,6 +312,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-empresas-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-gestor-administracao-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-grupos-importacao-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-usuarios-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
@@ -714,6 +720,8 @@ src/features/usuarios/repositorio.test.ts :: traduzirResultado propriedade de Ob
 src/features/usuarios/repositorio.test.ts :: traduzirResultado valor desconhecido lança, não vira ok: false
 src/features/usuarios/repositorio.test.ts :: traduzirResultado vocabulário conhecido vira ok ou motivo
 src/features/usuarios/servico.test.ts :: criarUsuario dados inválidos: faltas nomeadas, sem tocar o repositório nem gerar hash
+src/server/autenticacao/acesso.test.ts :: avaliarAcesso exigência vendedor mantém login e troca de senha antes do papel
+src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor não entra no atendimento de vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor sem pendência passa em tudo
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso pendente: só "sessao" passa; o resto vai para /trocar-senha
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso sem sessão: /login em qualquer exigência

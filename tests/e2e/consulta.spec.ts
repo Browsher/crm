@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-for (const papel of ['vendedore2e', 'gestore2e']) {
+for (const papel of ['vendedore2e']) {
   test(`${papel} localiza empresas sem receber contatos na consulta resumida`, async ({ page }, testInfo) => {
     await page.goto('/login')
     await page.getByLabel('E-mail').fill(`${papel}@teste.local`)

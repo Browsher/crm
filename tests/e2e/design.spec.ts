@@ -5,7 +5,7 @@ async function entrar(page: Page, papel: 'gestor' | 'vendedor') {
   await page.getByLabel('E-mail').fill(`${papel}e2e@teste.local`)
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
+  await expect(page).toHaveURL(papel === 'gestor' ? '/gestao' : '/meu-dia')
 }
 
 test('galeria exige sessão de gestor', async ({ page }) => {

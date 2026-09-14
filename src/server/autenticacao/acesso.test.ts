@@ -13,6 +13,16 @@ const sessao = (extra: Partial<Sessao> = {}): Sessao => ({
 })
 
 describe('avaliarAcesso', () => {
+  test('gestor não entra no atendimento de vendedor', () => {
+    expect(avaliarAcesso(sessao({ papel: 'gestor' }), 'vendedor')).toEqual({ ok: false, motivo: 'so_vendedor', destino: '/gestao' })
+    const vendedor = sessao()
+    expect(avaliarAcesso(vendedor, 'vendedor')).toEqual({ ok: true, usuario: vendedor })
+  })
+
+  test('exigência vendedor mantém login e troca de senha antes do papel', () => {
+    expect(avaliarAcesso(null, 'vendedor')).toEqual({ ok: false, motivo: 'sem_sessao', destino: '/login' })
+    expect(avaliarAcesso(sessao({ papel: 'gestor', senhaProvisoriaPendente: true }), 'vendedor')).toEqual({ ok: false, motivo: 'senha_provisoria', destino: '/trocar-senha' })
+  })
   test('sem sessão: /login em qualquer exigência', () => {
     for (const ex of ['sessao', 'usuario', 'gestor'] as const) {
       expect(avaliarAcesso(null, ex)).toEqual({ ok: false, motivo: 'sem_sessao', destino: '/login' })
