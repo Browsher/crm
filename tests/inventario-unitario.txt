@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 783
+# Total: 835
 
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva o rascunho e beforeunload o protege
@@ -51,17 +51,28 @@ app/design/galeria.test.tsx :: simula busca com carregamento e resposta explíci
 app/design/galeria.test.tsx :: troca o tema no escopo da galeria
 app/design/page.test.tsx :: pagina e galeria nao importam caminhos de escrita de negocio
 app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
+app/empresas/formulario.dom.test.tsx :: limpar na própria URL reseta controles sem alterar clique modificado do link
+app/empresas/formulario.dom.test.tsx :: mudar somente a página descarta edições locais ainda não submetidas
+app/empresas/formulario.dom.test.tsx :: nova busca conserva os selects e não carrega a página antiga
+app/empresas/formulario.dom.test.tsx :: novas props depois de navegação reiniciam os controles
+app/empresas/formulario.dom.test.tsx :: trocar estado limpa cidade e bairro, preserva busca e CNAE e reinicia página
+app/empresas/formulario.test.tsx :: expõe busca e selects acessíveis com dependências desabilitadas
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo conferencia envia formato e bytes ao servico
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo confirmacao chama importar com o arquivo original para reanalise
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo faz a guarda de gestor antes de ler o arquivo
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo formato desconhecido volta como erro recuperavel
+app/empresas/importar/acao.test.tsx :: importarAcao: arquivo tamanho acima do limite volta como erro recuperavel sem ler bytes
 app/empresas/importar/formulario.dom.test.tsx :: conferir e voltar preservam o mesmo input e File, trocar invalida o relatório
 app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
 app/empresas/importar/formulario.dom.test.tsx :: retornos explícitos à etapa Enviar movem o foco para o título
 app/empresas/importar/formulario.dom.test.tsx :: trocar o arquivo preserva o foco no input
 app/empresas/importar/formulario.dom.test.tsx :: zero novas não confirma; conclusão usa número real e não volta à gravação
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render campo aceita XLSX e CSV
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render explica o CNAE opcional e a compatibilidade do modelo antigo
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o botão de conferir
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o campo de arquivo
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render não mostra o botão de confirmar antes de haver relatório
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta exportar CSV UTF-8 preservando zeros à esquerda
+app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
@@ -75,6 +86,7 @@ app/empresas/lista.test.tsx :: Lista com empresas, monta uma lista
 app/empresas/lista.test.tsx :: Lista vazia, diz que não achou
 app/empresas/lista.test.tsx :: Lista vazia, oferece o caminho de volta para a lista inteira
 app/empresas/page.test.tsx :: busca tem nome acessível, conserva termo e reinicia paginação
+app/empresas/page.test.tsx :: filtro inválido exibe aviso sem consultar banco
 app/empresas/page.test.tsx :: layout exige gestor antes de renderizar o shell
 app/empresas/page.test.tsx :: layout não renderiza conteúdo se guarda recusa acesso
 app/empresas/paginacao.test.tsx :: Paginacao diz onde a pessoa está
@@ -82,6 +94,7 @@ app/empresas/paginacao.test.tsx :: Paginacao na primeira, "Anterior" não é lin
 app/empresas/paginacao.test.tsx :: Paginacao na última, "Próxima" não é link
 app/empresas/paginacao.test.tsx :: Paginacao no meio, os dois lados são link
 app/empresas/paginacao.test.tsx :: Paginacao o termo viaja com a página, codificado
+app/empresas/paginacao.test.tsx :: Paginacao os quatro selects viajam com a página, codificados
 app/empresas/paginacao.test.tsx :: Paginacao uma página só: não aparece
 app/fila/cartao.test.tsx :: Cartao cartao sem historico diz que ninguem ligou ainda
 app/fila/cartao.test.tsx :: Cartao CEP fora da base diz que o endereco nao foi encontrado, e nao finge que nao ha CEP
@@ -246,6 +259,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-fila-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-meu-dia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-12-empresas-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresas-excel-filtros.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -265,6 +279,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-11-padrao-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-empresas-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
@@ -380,6 +395,26 @@ src/features/contato/um-chamador.test.ts :: a action redireciona quando o desfec
 src/features/contato/um-chamador.test.ts :: a ficha diz para onde voltar depois de devolver
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só existe pelo menos um arquivo com o literal, senão esta catraca não vigia nada
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só o literal aparece em exatamente um arquivo fora de tests/
+src/features/empresas/arquivo.test.ts :: analisarArquivo: compatibilidade CSV mantem o chamador legado que passa somente bytes
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX aceita diretamente o modelo real gerado e preserva os zeros
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX aplica mascaras numericas usuais para conservar zeros de CNPJ, CEP e CNAE
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX aplica o limite estrutural ao conjunto de planilhas
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX linha esparsa conserva o numero original sem materializar as linhas vazias
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX mantem o numero original depois de uma linha vazia
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX nao expande mascara numerica fora do limite
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX nao inventa zero para numero sem mascara
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX nao materializa as celulas de um merge gigante
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX preserva mascara numerica herdada da coluna
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa arquivo corrompido como erro recuperavel
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa celula em indice de coluna distante antes do load
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa duas planilhas com dados em vez de escolher uma
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa faixa de colunas fora do limite antes de o ExcelJS expandi-la
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa formula mesmo quando ela traz resultado calculado
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa formula sem resultado calculado mesmo quando e a unica celula da linha
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa linha com celulas demais durante a guarda estrutural
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa mais de 5000 linhas de empresas
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa nomes definidos antes de o ExcelJS expandir a faixa
+src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa workbook que expande alem do limite antes de carrega-lo
 src/features/empresas/cnae.test.ts :: normaliza 
 src/features/empresas/cnae.test.ts :: normaliza   
 src/features/empresas/cnae.test.ts :: normaliza  4742300 
@@ -457,6 +492,20 @@ src/features/empresas/csv.test.ts :: lerCsv: o que ele nao faz aspa aberta no fi
 src/features/empresas/csv.test.ts :: lerCsv: o que ele nao faz quebra de linha dentro de aspas e recusada, com a linha
 src/features/empresas/csv.test.ts :: lerCsv: separador ponto e virgula farejado do cabecalho, que e onde o Excel pt-BR estraga
 src/features/empresas/csv.test.ts :: lerCsv: separador ponto e virgula virgula ganha quando as duas aparecem no cabecalho
+src/features/empresas/filtros.test.ts :: aceita CNAE não informado e localização com código IBGE
+src/features/empresas/filtros.test.ts :: canonicalização não apaga filtro inválido antes de exibir erro
+src/features/empresas/filtros.test.ts :: q vazio é removido sem perder os quatro selects e a página
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"cidade":"3550308"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"cnae":"4742-3/00"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"cnae":"474230"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP","bairro":"Mooca"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP","cidade":"3550308","bairro":" "}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP","cidade":"3550308","bairro":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP","cidade":"3550308","bairro":"Moo\u0000ca"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP","cidade":"São Paulo"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"sp"}
+src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP1"}
+src/features/empresas/filtros.test.ts :: sem selects, filtros de Empresas ficam ausentes
 src/features/empresas/formato.test.ts :: formatarCnpj alfanumérico
 src/features/empresas/formato.test.ts :: formatarCnpj numérico
 src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai como veio
@@ -468,7 +517,9 @@ src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato e
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 8
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo excede limite mostra os dois numeros
+src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo formula informa a linha e a coluna que precisam virar valor
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo nao utf-8 diz exatamente o que fazer no Excel
+src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo workbook ambiguo pede uma unica planilha de dados
 src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma cep curto explica o zero a esquerda
 src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma duplicata divergente nomeia o campo
 src/features/empresas/mensagens.test.ts :: textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma duplicata identica diz que sao iguais
@@ -529,6 +580,7 @@ src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo re
 src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo todo nome de coluna do relatorio existe no CABECALHO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio a recusa aponta para a linha do ARQUIVO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio duplicata depois de linha em branco cita as linhas certas
+src/features/empresas/servico.test.ts :: analisar aceita a fonte XLSX explicita e reaproveita o mesmo relatorio
 src/features/empresas/servico.test.ts :: analisar arquivo invalido devolve a falha do arquivo
 src/features/empresas/servico.test.ts :: analisar conta novas, ja cadastradas e ceps nao encontrados
 src/features/empresas/servico.test.ts :: analisar nao grava nada, nem quando esta tudo certo

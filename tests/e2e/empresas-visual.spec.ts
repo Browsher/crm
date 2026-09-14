@@ -5,10 +5,10 @@ import { comAdmin } from '../../src/server/db/admin'
 import { exigirAdminLocal } from './ambiente'
 
 const CABECALHO = 'cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,cnae_principal'
-const CNPJ_NOVA = '11222333000181'
+const CNPJ_NOVA = '04252011000110'
 const CNPJ_EXISTENTE = '11444777000161'
 const CNPJ_TROCA = '12ABC34501DE35'
-const CNPJ_RECUSADO = '11222333000182'
+const CNPJ_RECUSADO = '04252011000111'
 const NOME_NOVA = 'Empresa Importada E2E Empresas Visual'
 const NOME_EXISTENTE = 'Empresa Já Cadastrada E2E Empresas Visual'
 
@@ -113,7 +113,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   await page.getByLabel('Buscar empresas', { exact: true }).fill(NOME_EXISTENTE)
   await page.getByRole('button', { name: 'Buscar', exact: true }).click()
   await expect(page.getByRole('table')).toContainText(NOME_EXISTENTE)
-  await page.getByRole('link', { name: 'Limpar busca', exact: true }).click()
+  await page.getByRole('link', { name: 'Limpar filtros', exact: true }).click()
   await expect(page).toHaveURL('/empresas')
   await expect(page.getByLabel('Buscar empresas', { exact: true })).toHaveValue('')
 
@@ -134,7 +134,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
 
   await page.getByRole('link', { name: 'Importar empresas', exact: true }).click()
   await expect(page).toHaveURL('/empresas/importar')
-  const arquivo = page.getByLabel('Arquivo CSV')
+  const arquivo = page.getByLabel('Arquivo Excel ou CSV')
   await arquivo.setInputFiles({
     name: 'empresas-mistas-e2e.csv',
     mimeType: 'text/csv',
@@ -187,7 +187,7 @@ test('troca de arquivo invalida relatório, zero novas não confirma e CSV invá
   expect(await contarCnpj(CNPJ_TROCA)).toBe(0)
   await entrar(page, 'gestore2e')
   await page.goto('/empresas/importar')
-  const arquivo = page.getByLabel('Arquivo CSV')
+  const arquivo = page.getByLabel('Arquivo Excel ou CSV')
   await arquivo.setInputFiles({ name: 'arquivo-inicial.csv', mimeType: 'text/csv', buffer: Buffer.from(CSV_TROCA, 'utf8') })
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
   await expect(valorDoResumo(page, 'Novas empresas')).toHaveText('1')
