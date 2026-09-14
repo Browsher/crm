@@ -111,6 +111,26 @@ function fiscalDosNomesDefinidos() {
   }
 }
 
+function caminhoDePlanilhaReconhecidoPeloExcelJs(caminho: string): { normalizado: string; canonico: string } | null {
+  // O ExcelJS remove uma barra inicial e usa esta correspondencia sem
+  // ancoras. Repetimos as duas etapas para que nenhum caminho que ele possa
+  // interpretar como planilha fique fora da fiscalizacao.
+  const normalizado = caminho.startsWith('/') ? caminho.slice(1) : caminho
+  const correspondencia = /xl\/worksheets\/sheet(\d+)[.]xml/.exec(normalizado)
+  if (correspondencia === null) return null
+  return {
+    normalizado,
+    canonico: `xl/worksheets/sheet${correspondencia[1]}.xml`,
+  }
+}
+
+function temSegmentoAmbiguoParaJsZip(caminho: string): boolean {
+  const segmentos = caminho.split('/')
+  return segmentos.some(
+    (segmento, indice) => segmento === '.' || (segmento === '' && indice !== 0 && indice !== segmentos.length - 1),
+  )
+}
+
 async function xlsxDentroDosLimites(bytes: Uint8Array): Promise<EstadoEstrutural> {
   try {
     const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -124,10 +144,14 @@ async function xlsxDentroDosLimites(bytes: Uint8Array): Promise<EstadoEstrutural
       entradas += 1
       declarados += entrada.uncompressedSize
       if (entradas > LIMITE_ENTRADAS_XLSX || declarados > LIMITE_BYTES_DESCOMPACTADOS) return 'grande'
+      if (temSegmentoAmbiguoParaJsZip(entrada.fileName)) return 'nao_suportada'
       if (entrada.fileName.endsWith('/')) continue
 
+      const caminhoExcelJs = caminhoDePlanilhaReconhecidoPeloExcelJs(entrada.fileName)
+      if (caminhoExcelJs !== null && caminhoExcelJs.normalizado !== caminhoExcelJs.canonico) return 'nao_suportada'
+
       const stream = await zip.openReadStreamPromise(entrada)
-      const fiscal = /^xl\/worksheets\/[^/]+[.]xml$/.test(entrada.fileName)
+      const fiscal = caminhoExcelJs !== null || /^xl\/worksheets\/[^/]+[.]xml$/.test(entrada.fileName)
         ? fiscalDaEstruturaDaPlanilha(orcamento)
         : entrada.fileName === 'xl/workbook.xml'
           ? fiscalDosNomesDefinidos()

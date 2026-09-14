@@ -21,6 +21,20 @@ async function montarXlsx(
   return new Uint8Array(await workbook.xlsx.writeBuffer())
 }
 
+async function montarXlsxComFaixaPerigosa(caminho: string): Promise<Uint8Array> {
+  const zip = await JSZip.loadAsync(await montarXlsx([CABECALHO_CELULAS, AURORA]))
+  const caminhoCanonico = 'xl/worksheets/sheet1.xml'
+  const planilha = zip.file(caminhoCanonico)
+  if (planilha === null) throw new Error('fixture sem sheet1.xml')
+  const xml = await planilha.async('string')
+  zip.remove(caminhoCanonico)
+  zip.file(
+    caminho,
+    xml.replace('<sheetData>', '<cols><col min="1" max="1000000000" width="10"/></cols><sheetData>'),
+  )
+  return zip.generateAsync({ type: 'uint8array' })
+}
+
 const CABECALHO_CELULAS = CABECALHO.split(',')
 const AURORA = ['11222333000181', 'Aurora Comercio LTDA', 'Aurora', 'Jose', '11987654321', 'contato@aurora.com.br', '01310100', '4742300']
 const require = createRequire(import.meta.url)
@@ -205,6 +219,32 @@ describe('analisarArquivo: XLSX', () => {
       expect(await analisarArquivo({ formato: 'xlsx', bytes })).toEqual({
         ok: false,
         falha: { motivo: 'excede_tamanho' },
+      })
+      expect(expandir).not.toHaveBeenCalled()
+    } finally {
+      expandir.mockRestore()
+    }
+  })
+
+  test.each([
+    ['sufixo depois do XML', 'xl/worksheets/sheet1.xml.extra'],
+    ['prefixo antes do caminho', 'prefixo/xl/worksheets/sheet1.xml'],
+    ['segmento ponto', 'xl/./worksheets/sheet1.xml'],
+    ['segmento vazio', 'xl//worksheets/sheet1.xml'],
+  ])('recusa caminho nao canonico com %s antes de o ExcelJS expandir colunas', async (_caso, caminho) => {
+    const bytes = await montarXlsxComFaixaPerigosa(caminho)
+    const Column = require('exceljs/lib/doc/column') as {
+      fromModel: (worksheet: unknown, cols?: { max: number }[]) => unknown
+    }
+    const original = Column.fromModel
+    const expandir = vi.spyOn(Column, 'fromModel').mockImplementation((worksheet, cols) => {
+      if (cols?.some((coluna) => coluna.max > 16_384)) throw new Error('colunas tentaram expandir a faixa')
+      return original(worksheet, cols)
+    })
+    try {
+      expect(await analisarArquivo({ formato: 'xlsx', bytes })).toEqual({
+        ok: false,
+        falha: { motivo: 'estrutura_nao_suportada' },
       })
       expect(expandir).not.toHaveBeenCalled()
     } finally {
