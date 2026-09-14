@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -60,10 +59,5 @@ export default async function Gestao() {
           <time dateTime={item.em}>{horario.format(new Date(item.em))}</time>
         </li>)}</ol>}
     </section>
-    <nav aria-label="Atalhos administrativos" className={styles.atalhos}>
-      <Button asChild variant="outline"><Link href="/empresas">Gerenciar empresas</Link></Button>
-      <Button asChild variant="outline"><Link href="/empresas/grupos">Gerenciar grupos</Link></Button>
-      <Button asChild variant="outline"><Link href="/usuarios">Gerenciar usuários</Link></Button>
-    </nav>
   </main>
 }

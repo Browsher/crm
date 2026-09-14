@@ -5,7 +5,8 @@ Estado: implementado na branch `codex/dashboard-gestor`; validação visual e in
 ## Objetivo e apresentação
 
 Transformar `/gestao` no resumo da equipe, preservando o acesso exclusivo do
-gestor e os atalhos administrativos existentes. Layout aprovado: cards por
+gestor. Empresas, Grupos e Usuários ficam somente no menu lateral, sem atalhos
+duplicados no fim da página (ajuste solicitado após a validação). Layout aprovado: cards por
 vendedor, sem campo de busca de vendedores. Duas colunas no desktop e uma no
 celular, usando os componentes e os temas claro/escuro atuais.
 

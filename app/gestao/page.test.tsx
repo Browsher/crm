@@ -9,13 +9,13 @@ beforeEach(() => {
   mocks.exigir.mockResolvedValue({ usuarioId: 'gestor' })
   mocks.ler.mockResolvedValue({ vendedores: [], disponiveis: 0, atividade: [] })
 })
-test('autoriza gestor, exibe vazio e preserva atalhos sem busca de vendedores', async () => {
+test('autoriza gestor, exibe vazio sem atalhos inferiores nem busca de vendedores', async () => {
   const html = renderToStaticMarkup(await Gestao())
   expect(mocks.exigir).toHaveBeenCalledWith('gestor')
   expect(mocks.ler).toHaveBeenCalledWith('gestor')
   expect(html).toContain('Nenhum vendedor ativo')
   expect(html).toContain('Nenhum contato registrado')
-  for (const rota of ['/empresas', '/empresas/grupos', '/usuarios']) expect(html).toContain(`href="${rota}"`)
+  for (const rota of ['/empresas', '/empresas/grupos', '/usuarios']) expect(html).not.toContain(`href="${rota}"`)
   expect(html).not.toContain('<input')
 })
 test('cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução', async () => {

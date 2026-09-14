@@ -175,7 +175,7 @@ app/fila/shell.test.tsx :: gestor tem links administrativos reais
 app/fila/shell.test.tsx :: menu do vendedor não oferece administração e mantém conteúdo
 app/gestao/estados.test.tsx :: carregamento anuncia espera sem mostrar zeros
 app/gestao/estados.test.tsx :: falha oferece recuperação sem expor detalhes internos
-app/gestao/page.test.tsx :: autoriza gestor, exibe vazio e preserva atalhos sem busca de vendedores
+app/gestao/page.test.tsx :: autoriza gestor, exibe vazio sem atalhos inferiores nem busca de vendedores
 app/gestao/page.test.tsx :: cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução
 app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de erro
 app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado

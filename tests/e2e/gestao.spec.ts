@@ -40,8 +40,9 @@ test('gestor só acessa administração, inclusive por URL direta, e início fun
     await expect(page).toHaveURL('/gestao')
     await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible()
   }
-  for (const [acao, rota] of [['Gerenciar empresas', '/empresas'], ['Gerenciar grupos', '/empresas/grupos'], ['Gerenciar usuários', '/usuarios']]) {
-    await page.getByRole('link', { name: acao, exact: true }).click()
+  await expect(page.getByRole('navigation', { name: 'Atalhos administrativos' })).toHaveCount(0)
+  for (const [acao, rota] of [['Empresas', '/empresas'], ['Grupos', '/empresas/grupos'], ['Usuários', '/usuarios']]) {
+    await menu.getByRole('link', { name: acao, exact: true }).click()
     await expect(page).toHaveURL(rota)
     await page.getByRole('navigation').getByRole('link', { name: 'Início', exact: true }).click()
     await expect(page).toHaveURL('/gestao')
