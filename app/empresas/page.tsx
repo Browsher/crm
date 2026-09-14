@@ -26,7 +26,7 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
       <main className={styles.pagina}>
         <header className={styles.cabecalho}>
           <div><h1>Empresas</h1><p>Consulte os cadastros e importe novas empresas.</p></div>
-          <Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button>
+          <div className={styles.acoesFiltros}><Button variant="outline" asChild><Link href="/empresas/grupos">Grupos de importação</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button></div>
         </header>
         <div role="alert" className={styles.vazio}>
           <h2>Não foi possível aplicar os filtros</h2>
@@ -45,7 +45,7 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
     <main className={styles.pagina}>
       <header className={styles.cabecalho}>
         <div><h1>Empresas</h1><p>Consulte os cadastros e importe novas empresas.</p></div>
-        <Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button>
+        <div className={styles.acoesFiltros}><Button variant="outline" asChild><Link href="/empresas/grupos">Grupos de importação</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button></div>
       </header>
       {resultadoOpcoes.ok ? <Formulario consulta={consulta} opcoes={resultadoOpcoes.opcoes} /> : (
         <div role="alert" className={styles.vazio}><p>{textoDoMotivo(resultadoOpcoes.motivo)}</p></div>

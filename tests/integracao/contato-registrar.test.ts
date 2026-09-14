@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { SQL_RESERVAR_PROXIMA } from './ajuda'
 import { conectarVerificado } from '@/src/server/db/pool'
@@ -19,6 +20,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM grupo_importacao_empresa')
+  await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa')
 })
 
@@ -28,6 +31,7 @@ async function criarEmpresa(sufixo = '0181'): Promise<string> {
      VALUES ($1, $2, '11987654321') RETURNING id`,
     [`1122233300${sufixo}`, `Empresa ${sufixo}`],
   )
+  await vincularGrupoAtivo(banco, [linha.id])
   return linha.id
 }
 

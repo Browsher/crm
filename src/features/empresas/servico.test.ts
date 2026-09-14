@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import type { Endereco } from '../../server/cep/resolver'
 import { montarModelo } from './modelo'
 import { CABECALHO_LEGADO as CABECALHO, type LinhaAceita } from './planilha'
-import type { RepositorioEmpresas } from './repositorio'
+import type { OperacaoGrupo, RepositorioEmpresas } from './repositorio'
 import { analisar, importar } from './servico'
 
 const endereco: Endereco = {
@@ -16,7 +16,8 @@ const endereco: Endereco = {
 }
 
 function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } = {}) {
-  const gravadas: LinhaAceita[][] = []
+  const gravadas: { operacao: OperacaoGrupo; linhas: LinhaAceita[]; relatorio: unknown }[] = []
+  const confirmacoes = new Map<string, Awaited<ReturnType<RepositorioEmpresas['gravar']>>>()
   const repo: RepositorioEmpresas = {
     async preparar() {
       // semBase: cep_carga vazia E cep vazia, que é como um ambiente novo
@@ -27,9 +28,19 @@ function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } =
         basePublicadaEm: opcoes.semBase ? null : '2024-07-08',
       }
     },
-    async gravar(linhas) {
-      gravadas.push(linhas)
-      return { ok: true, inseridas: linhas.length }
+    async gravar(operacao, linhas, relatorio) {
+      gravadas.push({ operacao, linhas, relatorio })
+      const anterior = confirmacoes.get(operacao.chave)
+      if (anterior) return anterior
+      const resultado = {
+        ok: true as const,
+        grupoId: '77777777-7777-4777-8777-777777777777',
+        inseridas: linhas.filter((linha) => !jaCadastrados.includes(linha.cnpj)).length,
+        vinculadas: linhas.length,
+        relatorio,
+      }
+      confirmacoes.set(operacao.chave, resultado)
+      return resultado
     },
   }
   return { repo, gravadas }
@@ -42,6 +53,12 @@ const BELA = '11444777000161,Bela Luz LTDA,,,1134567890,,'
 // entao CEP todo zero nunca sera atribuido. '99999999' NAO serve — existe, e
 // Sarandi/PR. Ver a correcao em 2026-09-09-cep-design.md.
 const SEM_CEP_NA_BASE = '11555777000139,Nova LTDA,,,1134567891,,00000000'
+const OPERACAO: OperacaoGrupo = {
+  chave: '11111111-1111-4111-8111-111111111111',
+  nome: 'Mooca',
+  arquivoNome: 'mooca.csv',
+  assinatura: 'a'.repeat(64),
+}
 
 describe('analisar', () => {
   test('aceita a fonte XLSX explicita e reaproveita o mesmo relatorio', async () => {
@@ -132,19 +149,46 @@ describe('analisar: a base de CEP nao carregada', () => {
 })
 
 describe('importar', () => {
-  test('grava so as novas, nunca as ja cadastradas', async () => {
+  test('confirma todas as aceitas, inclusive as ja cadastradas', async () => {
     const { repo, gravadas } = repoFalso(['11444777000161'])
-    const r = await importar(repo, bytes(AURORA, BELA))
+    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO)
     if (!r.ok) throw new Error('esperava ok')
     expect(r.inseridas).toBe(1)
-    expect(gravadas[0].map((l) => l.cnpj)).toEqual(['11222333000181'])
+    expect(r.vinculadas).toBe(2)
+    expect(gravadas[0]).toEqual({
+      operacao: OPERACAO,
+      linhas: expect.arrayContaining([
+        expect.objectContaining({ cnpj: '11222333000181' }),
+        expect.objectContaining({ cnpj: '11444777000161' }),
+      ]),
+      relatorio: expect.objectContaining({ novas: 1, jaCadastradas: 1 }),
+    })
   })
 
-  test('o relatorio devolvido e o mesmo que analisar daria', async () => {
+  test('so CNPJs existentes ainda cria o grupo e devolve zero inseridas', async () => {
+    const { repo, gravadas } = repoFalso(['11222333000181', '11444777000161'])
+    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    expect(r).toMatchObject({
+      ok: true,
+      grupoId: '77777777-7777-4777-8777-777777777777',
+      inseridas: 0,
+      vinculadas: 2,
+    })
+    expect(gravadas).toHaveLength(1)
+  })
+
+  test('devolve o relatorio persistido pelo repositorio em vez da reanalise atual', async () => {
     const { repo } = repoFalso(['11444777000161'])
-    const analise = await analisar(repo, bytes(AURORA, BELA))
-    const importacao = await importar(repo, bytes(AURORA, BELA))
-    if (!analise.ok || !importacao.ok) throw new Error('esperava ok nos dois')
-    expect(importacao.relatorio).toEqual(analise.relatorio)
+    const primeira = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const segunda = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    if (!primeira.ok || !segunda.ok) throw new Error('esperava ok nos dois')
+    expect(segunda).toEqual(primeira)
+  })
+
+  test('nao confirma quando todas as linhas foram recusadas', async () => {
+    const { repo, gravadas } = repoFalso()
+    const r = await importar(repo, bytes('11222333000182,Erro LTDA,,,11987654321,,'), OPERACAO)
+    expect(r).toEqual({ ok: false, motivo: 'sem_linhas_aceitas' })
+    expect(gravadas).toEqual([])
   })
 })

@@ -1,9 +1,25 @@
 import { resolverCeps, type Endereco } from '../../server/cep/resolver'
 import { comoUsuario, type Executar } from '../../server/db/como-usuario'
 import type { LinhaAceita } from './planilha'
+import type { Relatorio } from './servico'
 
-export type Motivo = 'sem_permissao' | 'cnpj_ja_gravado' | 'texto_invalido'
+export type Motivo = 'sem_permissao' | 'texto_invalido' | 'sem_linhas_aceitas' | 'confirmacao_invalida'
 export type Falha = { ok: false; motivo: Motivo }
+
+export type OperacaoGrupo = {
+  chave: string
+  nome: string
+  arquivoNome: string
+  assinatura: string
+}
+
+export type ConfirmacaoGrupo = {
+  ok: true
+  grupoId: string
+  inseridas: number
+  vinculadas: number
+  relatorio: Relatorio
+}
 
 export type Preparo = {
   jaCadastrados: Set<string>
@@ -13,16 +29,14 @@ export type Preparo = {
 
 export interface RepositorioEmpresas {
   preparar(cnpjs: string[], ceps: string[]): Promise<Preparo | Falha>
-  gravar(linhas: LinhaAceita[]): Promise<{ ok: true; inseridas: number } | Falha>
+  gravar(operacao: OperacaoGrupo, linhas: LinhaAceita[], relatorio: Relatorio): Promise<ConfirmacaoGrupo | Falha>
 }
 
-// Três sinais, e nenhum é infraestrutura:
+// Erros de contrato conhecidos viram resultados recuperáveis; o restante é
+// infraestrutura e sobe como exceção.
 //
 // 42501: a política negou.
-// 23505: corrida — outra importação gravou este CNPJ entre a conferência e a
-//   gravação. Não dá para prevenir na fase 1: o CNPJ não existia quando o
-//   gestor conferiu. A transação inteira desfaz, e a mensagem manda conferir de
-//   novo; o contrato de tudo-ou-nada continua valendo.
+// 22023: a confirmação divergiu da operação persistida ou do contrato SQL.
 // 22021: byte inválido. A fase 1 pega o NUL antes, com o número da linha; isto
 //   é rede para o que ela não previr, e por isso a mensagem é vaga de propósito.
 //
@@ -30,7 +44,7 @@ export interface RepositorioEmpresas {
 function traduzir(erro: unknown): Falha | null {
   const e = erro as { code?: string; constraint?: string }
   if (e?.code === '42501') return { ok: false, motivo: 'sem_permissao' }
-  if (e?.code === '23505' && e.constraint === 'empresa_cnpj_key') return { ok: false, motivo: 'cnpj_ja_gravado' }
+  if (e?.code === '22023') return { ok: false, motivo: 'confirmacao_invalida' }
   if (e?.code === '22021') return { ok: false, motivo: 'texto_invalido' }
   return null
 }
@@ -64,26 +78,38 @@ export function repositorioPostgres(gestorId: string): RepositorioEmpresas {
       })
     },
 
-    // unnest com arrays, e não INSERT com milhares de parâmetros: o Postgres
-    // limita em 65535 e a conta ficaria perto demais do teto sem motivo.
-    gravar(linhas) {
-      if (linhas.length === 0) return Promise.resolve({ ok: true as const, inseridas: 0 })
+    gravar(operacao, linhas, relatorio) {
       return tentar(gestorId, async (e) => {
-        const r = await e(
-          `INSERT INTO empresa (cnpj, razao_social, nome_fantasia, contato_nome, telefone, email, cep, cnae_principal)
-           SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[])`,
+        const r = await e<{ grupo_id: string; inseridas: number; vinculadas: number; relatorio: Relatorio }>(
+          `SELECT grupo_id, inseridas, vinculadas, relatorio
+             FROM grupo_importacao_confirmar($1::uuid, $2::text, $3::text, $4::text, $5::jsonb, $6::jsonb)`,
           [
-            linhas.map((l) => l.cnpj),
-            linhas.map((l) => l.razaoSocial),
-            linhas.map((l) => l.nomeFantasia),
-            linhas.map((l) => l.contatoNome),
-            linhas.map((l) => l.telefone),
-            linhas.map((l) => l.email),
-            linhas.map((l) => l.cep),
-            linhas.map((l) => l.cnaePrincipal),
+            operacao.chave,
+            operacao.nome,
+            operacao.arquivoNome,
+            operacao.assinatura,
+            JSON.stringify(linhas.map((l) => ({
+              cnpj: l.cnpj,
+              razao_social: l.razaoSocial,
+              nome_fantasia: l.nomeFantasia,
+              contato_nome: l.contatoNome,
+              telefone: l.telefone,
+              email: l.email,
+              cep: l.cep,
+              cnae_principal: l.cnaePrincipal,
+            }))),
+            JSON.stringify(relatorio),
           ],
         )
-        return { ok: true as const, inseridas: r.afetadas }
+        const confirmado = r.linhas[0]
+        if (!confirmado) throw new Error('grupo_importacao_confirmar não devolveu resultado')
+        return {
+          ok: true as const,
+          grupoId: confirmado.grupo_id,
+          inseridas: confirmado.inseridas,
+          vinculadas: confirmado.vinculadas,
+          relatorio: confirmado.relatorio,
+        }
       })
     },
   }

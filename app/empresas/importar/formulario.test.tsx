@@ -35,6 +35,12 @@ describe('FormularioImportar: o primeiro render', () => {
     expect(input).toContain('accept=".xlsx,.csv,')
   })
 
+  test('pede um nome para o grupo', () => {
+    const input = html().match(/<input[^>]*name="nome"[^>]*>/)?.[0]
+    expect(input).toBeDefined()
+    expect(input).toContain('required=""')
+  })
+
   test('mostra o botão de conferir', () => {
     expect(html()).toContain('Conferir')
   })

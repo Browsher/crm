@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { textoDaFalhaDeArquivo, textoDaRecusa, textoDoEndereco } from './mensagens'
+import { textoDaFalhaDeArquivo, textoDaRecusa, textoDoEndereco, textoDoMotivo } from './mensagens'
+
+test('falhas recuperaveis de confirmacao orientam nova conferencia', () => {
+  expect(textoDoMotivo('sem_linhas_aceitas')).toContain('linha aceita')
+  expect(textoDoMotivo('confirmacao_invalida')).toContain('Confira novamente')
+})
 
 describe('textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma', () => {
   test('notacao cientifica manda formatar a coluna', () => {

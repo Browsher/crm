@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { lerConsulta } from '@/src/features/empresas/consulta'
 import { listarEmpresas } from '@/src/features/empresas/listagem'
@@ -12,6 +13,12 @@ const cabecalho = 'cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,c
 const csv = (cnpj: string, cnae?: string) => new TextEncoder().encode(
   `${cabecalho}${cnae === undefined ? '' : ',cnae_principal'}\n${cnpj},Empresa CNAE,,,11987654321,,${cnae === undefined ? '' : `,${cnae}`}`,
 )
+const operacao = () => ({
+  chave: randomUUID(),
+  nome: 'CNAE',
+  arquivoNome: 'cnae.csv',
+  assinatura: 'c'.repeat(64),
+})
 
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
@@ -26,13 +33,13 @@ test('coluna opcional nasce nula para INSERT legado', async () => {
 })
 
 test('importa CNAE pontuado e lista o código normalizado', async () => {
-  expect(await importar(repositorioPostgres(gestor), csv('11222333000181', '4742-3/00'))).toMatchObject({ ok: true, inseridas: 1 })
+  expect(await importar(repositorioPostgres(gestor), csv('11222333000181', '4742-3/00'), operacao())).toMatchObject({ ok: true, inseridas: 1 })
   const lista = await listarEmpresas(gestor, lerConsulta({ q: '11222333000181' }))
   expect(lista).toMatchObject({ ok: true, linhas: [{ cnpj: '11222333000181', cnaePrincipal: '4742300' }] })
 })
 
 test('reimportação não atualiza CNAE de CNPJ existente', async () => {
-  expect(await importar(repositorioPostgres(gestor), csv('11444777000161', '4742300'))).toMatchObject({ ok: true, inseridas: 0, relatorio: { jaCadastradas: 1 } })
+  expect(await importar(repositorioPostgres(gestor), csv('11444777000161', '4742300'), operacao())).toMatchObject({ ok: true, inseridas: 0, relatorio: { jaCadastradas: 1 } })
   expect(await banco.sql('SELECT cnae_principal FROM empresa WHERE cnpj=$1', ['11444777000161'])).toEqual([{ cnae_principal: null }])
 })
 

@@ -1,4 +1,5 @@
 import { criarUsuarioComSenha, type BancoDeTeste } from '../integracao/ajuda'
+import { vincularGrupoAtivo } from '../integracao/grupos-fixtures'
 
 export const EMPRESA_CARTEIRA_PRIVADA = '00000000-0000-4000-8000-000000000303'
 
@@ -19,6 +20,7 @@ export async function prepararCarteiraVisual(banco: BancoDeTeste) {
       VALUES ($1, $2, $3, $4, '11999990301', '8877665')`, [id, cnpj, nome, cep])
     await banco.sql('INSERT INTO empresa_fila (empresa_id, vendedor_id) VALUES ($1, $2)', [id, dono])
   }
+  await vincularGrupoAtivo(banco, empresas.map(e => e[0]))
   await banco.sql(`INSERT INTO contato (empresa_id, tipo, nota, proximo_passo, proximo_passo_data) VALUES
     ('00000000-0000-4000-8000-000000000301', 'acompanhamento', 'Nota inicial Aurora ' || repeat('x', 300), 'Rever proposta Aurora', CURRENT_DATE - 2),
     ('00000000-0000-4000-8000-000000000302', 'interessado', 'Nota inicial Boreal', NULL, NULL),

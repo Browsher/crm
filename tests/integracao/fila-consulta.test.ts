@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { registrarContato } from '@/src/features/contato/repositorio'
@@ -29,6 +30,8 @@ beforeEach(async () => {
   // derruba com 23503.
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM grupo_importacao_empresa')
+  await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa')
 })
 
@@ -38,6 +41,7 @@ async function criarEmpresa(cep: string | null): Promise<string> {
      VALUES ('11222333000181', 'Aurora Comercio LTDA', 'Dona Aurora', '11987654321', $1) RETURNING id`,
     [cep],
   )
+  await vincularGrupoAtivo(banco, [linha.id])
   return linha.id
 }
 
@@ -135,6 +139,7 @@ async function criarEmpresaN(sufixo: string, razao: string): Promise<string> {
      VALUES ($1, $2, '11987654321') RETURNING id`,
     [`1122233300${sufixo}`, razao],
   )
+  await vincularGrupoAtivo(banco, [linha.id])
   return linha.id
 }
 

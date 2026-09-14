@@ -23,6 +23,7 @@ test('busca tem nome acessível, conserva termo e reinicia paginação', async (
   expect(html).toContain('method="get"')
   expect(html).not.toContain('name="pagina"')
   expect(html).toContain('Importar empresas')
+  expect(html).toContain('href="/empresas/grupos"')
   expect(html).toContain('>CNAE<')
   expect(html).toContain('>Estado<')
   expect(html).toContain('>Cidade<')

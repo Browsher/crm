@@ -1,6 +1,6 @@
 import { analisarArquivo, type FonteEmpresas } from './arquivo'
 import type { FalhaDeArquivo, LinhaAceita, Recusa } from './planilha'
-import type { Falha, RepositorioEmpresas } from './repositorio'
+import type { Falha, OperacaoGrupo, RepositorioEmpresas } from './repositorio'
 
 export type Relatorio = {
   novas: number
@@ -21,11 +21,11 @@ export type ResultadoAnalise =
   | Falha
 
 export type ResultadoImportar =
-  | { ok: true; relatorio: Relatorio; inseridas: number }
+  | { ok: true; relatorio: Relatorio; grupoId: string; inseridas: number; vinculadas: number }
   | { ok: false; motivo: 'arquivo_invalido'; falha: FalhaDeArquivo }
   | Falha
 
-type Preparado = { relatorio: Relatorio; novas: LinhaAceita[] }
+type Preparado = { relatorio: Relatorio; aceitas: LinhaAceita[] }
 
 // As fases 0, 1 e 2, sem escrever nada. A conferência chama isto; a gravação
 // chama de novo com o mesmo arquivo. É determinístico, então não há estado
@@ -49,7 +49,7 @@ async function preparar(
   const cepsNaoEncontrados = ceps.filter((c) => !p.enderecos.has(c)).length
 
   return {
-    novas,
+    aceitas: analise.aceitas,
     relatorio: {
       novas: novas.length,
       jaCadastradas: analise.aceitas.length - novas.length,
@@ -67,10 +67,13 @@ export async function analisar(repo: RepositorioEmpresas, fonte: FonteEmpresas):
   return { ok: true, relatorio: p.relatorio }
 }
 
-export async function importar(repo: RepositorioEmpresas, fonte: FonteEmpresas): Promise<ResultadoImportar> {
+export async function importar(
+  repo: RepositorioEmpresas,
+  fonte: FonteEmpresas,
+  operacao: OperacaoGrupo,
+): Promise<ResultadoImportar> {
   const p = await preparar(repo, fonte)
   if ('ok' in p) return p
-  const r = await repo.gravar(p.novas)
-  if (!r.ok) return r
-  return { ok: true, relatorio: p.relatorio, inseridas: r.inseridas }
+  if (p.aceitas.length === 0) return { ok: false, motivo: 'sem_linhas_aceitas' }
+  return repo.gravar(operacao, p.aceitas, p.relatorio)
 }

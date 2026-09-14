@@ -139,7 +139,7 @@ export async function listarOpcoesEmpresas(
   try {
     return await comoUsuario(gestorId, async executar => {
       const { linhas } = await executar<OpcaoFiltroEmpresa>(
-        'SELECT * FROM public.empresa_filtros($1,$2)',
+        'SELECT * FROM public.empresa_filtros_administracao($1,$2)',
         [uf, cidade],
       )
       return { ok: true as const, opcoes: linhas }
