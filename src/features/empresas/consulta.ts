@@ -1,3 +1,6 @@
+import { lerFiltrosEmpresas } from './filtros'
+import type { FiltrosEmpresas } from './filtros'
+
 export const POR_PAGINA = 50
 
 // As oito primeiras posições do CNPJ são a RAIZ: identificam a EMPRESA. As
@@ -23,6 +26,8 @@ export type Consulta = {
   cnpjPrefixo: string | null
   pagina: number
 }
+
+export type ConsultaEmpresas = Consulta & FiltrosEmpresas
 
 type Params = Record<string, string | string[] | undefined>
 
@@ -74,6 +79,22 @@ export function lerConsulta(params: Params): Consulta {
   }
 }
 
+export function aplicarFiltrosEmpresas(consulta: Consulta, filtros: FiltrosEmpresas): ConsultaEmpresas {
+  return { ...consulta, ...filtros }
+}
+
+export function enderecoEmpresas(consulta: ConsultaEmpresas, pagina: number | null = consulta.pagina): string {
+  const params = new URLSearchParams()
+  if (consulta.termo) params.set('q', consulta.termo)
+  for (const nome of ['cnae', 'uf', 'cidade', 'bairro'] as const) {
+    const valor = consulta[nome]
+    if (valor) params.set(nome, valor)
+  }
+  if (pagina !== null) params.set('pagina', String(pagina))
+  const query = params.toString()
+  return query ? `/empresas?${query}` : '/empresas'
+}
+
 // O navegador manda todo campo com `name`, vazio ou não: buscar e apagar o
 // campo deixa `?q=` pendurado. Não muda resultado — `lerConsulta` trata os dois
 // igual — mas é a URL que a pessoa copia e manda para alguém.
@@ -86,9 +107,12 @@ export function lerConsulta(params: Params): Consulta {
 // null. O teste `o próprio destino já é canônico` é quem prende isso.
 export function destinoCanonico(params: Params): string | null {
   if (params.q === undefined) return null
-  const { termo, pagina } = lerConsulta(params)
+  const { termo } = lerConsulta(params)
   if (termo !== '') return null
-  return pagina > 1 ? `/empresas?pagina=${pagina}` : '/empresas'
+  const resultado = lerFiltrosEmpresas(params)
+  if (!resultado.ok) return null
+  const consulta = aplicarFiltrosEmpresas(lerConsulta(params), resultado.filtros)
+  return enderecoEmpresas(consulta, consulta.pagina > 1 ? consulta.pagina : null)
 }
 
 export function totalDePaginas(total: number): number {

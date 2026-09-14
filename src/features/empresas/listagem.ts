@@ -1,5 +1,5 @@
 import { comoUsuario } from '../../server/db/como-usuario'
-import { POR_PAGINA, type Consulta } from './consulta'
+import { POR_PAGINA, type Consulta, type ConsultaEmpresas } from './consulta'
 import type { Falha } from './repositorio'
 
 export type EmpresaNaLista = {
@@ -19,6 +19,14 @@ export type EmpresaNaLista = {
 }
 
 export type ResultadoListagem = { ok: true; linhas: EmpresaNaLista[]; total: number } | Falha
+
+export type OpcaoFiltroEmpresa = {
+  tipo: 'cnae' | 'uf' | 'cidade' | 'bairro'
+  valor: string
+  rotulo: string
+}
+
+export type ResultadoOpcoesEmpresas = { ok: true; opcoes: OpcaoFiltroEmpresa[] } | Falha
 
 type LinhaCrua = {
   id: string
@@ -72,18 +80,26 @@ const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e
                     c.localidade, c.uf, count(*) OVER () AS total
                FROM empresa e
                LEFT JOIN cep c ON c.cep = e.cep
-              WHERE $1::text = ''
+              WHERE ($1::text = ''
                  OR e.busca LIKE '%' || sem_acento($1::text) || '%' ESCAPE '\\'
-                 OR e.cnpj LIKE $2::text || '%'
+                 OR e.cnpj LIKE $2::text || '%')
+                AND ($3::text IS NULL OR ($3 = 'nao_informado' AND e.cnae_principal IS NULL) OR e.cnae_principal = $3)
+                AND ($4::text IS NULL OR c.uf = $4)
+                AND ($5::text IS NULL OR c.ibge = $5)
+                AND ($6::text IS NULL OR nullif(btrim(c.bairro), '') = $6)
               ORDER BY e.razao_social, e.id
-              LIMIT $3 OFFSET $4`
+              LIMIT $7 OFFSET $8`
 
-export async function listarEmpresas(gestorId: string, consulta: Consulta): Promise<ResultadoListagem> {
+export async function listarEmpresas(gestorId: string, consulta: Consulta | ConsultaEmpresas): Promise<ResultadoListagem> {
   try {
     return await comoUsuario(gestorId, async (executar) => {
       const r = await executar<LinhaCrua>(SQL, [
         consulta.padrao,
         consulta.cnpjPrefixo,
+        'cnae' in consulta ? consulta.cnae : null,
+        'uf' in consulta ? consulta.uf : null,
+        'cidade' in consulta ? consulta.cidade : null,
+        'bairro' in consulta ? consulta.bairro : null,
         POR_PAGINA,
         (consulta.pagina - 1) * POR_PAGINA,
       ])
@@ -110,6 +126,25 @@ export async function listarEmpresas(gestorId: string, consulta: Consulta): Prom
     // Único sinal de negócio que esta consulta produz: papel trocado entre a
     // guarda da página e a consulta. O resto é infraestrutura e sobe como
     // exceção.
+    if ((erro as { code?: string })?.code === '42501') return { ok: false, motivo: 'sem_permissao' }
+    throw erro
+  }
+}
+
+export async function listarOpcoesEmpresas(
+  gestorId: string,
+  uf: string | null,
+  cidade: string | null,
+): Promise<ResultadoOpcoesEmpresas> {
+  try {
+    return await comoUsuario(gestorId, async executar => {
+      const { linhas } = await executar<OpcaoFiltroEmpresa>(
+        'SELECT * FROM public.empresa_filtros($1,$2)',
+        [uf, cidade],
+      )
+      return { ok: true as const, opcoes: linhas }
+    })
+  } catch (erro) {
     if ((erro as { code?: string })?.code === '42501') return { ok: false, motivo: 'sem_permissao' }
     throw erro
   }
