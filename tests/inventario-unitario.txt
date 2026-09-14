@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 896
+# Total: 904
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -173,6 +173,12 @@ app/fila/localizar/reservar.test.tsx :: cancelar troca no diálogo preserva rasc
 app/fila/localizar/visitas-ficha.test.tsx :: ficha autorizada monta registro de visita
 app/fila/shell.test.tsx :: gestor tem links administrativos reais
 app/fila/shell.test.tsx :: menu do vendedor não oferece administração e mantém conteúdo
+app/gestao/estados.test.tsx :: carregamento anuncia espera sem mostrar zeros
+app/gestao/estados.test.tsx :: falha oferece recuperação sem expor detalhes internos
+app/gestao/page.test.tsx :: autoriza gestor, exibe vazio sem atalhos inferiores nem busca de vendedores
+app/gestao/page.test.tsx :: cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução
+app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de erro
+app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado
 app/meu-dia/agenda.test.tsx :: agenda traz só atrasado e hoje, atrasados primeiro
 app/meu-dia/agenda.test.tsx :: busca por nome ignora acento e caixa, e o filtro de retorno recorta
 app/meu-dia/agenda.test.tsx :: dentro do mesmo estado ordena por data, nome e id
@@ -290,6 +296,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-fila-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-11-meu-dia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-12-empresas-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-dashboard-gestor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresas-excel-filtros.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-grupos-importacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
@@ -311,6 +318,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-11-padrao-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-empresas-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-12-meu-dia-inicial-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-dashboard-gestor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-gestor-administracao-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-grupos-importacao-design.md não tem caractere de controle literal

@@ -1,4 +1,30 @@
 import { expect, test } from '@playwright/test'
+import { comAdmin } from '../../src/server/db/admin'
+import { exigirAdminLocal } from './ambiente'
+
+test.beforeAll(async () => {
+  const url = process.env.DATABASE_URL_ADMIN
+  if (!url) throw new Error('Execute pelo harness local de E2E')
+  exigirAdminLocal(url)
+  await comAdmin(url, async cliente => {
+    await cliente.query('BEGIN')
+    try {
+      const usuarios = await cliente.query<{ id: string; nome: string }>(`INSERT INTO usuario(nome,email,papel,ativo) VALUES
+        ('Ana Lima','dashboardana@teste.local','vendedor',true),
+        ('Bruno Costa','dashboardbruno@teste.local','vendedor',true),
+        ('Vendedor desativado','dashboardinativo@teste.local','vendedor',false) RETURNING id,nome`)
+      for (const [indice, usuario] of usuarios.rows.entries()) {
+        const empresa = await cliente.query<{ id: string }>(`INSERT INTO empresa(cnpj,razao_social,telefone)
+          VALUES($1,$2,'11999999999') RETURNING id`, [`90909090000${String(indice).padStart(3, '0')}`, ['Aurora Comércio', 'Brisa Serviços', 'Cadastro Inativo'][indice]])
+        await cliente.query('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [empresa.rows[0].id, usuario.id])
+        await cliente.query("SELECT set_config('app.usuario_id',$1,true)", [usuario.id])
+        await cliente.query(`INSERT INTO contato(empresa_id,tipo,proximo_passo,proximo_passo_data)
+          VALUES($1,'acompanhamento','Conversar com o responsável',(now() AT TIME ZONE 'America/Sao_Paulo')::date + $2::int)`, [empresa.rows[0].id, indice === 0 ? -1 : 0])
+      }
+      await cliente.query('COMMIT')
+    } catch (erro) { await cliente.query('ROLLBACK'); throw erro }
+  })
+})
 
 test('gestor só acessa administração, inclusive por URL direta, e início funciona nos dois temas', async ({ page }) => {
   await page.goto('/gestao')
@@ -14,12 +40,27 @@ test('gestor só acessa administração, inclusive por URL direta, e início fun
     await expect(page).toHaveURL('/gestao')
     await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible()
   }
-  for (const [acao, rota] of [['Gerenciar empresas', '/empresas'], ['Gerenciar grupos', '/empresas/grupos'], ['Gerenciar usuários', '/usuarios']]) {
-    await page.getByRole('link', { name: acao, exact: true }).click()
+  await expect(page.getByRole('navigation', { name: 'Atalhos administrativos' })).toHaveCount(0)
+  for (const [acao, rota] of [['Empresas', '/empresas'], ['Grupos', '/empresas/grupos'], ['Usuários', '/usuarios']]) {
+    await menu.getByRole('link', { name: acao, exact: true }).click()
     await expect(page).toHaveURL(rota)
     await page.getByRole('navigation').getByRole('link', { name: 'Início', exact: true }).click()
     await expect(page).toHaveURL('/gestao')
   }
+  const equipe = page.getByRole('region', { name: 'Vendedores ativos', exact: true })
+  const ana = equipe.getByRole('article', { name: 'Ana Lima', exact: true })
+  await expect(ana.locator('dd')).toHaveText(['1', '1', '0'])
+  await expect(ana.locator('p strong')).toHaveText('1')
+  await expect(equipe.getByRole('article', { name: 'Vendedor desativado', exact: true })).toHaveCount(0)
+  const atividade = page.getByRole('region', { name: 'Atividade recente', exact: true })
+  await expect(atividade).toContainText('Aurora Comércio')
+  await expect(atividade).not.toContainText('Cadastro Inativo')
+  await expect(equipe.getByRole('article', { name: 'meudiae2e', exact: true })).toBeVisible()
+  await expect(page.getByRole('textbox')).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Resumo da equipe' }).getByRole('heading', { name: 'Retornos hoje', exact: true })).toBeVisible()
+  await expect(equipe.getByRole('article', { name: 'meudiae2e', exact: true })).toContainText('Contatos registrados hoje')
+  await page.getByRole('link', { name: 'Atualizar', exact: true }).click()
+  await expect(equipe.getByRole('article', { name: 'meudiae2e', exact: true })).toBeVisible()
   for (const largura of [1280, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light', 'dark']) {
