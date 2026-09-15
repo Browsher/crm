@@ -27,11 +27,11 @@ describe('TIPOS_CONTATO', () => {
     expect(dePosse).toEqual(['acompanhamento'])
   })
 
-  test('interessado sugere assumir; os outros de reserva sugerem devolver', () => {
+  test('interessado e retorno assumem; outros de reserva devolvem', () => {
     expect(DESFECHO_SUGERIDO.interessado).toBe('assumir')
     expect(DESFECHO_SUGERIDO.nao_liguei).toBe('devolver')
     expect(DESFECHO_SUGERIDO.nao_atendeu).toBe('devolver')
-    expect(DESFECHO_SUGERIDO.retornar_depois).toBe('devolver')
+    expect(DESFECHO_SUGERIDO.retornar_depois).toBe('assumir')
     expect(DESFECHO_SUGERIDO.sem_interesse).toBe('devolver')
     expect(DESFECHO_SUGERIDO.acompanhamento).toBe('nenhum')
   })

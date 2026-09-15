@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 937
+# Total: 946
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -44,6 +44,9 @@ app/carteira/lista.test.tsx :: ListaCarteira mostra o proximo passo e a data de 
 app/carteira/lista.test.tsx :: ListaCarteira nao mostra o aviso de grupo quando todas tem proximo passo
 app/carteira/lista.test.tsx :: ListaCarteira o grupo sem proximo passo aparece contado e nomeado
 app/carteira/lista.test.tsx :: ListaCarteira vazia, diz o que fazer em vez de so dizer que esta vazia
+app/carteira/registrar-venda.dom.test.tsx :: venda pede confirmação, preserva rascunho e repete a mesma chave após falha de rede
+app/carteira/venda-acao.test.tsx :: não grava sem confirmação, valor válido ou permissão
+app/carteira/venda-acao.test.tsx :: venda usa identidade da sessão, valor em centavos e atualiza histórico e agenda
 app/design/galeria.test.tsx :: abre o exemplo no próprio card sem o rótulo Ausente
 app/design/galeria.test.tsx :: aplica os filtros aos dados fictícios e limpar restaura a lista
 app/design/galeria.test.tsx :: avança apenas pelas ações e preserva anotações ao voltar
@@ -287,6 +290,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0027.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0028.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0029.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0030.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0031.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
@@ -324,6 +328,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-avancar.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-base.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-vendas-carteira-agenda.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -351,6 +356,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-perfil-vendedor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-usuarios-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-15-funil-comercial-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-15-vendas-carteira-agenda-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
@@ -397,11 +403,11 @@ src/features/contato/destino.test.ts :: recusa subida de diretorio
 src/features/contato/destino.test.ts :: recusa usuario no host
 src/features/contato/destino.test.ts :: remonta o destino em ordem canonica
 src/features/contato/destino.test.ts :: sem destino nao redireciona
-src/features/contato/formulario.test.tsx :: FormularioContato avisa que a data de retornar_depois nao agenda nada
 src/features/contato/formulario.test.tsx :: FormularioContato bloqueio também recusa dispatch da action
 src/features/contato/formulario.test.tsx :: FormularioContato com comDevolver, oferece o segundo botao de desfecho
 src/features/contato/formulario.test.tsx :: FormularioContato com posse oferece acompanhamento e nenhum tipo de reserva
 src/features/contato/formulario.test.tsx :: FormularioContato com posse, PEDE proximo passo e data
+src/features/contato/formulario.test.tsx :: FormularioContato descarte pelo cadastro avisa que a data nao agenda retorno
 src/features/contato/formulario.test.tsx :: FormularioContato enquanto grava congela os campos sem impedir copiar anotações
 src/features/contato/formulario.test.tsx :: FormularioContato erro no visual da fila usa alerta tematico
 src/features/contato/formulario.test.tsx :: FormularioContato falha preserva rascunho e sempre encerra envio
@@ -442,7 +448,8 @@ src/features/contato/regras.test.ts :: validar desfecho fora do vocabulario e re
 src/features/contato/regras.test.ts :: validar espaco em branco vira nulo, nao string vazia — o CHECK do banco recusa vazio
 src/features/contato/regras.test.ts :: validar passo sem data e recusado antes do banco, e nao vira 23514 na tela
 src/features/contato/regras.test.ts :: validar rascunho de reserva sem proximo passo e valido
-src/features/contato/regras.test.ts :: validar retornar_depois grava passo e data mesmo sem posse
+src/features/contato/regras.test.ts :: validar retornar_depois assume a reserva com data combinada
+src/features/contato/regras.test.ts :: validar retornar_depois não pode devolver nem omitir o combinado
 src/features/contato/regras.test.ts :: validar tipo fora da lista e recusado antes do banco
 src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior devolver com proximo passo preenchido continua valendo, e vira historico
 src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior posse com desfecho devolver NAO exige, porque a empresa sai
@@ -457,7 +464,7 @@ src/features/contato/tipos.test.ts :: ehTipo aceita tipo da lista
 src/features/contato/tipos.test.ts :: ehTipo nome de propriedade herdada nao e tipo
 src/features/contato/tipos.test.ts :: ehTipo recusa tipo fora da lista — e e a UNICA defesa que existe, porque o banco so exige nao-vazio
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO acompanhamento e o unico tipo de posse
-src/features/contato/tipos.test.ts :: TIPOS_CONTATO interessado sugere assumir; os outros de reserva sugerem devolver
+src/features/contato/tipos.test.ts :: TIPOS_CONTATO interessado e retorno assumem; outros de reserva devolvem
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO tem os seis tipos da spec, e nenhum a mais
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO todo tipo tem rotulo e desfecho sugerido
 src/features/contato/um-chamador.test.ts :: a action confere o destino do redirecionamento em vez de confiar no formulario
@@ -466,6 +473,7 @@ src/features/contato/um-chamador.test.ts :: a action redireciona quando o desfec
 src/features/contato/um-chamador.test.ts :: a ficha diz para onde voltar depois de devolver
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só existe pelo menos um arquivo com o literal, senão esta catraca não vigia nada
 src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só o literal aparece em exatamente um arquivo fora de tests/
+src/features/contato/venda-historico.test.tsx :: venda no histórico informa valor, data e autor mesmo sem observação
 src/features/empresas/arquivo.test.ts :: analisarArquivo: compatibilidade CSV mantem o chamador legado que passa somente bytes
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX aceita diretamente o modelo real gerado e preserva os zeros
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX aplica mascaras numericas usuais para conservar zeros de CNPJ, CEP e CNAE
@@ -933,6 +941,7 @@ src/server/db/ssl.test.ts :: configSsl verify com CA inline usa o PEM
 src/server/db/ssl.test.ts :: configSsl verify com nome de servidor valida o certificado contra o nome pinado, não contra o host
 src/server/db/ssl.test.ts :: configSsl verify sem CA valida contra as CAs do sistema
 src/server/diretivas.test.ts :: arquivos 'use server' a varredura enxerga a action que mora em src/
+src/server/diretivas.test.ts :: arquivos 'use server' app\carteira\venda-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\grupos\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\importar\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\acoes.ts só exporta função

@@ -14,6 +14,8 @@ import { Button } from '@/src/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
 import styles from './ficha.module.css'
+import { ResumoVenda } from '@/src/components/crm/resumo-venda'
+import { RegistrarVenda } from '../registrar-venda'
 
 function endereco(e: EmpresaComigo) {
   if (e.endereco) return [e.endereco.logradouro, e.endereco.bairro, `${e.endereco.localidade}/${e.endereco.uf}`].filter(Boolean).join(', ')
@@ -28,7 +30,8 @@ function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   if (erro) return <Alert variant="danger"><AlertTitle>Não foi possível carregar o histórico</AlertTitle><AlertDescription>Tente atualizar a página.</AlertDescription></Alert>
   if (!contatos.length) return <p className={styles.vazio}>Ainda não há uma conversa registrada.</p>
   return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
-    <div className={styles.historicoCabecalho}><strong>{ehTipo(c.tipo) ? ROTULO[c.tipo] : c.tipo}</strong><time dateTime={c.criadoEm.toISOString()}>{new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' }).format(c.criadoEm)}</time></div>
+    <div className={styles.historicoCabecalho}><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : c.tipo}</strong><time dateTime={c.criadoEm.toISOString()}>{new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' }).format(c.criadoEm)}</time></div>
+    {c.venda ? <ResumoVenda venda={c.venda} /> : null}
     {c.nota ? <p>{c.nota}</p> : <p className={styles.ausente}>Sem anotação.</p>}
     {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
     <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>
@@ -134,7 +137,7 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   }
 
   return <article className={styles.ficha}>
-    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{empresa.razaoSocial}</h1><p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p><p>{endereco(empresa)}</p></div><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button></header>
+    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{empresa.razaoSocial}</h1><p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p><p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={empresa.razaoSocial} disabled={editando || pendente} /> : null}</div></header>
     <div className={styles.colunas}><div className={styles.esquerda}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>
         <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Contato não cadastrado'}</dd><dt>Telefone</dt><dd>{empresa.telefone || 'Telefone não cadastrado'}</dd><dt>E-mail</dt><dd>{empresa.email ?? 'E-mail não cadastrado'}</dd><dt>Localização</dt><dd>{endereco(empresa)}</dd><dt>CNPJ</dt><dd>{empresa.cnpj}</dd><dt>CNAE</dt><dd>{empresa.cnaePrincipal ?? 'CNAE não cadastrado'}</dd>

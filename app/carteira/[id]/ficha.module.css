@@ -1,4 +1,4 @@
-.ficha { display: flex; flex-direction: column; gap: 24px; }
+.ficha { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 .cabecalho { align-items: center; display: flex; gap: 24px; justify-content: space-between; }
 .cabecalho > div, .esquerda, .colunas > * { min-width: 0; }
 .cabecalho h1 { font-size: 28px; font-weight: 600; line-height: 36px; overflow-wrap: anywhere; }
@@ -16,7 +16,7 @@
 .historico li:last-child { border-bottom: 0; padding-bottom: 0; }
 .historicoCabecalho { align-items: baseline; display: flex; gap: 12px; justify-content: space-between; }
 .historicoCabecalho time, .autor { font-size: 12px; }
-.editor { background: var(--ui-background); border: 1px solid var(--ui-border); border-radius: 8px; display: grid; gap: 16px; padding: 24px; }
+.editor { background: var(--ui-background); border: 1px solid var(--ui-border); border-radius: 8px; display: grid; gap: 16px; min-width: 0; padding: 24px; }
 .editorCabecalho { align-items: center; display: flex; gap: 16px; justify-content: space-between; }
 .editorCabecalho h2 { font-size: 18px; font-weight: 600; line-height: 26px; }
 @media (max-width: 760px) { .cabecalho { align-items: stretch; flex-direction: column; } .cabecalho h1 { font-size: 24px; line-height: 32px; } .colunas { grid-template-columns: minmax(0, 1fr); } .editor { padding: 16px; } .editorCabecalho, .historicoCabecalho { align-items: flex-start; flex-direction: column; } }

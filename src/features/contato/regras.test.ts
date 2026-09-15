@@ -64,13 +64,11 @@ describe('validar', () => {
     })
   }
 
-  // `retornar_depois` grava passo e data SEM posse de propósito: é o histórico
-  // que a próxima pessoa lê e o dado que calibra o segundo prazo. A tela avisa
-  // que a empresa volta em 30 dias; a regra não proíbe.
-  test('retornar_depois grava passo e data mesmo sem posse', () => {
+  test('retornar_depois assume a reserva com data combinada', () => {
     const r = validar({
       ...BASE,
       tipo: 'retornar_depois',
+      desfecho: 'assumir',
       proximoPasso: 'Retomar contato',
       proximoPassoData: '2027-03-02',
     })
@@ -78,12 +76,17 @@ describe('validar', () => {
       ok: true,
       valor: {
         tipo: 'retornar_depois',
-        desfecho: 'devolver',
+        desfecho: 'assumir',
         nota: null,
         proximoPasso: 'Retomar contato',
         proximoPassoData: '2027-03-02',
       },
     })
+  })
+
+  test('retornar_depois não pode devolver nem omitir o combinado', () => {
+    expect(validar({ ...BASE, tipo: 'retornar_depois' })).toEqual({ok:false,falta:'desfecho_invalido'})
+    expect(validar({ ...BASE, tipo: 'retornar_depois', desfecho:'assumir' })).toEqual({ok:false,falta:'proximo_passo_exigido'})
   })
 
   test('espaco em branco vira nulo, nao string vazia — o CHECK do banco recusa vazio', () => {

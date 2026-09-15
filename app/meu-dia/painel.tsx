@@ -8,6 +8,7 @@ import { Button } from '@/src/components/ui/button'
 import { urlFichaDoMeuDia, urlMeuDia, type FiltrosMeuDia } from './agenda'
 import { historicoDaAgendaAcao } from './historico-acao'
 import styles from './meu-dia.module.css'
+import { ResumoVenda } from '@/src/components/crm/resumo-venda'
 
 // Mesmo estreitamento do type predicate de `agendaDoDia`
 // (`app/meu-dia/agenda.ts`), repetido aqui porque a assinatura exportada de
@@ -58,7 +59,7 @@ type EstadoHistorico =
 function Historico({ contatos }: { contatos: Contato[] }) {
   if (!contatos.length) return <p>Ainda não há uma conversa registrada</p>
   return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
-    <p>{resumo(c.nota)}</p>
+    {c.venda ? <><strong>Venda registrada</strong><ResumoVenda venda={c.venda} />{c.nota ? <p>{resumo(c.nota)}</p> : null}<p>Registrado por {c.autor ?? 'sistema'}</p></> : <p>{resumo(c.nota)}</p>}
     <time dateTime={c.criadoEm.toISOString()}>{dataHora(c.criadoEm)}</time>
   </li>)}</ol>
 }

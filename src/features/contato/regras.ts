@@ -29,6 +29,7 @@ function ouNulo(v: string): string | null {
 export function validar(r: Rascunho): { ok: true; valor: Validado } | { ok: false; falta: Falta } {
   if (!ehTipo(r.tipo)) return { ok: false, falta: 'tipo_invalido' }
   if (!DESFECHOS.includes(r.desfecho)) return { ok: false, falta: 'desfecho_invalido' }
+  if (r.tipo === 'retornar_depois' && r.desfecho !== 'assumir') return {ok:false,falta:'desfecho_invalido'}
 
   const proximoPasso = ouNulo(r.proximoPasso)
   const proximoPassoData = ouNulo(r.proximoPassoData)
@@ -41,7 +42,7 @@ export function validar(r: Rascunho): { ok: true; valor: Validado } | { ok: fals
   // antes. Devolver tira a empresa da carteira: não há o que combinar com quem
   // você não vai mais ligar, e exigir ali foi achado da verificação manual.
   const ficaComigo = r.posse && r.desfecho === 'nenhum'
-  if (ficaComigo && EXIGE_POSSE[r.tipo] && proximoPasso === null) {
+  if ((r.tipo === 'retornar_depois' || (ficaComigo && EXIGE_POSSE[r.tipo])) && proximoPasso === null) {
     return { ok: false, falta: 'proximo_passo_exigido' }
   }
 

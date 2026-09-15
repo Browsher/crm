@@ -9,6 +9,7 @@ export type Contato = {
   proximoPassoData: string | null
   criadoEm: Date
   autor: string | null
+  venda?: { centavos: string; data: string }
 }
 
 export type ResultadoHistorico = { ok: true; contatos: Contato[] } | Falha
@@ -21,6 +22,8 @@ type LinhaCrua = {
   proximo_passo_data: string | null
   criado_em: Date
   autor: string | null
+  venda_centavos: string | null
+  venda_data: string | null
 }
 
 // A RLS já filtra: quem não lê a empresa não lê o contato, e o resultado é
@@ -40,13 +43,18 @@ type LinhaCrua = {
 // não lê a linha do vendedor A e o LEFT JOIN devolveria autor nulo — o
 // histórico mostrava "sistema" no contato de um colega. A view expõe id e nome
 // e nada mais.
-const SQL = `SELECT c.id, c.tipo, c.nota, c.proximo_passo,
+const SQL = `SELECT c.id::text, c.tipo, c.nota, c.proximo_passo,
                     to_char(c.proximo_passo_data, 'YYYY-MM-DD') AS proximo_passo_data,
-                    c.criado_em, u.nome AS autor
+                    c.criado_em, u.nome AS autor, NULL::text AS venda_centavos, NULL::text AS venda_data
                FROM contato c
                LEFT JOIN usuario_publico u ON u.id = c.criado_por
               WHERE c.empresa_id = $1
-              ORDER BY c.criado_em DESC, c.id DESC`
+              UNION ALL
+              SELECT 'venda:' || v.id::text, 'venda_registrada', v.observacao, NULL, NULL,
+                     v.criada_em, u.nome, v.valor_centavos::text, to_char(v.data, 'YYYY-MM-DD')
+                FROM venda v LEFT JOIN usuario_publico u ON u.id=v.autor_id
+               WHERE v.empresa_id=$1
+              ORDER BY criado_em DESC, id DESC`
 
 export async function lerHistorico(usuarioId: string, empresaId: string): Promise<ResultadoHistorico> {
   try {
@@ -62,6 +70,7 @@ export async function lerHistorico(usuarioId: string, empresaId: string): Promis
           proximoPassoData: l.proximo_passo_data,
           criadoEm: l.criado_em,
           autor: l.autor,
+          ...(l.venda_centavos != null && l.venda_data != null ? {venda:{centavos:l.venda_centavos,data:l.venda_data}} : {}),
         })),
       }
     })

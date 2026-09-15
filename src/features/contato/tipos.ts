@@ -1,7 +1,5 @@
-// Lista fechada aqui, e no banco só o piso de não-vazio. `usuario.papel` está
-// no CHECK porque o BANCO o lê (eh_gestor); `contato.tipo` nenhuma função lê,
-// então cada palavra nova aqui é uma linha de código, não uma migração.
-// O preço: o banco aceita qualquer texto. A defesa é `ehTipo` e os testes.
+// Vocabulário da tela. A migração 0031 também protege retornar_depois no banco,
+// pois esse tipo agora exige assumir a empresa e preservar o combinado.
 export const TIPOS_CONTATO = [
   'nao_liguei',
   'nao_atendeu',
@@ -24,12 +22,11 @@ export const ROTULO: Record<TipoContato, string> = {
   acompanhamento: 'Falei, e ficou combinado o próximo passo',
 }
 
-// Sugestão da TELA, não regra do banco. É a coerência desta escolha que
-// mantém verdadeiro o desenho de o banco não interpretar `tipo`.
+// Desfecho enviado pela tela; o banco continua sendo a autoridade da posse.
 export const DESFECHO_SUGERIDO: Record<TipoContato, Desfecho> = {
   nao_liguei: 'devolver',
   nao_atendeu: 'devolver',
-  retornar_depois: 'devolver',
+  retornar_depois: 'assumir',
   sem_interesse: 'devolver',
   interessado: 'assumir',
   acompanhamento: 'nenhum',
