@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { lerHistorico } from '@/src/features/contato/historico'
-import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
+import { lerMinhasEmpresas, clienteDaCarteira } from '@/src/features/fila/consulta'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { Ficha } from './ficha'
@@ -57,11 +57,12 @@ export default async function PaginaFicha({ params, searchParams }: {
   }
   const rotuloVoltar = doMeuDia ? 'Voltar para o Meu dia' : 'Voltar para a carteira'
   const historico = await lerHistorico(eu.usuarioId, id)
+  const cliente = await clienteDaCarteira(eu.usuarioId,id)
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
       <nav aria-label="Navegação da ficha"><Link href={voltarPara} className="text-sm underline">{rotuloVoltar}</Link></nav>
-      <Ficha empresa={empresa} contatos={historico.ok ? historico.contatos : []}
+      <Ficha empresa={empresa} cliente={cliente} contatos={historico.ok ? historico.contatos : []}
         erroHistorico={!historico.ok} voltarPara={voltarPara} />
       <RegistrarVisita empresaId={empresa.id} />
     </main>

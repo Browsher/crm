@@ -45,6 +45,7 @@ export async function registrarContatoAcao(
   const gravado = await registrarContato(eu.usuarioId, empresaId, r.valor)
   if (!gravado.ok) return { erro: textoDoMotivo(gravado.motivo), ok: false }
 
+  revalidatePath('/funil')
   revalidatePath('/fila')
   revalidatePath('/fila/localizar')
   revalidatePath('/carteira')

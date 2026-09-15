@@ -87,18 +87,19 @@ const SQL = `WITH minhas AS (SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasi
                   ORDER BY c.criado_em DESC, c.id DESC
                   LIMIT 1
                ) ultimo ON true
-              WHERE f.vendedor_id = $1
-                 OR (f.reservado_por = $1 AND f.reservado_ate > now())
+              WHERE (f.vendedor_id = $1
+                 OR (f.reservado_por = $1 AND f.reservado_ate > now()))
+                AND (NOT $2::boolean OR e.id IN (SELECT empresa_id FROM minhas_empresas_clientes()))
               ORDER BY ultimo.proximo_passo_data ASC NULLS LAST, e.razao_social, e.id)
               SELECT minhas.*, contexto.versao AS contexto
                 FROM (SELECT (SELECT versao FROM fila_contexto WHERE usuario_id = $1) AS versao) contexto
                 LEFT JOIN minhas ON true
                ORDER BY minhas.proximo_passo_data ASC NULLS LAST, minhas.razao_social, minhas.id`
 
-export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMinhasEmpresas> {
+export async function lerMinhasEmpresas(usuarioId: string, somenteClientes = false): Promise<ResultadoMinhasEmpresas> {
   try {
     return await comoUsuario(usuarioId, async (executar) => {
-      const r = await executar<LinhaCrua>(SQL, [usuarioId])
+      const r = await executar<LinhaCrua>(SQL, [usuarioId, somenteClientes])
       const linhas = r.linhas.filter((l): l is LinhaCrua & { id: string } => l.id !== null)
       const ceps = [...new Set(linhas.map((l) => l.cep).filter((c): c is string => c !== null))]
       const enderecos = await resolverCeps(executar, ceps)
@@ -136,4 +137,11 @@ export async function lerMinhasEmpresas(usuarioId: string): Promise<ResultadoMin
     if ((erro as { code?: string })?.code === '42501') return { ok: false, motivo: 'sem_permissao' }
     throw erro
   }
+}
+
+export async function clienteDaCarteira(usuarioId:string,empresaId:string):Promise<boolean> {
+  return comoUsuario(usuarioId,async executar=>{
+    const r=await executar<{cliente:boolean}>('SELECT EXISTS(SELECT 1 FROM minhas_empresas_clientes() WHERE empresa_id::text=$1) AS cliente',[empresaId])
+    return r.linhas[0].cliente
+  })
 }

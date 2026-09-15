@@ -35,7 +35,7 @@ function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   </li>)}</ol>
 }
 
-export function Ficha({ empresa, contatos, erroHistorico = false, voltarPara = '/carteira' }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; voltarPara?: string }) {
+export function Ficha({ empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira' }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string }) {
   const router = useRouter()
   const tema = useTemaCrm()
   const [editando, setEditando] = useState(false)
@@ -134,14 +134,14 @@ export function Ficha({ empresa, contatos, erroHistorico = false, voltarPara = '
   }
 
   return <article className={styles.ficha}>
-    <header className={styles.cabecalho}><div><p className={styles.vinculo}>Na sua carteira</p><h1>{empresa.razaoSocial}</h1><p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p><p>{endereco(empresa)}</p></div><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button></header>
+    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{empresa.razaoSocial}</h1><p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p><p>{endereco(empresa)}</p></div><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button></header>
     <div className={styles.colunas}><div className={styles.esquerda}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>
         <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Contato não cadastrado'}</dd><dt>Telefone</dt><dd>{empresa.telefone || 'Telefone não cadastrado'}</dd><dt>E-mail</dt><dd>{empresa.email ?? 'E-mail não cadastrado'}</dd><dt>Localização</dt><dd>{endereco(empresa)}</dd><dt>CNPJ</dt><dd>{empresa.cnpj}</dd><dt>CNAE</dt><dd>{empresa.cnaePrincipal ?? 'CNAE não cadastrado'}</dd>
       </dl></CardContent></Card>
       <Card><CardHeader><CardTitle>Próximo passo</CardTitle></CardHeader><CardContent>{empresa.proximoPasso ? <div className={empresa.vencido ? styles.atrasado : undefined}><p>{empresa.proximoPasso}</p>{empresa.proximoPassoData ? <p>{dataCivil(empresa.proximoPassoData)}{empresa.vencido ? ' · Atrasado' : ''}</p> : null}</div> : <p className={styles.ausente}>Sem próximo passo combinado.</p>}</CardContent></Card>
     </div><Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent><Historico contatos={contatos} erro={erroHistorico} /></CardContent></Card></div>
-    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento"><div className={styles.editorCabecalho}><h2>Registrar atendimento</h2><Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button></div><FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver voltarPara={voltarPara} visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} onPendingChange={mudarPendente} onSaved={() => { setRascunho(rascunhoInicial(empresa.posse)); removerSentinela(() => { setEditando(false); router.refresh() }) }} /></section> : null}
+    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento"><div className={styles.editorCabecalho}><h2>Registrar atendimento</h2><Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button></div><FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver={!cliente} voltarPara={voltarPara} visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} onPendingChange={mudarPendente} onSaved={() => { setRascunho(rascunhoInicial(empresa.posse)); removerSentinela(() => { setEditando(false); router.refresh() }) }} /></section> : null}
     <Dialog open={descarte !== null} onOpenChange={aberto => { if (!aberto && !pendente) setDescarte(null) }}><DialogContent theme={tema}><DialogHeader><DialogTitle>Descartar as alterações?</DialogTitle><DialogDescription>As anotações deste atendimento ainda não foram registradas.</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={confirmar}>Descartar e continuar</Button></DialogFooter></DialogContent></Dialog>
   </article>
 }

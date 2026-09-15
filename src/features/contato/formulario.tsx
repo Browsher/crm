@@ -129,7 +129,7 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
             </p>
           ) : (
             <p className="text-sm text-neutral-600">
-              A empresa vai para a sua carteira, e o combinado passa a valer como próximo passo.
+              A empresa vai para o seu Funil, e o combinado passa a valer como próximo passo.
             </p>
           )}
         </>

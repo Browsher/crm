@@ -12,6 +12,7 @@ import { prepararEmpresasReserva } from '../../tests/e2e/dados-reserva'
 import { prepararRecentes } from '../../tests/e2e/dados-recentes'
 import { prepararFilaVisual } from '../../tests/e2e/dados-fila-visual'
 import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
+import { prepararFunil } from '../../tests/e2e/dados-funil'
 import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
 
 const filhos = new Set<ChildProcess>()
@@ -67,6 +68,7 @@ try {
   await prepararFilaVisual(banco)
   await prepararCarteiraVisual(banco)
   await prepararMeuDia(banco)
+  await prepararFunil(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined

@@ -174,11 +174,11 @@ describe('FormularioContato: o aviso segue o desfecho, nao a posse', () => {
     expect(saida).not.toContain('30 dias')
   })
 
-  test('interessado diz que a empresa vai para a sua carteira', () => {
+  test('interessado diz que a empresa vai para o seu Funil', () => {
     const saida = renderToStaticMarkup(
       <FormularioContato empresaId="e1" posse={false} tipoInicial="interessado" />,
     )
-    expect(saida).toContain('carteira')
+    expect(saida).toContain('Funil')
   })
 
   test('na ficha, o botao de devolver avisa dos 30 dias ao lado dele', () => {

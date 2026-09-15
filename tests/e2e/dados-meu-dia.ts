@@ -63,6 +63,7 @@ export async function prepararMeuDia(banco: BancoDeTeste) {
     await banco.sql(`INSERT INTO empresa (id, cnpj, razao_social, telefone, cnae_principal)
       VALUES ($1, $2, $3, '11999990401', '8877665')`, [id, cnpjDe(numero), nome])
     await banco.sql('INSERT INTO empresa_fila (empresa_id, vendedor_id) VALUES ($1, $2)', [id, vendedor.id])
+    if(id===EMPRESA_MEU_DIA_REAGENDA) await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[id,vendedor.id])
     if (dias !== null) {
       await banco.sql(`INSERT INTO contato (empresa_id, tipo, nota, proximo_passo, proximo_passo_data) VALUES
         ($1, 'acompanhamento', $2, $3, (now() AT TIME ZONE 'America/Sao_Paulo')::date + $4::integer)`,

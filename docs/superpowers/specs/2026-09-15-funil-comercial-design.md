@@ -1,6 +1,6 @@
 # Funil comercial e Carteira de clientes
 
-Estado: decisões de produto aprovadas; primeira fatia de base implementada e validada localmente. UI e comandos comerciais ainda pendentes.
+Estado: decisões de produto aprovadas; primeira fatia de base implementada e validada localmente. UI e comandos de primeira venda implementados na segunda fatia, em verificação.
 Esta especificação substitui, neste escopo, a decisão de 12/09 em
 PREFERENCIAS.md de adiar a separação comercial. Não autoriza apagar dados.
 
@@ -107,8 +107,9 @@ até revisão da migração concreta e autorização para sua aplicação.
 - Expiração: definição exata de 30 dias (instante ou data civil), frequência e
   executor que funcione quando o computador estiver desligado. Caso sem contato
   deve partir da assunção; nao_liguei não comprova atendimento para renovação.
-- Venda: limites do valor/data, moeda e correção de lançamento errado devem
-  ser definidos antes de publicar o formulário. Não incluir estorno silencioso.
+- Venda: aprovação de 15/09 define reais, mínimo R$ 0,01, data de hoje ou anterior,
+  confirmação e ausência de edição/exclusão nesta versão. Teto técnico R$ 999.999.999,99
+  e observação de 2.000 caracteres. Correção administrativa fica para fatia própria.
 - Transferência: seleção do destino ativo e preservação de retornos. Histórico
   anterior segue preservado para o gestor, sem liberar notas de colega no Funil.
 
@@ -120,4 +121,4 @@ Usar componentes atuais, Next local documentado, nenhum pacote novo previsto.
 Testar isolamento, sessão/posse perdida, repetição e concorrência, limites de
 data, primeira/repetida venda, grupo inativo, vendedor desativado, teclado,
 rascunho, rolagem e responsividade. Uma revisão independente final por fatia.
-Aplicação continua intacta durante este trabalho de documentação.
+A primeira venda é habilitada junto da lista Carteira filtrada por clientes; Meu dia preserva todas as posses.

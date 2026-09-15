@@ -7,8 +7,8 @@ import { NativeSelect } from '@/src/components/ui/native-select'
 import { TemaCrmContext, type TemaCrm } from './tema'
 import styles from './shell.module.css'
 
-const TITULO = { fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas', usuarios: 'Usuários', gestao: 'Gestão' } as const
-const TEMA = { fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia', empresas: 'Tema de Empresas', usuarios: 'Tema de Usuários', gestao: 'Tema da Gestão' } as const
+const TITULO = { funil: 'Funil', fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas', usuarios: 'Usuários', gestao: 'Gestão' } as const
+const TEMA = { funil: 'Tema do Funil', fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia', empresas: 'Tema de Empresas', usuarios: 'Tema de Usuários', gestao: 'Tema da Gestão' } as const
 
 export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: keyof typeof TITULO }) {
   const [tema, setTema] = useState<TemaCrm>('system')
@@ -21,6 +21,7 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
         <nav aria-label="Navegação do CRM" onClick={() => setAberto(false)}>
           {papel === 'vendedor' && <><Link href="/fila" aria-current={area === 'fila' ? 'page' : undefined}>Prospecção</Link>
           <Link href="/meu-dia" aria-current={area === 'meu-dia' ? 'page' : undefined}>Meu dia</Link>
+          <Link href="/funil" aria-current={area === 'funil' ? 'page' : undefined}>Funil</Link>
           <Link href="/carteira" aria-current={area === 'carteira' ? 'page' : undefined}>Carteira</Link></>}
           {papel === 'gestor' && <><Link href="/gestao" aria-current={area === 'gestao' ? 'page' : undefined}>Início</Link><Link href="/empresas" aria-current={area === 'empresas' ? 'page' : undefined}>Empresas</Link><Link href="/empresas/grupos">Grupos</Link><Link href="/usuarios" aria-current={area === 'usuarios' ? 'page' : undefined}>Usuários</Link></>}
           <form action="/sair" method="post">
