@@ -48,6 +48,7 @@ describe('migrações reais', () => {
       '0025_fila_reservar.sql',
       '0026_empresa_recentes.sql',
       '0027_grupos_importacao.sql',
+      '0028_comercial.sql',
     ])
   })
 

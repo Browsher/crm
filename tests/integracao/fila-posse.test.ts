@@ -17,6 +17,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
+  await banco.sql('DELETE FROM negociacao')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM grupo_importacao_empresa')
