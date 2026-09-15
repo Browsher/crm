@@ -1,0 +1,17 @@
+.pagina { width: 100%; max-width: 1200px; margin: auto; padding: 2rem; display: grid; gap: 1.5rem; }
+.voltar { text-decoration: underline; text-underline-offset: 4px; width: fit-content; font-size: .875rem; }
+.cabecalho { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.cabecalho h1 { font-size: 1.75rem; font-weight: 600; line-height: 1.3; margin: .5rem 0; overflow-wrap: anywhere; }
+.cabecalho p, .dados dt, .autor, .historico time { color: var(--ui-muted-foreground); }
+.colunas { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); align-items: start; gap: 1.5rem; }
+.detalhes { display: grid; gap: 1.5rem; }
+.dados { display: grid; grid-template-columns: minmax(90px,.7fr) minmax(0,1fr); gap: .75rem 1rem; font-size: .875rem; }
+.dados dd, .historico p, .grupos span { overflow-wrap: anywhere; }
+.dados dd > span { margin-left: .5rem; }
+.grupos, .historico { list-style: none; display: grid; gap: 1rem; }
+.grupos li { display: flex; justify-content: space-between; align-items: start; gap: .5rem; }
+.historico li { display: grid; gap: .75rem; border-bottom: 1px solid var(--ui-border); padding-bottom: 1rem; }
+.historico li:last-child { border-bottom: 0; }
+.historico li > div { display: grid; gap: .5rem; }
+.historico time, .autor { font-size: .75rem; }
+@media(max-width: 760px) { .pagina { padding: 1rem; } .colunas { grid-template-columns: minmax(0,1fr); } .cabecalho { flex-direction: column; } }

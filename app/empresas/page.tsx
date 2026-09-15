@@ -57,7 +57,7 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
           <p className={styles.contagem}>
             {resultado.total} {resultado.total === 1 ? 'empresa' : 'empresas'}
           </p>
-          <Lista linhas={resultado.linhas} />
+          <Lista linhas={resultado.linhas} consulta={consulta} />
           <Paginacao consulta={consulta} paginas={totalDePaginas(resultado.total)} />
         </>
       ) : null}
