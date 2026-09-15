@@ -1,4 +1,4 @@
-.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; background: var(--ui-background); color: var(--ui-foreground); }
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; overflow-x: clip; background: var(--ui-background); color: var(--ui-foreground); }
 .workspace { min-width: 0; }
 .sidebar { position: sticky; top: 0; height: 100vh; background: var(--ui-surface); border-right: 1px solid var(--ui-border); padding: 24px 16px; }
 .marca { display: flex; gap: 12px; align-items: center; margin-bottom: 32px; padding: 0 8px; text-decoration: none; }
