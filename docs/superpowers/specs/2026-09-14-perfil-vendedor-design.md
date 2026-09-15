@@ -1,10 +1,10 @@
 # Perfil do vendedor para o gestor
 
-Escopo aprovado: abrir pelo card no dashboard um perfil somente de consulta,
+Escopo aprovado: abrir por Ver perfil na lista de Usuários um perfil somente de consulta,
 com resumo da carteira/retornos, empresas sob responsabilidade, contatos
 registrados hoje e últimos atendimentos. Sem ações administrativas ou de venda.
 
-Rota `/gestao/vendedores/[id]`, guardada como gestor na página e SQL. Apenas
+Rota `/usuarios/vendedores/[id]`, guardada como gestor na página e SQL. Apenas
 vendedor ativo, acompanhando o recorte do dashboard; alvo inválido, inexistente,
 gestor ou desativado retorna 404. Usuários permanece o acesso aos desativados.
 
@@ -22,9 +22,12 @@ Não criar link para ficha de empresa aqui: o usuário restringiu essa entrada
 a `/empresas`. Não inferir venda ou devolução pelo tipo de contato.
 
 Visual usa componentes e temas atuais: cabeçalho com nome/e-mail, indicadores,
-carteira e atividade; uma coluna no celular. Voltar ao dashboard é URL fixa.
-Card é link nativo acessível por teclado e abrível em nova aba. Estados vazios
+carteira e atividade; uma coluna no celular. Voltar para Usuários é URL fixa.
+Ver perfil é link nativo acessível por teclado e abrível em nova aba. Estados vazios
 distintos de falha. Nenhuma reserva, visita ou escrita ao abrir o perfil.
 
 Sem migração ou biblioteca nova. Testes somente em banco temporário Docker.
 PR contra main com CI verde; merge após validação visual.
+
+Entrada corrigida por orientação do usuário: o dashboard não tem link para
+o perfil. A rota pertence a Usuários e mantém esse item ativo no menu lateral.

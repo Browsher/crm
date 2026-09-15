@@ -1,5 +1,6 @@
 'use client'
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { acoesDe, gestorUnico, type Usuario, type Acao } from '@/src/features/usuarios/regras'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
@@ -39,7 +40,7 @@ export function TabelaUsuarios({ lista, euId }: { lista: Usuario[]; euId: string
           <td><strong>{u.nome}</strong> {u.id === euId && <Badge variant="outline">Você</Badge>}<span className={styles.email}>{u.email}</span></td>
           <td>{u.papel === 'gestor' ? 'Gestor' : 'Vendedor'}</td><td><Badge variant={u.ativo ? 'success' : 'outline'}>{u.ativo ? 'Ativo' : 'Inativo'}</Badge></td>
           <td>{u.senhaProvisoriaPendente ? <Badge variant="warning">Troca pendente</Badge> : 'Definida'}</td>
-          <td><div className={styles.acoes}>{acoesDe(u, euId).map(tipo => <Button key={tipo} size="sm" variant="outline" onClick={e => { acionador.current = e.currentTarget; setSelecao({ usuario: u, tipo }) }}>{ROTULO[tipo](u)}</Button>)}{u.id === euId && <span className={styles.muted}>Sua conta</span>}</div></td>
+          <td><div className={styles.acoes}>{u.papel === 'vendedor' && u.ativo && <Button asChild size="sm" variant="outline"><Link href={`/usuarios/vendedores/${u.id}`} aria-label={`Ver perfil de ${u.nome}`}>Ver perfil</Link></Button>}{acoesDe(u, euId).map(tipo => <Button key={tipo} size="sm" variant="outline" onClick={e => { acionador.current = e.currentTarget; setSelecao({ usuario: u, tipo }) }}>{ROTULO[tipo](u)}</Button>)}{u.id === euId && <span className={styles.muted}>Sua conta</span>}</div></td>
         </tr>)}</tbody></table>
     </div>
     {visiveis.length === 0 && <div className={styles.vazio}><h2>Nenhum usuário encontrado</h2><p>Experimente outro nome ou ajuste os filtros.</p></div>}

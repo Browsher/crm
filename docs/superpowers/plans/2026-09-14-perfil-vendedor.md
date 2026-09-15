@@ -7,8 +7,8 @@ Executar com TDD e uma revisão independente final.
    de papéis/alvos, contagens coerentes com dashboard, autoria versus posse,
    reservas fora da carteira, paginação e limite de atividade. Implementar
    `src/features/gestao/perfil-vendedor.ts` com uma instrução SQL/snapshot.
-2. Teste RED do link no dashboard e da nova página. Implementar
-   `app/gestao/vendedores/[id]/page.tsx` e CSS no padrão existente. Compor os
+2. Teste RED do link em Usuários e da ausência de link no dashboard e da nova página. Implementar
+   `app/usuarios/vendedores/[id]/page.tsx` e CSS no padrão existente. Compor os
    rótulos de contato na página, sem importação entre features.
 3. E2E com dados próprios em `tests/e2e/perfil-vendedor.spec.ts`: link real,
    leitura, ausência de ações/links para empresas, retorno e acesso negado.
@@ -31,3 +31,10 @@ Executar com TDD e uma revisão independente final.
 - Capturas 390/1280 em claro/escuro; transições desativadas apenas na captura
   para registrar as cores finais. Nenhuma mudança de tema em produção.
 - PR aguarda validação visual antes do merge. Sem migração nesta fatia.
+
+## Ajuste de entrada solicitado pelo usuário
+
+Acesso movido para Ver perfil em Usuários; dashboard sem link. Rota movida
+para /usuarios/vendedores/[id], com Voltar para Usuários e menu dessa área.
+Dois testes RED confirmaram o link ausente em Usuários e o link indevido
+no dashboard; após correção, 11 testes focados passaram.

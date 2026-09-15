@@ -6,7 +6,7 @@ import { formatarCnpj } from '@/src/features/empresas/formato'
 import { ehTipo, ROTULO } from '@/src/features/contato/tipos'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
-import geral from '../../gestao.module.css'
+import geral from '../../../gestao/gestao.module.css'
 import styles from './perfil.module.css'
 
 const horario = new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' })
@@ -22,9 +22,9 @@ export default async function Perfil({ params, searchParams }: {
   const dados = await lerPerfilVendedor(eu.usuarioId,id,paginaDoPerfil(query.pagina))
   if (!dados) notFound()
   const paginas = Math.max(1, Math.ceil(dados.clientes / EMPRESAS_POR_PAGINA))
-  const endereco = (pagina: number) => `/gestao/vendedores/${dados.id}?pagina=${pagina}`
+  const endereco = (pagina: number) => `/usuarios/vendedores/${dados.id}?pagina=${pagina}`
   return <main className={geral.pagina}>
-    <Link href="/gestao" className={styles.voltar}>Voltar para o dashboard</Link>
+    <Link href="/usuarios" className={styles.voltar}>Voltar para Usuários</Link>
     <header className={`${geral.cabecalho} ${styles.cabecalho}`}>
       <div><p>Perfil do vendedor</p><h1>{dados.nome}</h1><p>{dados.email}</p></div>
       <div className={styles.acoes}><Badge variant="success">Ativo</Badge><Button asChild variant="outline"><a href={endereco(dados.pagina)}>Atualizar</a></Button></div>

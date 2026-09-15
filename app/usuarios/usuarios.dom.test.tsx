@@ -27,6 +27,9 @@ async function enviar() { const f=document.querySelector<HTMLFormElement>('[role
 
 test('lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias',async()=>{
   await montar();expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
+  expect(linha('Bruno').querySelector('a')?.getAttribute('href')).toBe('/usuarios/vendedores/bruno')
+  expect(linha('Ana').querySelector('a')).toBeNull()
+  expect(linha('Carla').querySelector('a')).toBeNull()
   expect(linha('Ana').textContent).toContain('Você');expect(linha('Ana').querySelector('button')).toBeNull()
   await preencher('busca',' BRUNO@');expect(document.querySelectorAll('tbody tr')).toHaveLength(1);expect(linha('Bruno')).toBeTruthy()
   await selecionar('situacao','inativos');expect(document.querySelectorAll('tbody tr')).toHaveLength(0);expect(document.body.textContent).toContain('Nenhum usuário encontrado')

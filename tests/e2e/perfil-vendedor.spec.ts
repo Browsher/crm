@@ -26,17 +26,20 @@ test.beforeAll(async () => {
   })
 })
 
-test('gestor abre perfil pelo card, consulta carteira e histórico e volta ao dashboard', async ({ page }) => {
+test('gestor abre perfil em Usuários, consulta carteira e histórico e volta à lista', async ({ page }) => {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill('gestore2e@teste.local')
   await page.getByLabel('Senha', { exact:true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name:'Entrar', exact:true }).click()
   await expect(page).toHaveURL('/gestao')
+  await expect(page.locator('main a[href*="/vendedores/"]')).toHaveCount(0)
+  await page.getByRole('link', { name:'Usuários',exact:true }).click()
+  await expect(page).toHaveURL('/usuarios')
   const link = page.getByRole('link', { name:'Ver perfil de Carlos Almeida', exact:true })
-  await expect(link).toHaveAttribute('href',`/gestao/vendedores/${vendedorId}`)
+  await expect(link).toHaveAttribute('href',`/usuarios/vendedores/${vendedorId}`)
   await link.focus()
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(`/gestao/vendedores/${vendedorId}`)
+  await expect(page).toHaveURL(`/usuarios/vendedores/${vendedorId}`)
   await expect(page.getByRole('heading', { name:'Carlos Almeida',exact:true })).toBeVisible()
   const resumo = page.getByRole('region', { name:'Resumo do vendedor' })
   await expect(resumo.locator('strong')).toHaveText(['2','1','1','2'])
@@ -56,9 +59,9 @@ test('gestor abre perfil pelo card, consulta carteira e histórico e volta ao da
       await page.screenshot({ path:`test-results/perfil-vendedor-${largura}-${tema}.png`,fullPage:true,animations:'disabled' })
     }
   }
-  await page.getByRole('link', { name:'Voltar para o dashboard' }).click()
-  await expect(page).toHaveURL('/gestao')
-  await page.goto('/gestao/vendedores/00000000-0000-4000-8000-000000000000')
+  await page.getByRole('link', { name:'Voltar para Usuários' }).click()
+  await expect(page).toHaveURL('/usuarios')
+  await page.goto('/usuarios/vendedores/00000000-0000-4000-8000-000000000000')
   await expect(page.getByText('404',{ exact:true })).toBeVisible()
 })
 
@@ -68,7 +71,7 @@ test('vendedor não acessa o perfil administrativo de outro vendedor', async ({ 
   await page.getByLabel('Senha',{ exact:true }).fill('Senha-e2e-2026')
   await page.getByRole('button',{ name:'Entrar',exact:true }).click()
   await expect(page).toHaveURL('/meu-dia')
-  await page.goto(`/gestao/vendedores/${vendedorId}`)
+  await page.goto(`/usuarios/vendedores/${vendedorId}`)
   await expect(page).toHaveURL('/meu-dia')
   await expect(page.getByRole('heading',{ name:'Carlos Almeida',exact:true })).toHaveCount(0)
 })

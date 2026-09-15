@@ -27,7 +27,7 @@ test('cards usam rótulos distintos, totais e atividade sem inferir venda ou dev
   expect(html).toContain('Retornos hoje')
   expect(html).toContain('Contatos registrados hoje')
   expect(html).toContain('Ana')
-  expect(html).toContain('href="/gestao/vendedores/a"')
+  expect(html).not.toContain('/vendedores/')
   expect(html).toContain('Loja')
   expect(html).toContain('interessado')
   expect(html).not.toContain('Ver detalhes')

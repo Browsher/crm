@@ -21,7 +21,7 @@ test('gestor vê estados vazios sem ações nem links para ficha de empresa', as
   expect(html).toContain('Ana')
   expect(html).toContain('Nenhuma empresa na carteira')
   expect(html).toContain('Nenhum atendimento registrado')
-  expect(html).toContain('href="/gestao"')
+  expect(html).toContain('href="/usuarios"')
   expect(html).not.toContain('<form')
   expect(html).not.toContain('href="/empresas/')
 })
@@ -34,7 +34,7 @@ test('paginação preserva alvo e não inventa atividade ao consultar carteira',
     empresas:[{ id:'empresa',nome:'Aurora',cnpj:'11222333000181',proximoPasso:'Telefonar',retorno:'2026-09-15' }],
     atividade:[{ id:'c',empresaId:'empresa',empresa:'Aurora',tipo:'acompanhamento',nota:'Conversa registrada',proximoPasso:null,retorno:null,em:'2026-09-14T15:00:00Z' }] })
   const html = renderToStaticMarkup(await Pagina({ params:Promise.resolve({ id:'vendedor' }) }))
-  expect(html).toContain('href="/gestao/vendedores/vendedor?pagina=2"')
+  expect(html).toContain('href="/usuarios/vendedores/vendedor?pagina=2"')
   expect(html).toContain('15/09/2026')
   expect(html).toContain('Conversa registrada')
   expect(html).not.toContain('href="/empresas/')

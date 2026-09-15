@@ -183,9 +183,6 @@ app/gestao/page.test.tsx :: autoriza gestor, exibe vazio sem atalhos inferiores 
 app/gestao/page.test.tsx :: cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução
 app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de erro
 app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado
-app/gestao/vendedores/[id]/page.test.tsx :: alvo recusado vira 404
-app/gestao/vendedores/[id]/page.test.tsx :: gestor vê estados vazios sem ações nem links para ficha de empresa
-app/gestao/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não inventa atividade ao consultar carteira
 app/meu-dia/agenda.test.tsx :: agenda traz só atrasado e hoje, atrasados primeiro
 app/meu-dia/agenda.test.tsx :: busca por nome ignora acento e caixa, e o filtro de retorno recorta
 app/meu-dia/agenda.test.tsx :: dentro do mesmo estado ordena por data, nome e id
@@ -224,6 +221,9 @@ app/usuarios/usuarios.dom.test.tsx :: cancelamento não envia ação, confirmaç
 app/usuarios/usuarios.dom.test.tsx :: criação preserva campos no erro, mostra senha, copia e descarta ao fechar
 app/usuarios/usuarios.dom.test.tsx :: lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias
 app/usuarios/usuarios.dom.test.tsx :: pendência bloqueia botões e Escape; nova senha aguarda confirmação e falha de cópia orienta cópia manual
+app/usuarios/vendedores/[id]/page.test.tsx :: alvo recusado vira 404
+app/usuarios/vendedores/[id]/page.test.tsx :: gestor vê estados vazios sem ações nem links para ficha de empresa
+app/usuarios/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não inventa atividade ao consultar carteira
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
