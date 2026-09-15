@@ -42,6 +42,7 @@ export default async function Gestao() {
       <div className={styles.cabecalho}><div><h2 id="titulo-equipe">Vendedores ativos</h2><p>Retornos agendados e contatos registrados hoje.</p></div><Badge variant="outline">{dados.vendedores.length} ativos</Badge></div>
       {dados.vendedores.length === 0 ? <div className={styles.vazio}><h3>Nenhum vendedor ativo</h3><p>Gerencie os acessos em Usuários para organizar sua equipe.</p></div> :
         <div className={styles.grade}>{dados.vendedores.map(v => <article key={v.id} aria-label={v.nome} className={styles.card}>
+          <Link href={`/gestao/vendedores/${v.id}`} aria-label={`Ver perfil de ${v.nome}`} className={styles.linkPerfil}>
           <header className={styles.vendedor}><span className={styles.avatar} aria-hidden="true">{v.nome.trim().slice(0, 1).toUpperCase()}</span><h3>{v.nome}</h3><Badge variant="success">Ativo</Badge></header>
           <dl className={styles.numeros}>
             <div><dt>Clientes em carteira</dt><dd>{v.clientes}</dd></div>
@@ -49,6 +50,7 @@ export default async function Gestao() {
             <div><dt>Retornos hoje</dt><dd>{v.hoje}</dd></div>
           </dl>
           <p className={styles.contatos}>Contatos registrados hoje <strong>{v.contatosHoje}</strong></p>
+          </Link>
         </article>)}</div>}
     </section>
     <section aria-labelledby="titulo-atividade" className={styles.secao}>
@@ -61,3 +63,4 @@ export default async function Gestao() {
     </section>
   </main>
 }
+import Link from 'next/link'
