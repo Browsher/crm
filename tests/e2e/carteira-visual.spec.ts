@@ -15,7 +15,11 @@ async function conferirTamanhos(page: Page, tela: string) {
     await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
     for (const width of [390, 820, 1280]) {
       await page.setViewportSize({ width, height: 844 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      // O resize pode anteceder a estabilização do layout no runner. Excesso
+      // persistente continua falhando e agora informa quantos pixels sobraram.
+      await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth)), {
+        message: `Transbordamento na Carteira: ${tela}, ${tema}, ${width}px`,
+      }).toBe(0)
       await page.screenshot({ path: `test-results/carteira-${tela}-${tema}-${width}.png`, fullPage: true })
     }
   }
