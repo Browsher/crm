@@ -66,6 +66,7 @@ test.beforeAll(async () => {
   const [{ id }] = await banco.sql<{ id: string }>(`INSERT INTO empresa(cnpj,razao_social,telefone,contato_nome,email,cnae_principal)
     VALUES ($1,$2,'11911112222','Contato preservado','preservado@teste.local','7777702') RETURNING id`, [CNPJ_JORNADA_CARTEIRA, CARTEIRA])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES ($1,$2)', [id, vendedor.id])
+  await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[id,vendedor.id])
   await banco.sql(`INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data)
     VALUES ($1,'acompanhamento','Histórico preservado da jornada','Retorno preservado',(now() AT TIME ZONE 'America/Sao_Paulo')::date)`, [id])
 })

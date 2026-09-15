@@ -1,6 +1,6 @@
 # Funil comercial e Carteira de clientes
 
-Estado: decisões de produto aprovadas; primeira fatia de base implementada e validada localmente. UI e comandos comerciais ainda pendentes.
+Estado: decisões de produto aprovadas; primeira fatia de base implementada e validada localmente. UI e comandos de primeira venda implementados na segunda fatia, em verificação.
 Esta especificação substitui, neste escopo, a decisão de 12/09 em
 PREFERENCIAS.md de adiar a separação comercial. Não autoriza apagar dados.
 
@@ -62,6 +62,15 @@ Eventos automáticos relacionados à sua negociação podem informar sua devolu�
 sem revelar conteúdo de outro vendedor. Gestor preserva consulta administrativa
 completa. Esta decisão não determina mudanças globais na leitura de outras telas.
 
+## Ajuste aprovado: avanço sequencial (15/09/2026)
+
+Esta decisão substitui a seleção livre de etapa e a restrição anterior a arrastar.
+Desktop com mouse permite arrastar apenas para a coluna seguinte, sem retorno nem salto.
+O destino permitido fica destacado; durante envio não há segunda operação, e falha restaura o card e informa o erro.
+Clique continua abrindo o modal. Modal e celular substituem select por “Avançar para [próxima etapa]”.
+Na última etapa não há avanço. Venda continua ação separada com confirmação.
+A mesma regra vale na action e no banco, inclusive para requisições adulteradas e concorrentes.
+
 ## Estado atual conferido em 15/09/2026
 
 - src/features/fila/consulta.ts: lerMinhasEmpresas trata toda posse como carteira
@@ -107,8 +116,9 @@ até revisão da migração concreta e autorização para sua aplicação.
 - Expiração: definição exata de 30 dias (instante ou data civil), frequência e
   executor que funcione quando o computador estiver desligado. Caso sem contato
   deve partir da assunção; nao_liguei não comprova atendimento para renovação.
-- Venda: limites do valor/data, moeda e correção de lançamento errado devem
-  ser definidos antes de publicar o formulário. Não incluir estorno silencioso.
+- Venda: aprovação de 15/09 define reais, mínimo R$ 0,01, data de hoje ou anterior,
+  confirmação e ausência de edição/exclusão nesta versão. Teto técnico R$ 999.999.999,99
+  e observação de 2.000 caracteres. Correção administrativa fica para fatia própria.
 - Transferência: seleção do destino ativo e preservação de retornos. Histórico
   anterior segue preservado para o gestor, sem liberar notas de colega no Funil.
 
@@ -120,4 +130,4 @@ Usar componentes atuais, Next local documentado, nenhum pacote novo previsto.
 Testar isolamento, sessão/posse perdida, repetição e concorrência, limites de
 data, primeira/repetida venda, grupo inativo, vendedor desativado, teclado,
 rascunho, rolagem e responsividade. Uma revisão independente final por fatia.
-Aplicação continua intacta durante este trabalho de documentação.
+A primeira venda é habilitada junto da lista Carteira filtrada por clientes; Meu dia preserva todas as posses.

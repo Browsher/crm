@@ -35,7 +35,7 @@ test('0027 preserva empresas, contatos, carteira, reserva e recentes na Base de 
     await banco.sql('INSERT INTO empresa_recente(usuario_id,empresa_id,acessada_em) VALUES ($1,$2,now())', [vendedor,empresas[1].id])
     const tabelas = ['usuario','empresa','empresa_fila','contato','empresa_recente']
     const antes = await Promise.all(tabelas.map(t => banco.sql(`SELECT * FROM ${t} ORDER BY 1`)))
-    expect(await aplicar(banco.urlAdmin, PASTA_MIGRACOES)).toEqual({ok:true,aplicadas:['0027_grupos_importacao.sql', '0028_comercial.sql']})
+    expect(await aplicar(banco.urlAdmin, PASTA_MIGRACOES)).toEqual({ok:true,aplicadas:['0027_grupos_importacao.sql', '0028_comercial.sql', '0029_funil_comandos.sql', '0030_funil_avanco.sql']})
     expect(await Promise.all(tabelas.map(t => banco.sql(`SELECT * FROM ${t} ORDER BY 1`)))).toEqual(antes)
     expect(await banco.sql('SELECT nome,ativo,arquivo_nome,criado_por,vinculadas FROM grupo_importacao')).toEqual([{nome:'Base de testes',ativo:true,arquivo_nome:null,criado_por:null,vinculadas:2}])
     expect(await banco.sql('SELECT empresa_id FROM grupo_importacao_empresa ORDER BY empresa_id')).toEqual(empresas.map(e=>({empresa_id:e.id})).sort((a,b)=>a.empresa_id.localeCompare(b.empresa_id)))

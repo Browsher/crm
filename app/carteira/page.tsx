@@ -11,7 +11,7 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function PaginaCarteira({ searchParams }: Props) {
   const eu = await exigir('vendedor')
-  const [r, params] = await Promise.all([lerMinhasEmpresas(eu.usuarioId), searchParams])
+  const [r, params] = await Promise.all([lerMinhasEmpresas(eu.usuarioId, true), searchParams])
   const leitura = lerFiltrosCarteira(params)
 
   return <main className={styles.pagina}>

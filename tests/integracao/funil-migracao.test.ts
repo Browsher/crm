@@ -21,7 +21,7 @@ test('atualização preserva dados anteriores, cria só ciclos de posse e não i
     await banco.sql("INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES($1,$2,now()+interval '30 minutes')",[empresas[1].id,b])
     await banco.sql("INSERT INTO contato(empresa_id,tipo,nota) VALUES($1,'interessado','Nota anterior')",[empresas[0].id])
     const antes = await banco.sql('SELECT * FROM empresa_fila ORDER BY empresa_id')
-    expect(await aplicar(banco.urlAdmin,PASTA_MIGRACOES)).toEqual({ok:true,aplicadas:['0028_comercial.sql']})
+    expect(await aplicar(banco.urlAdmin,PASTA_MIGRACOES)).toEqual({ok:true,aplicadas:['0028_comercial.sql', '0029_funil_comandos.sql', '0030_funil_avanco.sql']})
     expect(await banco.sql('SELECT * FROM empresa_fila ORDER BY empresa_id')).toEqual(antes)
     expect(await banco.sql('SELECT nota FROM contato')).toEqual([{nota:'Nota anterior'}])
     expect(await banco.sql('SELECT empresa_id,vendedor_id,etapa,encerramento FROM negociacao')).toEqual([

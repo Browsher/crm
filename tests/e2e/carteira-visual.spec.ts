@@ -70,8 +70,7 @@ test('carteira filtra cards, conserva filtros na ficha e protege dados de outro 
 test('ficha preserva rascunho e erro, confirma descarte, atualiza atendimento e devolve', async ({ page }) => {
   test.setTimeout(60_000)
   await entrar(page)
-  await page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'Carteira Visual Boreal', exact: true }) })
-    .getByRole('link', { name: 'Ver cliente', exact: true }).click()
+  await page.goto('/carteira/00000000-0000-4000-8000-000000000304')
   await expect(page).toHaveURL(/\/carteira\/[0-9a-f-]+$/)
   const fichaUrl = page.url()
   await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
@@ -120,7 +119,7 @@ test('ficha preserva rascunho e erro, confirma descarte, atualiza atendimento e 
   await page.getByLabel('Data do próximo passo', { exact: true }).fill('2030-10-02')
   await page.getByRole('button', { name: 'Registrar e devolver', exact: true }).click()
   await expect(page).toHaveURL('/carteira')
-  await expect(page.getByRole('heading', { name: 'Carteira Visual Boreal', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Carteira Visual Prospecto', exact: true })).toHaveCount(0)
   await page.goto(fichaUrl)
   await expect(page.getByRole('button', { name: 'Registrar atendimento', exact: true })).toHaveCount(0)
   await expect(page.locator('body')).toContainText('404')
