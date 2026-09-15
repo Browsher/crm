@@ -114,12 +114,12 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
       ) : (
         <>
           <label className="flex flex-col gap-1 text-sm">
-            Combinado (opcional)
-            <CampoTexto type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
+            {tipo === 'retornar_depois' ? 'Combinado' : 'Combinado (opcional)'}
+            <CampoTexto type="text" name="proximoPasso" required={tipo === 'retornar_depois'} readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
           </label>
           <label className="flex flex-col gap-1 text-sm">
-            Data combinada (opcional)
-            <CampoTexto type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
+            {tipo === 'retornar_depois' ? 'Data combinada' : 'Data combinada (opcional)'}
+            <CampoTexto type="date" name="proximoPassoData" required={tipo === 'retornar_depois'} readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
           </label>
           {desfecho === 'devolver' ? (
             /* A promessa que o sistema NÃO cumpre, dita com todas as letras.

@@ -1,5 +1,6 @@
 import type { Contato } from './historico'
 import { ROTULO, ehTipo } from './tipos'
+import { ResumoVenda } from '@/src/components/crm/resumo-venda'
 
 function rotulo(tipo: string): string {
   // O banco só exige não-vazio, então tipo fora da lista é possível. A tela
@@ -19,7 +20,8 @@ export function LinhaDoTempo({ contatos }: { contatos: Contato[] }) {
     <ol className="flex flex-col gap-2">
       {contatos.map((c) => (
         <li key={c.id} className="rounded border p-3 text-sm">
-          <p className="font-medium">{rotulo(c.tipo)}</p>
+          <p className="font-medium">{c.venda ? 'Venda registrada' : rotulo(c.tipo)}</p>
+          {c.venda ? <ResumoVenda venda={c.venda} /> : null}
           {c.nota ? <p className="text-neutral-700">{c.nota}</p> : null}
           {c.proximoPasso ? (
             <p className="text-neutral-700">

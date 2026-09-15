@@ -180,7 +180,7 @@ describe('contato_registrar: o conteudo gravado', () => {
       nota: 'pediu para ligar em marco',
       proximoPasso: 'Retomar contato',
       proximoPassoData: '2027-03-02',
-      desfecho: 'devolver',
+      desfecho: 'assumir',
     })
     const [c] = await banco.sql<{
       tipo: string

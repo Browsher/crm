@@ -130,7 +130,7 @@ describe('FormularioContato', () => {
 
   // A promessa que o sistema NÃO cumpre. Sem esta frase o vendedor acredita
   // que agendou alguma coisa.
-  test('avisa que a data de retornar_depois nao agenda nada', () => {
+  test('descarte pelo cadastro avisa que a data nao agenda retorno', () => {
     const saida = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} />)
     expect(saida).toContain('volta para a fila em 30 dias')
   })

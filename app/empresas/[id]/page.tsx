@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerPerfilEmpresa, type PerfilEmpresa } from '@/src/features/empresas/perfil'
 import { lerHistorico } from '@/src/features/contato/historico'
+import { ResumoVenda } from '@/src/components/crm/resumo-venda'
 import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
 import { formatarCnpj, formatarTelefone } from '@/src/features/empresas/formato'
 import { aplicarFiltrosEmpresas, enderecoEmpresas, lerConsulta } from '@/src/features/empresas/consulta'
@@ -63,7 +64,8 @@ export default async function PaginaPerfil({ params, searchParams }: {
     </div><Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
       {!historico.ok ? <Alert variant="danger">Não foi possível carregar o histórico. Atualize a página para tentar novamente.</Alert> : !historico.contatos.length ? <p>Nenhum atendimento registrado.</p> :
         <ol className={styles.historico}>{historico.contatos.map(c => <li key={c.id}>
-          <div><strong>{ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</strong><time dateTime={c.criadoEm.toISOString()}>{horario.format(c.criadoEm)}</time></div>
+          <div><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</strong><time dateTime={c.criadoEm.toISOString()}>{horario.format(c.criadoEm)}</time></div>
+          {c.venda ? <ResumoVenda venda={c.venda} /> : null}
           <p>{c.nota ?? 'Sem anotação.'}</p>
           {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
           <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>

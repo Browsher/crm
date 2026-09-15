@@ -42,6 +42,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.empresa_filtros_administracao',
   'public.funil_etapa_definir',
   'public.funil_venda_registrar',
+  'public.carteira_venda_registrar',
   'public.funil_devolver',
   'public.minhas_empresas_clientes',
 ] as const
