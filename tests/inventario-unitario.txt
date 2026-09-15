@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 910
+# Total: 915
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -221,6 +221,9 @@ app/usuarios/usuarios.dom.test.tsx :: cancelamento não envia ação, confirmaç
 app/usuarios/usuarios.dom.test.tsx :: criação preserva campos no erro, mostra senha, copia e descarta ao fechar
 app/usuarios/usuarios.dom.test.tsx :: lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias
 app/usuarios/usuarios.dom.test.tsx :: pendência bloqueia botões e Escape; nova senha aguarda confirmação e falha de cópia orienta cópia manual
+app/usuarios/vendedores/[id]/page.test.tsx :: alvo recusado vira 404
+app/usuarios/vendedores/[id]/page.test.tsx :: gestor vê estados vazios sem ações nem links para ficha de empresa
+app/usuarios/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não inventa atividade ao consultar carteira
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
@@ -304,6 +307,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresa-perfil-gestor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresas-excel-filtros.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-grupos-importacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-perfil-vendedor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -328,6 +332,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-empresas-excel-filtros-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-gestor-administracao-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-grupos-importacao-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-perfil-vendedor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-usuarios-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
