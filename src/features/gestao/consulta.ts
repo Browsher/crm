@@ -47,6 +47,7 @@ export async function lerDashboard(usuarioId: string): Promise<Dashboard | null>
         'disponiveis',(SELECT count(*)::int FROM empresa e
           LEFT JOIN empresa_fila f ON f.empresa_id=e.id LEFT JOIN usuario dono ON dono.id=f.vendedor_id
           WHERE NOT coalesce(dono.ativo,false)
+            AND NOT EXISTS (SELECT 1 FROM venda v WHERE v.empresa_id=e.id)
             AND (f.reservado_ate IS NULL OR f.reservado_ate<=now())
             AND (f.elegivel_em IS NULL OR f.elegivel_em<=now())
             AND EXISTS (SELECT 1 FROM grupo_importacao_empresa ge JOIN grupo_importacao g ON g.id=ge.grupo_id

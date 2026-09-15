@@ -490,3 +490,9 @@ cada decisão em `docs/db/0017.md`, `0018.md` e `0019.md`.
   linha do arquivo. Então raciocínio de função definidora — inclusive o motivo
   de uma ordem de travamento — mora em `docs/db/NNNN.md`, e quem for mexer no
   SQL não encontra aviso ao lado do código. A rede é o teste de corrida.
+
+## Base comercial (0028)
+
+Negociação e venda têm leitura por RLS e nenhuma escrita direta pelo app.
+Assunção/devolução mantêm ciclos atomicamente. Clientes não voltam à fila
+por inatividade do responsável. Ver [0028](0028.md) para a implantação e limites.

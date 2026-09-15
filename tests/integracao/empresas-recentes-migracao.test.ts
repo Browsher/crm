@@ -30,7 +30,7 @@ test('0026 inicializa dez empresas por autor usando último contato e ignora aut
       await c.query('ALTER TABLE contato ENABLE TRIGGER contato_auditoria')
       await c.query('COMMIT')
     })
-    expect(await aplicar(banco.urlAdmin,PASTA_MIGRACOES)).toEqual({ ok:true, aplicadas:['0026_empresa_recentes.sql','0027_grupos_importacao.sql'] })
+    expect(await aplicar(banco.urlAdmin,PASTA_MIGRACOES)).toEqual({ ok:true, aplicadas:['0026_empresa_recentes.sql','0027_grupos_importacao.sql', '0028_comercial.sql'] })
     const linhas = await banco.sql<{empresa_id:string}>('SELECT empresa_id FROM empresa_recente WHERE usuario_id=$1 ORDER BY acessada_em DESC,empresa_id', [autor])
     expect(linhas.map(r => r.empresa_id)).toEqual([ids[0],...ids.slice(3).reverse()])
     expect(await banco.sql('SELECT empresa_id FROM empresa_recente WHERE usuario_id=$1',[outro])).toEqual([{empresa_id:ids[0]}])
