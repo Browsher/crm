@@ -33,6 +33,8 @@ test('gestor tem início e administração sem links de atendimento', () => {
 
 test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="vendedor" area="meu-dia">Agenda</ShellCrm>)
+  const menu = html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? ''
+  expect([...menu.matchAll(/href="([^"]+)"/g)].map(link => link[1])).toEqual(['/meu-dia', '/fila', '/funil', '/carteira'])
   expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/meu-dia"')
   expect(html).toContain('href="/carteira"')
   expect(html).not.toContain('href="/usuarios"')

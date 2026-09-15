@@ -19,8 +19,8 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
       <aside className={`${styles.sidebar} ${aberto ? styles.aberto : ''}`} id="menu-fila">
         <Link href="/" className={styles.marca}><span aria-hidden="true">C</span><strong>CRM</strong></Link>
         <nav aria-label="Navegação do CRM" onClick={() => setAberto(false)}>
-          {papel === 'vendedor' && <><Link href="/fila" aria-current={area === 'fila' ? 'page' : undefined}>Prospecção</Link>
-          <Link href="/meu-dia" aria-current={area === 'meu-dia' ? 'page' : undefined}>Meu dia</Link>
+          {papel === 'vendedor' && <><Link href="/meu-dia" aria-current={area === 'meu-dia' ? 'page' : undefined}>Meu dia</Link>
+          <Link href="/fila" aria-current={area === 'fila' ? 'page' : undefined}>Prospecção</Link>
           <Link href="/funil" aria-current={area === 'funil' ? 'page' : undefined}>Funil</Link>
           <Link href="/carteira" aria-current={area === 'carteira' ? 'page' : undefined}>Carteira</Link></>}
           {papel === 'gestor' && <><Link href="/gestao" aria-current={area === 'gestao' ? 'page' : undefined}>Início</Link><Link href="/empresas" aria-current={area === 'empresas' ? 'page' : undefined}>Empresas</Link><Link href="/empresas/grupos">Grupos</Link><Link href="/usuarios" aria-current={area === 'usuarios' ? 'page' : undefined}>Usuários</Link></>}
