@@ -3,7 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import { ModalFunil } from './modal'
-import { detalheAcao, vendaAcao, telefoneAcao } from './acoes'
+import { detalheAcao, vendaAcao, telefoneAcao, etapaAcao } from './acoes'
 vi.mock('./acoes',()=>({detalheAcao:vi.fn(),telefoneAcao:vi.fn(),etapaAcao:vi.fn(),vendaAcao:vi.fn(),devolverAcao:vi.fn()}))
 vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:()=>null}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
@@ -13,6 +13,24 @@ afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();vi
 async function montar(id='a'){host=document.createElement('div');document.body.append(host);root=createRoot(host);const fechar=vi.fn();await act(async()=>root.render(<ModalFunil id={id} fechar={fechar}/>));return fechar}
 async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome);expect(b, nome).toBeTruthy();await act(async()=>b!.click())}
 async function escrever(valor:string){const e=document.querySelector('input')!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(e,valor);e.dispatchEvent(new Event('input',{bubbles:true}))})}
+
+test('modal oferece apenas próximo avanço e última etapa não tem select nem avanço',async()=>{
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(etapaAcao).mockResolvedValue({ok:true})
+  vi.spyOn(history,'back').mockImplementation(()=>{})
+  const fechar=await montar()
+  expect(document.querySelector('select')).toBeNull()
+  await clicar('Avançar para Em negociação')
+  const f=vi.mocked(etapaAcao).mock.calls.at(-1)![0]
+  expect(f.get('etapa')).toBe('em_negociacao');expect(f.get('anterior')).toBe('primeiro_contato')
+  expect(fechar).toHaveBeenCalledWith('Etapa atualizada.')
+  await act(async()=>root.unmount());host.remove()
+  vi.mocked(detalheAcao).mockResolvedValue({...detalhe,etapa:'proposta_enviada'})
+  await montar('ultima')
+  expect(document.querySelector('select')).toBeNull()
+  expect(document.body.textContent).not.toContain('Avançar para')
+  expect(document.body.textContent).toContain('Registrar venda')
+})
 test('resposta tardia após desmontagem não apresenta dados em outra abertura',async()=>{
   let liberar!:(d:typeof detalhe)=>void
   vi.mocked(detalheAcao).mockReturnValueOnce(new Promise(r=>liberar=r))

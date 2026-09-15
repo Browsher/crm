@@ -4,6 +4,7 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerNegociacao, lerTelefoneNegociacao } from '@/src/features/funil/consulta'
 import { registrarVenda, mudarEtapa, devolverNegociacao, type Resultado } from '@/src/features/funil/repositorio'
 import { validarVenda } from '@/src/features/funil/regras'
+import { proximaEtapa } from '@/src/lib/comercial'
 export type EstadoFunil = {ok:boolean;erro?:string;indisponivel?:boolean}
 function resultado(r:Resultado):EstadoFunil {
   if(r.ok) {
@@ -24,7 +25,11 @@ export async function vendaAcao(form:FormData):Promise<EstadoFunil> {
 }
 export async function etapaAcao(form:FormData):Promise<EstadoFunil> {
   const eu=await exigir('vendedor')
-  return resultado(await mudarEtapa(eu.usuarioId,String(form.get('id')??''),String(form.get('etapa')??''),String(form.get('anterior')??'')))
+  const anterior=String(form.get('anterior')??''), etapa=String(form.get('etapa')??'')
+  if(proximaEtapa(anterior)!==etapa)return {ok:false,erro:'Avance somente para a próxima etapa.'}
+  const r=await mudarEtapa(eu.usuarioId,String(form.get('id')??''),etapa,anterior)
+  if(!r.ok&&r.motivo==='dados_invalidos')return {ok:false,erro:'Avance somente para a próxima etapa.'}
+  return resultado(r)
 }
 export async function devolverAcao(form:FormData):Promise<EstadoFunil> {
   const eu=await exigir('vendedor')

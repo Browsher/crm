@@ -62,6 +62,15 @@ Eventos automáticos relacionados à sua negociação podem informar sua devolu�
 sem revelar conteúdo de outro vendedor. Gestor preserva consulta administrativa
 completa. Esta decisão não determina mudanças globais na leitura de outras telas.
 
+## Ajuste aprovado: avanço sequencial (15/09/2026)
+
+Esta decisão substitui a seleção livre de etapa e a restrição anterior a arrastar.
+Desktop com mouse permite arrastar apenas para a coluna seguinte, sem retorno nem salto.
+O destino permitido fica destacado; durante envio não há segunda operação, e falha restaura o card e informa o erro.
+Clique continua abrindo o modal. Modal e celular substituem select por “Avançar para [próxima etapa]”.
+Na última etapa não há avanço. Venda continua ação separada com confirmação.
+A mesma regra vale na action e no banco, inclusive para requisições adulteradas e concorrentes.
+
 ## Estado atual conferido em 15/09/2026
 
 - src/features/fila/consulta.ts: lerMinhasEmpresas trata toda posse como carteira

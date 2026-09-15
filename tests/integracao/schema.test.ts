@@ -49,7 +49,7 @@ describe('migrações reais', () => {
       '0026_empresa_recentes.sql',
       '0027_grupos_importacao.sql',
       '0028_comercial.sql',
-      '0029_funil_comandos.sql',
+      '0029_funil_comandos.sql', '0030_funil_avanco.sql',
     ])
   })
 

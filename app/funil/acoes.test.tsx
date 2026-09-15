@@ -6,6 +6,15 @@ vi.mock('@/src/features/funil/repositorio',()=>({registrarVenda:mocks.vender,mud
 vi.mock('next/cache',()=>({revalidatePath:mocks.revalidar}))
 import { detalheAcao, vendaAcao, etapaAcao, devolverAcao } from './acoes'
 beforeEach(()=>{vi.clearAllMocks();mocks.exigir.mockResolvedValue({usuarioId:'eu'});mocks.vender.mockResolvedValue({ok:true})})
+
+test('action recusa salto e retrocesso antes do repositório',async()=>{
+  mocks.etapa.mockResolvedValue({ok:true})
+  for(const [anterior,etapa] of [['primeiro_contato','proposta_enviada'],['em_negociacao','primeiro_contato'],['proposta_enviada','proposta_enviada']]){
+    const f=new FormData();f.set('anterior',anterior);f.set('etapa',etapa)
+    expect((await etapaAcao(f)).ok).toBe(false)
+  }
+  expect(mocks.etapa).not.toHaveBeenCalled()
+})
 test('todas ações exigem vendedor antes de acessar dados',async()=>{
   mocks.exigir.mockRejectedValue(new Error('negado'))
   for(const chamada of [()=>detalheAcao('id'),()=>vendaAcao(new FormData()),()=>etapaAcao(new FormData()),()=>devolverAcao(new FormData())]) await expect(chamada()).rejects.toThrow('negado')

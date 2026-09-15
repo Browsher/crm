@@ -4,13 +4,12 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } f
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Textarea } from '@/src/components/ui/textarea'
-import { NativeSelect } from '@/src/components/ui/native-select'
 import { Alert } from '@/src/components/ui/alert'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { FormularioContato } from '@/src/features/contato/formulario'
 import { rascunhoInicial } from '@/src/features/contato/rascunho'
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
-import { ETAPAS_FUNIL } from '@/src/lib/comercial'
+import { proximaEtapa } from '@/src/lib/comercial'
 import { ROTULOS_ETAPA } from './rotulos'
 import { detalheAcao, telefoneAcao, etapaAcao, vendaAcao, devolverAcao, type EstadoFunil } from './acoes'
 import styles from './funil.module.css'
@@ -20,7 +19,7 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
   const tema=useTemaCrm()
   const [detalhe,setDetalhe]=useState<NegociacaoDetalhe|null>(null)
   const [carregando,setCarregando]=useState(true),[erro,setErro]=useState('')
-  const [modo,setModo]=useState<Modo>('resumo'),[etapa,setEtapa]=useState('')
+  const [modo,setModo]=useState<Modo>('resumo')
   const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState(''),[motivo,setMotivo]=useState('')
   const [confirmado,setConfirmado]=useState(false),[descarte,setDescarte]=useState<'fechar'|'resumo'|'voltar'|null>(null)
   const [pendente,setPendente]=useState(false),[telefone,setTelefone]=useState<string|null>(null),[buscandoTelefone,setBuscandoTelefone]=useState(false)
@@ -28,12 +27,12 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
   const [rascunho,setRascunho]=useState(()=>rascunhoInicial(true))
   const chave=useRef(''),bloqueado=useRef(false),vivo=useRef(true),sentinela=useRef<string|null>(null)
   const pedidoTelefone=useRef(0)
-  const dirty=!!(valor||data||nota||motivo||(detalhe&&etapa!==detalhe.etapa)||rascunho.nota||rascunho.proximoPasso||rascunho.proximoPassoData||rascunho.tipo!=='acompanhamento')
+  const dirty=!!(valor||data||nota||motivo||rascunho.nota||rascunho.proximoPasso||rascunho.proximoPassoData||rascunho.tipo!=='acompanhamento')
   const dirtyRef=useRef(dirty)
   useEffect(()=>{dirtyRef.current=dirty},[dirty])
   useEffect(()=>{
     let atual=true
-    detalheAcao(id).then(d=>{if(atual){setDetalhe(d);setEtapa(d?.etapa??'');if(!d)setErro('Esta negociação não está mais disponível para você.')}})
+    detalheAcao(id).then(d=>{if(atual){setDetalhe(d);if(!d)setErro('Esta negociação não está mais disponível para você.')}})
       .catch(()=>{if(atual)setErro('Não foi possível carregar. Feche e tente novamente.')}).finally(()=>{if(atual)setCarregando(false)})
     return()=>{atual=false}
   },[id])
@@ -61,7 +60,7 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
   }
   function descartar() {
     const destino=descarte
-    setDescarte(null);setValor('');setData('');setNota('');setMotivo('');setConfirmado(false);setRascunho(rascunhoInicial(true));setEtapa(detalhe?.etapa??'')
+    setDescarte(null);setValor('');setData('');setNota('');setMotivo('');setConfirmado(false);setRascunho(rascunhoInicial(true))
     if(destino==='voltar'){sentinela.current=null;history.go(-2);return}
     if(destino==='fechar')concluir();else {pedidoTelefone.current++;removerSentinela();setModo('resumo')}
   }
@@ -90,10 +89,12 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
     {indisponivel&&!descarte&&<section className={styles.formulario}><h3>Rascunho preservado</h3><p>Não é possível gravar nesta negociação. Copie o que digitou antes de fechar.</p><Textarea aria-label="Rascunho preservado" readOnly rows={6} value={[valor&&`Valor: ${valor}`,data&&`Data: ${data}`,nota,motivo,rascunho.nota,rascunho.proximoPasso,rascunho.proximoPassoData].filter(Boolean).join('\n')} /><Button variant="outline" onClick={()=>pedir('fechar')}>Fechar rascunho</Button></section>}
     {detalhe&&!descarte&&!indisponivel&&<div className={styles.corpo}>
       {modo==='resumo'?<>
-        <form className={styles.formulario} onSubmit={e=>{e.preventDefault();void executar(etapaAcao,{etapa,anterior:detalhe.etapa},'Etapa atualizada.')}}>
-          <label>Etapa<NativeSelect value={etapa} disabled={pendente} onChange={e=>setEtapa(e.target.value)}>{ETAPAS_FUNIL.map(v=><option key={v} value={v}>{ROTULOS_ETAPA[v]}</option>)}</NativeSelect></label>
-          <Button type="submit" variant="outline" disabled={pendente||etapa===detalhe.etapa}>Confirmar etapa</Button>
-        </form>
+        <div className={styles.formulario}>
+          <p>Etapa atual: <strong>{ROTULOS_ETAPA[detalhe.etapa]}</strong></p>
+          {proximaEtapa(detalhe.etapa)&&<Button variant="outline" disabled={pendente} onClick={()=>void executar(etapaAcao,{etapa:proximaEtapa(detalhe.etapa)!,anterior:detalhe.etapa},'Etapa atualizada.')}>
+            Avançar para {ROTULOS_ETAPA[proximaEtapa(detalhe.etapa)!]}
+          </Button>}
+        </div>
         <dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>
         <div className={styles.acoes}><Button disabled={pendente||dirty} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty} onClick={()=>{chave.current=crypto.randomUUID();setModo('venda')}}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty} onClick={()=>setModo('devolver')}>Devolver à prospecção</Button></div>
         <section><h3>Seus atendimentos</h3>{!detalhe.historico.length?<p className={styles.muted}>Nenhum atendimento seu registrado.</p>:<ol className={styles.historico}>{detalhe.historico.map(c=><li key={c.id}><time>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(c.em))}</time><p>{c.nota??'Sem anotação'}</p>{c.proximoPasso&&<p>Próximo passo: {c.proximoPasso}</p>}</li>)}</ol>}</section>

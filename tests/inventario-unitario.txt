@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 931
+# Total: 937
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -177,12 +177,15 @@ app/fila/localizar/reservar.test.tsx :: cancelar troca no diálogo preserva rasc
 app/fila/localizar/visitas-ficha.test.tsx :: ficha autorizada monta registro de visita
 app/fila/shell.test.tsx :: gestor tem links administrativos reais
 app/fila/shell.test.tsx :: menu do vendedor não oferece administração e mantém conteúdo
+app/funil/acoes.test.tsx :: action recusa salto e retrocesso antes do repositório
 app/funil/acoes.test.tsx :: todas ações exigem vendedor antes de acessar dados
 app/funil/acoes.test.tsx :: venda exige confirmação, usa ator da sessão e revalida consumidores
+app/funil/modal.dom.test.tsx :: modal oferece apenas próximo avanço e última etapa não tem select nem avanço
 app/funil/modal.dom.test.tsx :: perda de posse bloqueia escrita mas preserva rascunho para copiar
 app/funil/modal.dom.test.tsx :: rascunho sobrevive ao Escape e erro de venda; envio bloqueia fechamento
 app/funil/modal.dom.test.tsx :: resposta antiga do telefone não fecha novo formulário de venda
 app/funil/modal.dom.test.tsx :: resposta tardia após desmontagem não apresenta dados em outra abertura
+app/funil/quadro.dom.test.tsx :: arraste ignora salto, envia uma vez e restaura card quando falha
 app/funil/quadro.test.tsx :: quadro mostra três etapas e cards essenciais sem busca nem telefone
 app/gestao/estados.test.tsx :: carregamento anuncia espera sem mostrar zeros
 app/gestao/estados.test.tsx :: falha oferece recuperação sem expor detalhes internos
@@ -283,6 +286,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0026.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0027.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0028.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0029.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0030.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
@@ -317,6 +321,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-empresas-excel-filtros.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-grupos-importacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-14-perfil-vendedor.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-avancar.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-base.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
@@ -754,6 +759,7 @@ src/features/usuarios/repositorio.test.ts :: traduzirResultado valor desconhecid
 src/features/usuarios/repositorio.test.ts :: traduzirResultado vocabulário conhecido vira ok ou motivo
 src/features/usuarios/servico.test.ts :: criarUsuario dados inválidos: faltas nomeadas, sem tocar o repositório nem gerar hash
 src/lib/comercial.test.ts :: funil aceita somente as três etapas abertas
+src/lib/comercial.test.ts :: próxima etapa segue sequência fechada e termina na proposta
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso exigência vendedor mantém login e troca de senha antes do papel
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor não entra no atendimento de vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor sem pendência passa em tudo

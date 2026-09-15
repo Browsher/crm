@@ -9,6 +9,10 @@
 .cards { display:flex; flex-direction:column; gap:10px; padding:0 12px 12px; max-height:calc(100dvh - 260px); min-height:190px; overflow:auto; }
 .card { display:flex; flex-direction:column; gap:6px; width:100%; text-align:left; background:var(--ui-background); color:var(--ui-foreground); padding:16px; border:1px solid var(--ui-border); border-radius:7px; cursor:pointer; }
 .card:hover { border-color:var(--ui-border-control); }
+.card[draggable=true] { cursor:grab; }
+.card[draggable=true]:active { cursor:grabbing; }
+.card:disabled { cursor:wait; opacity:.65; }
+.destino { outline:2px solid var(--ui-focus); outline-offset:-2px; }
 .card:focus-visible { outline:2px solid var(--ui-focus); outline-offset:2px; }
 .card strong { font-weight:600; overflow-wrap:anywhere; }
 .card span,.semCards { color:var(--ui-muted-foreground); font-size:13px; }

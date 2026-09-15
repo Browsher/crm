@@ -20,6 +20,17 @@ beforeEach(async () => {
 })
 const agir = (ator:string,sql:string,args:unknown[]) => banco.comoUsuario(ator,e=>e<{resultado:string}>(sql,args)).then(r=>r.linhas[0].resultado)
 const vender = (ator=eu,chave=randomUUID(),valor=1234,data='2026-01-01') => agir(ator,'SELECT funil_venda_registrar($1,$2,$3,$4,NULL) AS resultado',[ciclo,chave,data,valor])
+
+test('etapas avançam uma por vez, sem retorno, salto ou avanço duplo concorrente',async()=>{
+  const etapa=(alvo:string,anterior:string)=>agir(eu,'SELECT funil_etapa_definir($1,$2,$3) AS resultado',[ciclo,alvo,anterior])
+  expect(await etapa('proposta_enviada','primeiro_contato')).toBe('dados_invalidos')
+  expect(await etapa('primeiro_contato','primeiro_contato')).toBe('dados_invalidos')
+  expect((await Promise.all([etapa('em_negociacao','primeiro_contato'),etapa('em_negociacao','primeiro_contato')])).sort()).toEqual(['desatualizada','ok'])
+  expect(await etapa('primeiro_contato','em_negociacao')).toBe('dados_invalidos')
+  expect(await etapa('proposta_enviada','em_negociacao')).toBe('ok')
+  expect(await etapa('em_negociacao','proposta_enviada')).toBe('dados_invalidos')
+  expect(await banco.sql('SELECT etapa FROM negociacao')).toEqual([{etapa:'proposta_enviada'}])
+})
 test('etapa confere dono, valor anterior e não modifica data de início', async () => {
   const antes=await banco.sql('SELECT iniciada_em FROM negociacao')
   expect(await agir(outro,"SELECT funil_etapa_definir($1,'proposta_enviada','primeiro_contato') AS resultado",[ciclo])).toBe('sem_permissao')
