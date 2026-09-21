@@ -7,6 +7,7 @@ import { lerMensagensRecentes } from '@/src/server/whatsapp/evolution'
 
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: vi.fn() }))
 vi.mock('@/src/server/whatsapp/evolution', () => ({ lerMensagensRecentes: vi.fn() }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 
 beforeEach(() => {
   vi.clearAllMocks()

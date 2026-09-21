@@ -56,6 +56,10 @@ Sucesso do piloto comprova somente as condições testadas. Histórico inicial, 
 
 ## Proteção e arquitetura propostas
 
+### Atualização automática do piloto
+
+Após o usuário confirmar que novas mensagens aparecem ao atualizar a página, adicionar consulta automática a cada 15 segundos com `router.refresh()`, preservando o estado da conversa selecionada quando ela permanece na amostra. Suspender consultas enquanto a aba estiver oculta, offline ou uma atualização estiver pendente. Ao voltar à aba ou recuperar a conexão, consultar novamente. Remover temporizador e ouvintes ao sair da tela. A consulta continua no servidor, autorizada para gestor, sem ações de envio ou confirmação de leitura. A amostra permanece limitada às 50 mensagens recentes.
+
 - Credenciais da Evolution e sessão vinculada somente no servidor, fora de logs, commits e navegador.
 - O painel somente leitura é uma restrição do CRM; a sessão Evolution possui capacidades adicionais que precisam permanecer isoladas.
 - Receptor autenticado, limites de payload, validação de eventos e deduplicação antes de persistir.

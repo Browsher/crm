@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
 
@@ -15,6 +16,24 @@ function identificacao(jid: string): string {
 }
 
 export function PainelWhatsApp({ mensagens }: { mensagens: Mensagem[] }) {
+  const router = useRouter()
+  const [atualizando, iniciarAtualizacao] = useTransition()
+  useEffect(() => {
+    if (atualizando) return
+    const atualizar = () => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return
+      iniciarAtualizacao(() => router.refresh())
+    }
+    const intervalo = window.setInterval(atualizar, 15_000)
+    document.addEventListener('visibilitychange', atualizar)
+    window.addEventListener('online', atualizar)
+    return () => {
+      window.clearInterval(intervalo)
+      document.removeEventListener('visibilitychange', atualizar)
+      window.removeEventListener('online', atualizar)
+    }
+  }, [router, atualizando])
+
   const agrupadas = new Map<string, Mensagem[]>()
   for (const mensagem of mensagens) {
     const conversa = agrupadas.get(mensagem.conversa) ?? []
@@ -52,7 +71,7 @@ export function PainelWhatsApp({ mensagens }: { mensagens: Mensagem[] }) {
         <span>{mensagem.texto}</span>
         <time dateTime={mensagem.em}>{horario.format(new Date(mensagem.em))}</time>
       </li>)}</ol>
-      <footer className={styles.rodape}>As respostas continuam no WhatsApp Business do celular.</footer>
+      <footer className={styles.rodape}>{atualizando ? 'Atualizando mensagens…' : 'Atualização automática a cada 15 segundos.'} As respostas continuam no WhatsApp Business do celular.</footer>
     </div>
   </section>
 }
