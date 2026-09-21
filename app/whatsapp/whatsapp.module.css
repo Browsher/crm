@@ -29,4 +29,9 @@
 .recebida { align-self: start; background: var(--ui-surface); border: 1px solid var(--ui-border); }
 .enviada { align-self: end; background: var(--ui-success-background); color: var(--ui-success); }
 .rodape { border-top: 1px solid var(--ui-border); color: var(--ui-muted-foreground); padding: 16px 20px; text-align: center; }
+.historico { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: var(--ui-muted-foreground); }
+.historico button { border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface); color: var(--ui-foreground); font: inherit; padding: 10px 16px; cursor: pointer; }
+.historico button:disabled { opacity: .6; cursor: wait; }
+.historico button:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
+.historico p { flex-basis: 100%; }
 @media (max-width: 760px) { .cabecalho { display: grid; } .painel { grid-template-columns: 1fr; } .lista { border-right: 0; border-bottom: 1px solid var(--ui-border); } .conversas { max-height: 220px; } .mensagens { min-height: 350px; } }

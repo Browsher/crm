@@ -60,6 +60,14 @@ Sucesso do piloto comprova somente as condições testadas. Histórico inicial, 
 
 Após o usuário confirmar que novas mensagens aparecem ao atualizar a página, adicionar consulta automática a cada 15 segundos com `router.refresh()`, preservando o estado da conversa selecionada quando ela permanece na amostra. Suspender consultas enquanto a aba estiver oculta, offline ou uma atualização estiver pendente. Ao voltar à aba ou recuperar a conexão, consultar novamente. Remover temporizador e ouvintes ao sair da tela. A consulta continua no servidor, autorizada para gestor, sem ações de envio ou confirmação de leitura. A amostra permanece limitada às 50 mensagens recentes.
 
+### Histórico armazenado: extensão aprovada em 21/09/2026
+
+O usuário autorizou permitir consultar as mensagens anteriores já armazenadas na Evolution. A primeira consulta continua trazendo 50 registros; o botão Carregar mensagens anteriores acrescenta lotes de 50 e mantém a conversa selecionada. A atualização automática incorpora a amostra recente sem descartar os registros carregados. Deduplicar por conversa e ID, dando preferência ao conteúdo recebido na atualização mais recente.
+
+Fixar um horário limite para a navegação no histórico, usando o filtro de timestamp da Evolution com início em 1970 e fim nesse horário. Guardar esse limite desde a primeira página para que mensagens novas não desloquem os lotes anteriores. Importações tardias e exclusões na origem ainda podem mudar a paginação; não prometer snapshot transacional. Uma nova abertura da página começa outra consulta.
+
+A action de histórico exige gestor a cada chamada, valida página inteira positiva e data ISO, e lê somente a instância definida no servidor. Erro mantém o histórico visível, permite tentar novamente a mesma página e não devolve detalhes internos. Desabilitar o botão durante a carga e não avançar página em falha. Mostrar quantas mensagens estão carregadas e quando não há mais páginas disponíveis. Conteúdo de mídia permanece representado por tipo; esta extensão não altera a captura nem o Sync Full History.
+
 - Credenciais da Evolution e sessão vinculada somente no servidor, fora de logs, commits e navegador.
 - O painel somente leitura é uma restrição do CRM; a sessão Evolution possui capacidades adicionais que precisam permanecer isoladas.
 - Receptor autenticado, limites de payload, validação de eventos e deduplicação antes de persistir.

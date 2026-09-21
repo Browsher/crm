@@ -22,9 +22,9 @@ export default async function PaginaWhatsApp() {
     </section> : <>
       <div className={styles.resumo}>
         <strong>{resultado.total.toLocaleString('pt-BR')} {resultado.total === 1 ? 'mensagem' : 'mensagens'} na Evolution</strong>
-        <span>Amostra recente de até 50 mensagens. O histórico completo pode não aparecer aqui.</span>
+        <span>Carregue mensagens anteriores para consultar o histórico armazenado na Evolution.</span>
       </div>
-      <PainelWhatsApp mensagens={resultado.mensagens} />
+      <PainelWhatsApp mensagens={resultado.mensagens} limiteHistorico={resultado.limiteHistorico} temMais={resultado.temMais} />
     </>}
   </main>
 }

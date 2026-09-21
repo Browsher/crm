@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(exigir).mockResolvedValue({ usuarioId: 'gestor', nome: 'Ana', papel: 'gestor' } as Awaited<ReturnType<typeof exigir>>)
-  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, total: 590, mensagens: [
+  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: true, total: 590, mensagens: [
     { id: 'm1', conversa: '5511999999999@s.whatsapp.net', nome: 'Cliente', direcao: 'recebida', texto: 'Olá', em: '2026-09-21T14:13:20.000Z' },
     { id: 'm2', conversa: '5511999999999@s.whatsapp.net', nome: null, direcao: 'enviada', texto: 'Resposta', em: '2026-09-21T14:14:20.000Z' },
   ] })
@@ -24,7 +24,7 @@ test('autoriza gestor antes de consultar e exibe amostra somente leitura', async
   expect(lerMensagensRecentes).toHaveBeenCalledOnce()
   expect(vi.mocked(exigir).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lerMensagensRecentes).mock.invocationCallOrder[0])
   expect(html).toContain('590 mensagens na Evolution')
-  expect(html).toContain('Amostra recente')
+  expect(html).toContain('Carregar mensagens anteriores')
   expect(html).toContain('Número de teste')
   expect(html).toContain('Olá')
   expect(html).toContain('Resposta')
@@ -39,14 +39,14 @@ test('bloqueio de acesso impede consulta externa', async () => {
 })
 
 test('sem configuração mostra instrução sem fingir ausência de mensagens', async () => {
-  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: false, total: 0, mensagens: [] })
+  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: false, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: false, total: 0, mensagens: [] })
   const html = renderToStaticMarkup(await PaginaWhatsApp())
   expect(html).toContain('Integração ainda não configurada')
   expect(html).not.toContain('Nenhuma mensagem')
 })
 
 test('mensagem enviada não apresenta o nome da empresa como nome do cliente', async () => {
-  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, total: 1, mensagens: [
+  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: true, total: 1, mensagens: [
     { id: 'm3', conversa: '5511888888888@s.whatsapp.net', nome: 'NTV Box', direcao: 'enviada', texto: 'Retorno', em: '2026-09-21T14:14:20.000Z' },
   ] })
   const html = renderToStaticMarkup(await PaginaWhatsApp())

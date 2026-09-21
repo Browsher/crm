@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
+import { historicoMensagensAcao } from './historico-acao'
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -15,11 +16,43 @@ function identificacao(jid: string): string {
   return 'Contato não identificado'
 }
 
-export function PainelWhatsApp({ mensagens }: { mensagens: Mensagem[] }) {
+function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
+  return [...new Map([...anteriores, ...novas].map(m => [JSON.stringify([m.conversa, m.id]), m])).values()]
+}
+
+export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: {
+  mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean
+}) {
+  const [dados, guardar] = useState({ amostra: mensagens, acumuladas: mesclar([], mensagens) })
+  if (dados.amostra !== mensagens) guardar({ amostra: mensagens, acumuladas: mesclar(dados.acumuladas, mensagens) })
+  const [limite] = useState(limiteHistorico)
+  const [pagina, mudarPagina] = useState(2)
+  const [mais, mudarMais] = useState(temMais)
+  const [carregando, mudarCarregando] = useState(false)
+  const [erro, mudarErro] = useState(false)
+  const requisicao = useRef(false)
+  async function carregar() {
+    if (requisicao.current || !mais || !limite) return
+    requisicao.current = true
+    mudarCarregando(true)
+    mudarErro(false)
+    try {
+      const resultado = await historicoMensagensAcao(pagina, limite)
+      if (!resultado.ok) { mudarErro(true); return }
+      guardar(atual => ({ ...atual, acumuladas: mesclar(resultado.mensagens, atual.acumuladas) }))
+      mudarMais(resultado.temMais)
+      mudarPagina(atual => atual + 1)
+    } catch {
+      mudarErro(true)
+    } finally {
+      requisicao.current = false
+      mudarCarregando(false)
+    }
+  }
   const router = useRouter()
   const [atualizando, iniciarAtualizacao] = useTransition()
   useEffect(() => {
-    if (atualizando) return
+    if (atualizando || carregando) return
     const atualizar = () => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
       iniciarAtualizacao(() => router.refresh())
@@ -32,10 +65,10 @@ export function PainelWhatsApp({ mensagens }: { mensagens: Mensagem[] }) {
       document.removeEventListener('visibilitychange', atualizar)
       window.removeEventListener('online', atualizar)
     }
-  }, [router, atualizando])
+  }, [router, atualizando, carregando])
 
   const agrupadas = new Map<string, Mensagem[]>()
-  for (const mensagem of mensagens) {
+  for (const mensagem of dados.acumuladas) {
     const conversa = agrupadas.get(mensagem.conversa) ?? []
     conversa.push(mensagem)
     agrupadas.set(mensagem.conversa, conversa)
@@ -49,14 +82,13 @@ export function PainelWhatsApp({ mensagens }: { mensagens: Mensagem[] }) {
   const [selecionada, selecionar] = useState(conversas[0]?.id ?? '')
   const conversaAtual = conversas.find(item => item.id === selecionada) ?? conversas[0]
 
-  if (!conversas.length) return <section className={styles.estado} role="status">
-    <h2>Nenhuma mensagem na amostra recente</h2>
-    <p>A instância pode ter mensagens em outras páginas do histórico.</p>
-  </section>
-
-  return <section className={styles.painel} aria-label="Conversas da amostra recente">
+  return <>
+  {!conversaAtual ? <section className={styles.estado} role="status">
+    <h2>Nenhuma mensagem carregada</h2>
+    <p>{mais ? 'Consulte as próximas páginas do histórico.' : 'As novas mensagens aparecerão automaticamente.'}</p>
+  </section> : <section className={styles.painel} aria-label="Conversas carregadas">
     <div className={styles.lista}>
-      <h2>Conversas na amostra <small>{conversas.length}</small></h2>
+      <h2>Conversas carregadas <small>{conversas.length}</small></h2>
       <div className={styles.conversas}>
         {conversas.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
           <strong>{conversa.nome}</strong>
@@ -73,5 +105,11 @@ export function PainelWhatsApp({ mensagens }: { mensagens: Mensagem[] }) {
       </li>)}</ol>
       <footer className={styles.rodape}>{atualizando ? 'Atualizando mensagens…' : 'Atualização automática a cada 15 segundos.'} As respostas continuam no WhatsApp Business do celular.</footer>
     </div>
-  </section>
+  </section>}
+  <div className={styles.historico}>
+    <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
+    {mais && limite ? <button type="button" onClick={carregar} disabled={carregando}>{carregando ? 'Carregando…' : 'Carregar mensagens anteriores'}</button> : <span>Fim do histórico disponível nesta consulta.</span>}
+    {erro && <p role="alert">Não foi possível carregar o histórico. Tente novamente.</p>}
+  </div>
+  </>
 }

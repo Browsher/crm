@@ -7,7 +7,7 @@ export type Mensagem = {
   em: string
 }
 
-type Resultado = { configurado: boolean; total: number; mensagens: Mensagem[] }
+type Resultado = { configurado: boolean; total: number; mensagens: Mensagem[]; limiteHistorico: string; temMais: boolean }
 
 function objeto(valor: unknown): Record<string, unknown> | null {
   return valor !== null && typeof valor === 'object' && !Array.isArray(valor) ? valor as Record<string, unknown> : null
@@ -46,10 +46,14 @@ function reduzir(valor: unknown): Mensagem | null {
 }
 
 export async function lerMensagensRecentes(): Promise<Resultado> {
+  return lerPaginaMensagens(1, new Date().toISOString())
+}
+
+export async function lerPaginaMensagens(pagina: number, limiteHistorico: string): Promise<Resultado> {
   const base = process.env.EVOLUTION_API_URL?.trim()
   const chave = process.env.EVOLUTION_API_KEY?.trim()
   const instancia = process.env.EVOLUTION_INSTANCE_NAME?.trim()
-  if (!base || !chave || !instancia) return { configurado: false, total: 0, mensagens: [] }
+  if (!base || !chave || !instancia) return { configurado: false, total: 0, mensagens: [], limiteHistorico, temMais: false }
 
   const url = new URL(base)
   if (url.protocol !== 'https:') throw new Error('A URL da Evolution deve usar HTTPS')
@@ -57,7 +61,7 @@ export async function lerMensagensRecentes(): Promise<Resultado> {
   const resposta = await fetch(destino.toString(), {
     method: 'POST',
     headers: { apikey: chave, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ page: 1, offset: 50, sort: 'desc' }),
+    body: JSON.stringify({ page: pagina, offset: 50, sort: 'desc', where: { messageTimestamp: { gte: '1970-01-01T00:00:00.000Z', lte: limiteHistorico } } }),
     cache: 'no-store',
   })
   if (!resposta.ok) throw new Error(`Falha ao consultar a Evolution (${resposta.status})`)
@@ -69,6 +73,8 @@ export async function lerMensagensRecentes(): Promise<Resultado> {
   return {
     configurado: true,
     total: mensagens.total,
+    limiteHistorico,
+    temMais: pagina * 50 < mensagens.total,
     mensagens: mensagens.records.map(reduzir).filter((item): item is Mensagem => item !== null),
   }
 }
