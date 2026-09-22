@@ -60,3 +60,24 @@ test('layout exige gestor', async () => {
   expect(exigir).toHaveBeenCalledWith('gestor')
   expect(html).toContain('Conteúdo')
 })
+
+test('nome recente e telefone confirmado identificam conversa LID sem exibir código', async () => {
+  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: false, total: 3, mensagens: [
+    { id: '1', conversa: '123456789012345@lid', nome: '123456789012345', direcao: 'recebida', texto: 'Antiga', em: '2026-09-20T14:00:00Z' },
+    { id: '2', conversa: '123456789012345@lid', nome: 'Jr', telefone: '+5511999999999', direcao: 'recebida', texto: 'Nova', em: '2026-09-21T14:00:00Z' },
+    { id: '3', conversa: 'outro@lid', nome: '987654321098765', direcao: 'recebida', texto: 'Outra conversa', em: '2026-09-19T14:00:00Z' },
+  ] })
+  const html = renderToStaticMarkup(await PaginaWhatsApp())
+  expect(html).toContain('Jr')
+  expect(html).toContain('+5511999999999')
+  expect(html).not.toContain('123456789012345')
+  expect(html).not.toContain('987654321098765')
+  expect(html).toContain('Contato não identificado')
+})
+
+test('telefones conflitantes não são apresentados como identificação confirmada', async () => {
+  vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: false, total: 2, mensagens: ['+5511999999999', '+5511888888888'].map((telefone, i) => ({ id: String(i), conversa: '123@lid', nome: null, telefone, direcao: 'recebida', texto: 'Olá', em: '2026-09-21T14:00:00Z' })) })
+  const html = renderToStaticMarkup(await PaginaWhatsApp())
+  expect(html).not.toContain('+5511')
+  expect(html).toContain('Número não disponibilizado pela integração')
+})

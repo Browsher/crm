@@ -1,7 +1,10 @@
+import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
+
 export type Mensagem = {
   id: string
   conversa: string
   nome: string | null
+  telefone?: string | null
   direcao: 'recebida' | 'enviada'
   texto: string
   em: string
@@ -38,6 +41,7 @@ function reduzir(valor: unknown): Mensagem | null {
   return {
     id: chave.id,
     conversa: chave.remoteJid,
+    telefone: telefoneDoJid(chave.remoteJid) ?? (chave.remoteJid.endsWith('@lid') ? telefoneDoJid(chave.remoteJidAlt) : null),
     nome: typeof registro?.pushName === 'string' && registro.pushName.trim() ? registro.pushName.trim() : null,
     direcao: chave.fromMe ? 'enviada' : 'recebida',
     texto: textoDe(registro?.message),

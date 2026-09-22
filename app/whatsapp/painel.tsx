@@ -5,15 +5,18 @@ import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
 import { historicoMensagensAcao } from './historico-acao'
+import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 })
 
-function identificacao(jid: string): string {
-  if (jid.endsWith('@s.whatsapp.net')) return `+${jid.slice(0, -'@s.whatsapp.net'.length)}`
-  if (jid.endsWith('@lid')) return 'Contato sem número disponível'
-  return 'Contato não identificado'
+function identificar(jid: string, itens: Mensagem[]) {
+  const telefones = [...new Set(itens.map(m => m.telefone).filter((t): t is string => !!t && /^\+[1-9]\d{6,14}$/.test(t)))]
+  const telefone = telefoneDoJid(jid) ?? (jid.endsWith('@lid') && telefones.length === 1 ? telefones[0] : null)
+  const nome = itens.toSorted((a, b) => b.em.localeCompare(a.em))
+    .find(m => m.direcao === 'recebida' && m.nome?.trim() && !/^\d+$/.test(m.nome.trim()))?.nome?.trim()
+  return { nome: nome ?? telefone ?? 'Contato não identificado', telefone }
 }
 
 function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
@@ -76,7 +79,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
   const conversas = [...agrupadas].map(([id, itens]) => ({
     id,
     itens: itens.toSorted((a, b) => a.em.localeCompare(b.em)),
-    nome: itens.find(item => item.direcao === 'recebida' && item.nome)?.nome ?? identificacao(id),
+    ...identificar(id, itens),
     ultima: itens.reduce((atual, item) => item.em > atual.em ? item : atual),
   })).toSorted((a, b) => b.ultima.em.localeCompare(a.ultima.em))
   const [selecionada, selecionar] = useState(conversas[0]?.id ?? '')
@@ -98,7 +101,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
       </div>
     </div>
     <div className={styles.chat}>
-      <header className={styles.chatCabecalho}><div><h2>{conversaAtual.nome}</h2><p>{identificacao(conversaAtual.id)}</p></div><span>Somente visualização</span></header>
+      <header className={styles.chatCabecalho}><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p></div><span>Somente visualização</span></header>
       <ol className={styles.mensagens}>{conversaAtual.itens.map(mensagem => <li key={mensagem.id} className={mensagem.direcao === 'enviada' ? styles.enviada : styles.recebida}>
         <span>{mensagem.texto}</span>
         <time dateTime={mensagem.em}>{horario.format(new Date(mensagem.em))}</time>
