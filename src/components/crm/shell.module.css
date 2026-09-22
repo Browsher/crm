@@ -1,11 +1,28 @@
 .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; overflow-x: clip; background: var(--ui-background); color: var(--ui-foreground); }
 .workspace { min-width: 0; }
-.sidebar { position: sticky; top: 0; height: 100vh; background: var(--ui-surface); border-right: 1px solid var(--ui-border); padding: 24px 16px; }
-.marca { display: flex; gap: 12px; align-items: center; margin-bottom: 32px; padding: 0 8px; text-decoration: none; }
-.marca > span { display: grid; place-items: center; width: 36px; height: 36px; background: var(--ui-primary); color: var(--ui-primary-foreground); border-radius: 8px; }
+.sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; background: var(--ui-surface); border-right: 1px solid var(--ui-border); padding: 20px 12px 12px; }
+.topoLateral { display: flex; align-items: center; gap: 6px; margin-bottom: 26px; }
+.marca { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 0 4px; text-decoration: none; }
+.marca > span { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; background: var(--ui-success); color: var(--ui-background); border-radius: 8px; }
+.nomeMarca strong { font-size: 17px; font-weight: 600; }
+.nomeMarca small { display: block; font-size: 11px; color: var(--ui-muted-foreground); white-space: nowrap; }
+.topoLateral .recolher { margin-left: auto; flex-shrink: 0; }
 .sidebar nav { display: grid; gap: 4px; }
-.sidebar nav a { padding: 12px; border-radius: 6px; text-decoration: none; color: var(--ui-muted-foreground); }
+.sidebar nav a { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 12px; border-radius: 3px; font-size: 13px; text-decoration: none; color: var(--ui-muted-foreground); }
+.sidebar svg { flex-shrink: 0; }
 .sidebar nav a[aria-current], .sidebar nav a:hover { background: var(--ui-background); color: var(--ui-foreground); }
+.sidebar nav a[aria-current] { box-shadow: inset 3px 0 var(--ui-success); }
+.sidebar nav a[aria-current] svg { color: var(--ui-success); }
+.saida { margin-top: auto; padding-top: 20px; }
+.sidebar .saida button { width: 100%; justify-content: flex-start; gap: 12px; border-top: 1px solid var(--ui-border); border-radius: 0; min-height: 44px; }
+@media (min-width: 701px) {
+  .shell.recolhido { grid-template-columns: 76px minmax(0, 1fr); }
+  .recolhido .marca { display: none; }
+  .recolhido .topoLateral { justify-content: center; }
+  .recolhido .recolher { margin-left: 0; }
+  .recolhido .sidebar nav a, .recolhido .saida button { justify-content: center; }
+  .recolhido .rotuloMenu { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
 .topbar { position: sticky; top: 0; z-index: 10; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 24px; background: var(--ui-background); border-bottom: 1px solid var(--ui-border); }
 .titulo { font-weight: 600; }
 .caminho { display: flex; align-items: center; min-width: 0; overflow-x: auto; scrollbar-width: thin; font-size: 13px; }
@@ -35,7 +52,7 @@
   .shell { grid-template-columns: 1fr; }
   .sidebar { position: fixed; inset: 64px auto 0 0; height: auto; width: min(280px, 85vw); z-index: 20; visibility: hidden; transform: translateX(-101%); }
   .sidebar.aberto { visibility: visible; transform: translateX(0); }
-  .marca { display: none; }
+  .topoLateral .recolher { display: none; }
   .shell .topbar .menu { display: inline-flex; }
   .topbar { padding: 8px 16px; }
   .topbar { flex-wrap: wrap; }

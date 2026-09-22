@@ -52,5 +52,6 @@ test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   expect(html).not.toContain('>Início</a>')
   expect(html).toContain('action="/sair"')
   expect(html).toContain('method="post"')
-  expect(html).toContain('>Sair</button>')
+  const saida = html.match(/<form\b[^>]*action="\/sair"[^>]*>([\s\S]*?)<\/form>/)?.[1] ?? ''
+  expect(saida.replace(/<[^>]+>/g, '')).toBe('Sair')
 })
