@@ -215,9 +215,18 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       }}>
         {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
           <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
-          <strong>{conversa.nome}{conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}{conversa.cadastro?.estado === 'encontrada' && <small className={styles.origem}>{conversa.cadastro.empresa.nome}</small>}<EtiquetaCadastro cadastro={conversa.cadastro} /></strong>
-          <span className={styles.previa}>{conversa.ultima.direcao === 'enviada' ? 'Você: ' : ''}{conversa.ultima.texto}</span>
-          <time dateTime={conversa.ultima.em}>{horario.format(new Date(conversa.ultima.em))}</time>
+          <span className={styles.conversaConteudo}>
+            <span className={styles.conversaTopo}>
+              <strong>{conversa.nome}</strong>
+              <time dateTime={conversa.ultima.em}>{horario.format(new Date(conversa.ultima.em))}</time>
+            </span>
+            {conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}
+            {conversa.cadastro?.estado === 'encontrada' && <small className={styles.origem}>{conversa.cadastro.empresa.nome}</small>}
+            <span className={styles.conversaBase}>
+              <span className={styles.previa}>{conversa.ultima.direcao === 'enviada' ? 'Você: ' : ''}{conversa.ultima.texto}</span>
+              <EtiquetaCadastro cadastro={conversa.cadastro} />
+            </span>
+          </span>
         </button>)}
         {visiveis.length === 0 && <div className={styles.semResultado} role="status"><strong>Nenhuma conversa encontrada</strong><p>Tente outro filtro, nome ou telefone.{mais ? ' O histórico continua carregando automaticamente.' : ''}</p></div>}
       </div>

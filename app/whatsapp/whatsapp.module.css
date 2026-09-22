@@ -52,15 +52,21 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .filtrosConversas button[aria-pressed='true'] { color: var(--ui-success); background: var(--ui-success-background); border-color: var(--ui-success); }
 .filtrosConversas button:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .conversas { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--ui-border-control) transparent; }
-.conversa { display: grid; grid-template-columns: 38px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); color: var(--ui-foreground); cursor: pointer; font: inherit; padding: 16px; text-align: left; }
+.conversa { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 12px; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); color: var(--ui-foreground); cursor: pointer; font: inherit; padding: 14px 16px; text-align: left; }
 .conversa:hover { background: var(--ui-surface); }
 .conversa[aria-current='true'] { background: var(--ui-success-background); }
 .conversa[aria-current='true'] { box-shadow: inset 3px 0 var(--ui-success); }
 .avatar { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: var(--ui-surface); border: 1px solid var(--ui-border); color: var(--ui-success); font-size: 13px; font-weight: 600; }
-.conversa .avatar { grid-row: 1 / 4; align-self: center; }
+.conversa .avatar { align-self: start; margin-top: 3px; width: 42px; height: 42px; }
+.conversaConteudo { min-width: 0; }
+.conversaTopo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.conversaConteudo .origem { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversaBase { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; margin-top: 9px; }
+.conversaBase .previa { flex: 1 1 70px; min-width: 0; }
+.conversaBase .etiqueta { flex: 0 1 auto; margin-top: 0; }
 .conversa strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conversa .previa { color: var(--ui-muted-foreground); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conversa time { grid-column: 2; color: var(--ui-muted-foreground); font-size: 11px; }
+.conversa time { flex-shrink: 0; white-space: nowrap; color: var(--ui-muted-foreground); font-size: 11px; font-variant-numeric: tabular-nums; }
 .semResultado { padding: 24px 18px; font-size: 13px; }
 .semResultado p { margin-top: 8px; color: var(--ui-muted-foreground); }
 .conversa:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: -3px; }
