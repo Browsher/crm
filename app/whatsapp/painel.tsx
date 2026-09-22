@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
@@ -29,8 +29,8 @@ function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
   return [...new Map([...anteriores, ...novas].map(m => [JSON.stringify([m.fonteId, m.conversa, m.id]), m])).values()]
 }
 
-export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas }: {
-  mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean, cursores?: Cursores, filtro?: string, fontesAtivas?: string[]
+export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas, total }: {
+  mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean, cursores?: Cursores, filtro?: string, fontesAtivas?: string[], total?: number
 }) {
   const escopo = JSON.stringify(fontesAtivas?.toSorted() ?? null)
   const [dados, guardar] = useState({ amostra: mensagens, acumuladas: mesclar([], mensagens), escopo })
@@ -53,13 +53,16 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
     }
   }
   const geracao = useRef(0)
-  useLayoutEffect(() => { geracao.current += 1 }, [escopo])
+  useLayoutEffect(() => {
+    geracao.current += 1
+    return () => { geracao.current += 1 }
+  }, [escopo])
   const requisicao = useRef(false)
   const rolagem = useRef<HTMLOListElement>(null)
   const posicao = useRef({ id: '', topo: 0, noFim: true })
   const ancora = useRef<{ id: string; altura: number; topo: number } | null>(null)
   const [busca, mudarBusca] = useState('')
-  async function carregar() {
+  const carregar = useCallback(async () => {
     if (requisicao.current || !mais || !limite) return
     requisicao.current = true
     mudarCarregando(true)
@@ -87,9 +90,30 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       requisicao.current = false
       mudarCarregando(false)
     }
-  }
+  }, [mais, limite, proximos, filtro, pagina])
   const router = useRouter()
   const [atualizando, iniciarAtualizacao] = useTransition()
+  useEffect(() => {
+    if (!mais || !limite || erro || carregando || atualizando) return
+    let timer: number | undefined
+    const agendar = () => {
+      window.clearTimeout(timer)
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return
+      timer = window.setTimeout(() => {
+        if (document.visibilityState === 'visible' && navigator.onLine) void carregar()
+      }, 500)
+    }
+    agendar()
+    document.addEventListener('visibilitychange', agendar)
+    window.addEventListener('online', agendar)
+    window.addEventListener('offline', agendar)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', agendar)
+      window.removeEventListener('online', agendar)
+      window.removeEventListener('offline', agendar)
+    }
+  }, [mais, limite, erro, carregando, atualizando, carregar])
   useEffect(() => {
     if (atualizando || carregando) return
     const atualizar = () => {
@@ -147,7 +171,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   return <>
   {!conversaAtual ? <section className={styles.estado} role="status">
     <h2>Nenhuma mensagem carregada</h2>
-    <p>{mais ? 'Consulte as próximas páginas do histórico.' : 'As novas mensagens aparecerão automaticamente.'}</p>
+    <p>{mais ? 'O histórico será carregado automaticamente.' : 'As novas mensagens aparecerão automaticamente.'}</p>
   </section> : <section className={styles.painel} aria-label="Conversas carregadas">
     <div className={styles.lista}>
       <div className={styles.listaCabecalho}>
@@ -192,7 +216,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   </section>}
   <div className={styles.historico}>
     <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
-    {mais && <span className={styles.dicaHistorico}>Role a lista para baixo ou a conversa para cima para carregar mais.</span>}
+    {mais && <span className={styles.dicaHistorico} role="status">{erro ? 'Carregamento automático pausado.' : 'Carregando histórico automaticamente.'}{total !== undefined && ` ${dados.acumuladas.length} de ${Math.max(total, dados.acumuladas.length)} mensagens.`}</span>}
     {mais && limite ? <button type="button" onClick={carregar} disabled={carregando}>{carregando ? 'Carregando…' : 'Carregar mensagens anteriores'}</button> : <span>Fim do histórico disponível nesta consulta.</span>}
     {erro && <p role="alert">Não foi possível carregar o histórico. Tente novamente.</p>}
     {avisos.length > 0 && <p role="status">Histórico parcial. Indisponível: {avisos.join(', ')}.</p>}

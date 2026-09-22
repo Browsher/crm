@@ -29,7 +29,7 @@ export default async function PaginaWhatsApp({ searchParams }: { searchParams?: 
         <span>Histórico disponível para consulta. As respostas continuam pelo celular.</span>
       </div>
       {resultado.avisos.length > 0 && <p role="status">Consulta parcial. Indisponível: {resultado.avisos.join(', ')}. A atualização automática tentará novamente.</p>}
-      <PainelWhatsApp key={filtro} fontesAtivas={resultado.fontes.map(f => f.id)} filtro={filtro} cursores={resultado.cursores} mensagens={resultado.mensagens} limiteHistorico={resultado.limiteHistorico} temMais={resultado.temMais} />
+      <PainelWhatsApp key={filtro} fontesAtivas={resultado.fontes.map(f => f.id)} filtro={filtro} cursores={resultado.cursores} mensagens={resultado.mensagens} total={resultado.avisos.length ? undefined : resultado.total} limiteHistorico={resultado.limiteHistorico} temMais={resultado.temMais} />
     </>}
   </main>
 }
