@@ -2,6 +2,7 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerMensagensRecentes } from '@/src/server/whatsapp/evolution'
 import { PainelWhatsApp } from './painel'
 import styles from './whatsapp.module.css'
+import { VisaoGeralWhatsApp } from './visao-geral'
 
 export default async function PaginaWhatsApp() {
   await exigir('gestor')
@@ -15,6 +16,7 @@ export default async function PaginaWhatsApp() {
       </div>
       <div className={styles.identificacao}><span className={styles.sobretitulo}>Número de teste</span><span className={styles.somenteLeitura}>Somente visualização</span></div>
     </header>
+    <VisaoGeralWhatsApp />
     {!resultado.configurado ? <section className={styles.estado} role="status">
       <h2>Integração ainda não configurada</h2>
       <p>Configure a URL, a chave e o nome da instância da Evolution no servidor do CRM.</p>

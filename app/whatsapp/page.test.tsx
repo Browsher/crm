@@ -38,6 +38,16 @@ test('bloqueio de acesso impede consulta externa', async () => {
   expect(lerMensagensRecentes).not.toHaveBeenCalled()
 })
 
+test('mostra estrutura do mockup sem inventar métricas ou vendedores', async () => {
+  const html = renderToStaticMarkup(await PaginaWhatsApp())
+  for (const titulo of ['Conversas hoje', 'Sem resposta', 'Vendedores ativos hoje', 'Tempo médio de resposta']) expect(html).toContain(titulo)
+  expect(html.match(/Ainda não configurado/g)).toHaveLength(4)
+  expect(html).toContain('Filtrar por vendedor')
+  expect(html).toContain('Todos')
+  expect(html).toContain('Nenhum vendedor vinculado')
+  expect(html).toMatch(/disabled=""[^>]*>Vendedores/)
+})
+
 test('sem configuração mostra instrução sem fingir ausência de mensagens', async () => {
   vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: false, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: false, total: 0, mensagens: [] })
   const html = renderToStaticMarkup(await PaginaWhatsApp())
