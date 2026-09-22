@@ -47,7 +47,7 @@ test('resposta pendente de escopo antigo não reintroduz fonte removida', async 
   let concluir!: (r: Awaited<ReturnType<typeof historicoFontesAcao>>) => void
   vi.mocked(historicoFontesAcao).mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[a, b]} fontesAtivas={['a', 'b']} cursores={cursores} {...historico} />))
-  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!.click())
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a']} cursores={{ a: cursores.a }} {...historico} />))
   await act(async () => concluir({ ok: true, mensagens: [b], cursores, temMais: true, avisos: [] }))
   expect(host.textContent).not.toContain('Vendedor B')
@@ -59,7 +59,7 @@ test('falha pendente de escopo antigo não bloqueia o novo histórico', async ()
   let rejeitar!: (e: Error) => void
   vi.mocked(historicoFontesAcao).mockReturnValueOnce(new Promise((_resolve, reject) => { rejeitar = reject }))
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a', 'b']} cursores={cursores} {...historico} />))
-  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!.click())
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a']} cursores={{ a: cursores.a }} {...historico} />))
   await act(async () => rejeitar(new Error('rede')))
   expect(host.querySelector('[role=alert]')).toBeNull()
@@ -82,39 +82,38 @@ test('carrega histórico sem duplicar, preserva seleção e mantém páginas dur
   await act(async () => host.querySelectorAll('button')[1].click())
   const anterior = { ...mensagens[0], id: 'antiga', texto: 'Mensagem antiga', em: '2026-09-20T15:00:00Z' }
   vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [anterior, mensagens[0]], temMais: true })
-  const carregar = () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!
-  await act(async () => carregar().click())
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(host.querySelectorAll('ol li')).toHaveLength(2)
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[{ ...mensagens[1], id: 'nova' }]} limiteHistorico="2026-09-22T20:00:00.000Z" temMais />))
   expect(host.querySelector('button[aria-current="true"]')?.textContent).toContain('Ana')
   expect(host.querySelector('ol')?.textContent).toContain('Mensagem antiga')
   vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [], temMais: false })
-  await act(async () => carregar().click())
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(historicoMensagensAcao).toHaveBeenNthCalledWith(1, 2, historico.limiteHistorico)
   expect(historicoMensagensAcao).toHaveBeenNthCalledWith(2, 3, historico.limiteHistorico)
-  expect(carregar()).toBeUndefined()
+  expect(host.textContent).toContain('Fim do histórico')
 })
 
-test('falha mantém mensagens e tenta a mesma página; bloqueia clique repetido', async () => {
+test('falha mantém mensagens e tenta a mesma página pelo botão de recuperação', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
   let concluir!: (r: Awaited<ReturnType<typeof historicoMensagensAcao>>) => void
   vi.mocked(historicoMensagensAcao).mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
-  const botao = [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!
-  await act(async () => { botao.click(); botao.click() })
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(historicoMensagensAcao).toHaveBeenCalledTimes(1)
-  expect(botao.disabled).toBe(true)
   await act(async () => concluir({ ok: false, motivo: 'indisponivel' }))
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('Tente novamente')
   expect(host.querySelector('ol')?.textContent).toContain('Mensagem B')
   vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [], temMais: false })
-  await act(async () => botao.click())
+  const botao = [...host.querySelectorAll('button')].find(b => b.textContent === 'Tentar novamente')!
+  await act(async () => { botao.click(); botao.click() })
   expect(historicoMensagensAcao).toHaveBeenLastCalledWith(2, historico.limiteHistorico)
+  expect(historicoMensagensAcao).toHaveBeenCalledTimes(2)
 })
 
 test('amostra vazia permite buscar histórico e IDs iguais em conversas diferentes são preservados', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[]} {...historico} />))
   vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [mensagens[0], { ...mensagens[1], id: mensagens[0].id }], temMais: false })
-  await act(async () => host.querySelector('button')!.click())
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(host.textContent).toContain('2 mensagens carregadas')
   expect(host.querySelectorAll('button')).toHaveLength(2)
 })
@@ -122,7 +121,7 @@ test('amostra vazia permite buscar histórico e IDs iguais em conversas diferent
 test('erro de transporte não expõe detalhes e permite nova tentativa', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
   vi.mocked(historicoMensagensAcao).mockRejectedValueOnce(new Error('segredo-ficticio'))
-  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!.click())
+  await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('Tente novamente')
   expect(host.textContent).not.toContain('segredo-ficticio')
 })
@@ -265,7 +264,7 @@ test('falha automática pausa sem perder dados e tentativa manual retoma o resta
   expect(host.querySelector('ol')?.textContent).toContain('Mensagem B')
   await act(async () => vi.advanceTimersByTimeAsync(10_000))
   expect(historicoMensagensAcao).toHaveBeenCalledTimes(1)
-  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!.click())
+  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Tentar novamente')!.click())
   await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(host.querySelector('ol')?.textContent).toContain('Recuperada')
   expect(historicoMensagensAcao).toHaveBeenNthCalledWith(2, 2, historico.limiteHistorico)
@@ -309,4 +308,11 @@ test('carga por vendedor aguarda a página pendente e continua com os cursores r
   expect(host.textContent).toContain('Fim do histórico')
   expect(historicoFontesAcao).toHaveBeenNthCalledWith(2, 'a', seguintes)
   expect(historicoMensagensAcao).not.toHaveBeenCalled()
+})
+
+test('carga normal não oferece botão manual nem anuncia fim enquanto ainda há páginas', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
+  expect([...host.querySelectorAll('button')].every(b => b.closest('[aria-label="Lista de conversas"]'))).toBe(true)
+  expect(host.textContent).not.toContain('Fim do histórico')
+  expect(host.textContent).toContain('Carregando histórico automaticamente')
 })

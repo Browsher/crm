@@ -217,7 +217,8 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   <div className={styles.historico}>
     <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
     {mais && <span className={styles.dicaHistorico} role="status">{erro ? 'Carregamento automático pausado.' : 'Carregando histórico automaticamente.'}{total !== undefined && ` ${dados.acumuladas.length} de ${Math.max(total, dados.acumuladas.length)} mensagens.`}</span>}
-    {mais && limite ? <button type="button" onClick={carregar} disabled={carregando}>{carregando ? 'Carregando…' : 'Carregar mensagens anteriores'}</button> : <span>Fim do histórico disponível nesta consulta.</span>}
+    {mais && limite && erro && <button type="button" onClick={carregar} disabled={carregando}>Tentar novamente</button>}
+    {!mais && <span>Fim do histórico disponível nesta consulta.</span>}
     {erro && <p role="alert">Não foi possível carregar o histórico. Tente novamente.</p>}
     {avisos.length > 0 && <p role="status">Histórico parcial. Indisponível: {avisos.join(', ')}.</p>}
   </div>
