@@ -11,7 +11,12 @@ import { MidiaMensagem } from './midia-mensagem'
 import { VisaoGeralWhatsApp } from './visao-geral'
 import { calcularIndicadores } from '@/src/lib/whatsapp-indicadores'
 import Link from 'next/link'
-import { rotuloCadastro } from '@/src/lib/whatsapp-empresa'
+import { rotuloCadastro, type CadastroWhatsApp } from '@/src/lib/whatsapp-empresa'
+
+function EtiquetaCadastro({ cadastro }: { cadastro?: CadastroWhatsApp }) {
+  return <span className={styles.etiqueta} data-situacao={cadastro?.estado === 'encontrada' ? cadastro.empresa.situacao : cadastro?.estado}
+    title="Situação da empresa no CRM">{rotuloCadastro(cadastro)}</span>
+}
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -210,7 +215,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       }}>
         {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
           <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
-          <strong>{conversa.nome}{conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}<small className={styles.origem}>{conversa.cadastro?.estado === 'encontrada' ? conversa.cadastro.empresa.nome : rotuloCadastro(conversa.cadastro)}</small></strong>
+          <strong>{conversa.nome}{conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}{conversa.cadastro?.estado === 'encontrada' && <small className={styles.origem}>{conversa.cadastro.empresa.nome}</small>}<EtiquetaCadastro cadastro={conversa.cadastro} /></strong>
           <span className={styles.previa}>{conversa.ultima.direcao === 'enviada' ? 'Você: ' : ''}{conversa.ultima.texto}</span>
           <time dateTime={conversa.ultima.em}>{horario.format(new Date(conversa.ultima.em))}</time>
         </button>)}
@@ -219,7 +224,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
     </div>
     <div className={styles.chat}>
       {!conversaAtual ? <div className={styles.semResultado} role="status">Nenhuma conversa neste filtro.</div> : <>
-      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<p>{rotuloCadastro(conversaAtual.cadastro)}</p></div>{conversaAtual.cadastro?.estado === 'encontrada' && <Link className={styles.configurar} href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Ver empresa</Link>}<span className={styles.leitura}>Somente visualização</span></header>
+      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{conversaAtual.cadastro?.estado === 'encontrada' && <Link className={styles.configurar} href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Ver empresa</Link>}<span className={styles.leitura}>Somente visualização</span></header>
       <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
         if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
       }} onScroll={e => {

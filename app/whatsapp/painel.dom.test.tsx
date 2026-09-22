@@ -388,3 +388,13 @@ test('cadastro com telefone diferente do contato confirmado não produz vínculo
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[{ ...mensagens[0], telefone: '+5511911111111', cadastro: { telefone: '+5511922222222', estado: 'encontrada', empresa: { id: 'errada', nome: 'Outra' } } }]} />))
   expect(host.querySelector('a[href="/empresas/errada"]')).toBeNull()
 })
+
+test('etiqueta comercial aparece na lista e no cabeçalho e acompanha atualização', async () => {
+  const mensagem: Mensagem = { ...mensagens[0], telefone: '+5511911111111', cadastro: { telefone: '+5511911111111', estado: 'encontrada', empresa: { id: 'empresa', nome: 'Loja Aurora', situacao: 'em_negociacao' } } }
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[mensagem]} />))
+  expect(host.querySelector('[aria-label="Lista de conversas"] [data-situacao="em_negociacao"]')?.textContent).toBe('Em negociação')
+  expect(host.querySelector('header [data-situacao="em_negociacao"]')?.textContent).toBe('Em negociação')
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[{ ...mensagem, cadastro: { telefone: mensagem.telefone!, estado: 'encontrada', empresa: { id: 'empresa', nome: 'Loja Aurora', situacao: 'proposta_enviada' } } }]} />))
+  expect(host.querySelector('header [data-situacao="proposta_enviada"]')?.textContent).toBe('Proposta enviada')
+  expect(host.textContent).not.toContain('Em negociação')
+})

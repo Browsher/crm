@@ -29,6 +29,10 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .resumo span { color: var(--ui-muted-foreground); }
 .configurar { border: 1px solid var(--ui-border); border-radius: 8px; padding: 8px 12px; font-size: 13px; text-decoration: none; }
 .origem { display: block; font-size: 11px; font-weight: 400; color: var(--ui-muted-foreground); }
+.etiqueta { display: inline-block; max-width: 100%; white-space: normal; margin-top: 5px; padding: 3px 7px; border: 1px solid var(--ui-border); border-radius: 6px; font-size: 11px; font-weight: 500; line-height: 16px; color: var(--ui-muted-foreground); background: var(--ui-surface); }
+.etiqueta[data-situacao='em_negociacao'], .etiqueta[data-situacao='disponivel'] { color: var(--ui-success); background: var(--ui-success-background); }
+.etiqueta[data-situacao='carteira'], .etiqueta[data-situacao='proposta_enviada'] { color: var(--ui-focus); background: color-mix(in srgb, var(--ui-focus) 12%, var(--ui-surface)); }
+.etiqueta[data-situacao='reservada'], .etiqueta[data-situacao='descanso'], .etiqueta[data-situacao='primeiro_contato'] { color: var(--ui-warning); background: var(--ui-warning-background); }
 .opcoesVendedores a { text-decoration: none; }
 .opcoesVendedores a:focus-visible, .configurar:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 3px; }
 .estado { border: 1px solid var(--ui-border); border-radius: 8px; padding: 32px; }
