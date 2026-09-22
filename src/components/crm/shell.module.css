@@ -8,9 +8,17 @@
 .sidebar nav a[aria-current], .sidebar nav a:hover { background: var(--ui-background); color: var(--ui-foreground); }
 .topbar { position: sticky; top: 0; z-index: 10; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 24px; background: var(--ui-background); border-bottom: 1px solid var(--ui-border); }
 .titulo { font-weight: 600; }
+.caminho { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; }
+.caminho a, .caminho > span:not(.titulo) { color: var(--ui-muted-foreground); text-decoration: none; }
+.caminho .titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .controles { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .controles select { max-width: 132px; }
-.nome { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-muted-foreground); }
+.tema { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ui-muted-foreground); }
+.perfil { display: flex; align-items: center; gap: 10px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--ui-border); }
+.avatar { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--ui-border); color: var(--ui-success); background: var(--ui-success-background); font-size: 13px; font-weight: 600; }
+.identidade { display: grid; gap: 2px; min-width: 0; }
+.identidade small { font-size: 11px; line-height: 14px; color: var(--ui-muted-foreground); }
+.nome { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ui-foreground); font-size: 13px; line-height: 18px; }
 .shell .topbar .menu { display: none; }
 .conteudo { width: 100%; }
 .conteudo main { width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
@@ -27,7 +35,12 @@
   .marca { display: none; }
   .shell .topbar .menu { display: inline-flex; }
   .topbar { padding: 8px 16px; }
-  .nome, .titulo { display: none; }
+  .caminho { display: none; }
+  .controles { gap: 10px; }
+  .tema > span { display: none; }
+  .perfil { gap: 7px; padding-left: 10px; }
+  .nome { max-width: 100px; }
+  .controles select { max-width: 105px; }
   .conteudo main { padding: 24px 16px; }
   .conteudo h1 { font-size: 24px; line-height: 32px; }
 }

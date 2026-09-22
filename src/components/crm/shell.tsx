@@ -32,8 +32,16 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
       <div className={styles.workspace}>
         <header className={styles.topbar}>
           <Button className={styles.menu} variant="ghost" size="icon" aria-label="Menu do CRM" aria-controls="menu-fila" aria-expanded={aberto} onClick={() => setAberto(!aberto)}>☰</Button>
-          <span className={styles.titulo}>{TITULO[area]}</span>
-          <div className={styles.controles}><span className={styles.nome}>{nome}</span><NativeSelect aria-label={TEMA[area]} value={tema} onChange={e => setTema(e.target.value as TemaCrm)}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></NativeSelect></div>
+          <nav className={styles.caminho} aria-label="Localização atual">
+            <Link href="/">CRM</Link><span aria-hidden="true">/</span><span className={styles.titulo} aria-current="page">{TITULO[area]}</span>
+          </nav>
+          <div className={styles.controles}>
+            <label className={styles.tema}><span>Tema</span><NativeSelect aria-label={TEMA[area]} value={tema} onChange={e => setTema(e.target.value as TemaCrm)}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></NativeSelect></label>
+            <div className={styles.perfil}>
+              <span className={styles.avatar} aria-hidden="true">{nome.trim().slice(0, 1).toUpperCase()}</span>
+              <div className={styles.identidade}><span className={styles.nome} title={nome}>{nome}</span><small>{papel === 'gestor' ? 'Gestor' : 'Vendedor'}</small></div>
+            </div>
+          </div>
         </header>
         <div id="conteudo-fila" tabIndex={-1} className={styles.conteudo}>{children}</div>
       </div>
