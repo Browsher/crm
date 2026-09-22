@@ -10,6 +10,8 @@ import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 import { MidiaMensagem } from './midia-mensagem'
 import { VisaoGeralWhatsApp } from './visao-geral'
 import { calcularIndicadores } from '@/src/lib/whatsapp-indicadores'
+import Link from 'next/link'
+import { rotuloCadastro } from '@/src/lib/whatsapp-empresa'
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -24,7 +26,8 @@ function identificar(jid: string, itens: Mensagem[]) {
   const telefone = telefoneDoJid(jid) ?? (jid.endsWith('@lid') && telefones.length === 1 ? telefones[0] : null)
   const nome = itens.toSorted((a, b) => b.em.localeCompare(a.em))
     .find(m => m.direcao === 'recebida' && m.nome?.trim() && !/^\d+$/.test(m.nome.trim()))?.nome?.trim()
-  return { nome: nome ?? telefone ?? 'Contato não identificado', telefone }
+  const cadastro = telefone ? itens.toSorted((a, b) => b.em.localeCompare(a.em)).find(m => m.cadastro?.telefone === telefone)?.cadastro : undefined
+  return { nome: nome ?? telefone ?? 'Contato não identificado', telefone, cadastro }
 }
 
 function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
@@ -65,6 +68,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   const posicao = useRef({ id: '', topo: 0, noFim: true })
   const ancora = useRef<{ id: string; altura: number; topo: number } | null>(null)
   const [busca, mudarBusca] = useState('')
+  const [filtroConversa, mudarFiltroConversa] = useState<'todas' | 'pendentes' | 'ausentes'>('todas')
   const carregar = useCallback(async () => {
     if (requisicao.current || !mais || !limite) return
     requisicao.current = true
@@ -148,10 +152,14 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
     ultima: itens.reduce((atual, item) => item.em > atual.em ? item : atual),
   })).toSorted((a, b) => b.ultima.em.localeCompare(a.ultima.em))
   const [selecionada, selecionar] = useState(conversas[0]?.id ?? '')
-  const conversaAtual = conversas.find(item => item.id === selecionada) ?? conversas[0]
+  const filtradas = conversas.filter(c => filtroConversa === 'todas' || (filtroConversa === 'pendentes'
+    ? c.ultima.direcao === 'recebida' && !c.ultima.conversa.endsWith('@g.us') && !c.ultima.conversa.endsWith('@broadcast')
+    : c.cadastro?.estado === 'ausente'))
+  const conversaAtual = filtradas.find(item => item.id === selecionada) ?? filtradas[0]
   const termo = normalizar(busca)
   const digitos = busca.replace(/\D/g, '')
-  const visiveis = conversas.filter(c => !termo || normalizar(c.nome).includes(termo)
+  const visiveis = filtradas.filter(c => !termo || normalizar(c.nome).includes(termo)
+    || (c.cadastro?.estado === 'encontrada' && normalizar(c.cadastro.empresa.nome).includes(termo))
     || (digitos.length >= 3 && /^[\d\s()+.-]+$/.test(busca) && c.telefone?.includes(digitos))
     || c.itens.some(m => normalizar(m.texto).includes(termo)))
   const conversaId = conversaAtual?.id
@@ -180,7 +188,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   {opcoes && <VisaoGeralWhatsApp opcoes={opcoes} filtro={filtro} valores={valores} estado={erro || consultaParcial || avisos.length ? 'Histórico incompleto' : 'Carregando histórico…'} />}
   {opcoes && <p className={styles.dicaHistorico}>Indicadores sobre o histórico disponível na Evolution. O tempo de resposta considera dias úteis, sem descontar feriados.</p>}
   {children}
-  {!conversaAtual ? <section className={styles.estado} role="status">
+  {!conversas.length ? <section className={styles.estado} role="status">
     <h2>Nenhuma mensagem carregada</h2>
     <p>{mais ? 'O histórico será carregado automaticamente.' : 'As novas mensagens aparecerão automaticamente.'}</p>
   </section> : <section className={styles.painel} aria-label="Conversas carregadas">
@@ -189,6 +197,9 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
         <h2>Conversas carregadas <small>{conversas.length}</small></h2>
         <label className={styles.busca}><span>Buscar conversa</span><input type="search" value={busca} onChange={e => mudarBusca(e.target.value)} placeholder="Nome, telefone ou mensagem" aria-describedby="alcance-busca" /></label>
         <p id="alcance-busca">Busca nas conversas carregadas.</p>
+        <div className={styles.filtrosConversas} role="group" aria-label="Filtrar conversas">
+          {([['todas', 'Todas'], ['pendentes', 'Sem resposta'], ['ausentes', 'Não cadastradas']] as const).map(([id, nome]) => <button key={id} type="button" aria-pressed={filtroConversa === id} onClick={() => mudarFiltroConversa(id)}>{nome}</button>)}
+        </div>
       </div>
       <div className={styles.conversas} aria-label="Lista de conversas" tabIndex={0} onWheel={e => {
         const el = e.currentTarget
@@ -197,17 +208,18 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
         const el = e.currentTarget
         if (!erro && el.scrollTop > 0 && el.scrollHeight - el.clientHeight - el.scrollTop < 80) void carregar()
       }}>
-        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
+        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
           <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
-          <strong>{conversa.nome}{conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}</strong>
+          <strong>{conversa.nome}{conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}<small className={styles.origem}>{conversa.cadastro?.estado === 'encontrada' ? conversa.cadastro.empresa.nome : rotuloCadastro(conversa.cadastro)}</small></strong>
           <span className={styles.previa}>{conversa.ultima.direcao === 'enviada' ? 'Você: ' : ''}{conversa.ultima.texto}</span>
           <time dateTime={conversa.ultima.em}>{horario.format(new Date(conversa.ultima.em))}</time>
         </button>)}
-        {visiveis.length === 0 && <div className={styles.semResultado} role="status"><strong>Nenhuma conversa encontrada</strong><p>Tente outro nome ou telefone.{mais ? ' Carregue mais histórico para ampliar a busca.' : ''}</p></div>}
+        {visiveis.length === 0 && <div className={styles.semResultado} role="status"><strong>Nenhuma conversa encontrada</strong><p>Tente outro filtro, nome ou telefone.{mais ? ' O histórico continua carregando automaticamente.' : ''}</p></div>}
       </div>
     </div>
     <div className={styles.chat}>
-      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}</div><span className={styles.leitura}>Somente visualização</span></header>
+      {!conversaAtual ? <div className={styles.semResultado} role="status">Nenhuma conversa neste filtro.</div> : <>
+      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<p>{rotuloCadastro(conversaAtual.cadastro)}</p></div>{conversaAtual.cadastro?.estado === 'encontrada' && <Link className={styles.configurar} href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Ver empresa</Link>}<span className={styles.leitura}>Somente visualização</span></header>
       <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
         if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
       }} onScroll={e => {
@@ -223,6 +235,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
         </div>
       </li>)}</ol>
       <footer className={styles.rodape}>{atualizando ? 'Atualizando mensagens…' : 'Atualização automática a cada 15 segundos.'} As respostas continuam no WhatsApp Business do celular.</footer>
+      </>}
     </div>
   </section>}
   <div className={styles.historico}>

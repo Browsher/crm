@@ -1,7 +1,8 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { consultarFontes, resolverFontes } from './consulta'
 
-const mocks = vi.hoisted(() => ({ listar: vi.fn(), ler: vi.fn() }))
+const mocks = vi.hoisted(() => ({ listar: vi.fn(), ler: vi.fn(), empresas: vi.fn() }))
+vi.mock('./empresas', () => ({ consultarEmpresas: mocks.empresas }))
 vi.mock('./vinculos', () => ({ listarVinculos: mocks.listar }))
 vi.mock('./evolution', () => ({ lerPaginaMensagens: mocks.ler }))
 const a = { id: 'a', vendedorId: 'va', nome: 'Ana', instancia: 'ana', ativo: true }
@@ -10,6 +11,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.stubEnv('EVOLUTION_INSTANCE_NAME', 'teste')
   mocks.listar.mockResolvedValue([a, b])
+  mocks.empresas.mockResolvedValue({})
   mocks.ler.mockResolvedValue({ configurado: true, total: 1, temMais: false, mensagens: [{ id: 'igual', conversa: 'mesmo@lid', em: '2026-09-22T12:00:00Z' }] })
 })
 test('Todos separa piloto; filtro desconhecido não cai no piloto', async () => {
@@ -50,4 +52,16 @@ test('falha parcial conserva cursor; sucesso avança e tentativa seguinte só co
 test('cursor forjado e vínculo removido não fazem consulta', async () => {
   await expect(consultarFontes('gestor', 'todos', { fora: { pagina: 2, limite: '2026-09-22T12:00:00.000Z', temMais: true } })).rejects.toThrow()
   expect(mocks.ler).not.toHaveBeenCalled()
+})
+
+test('enriquece mensagens com empresa por telefone confirmado e mantém mensagens quando CRM falha', async () => {
+  const mensagem = { id: '1', conversa: 'cliente@lid', telefone: '+5511911111111', em: '2026-09-22T12:00:00Z' }
+  mocks.ler.mockResolvedValue({ configurado: true, total: 1, temMais: false, mensagens: [mensagem] })
+  const cadastro = { telefone: mensagem.telefone, estado: 'encontrada', empresa: { id: 'empresa', nome: 'Loja' } }
+  mocks.empresas.mockResolvedValue({ [mensagem.telefone]: cadastro })
+  expect((await consultarFontes('gestor', 'a')).mensagens[0].cadastro).toEqual(cadastro)
+  mocks.empresas.mockRejectedValue(new Error('segredo do banco'))
+  const r = await consultarFontes('gestor', 'a')
+  expect(r.mensagens[0]).toMatchObject({ id: '1', cadastro: { telefone: mensagem.telefone, estado: 'indisponivel' } })
+  expect(JSON.stringify(r)).not.toContain('segredo')
 })

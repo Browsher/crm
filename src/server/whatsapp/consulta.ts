@@ -1,5 +1,6 @@
 import { listarVinculos } from './vinculos'
 import { lerPaginaMensagens, type Mensagem } from './evolution'
+import { consultarEmpresas } from './empresas'
 
 export type Fonte = { id: string; nome: string; instancia: string }
 export type Cursores = Record<string, { pagina: number; limite: string; temMais: boolean }>
@@ -52,6 +53,15 @@ export async function consultarFontes(usuarioId: string, filtro: string, anterio
         cursores[fonte.id] = { ...cursor, pagina: cursor.pagina + 1, temMais: r.temMais }
       } catch { avisos.push(fonte.nome) }
     }))
+  }
+  const telefones = [...new Set(mensagens.map(m => m.telefone).filter((t): t is string => !!t))]
+  if (telefones.length) {
+    try {
+      const cadastros = await consultarEmpresas(usuarioId, telefones)
+      for (const m of mensagens) if (m.telefone) m.cadastro = cadastros[m.telefone]
+    } catch {
+      for (const m of mensagens) if (m.telefone) m.cadastro = { telefone: m.telefone, estado: 'indisponivel' }
+    }
   }
   return { ...escopo, mensagens: mensagens.toSorted((a, b) => b.em.localeCompare(a.em)), cursores,
     avisos, total, configurado, temMais: Object.values(cursores).some(c => c.temMais), limiteHistorico: limite }

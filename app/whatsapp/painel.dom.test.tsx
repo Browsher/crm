@@ -23,7 +23,7 @@ test('mesmo cliente e mesmo ID em vendedores distintos não misturam conversa', 
     { ...mensagens[0], fonteId: 'b', vendedor: 'Vendedor B', texto: 'Segunda fonte' },
   ]} />))
   expect(host.textContent).toContain('2 mensagens carregadas')
-  expect(host.querySelectorAll('button')).toHaveLength(2)
+  expect(host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')).toHaveLength(2)
   expect(host.querySelectorAll('ol li')).toHaveLength(1)
   expect(host.textContent).toContain('Vendedor A')
   expect(host.textContent).toContain('Vendedor B')
@@ -34,7 +34,7 @@ test('remover outra fonte na atualização preserva seleção e histórico da fo
     { ...mensagens[1], fonteId: 'b', vendedor: 'Vendedor B' },
   ]
   await act(async () => raiz.render(<PainelWhatsApp mensagens={fontes} fontesAtivas={['a', 'b']} />))
-  await act(async () => host.querySelectorAll('button')[1].click())
+  await act(async () => host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')[1].click())
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[]} fontesAtivas={['a']} />))
   expect(host.textContent).toContain('Mensagem A')
   expect(host.textContent).not.toContain('Vendedor B')
@@ -79,7 +79,7 @@ beforeEach(() => {
 
 test('carrega histórico sem duplicar, preserva seleção e mantém páginas durante atualização', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
-  await act(async () => host.querySelectorAll('button')[1].click())
+  await act(async () => host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')[1].click())
   const anterior = { ...mensagens[0], id: 'antiga', texto: 'Mensagem antiga', em: '2026-09-20T15:00:00Z' }
   vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [anterior, mensagens[0]], temMais: true })
   await act(async () => vi.advanceTimersByTimeAsync(500))
@@ -115,7 +115,7 @@ test('amostra vazia permite buscar histórico e IDs iguais em conversas diferent
   vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [mensagens[0], { ...mensagens[1], id: mensagens[0].id }], temMais: false })
   await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(host.textContent).toContain('2 mensagens carregadas')
-  expect(host.querySelectorAll('button')).toHaveLength(2)
+  expect(host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')).toHaveLength(2)
 })
 
 test('erro de transporte não expõe detalhes e permite nova tentativa', async () => {
@@ -158,7 +158,7 @@ test('pausa oculta ou offline e consulta ao retornar', async () => {
 })
 test('novos dados preservam a conversa escolhida e mostram a mensagem nova', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} />))
-  await act(async () => host.querySelectorAll('button')[1].click())
+  await act(async () => host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')[1].click())
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[...mensagens, { ...mensagens[0], id: '3', texto: 'Nova resposta', em: '2026-09-21T17:00:00Z' }]} />))
   expect(host.querySelector('button[aria-current="true"]')?.textContent).toContain('Ana')
   expect(host.querySelector('ol')?.textContent).toContain('Nova resposta')
@@ -234,7 +234,7 @@ test('histórico carrega sozinho até o fim e atualização recente não reinici
     .mockResolvedValueOnce({ ok: true, mensagens: [antiga], temMais: true })
     .mockResolvedValueOnce({ ok: true, mensagens: [antiga], temMais: false })
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} total={3} />))
-  await act(async () => host.querySelectorAll('button')[1].click())
+  await act(async () => host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')[1].click())
   const chat = host.querySelector<HTMLOListElement>('ol')!
   Object.defineProperties(chat, { scrollHeight: { configurable: true, get: () => chat.querySelectorAll('li').length > 1 ? 1200 : 1000 }, clientHeight: { configurable: true, value: 300 } })
   await act(async () => { chat.scrollTop = 250; chat.dispatchEvent(new Event('scroll')) })
@@ -312,7 +312,7 @@ test('carga por vendedor aguarda a página pendente e continua com os cursores r
 
 test('carga normal não oferece botão manual nem anuncia fim enquanto ainda há páginas', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
-  expect([...host.querySelectorAll('button')].every(b => b.closest('[aria-label="Lista de conversas"]'))).toBe(true)
+  expect([...host.querySelectorAll('button')].every(b => b.closest('[aria-label="Lista de conversas"], [aria-label="Filtrar conversas"]'))).toBe(true)
   expect(host.textContent).not.toContain('Fim do histórico')
   expect(host.textContent).toContain('Carregando histórico automaticamente')
 })
@@ -351,4 +351,40 @@ test('cards não apresentam números de consulta parcial e retiram vendedor remo
   expect(valores()).toEqual(['2', '2', '0 de 2', '—'])
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a']} {...props} />))
   expect(valores()).toEqual(['1', '1', '0 de 1', '—'])
+})
+
+test('filtros combinam busca, pendência e ausência confirmada; empresa única abre ficha', async () => {
+  const itens: Mensagem[] = [
+    { ...mensagens[0], telefone: '+5511911111111', cadastro: { telefone: '+5511911111111', estado: 'encontrada', empresa: { id: 'empresa-1', nome: 'Loja Aurora' } } },
+    { ...mensagens[1], telefone: '+5511922222222', cadastro: { telefone: '+5511922222222', estado: 'ausente' }, direcao: 'enviada' },
+    { ...mensagens[0], id: '3', conversa: 'c@lid', nome: 'Sem telefone' },
+    { ...mensagens[0], id: '4', conversa: 'd@lid', nome: 'Compartilhado', telefone: '+5511933333333', cadastro: { telefone: '+5511933333333', estado: 'ambigua' } },
+    { ...mensagens[0], id: '5', conversa: 'grupo@g.us', nome: 'Grupo' },
+  ]
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={itens} />))
+  const filtrar = async (nome: string) => {
+    const botao = [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Filtrar conversas"] button')].find(b => b.textContent === nome) as HTMLButtonElement
+    expect(botao).toBeDefined()
+    await act(async () => botao.click())
+  }
+  const lista = () => [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')]
+  await filtrar('Não cadastradas')
+  expect(lista()).toHaveLength(1)
+  expect(lista()[0].textContent).toContain('+5511922222222')
+  expect(host.querySelector('a[href="/empresas/empresa-1"]')).toBeNull()
+  await filtrar('Sem resposta')
+  expect(lista()).toHaveLength(3)
+  await buscar('Aurora')
+  expect(lista()).toHaveLength(1)
+  expect(lista()[0].textContent).toContain('Ana')
+  await act(async () => (lista()[0] as HTMLButtonElement).click())
+  expect(host.querySelector('a[href="/empresas/empresa-1"]')?.textContent).toBe('Ver empresa')
+  await buscar('')
+  await filtrar('Todas')
+  expect(lista()).toHaveLength(5)
+})
+
+test('cadastro com telefone diferente do contato confirmado não produz vínculo', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[{ ...mensagens[0], telefone: '+5511911111111', cadastro: { telefone: '+5511922222222', estado: 'encontrada', empresa: { id: 'errada', nome: 'Outra' } } }]} />))
+  expect(host.querySelector('a[href="/empresas/errada"]')).toBeNull()
 })

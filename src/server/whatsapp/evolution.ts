@@ -1,5 +1,6 @@
 import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 import { descreverMidia, type Midia } from '@/src/lib/whatsapp-midia'
+import type { CadastroWhatsApp } from '@/src/lib/whatsapp-empresa'
 
 export type Mensagem = {
   fonteId?: string
@@ -12,6 +13,7 @@ export type Mensagem = {
   texto: string
   em: string
   midia?: Midia
+  cadastro?: CadastroWhatsApp
 }
 
 type Resultado = { configurado: boolean; total: number; mensagens: Mensagem[]; limiteHistorico: string; temMais: boolean }

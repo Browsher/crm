@@ -43,6 +43,10 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .busca input { min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--ui-border-control); border-radius: 8px; color: var(--ui-foreground); background: var(--ui-background); font: inherit; font-size: 13px; }
 .busca input:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .listaCabecalho p { font-size: 11px; color: var(--ui-muted-foreground); margin: 0; }
+.filtrosConversas { display: flex; gap: 6px; flex-wrap: wrap; }
+.filtrosConversas button { border: 1px solid var(--ui-border); border-radius: 999px; padding: 6px 10px; background: var(--ui-background); color: var(--ui-muted-foreground); font: inherit; font-size: 12px; cursor: pointer; }
+.filtrosConversas button[aria-pressed='true'] { color: var(--ui-success); background: var(--ui-success-background); border-color: var(--ui-success); }
+.filtrosConversas button:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
 .conversas { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--ui-border-control) transparent; }
 .conversa { display: grid; grid-template-columns: 38px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); color: var(--ui-foreground); cursor: pointer; font: inherit; padding: 16px; text-align: left; }
 .conversa:hover { background: var(--ui-surface); }
