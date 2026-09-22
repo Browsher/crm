@@ -316,3 +316,39 @@ test('carga normal não oferece botão manual nem anuncia fim enquanto ainda há
   expect(host.textContent).not.toContain('Fim do histórico')
   expect(host.textContent).toContain('Carregando histórico automaticamente')
 })
+
+test('cards aguardam histórico completo e acompanham novas mensagens sem nova carga', async () => {
+  const referencia = '2026-09-22T20:00:00Z'
+  const recebida = { ...mensagens[0], fonteId: 'a', em: '2026-09-22T12:00:00Z' }
+  const props = { opcoes: [{ id: 'a', nome: 'Ana' }], fontesAtivas: ['a'], limiteHistorico: referencia, temMais: true }
+  vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [], temMais: false })
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[recebida]} {...props} />))
+  const cards = () => [...host.querySelectorAll('article')]
+  expect(cards()).toHaveLength(4)
+  expect(cards()[0].textContent).toContain('Carregando histórico')
+  await act(async () => vi.advanceTimersByTimeAsync(500))
+  expect(cards()[0].textContent).toContain('1')
+  expect(cards()[1].textContent).toContain('1')
+  expect(cards()[2].textContent).toContain('0 de 1')
+  expect(cards()[3].textContent).toContain('Sem respostas hoje')
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[recebida, { ...recebida, id: 'resposta', direcao: 'enviada', em: '2026-09-22T12:15:00Z' }]} {...props} />))
+  expect(cards()[1].textContent).toContain('0')
+  expect(cards()[2].textContent).toContain('1 de 1')
+  expect(cards()[3].textContent).toContain('15 min')
+  await act(async () => vi.advanceTimersByTimeAsync(1000))
+  expect(historicoMensagensAcao).toHaveBeenCalledTimes(1)
+})
+
+test('cards não apresentam números de consulta parcial e retiram vendedor removido', async () => {
+  const a = { ...mensagens[0], fonteId: 'a', em: '2026-09-22T12:00:00Z' }
+  const b = { ...mensagens[1], fonteId: 'b', em: '2026-09-22T13:00:00Z' }
+  const props = { opcoes: [{ id: 'a', nome: 'Ana' }, { id: 'b', nome: 'Bia' }], limiteHistorico: '2026-09-22T20:00:00Z' }
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a, b]} fontesAtivas={['a', 'b']} {...props} consultaParcial />))
+  const valores = () => [...host.querySelectorAll('article')].map(c => c.querySelector('p')?.textContent)
+  expect(valores()).toEqual(['—', '—', '—', '—'])
+  expect(host.querySelector('article')?.textContent).toContain('Histórico incompleto')
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a, b]} fontesAtivas={['a', 'b']} {...props} />))
+  expect(valores()).toEqual(['2', '2', '0 de 2', '—'])
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a']} {...props} />))
+  expect(valores()).toEqual(['1', '1', '0 de 1', '—'])
+})

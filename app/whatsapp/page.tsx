@@ -19,17 +19,16 @@ export default async function PaginaWhatsApp({ searchParams }: { searchParams?: 
       </div>
       <div className={styles.identificacao}>{resultado.fontes.length === 1 && resultado.fontes[0].id === 'piloto' && <span className={styles.sobretitulo}>Número de teste</span>}<span className={styles.somenteLeitura}>Somente visualização</span><Link className={styles.configurar} href="/whatsapp/configuracao">Configurar vendedores</Link></div>
     </header>
-    <VisaoGeralWhatsApp opcoes={resultado.opcoes.map(f => ({ id: f.id, nome: f.nome }))} filtro={filtro} />
+    {(!resultado.configurado || resultado.fontes.length === 0) && <VisaoGeralWhatsApp opcoes={resultado.opcoes.map(f => ({ id: f.id, nome: f.nome }))} filtro={filtro} />}
     {resultado.fontes.length === 0 ? <section className={styles.estado} role="status"><h2>Nenhuma instância disponível neste filtro</h2><p>Escolha outro vendedor ou configure um vínculo.</p></section> : !resultado.configurado ? <section className={styles.estado} role="status">
       <h2>Integração ainda não configurada</h2>
       <p>Configure a URL, a chave e o nome da instância da Evolution no servidor do CRM.</p>
-    </section> : <>
+    </section> : <PainelWhatsApp key={filtro} opcoes={resultado.opcoes.map(f => ({ id: f.id, nome: f.nome }))} consultaParcial={resultado.avisos.length > 0} fontesAtivas={resultado.fontes.map(f => f.id)} filtro={filtro} cursores={resultado.cursores} mensagens={resultado.mensagens} total={resultado.avisos.length ? undefined : resultado.total} limiteHistorico={resultado.limiteHistorico} temMais={resultado.temMais}>
       <div className={styles.resumo}>
         <strong>{resultado.avisos.length > 0 ? 'Total parcial: ' : ''}{resultado.total.toLocaleString('pt-BR')} {resultado.total === 1 ? 'mensagem' : 'mensagens'} na Evolution</strong>
         <span>Histórico disponível para consulta. As respostas continuam pelo celular.</span>
       </div>
       {resultado.avisos.length > 0 && <p role="status">Consulta parcial. Indisponível: {resultado.avisos.join(', ')}. A atualização automática tentará novamente.</p>}
-      <PainelWhatsApp key={filtro} fontesAtivas={resultado.fontes.map(f => f.id)} filtro={filtro} cursores={resultado.cursores} mensagens={resultado.mensagens} total={resultado.avisos.length ? undefined : resultado.total} limiteHistorico={resultado.limiteHistorico} temMais={resultado.temMais} />
-    </>}
+    </PainelWhatsApp>}
   </main>
 }

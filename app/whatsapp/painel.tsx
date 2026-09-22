@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
@@ -8,6 +8,8 @@ import { historicoMensagensAcao, historicoFontesAcao } from './historico-acao'
 import type { Cursores } from '@/src/server/whatsapp/consulta'
 import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 import { MidiaMensagem } from './midia-mensagem'
+import { VisaoGeralWhatsApp } from './visao-geral'
+import { calcularIndicadores } from '@/src/lib/whatsapp-indicadores'
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -29,8 +31,9 @@ function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
   return [...new Map([...anteriores, ...novas].map(m => [JSON.stringify([m.fonteId, m.conversa, m.id]), m])).values()]
 }
 
-export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas, total }: {
+export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas, total, opcoes, consultaParcial = false, children }: {
   mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean, cursores?: Cursores, filtro?: string, fontesAtivas?: string[], total?: number
+  opcoes?: { id: string; nome: string }[], consultaParcial?: boolean, children?: ReactNode
 }) {
   const escopo = JSON.stringify(fontesAtivas?.toSorted() ?? null)
   const [dados, guardar] = useState({ amostra: mensagens, acumuladas: mesclar([], mensagens), escopo })
@@ -168,7 +171,15 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
     ancora.current = null
   }, [dados.acumuladas, conversaId])
 
+  const valores = useMemo(() => {
+    if (!opcoes || mais || erro || consultaParcial || avisos.length || !limiteHistorico) return undefined
+    return calcularIndicadores(dados.acumuladas, fontesAtivas ?? [], limiteHistorico)
+  }, [opcoes, mais, erro, consultaParcial, avisos.length, limiteHistorico, dados.acumuladas, fontesAtivas])
+
   return <>
+  {opcoes && <VisaoGeralWhatsApp opcoes={opcoes} filtro={filtro} valores={valores} estado={erro || consultaParcial || avisos.length ? 'Histórico incompleto' : 'Carregando histórico…'} />}
+  {opcoes && <p className={styles.dicaHistorico}>Indicadores sobre o histórico disponível na Evolution. O tempo de resposta considera dias úteis, sem descontar feriados.</p>}
+  {children}
   {!conversaAtual ? <section className={styles.estado} role="status">
     <h2>Nenhuma mensagem carregada</h2>
     <p>{mais ? 'O histórico será carregado automaticamente.' : 'As novas mensagens aparecerão automaticamente.'}</p>

@@ -27,7 +27,7 @@ test('autoriza gestor antes de consultar e exibe amostra somente leitura', async
   expect(lerMensagensRecentes).toHaveBeenCalledOnce()
   expect(vi.mocked(exigir).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lerMensagensRecentes).mock.invocationCallOrder[0])
   expect(html).toContain('590 mensagens na Evolution')
-  expect(html).toContain('Carregar mensagens anteriores')
+  expect(html).toContain('Carregando histórico automaticamente')
   expect(html).toContain('Número de teste')
   expect(html).toContain('Olá')
   expect(html).toContain('Resposta')
@@ -44,7 +44,7 @@ test('bloqueio de acesso impede consulta externa', async () => {
 test('mostra estrutura do mockup sem inventar métricas ou vendedores', async () => {
   const html = renderToStaticMarkup(await PaginaWhatsApp())
   for (const titulo of ['Conversas hoje', 'Sem resposta', 'Vendedores ativos hoje', 'Tempo médio de resposta']) expect(html).toContain(titulo)
-  expect(html.match(/Ainda não configurado/g)).toHaveLength(4)
+  expect(html.match(/Carregando histórico/g)?.length).toBeGreaterThanOrEqual(4)
   expect(html).toContain('Filtrar por vendedor')
   expect(html).toContain('Todos')
   expect(html).toContain('Nenhum vendedor vinculado')
