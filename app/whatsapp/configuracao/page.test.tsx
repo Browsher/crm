@@ -21,7 +21,7 @@ test('lista vínculos indisponíveis mas só oferece vendedores ativos no formul
   expect(html).toContain('Indisponível')
   expect(html).toContain('Salvar ou substituir vínculo')
   expect(html).toContain('Remover vínculo de Ana')
-  expect(html).toContain('não exclui a instância nem o histórico')
+  expect(html).toContain('não exclui a conexão nem o histórico')
   expect(html).toContain('maxLength="100"')
 })
 test('nega acesso à página antes de listar', async () => {

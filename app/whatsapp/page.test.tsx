@@ -26,7 +26,7 @@ test('autoriza gestor antes de consultar e exibe amostra somente leitura', async
   expect(exigir).toHaveBeenCalledWith('gestor')
   expect(lerMensagensRecentes).toHaveBeenCalledOnce()
   expect(vi.mocked(exigir).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(lerMensagensRecentes).mock.invocationCallOrder[0])
-  expect(html).toContain('590 mensagens na Evolution')
+  expect(html).not.toContain('na Evolution')
   expect(html).toContain('Carregando histórico automaticamente')
   expect(html).toContain('Número de teste')
   expect(html).toContain('Olá')
@@ -74,7 +74,7 @@ test('mensagem enviada não apresenta o nome da empresa como nome do cliente', a
     { id: 'm3', conversa: '5511888888888@s.whatsapp.net', nome: 'NTV Box', direcao: 'enviada', texto: 'Retorno', em: '2026-09-21T14:14:20.000Z' },
   ] })
   const html = renderToStaticMarkup(await PaginaWhatsApp())
-  expect(html).toContain('1 mensagem na Evolution')
+  expect(html).toContain('Retorno')
   expect(html).toContain('+5511888888888')
   expect(html).not.toContain('NTV Box')
 })

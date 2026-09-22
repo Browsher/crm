@@ -25,8 +25,6 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .identificacao { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 8px; }
 .sobretitulo { color: var(--ui-success); background: var(--ui-success-background); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; }
 .somenteLeitura { border: 1px solid var(--ui-border); border-radius: 999px; color: var(--ui-muted-foreground); padding: 6px 12px; white-space: nowrap; }
-.resumo { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; }
-.resumo span { color: var(--ui-muted-foreground); }
 .configurar { border: 1px solid var(--ui-border); border-radius: 8px; padding: 8px 12px; font-size: 13px; text-decoration: none; }
 .origem { display: block; font-size: 11px; font-weight: 400; color: var(--ui-muted-foreground); }
 .etiqueta { display: inline-block; max-width: 100%; white-space: normal; margin-top: 5px; padding: 3px 7px; border: 1px solid var(--ui-border); border-radius: 6px; font-size: 11px; font-weight: 500; line-height: 16px; color: var(--ui-muted-foreground); background: var(--ui-surface); }
@@ -70,7 +68,7 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .semResultado { padding: 24px 18px; font-size: 13px; }
 .semResultado p { margin-top: 8px; color: var(--ui-muted-foreground); }
 .conversa:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: -3px; }
-.chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.chat { display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; }
 .chatCabecalho { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-border); padding: 16px 20px; background: var(--ui-surface); }
 .chatCabecalho > div { min-width: 0; overflow-wrap: anywhere; }
 .chatCabecalho .leitura { margin-left: auto; font-size: 11px; white-space: nowrap; }
@@ -83,7 +81,6 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .mensagens time { font-size: 11px; opacity: .75; text-align: right; }
 .recebida { align-self: start; background: var(--ui-surface); border: 1px solid var(--ui-border); }
 .enviada { align-self: end; background: var(--ui-success-background); color: var(--ui-success); }
-.rodape { border-top: 1px solid var(--ui-border); color: var(--ui-muted-foreground); padding: 12px 18px; text-align: center; font-size: 11px; background: var(--ui-surface); }
 .historico { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: var(--ui-muted-foreground); }
 .historico button { border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface); color: var(--ui-foreground); font: inherit; padding: 10px 16px; cursor: pointer; }
 .historico button:disabled { opacity: .6; cursor: wait; }

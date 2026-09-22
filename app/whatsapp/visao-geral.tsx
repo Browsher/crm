@@ -22,7 +22,7 @@ export function VisaoGeralWhatsApp({ opcoes = [], filtro = 'todos', valores, est
       </article>)}
     </section>
     <section className={styles.filtroVendedores} aria-labelledby="titulo-vendedores">
-      <div className={styles.tituloVendedores}><h2 id="titulo-vendedores">Filtrar por vendedor</h2><p id="ajuda-vendedores">{opcoes.some(f => f.id !== 'piloto') ? 'Escolha um vendedor para acompanhar suas conversas.' : 'Nenhum vendedor vinculado. Configure os vendedores para começar.'}</p></div>
+      <div className={styles.tituloVendedores}><h2 id="titulo-vendedores">Filtrar por vendedor</h2>{!opcoes.some(f => f.id !== 'piloto') && <p>Nenhum vendedor vinculado. Configure os vendedores para começar.</p>}</div>
       <div className={styles.opcoesVendedores}>
         <Link href="/whatsapp" className={filtro === 'todos' ? styles.todosSelecionado : styles.pilotoVendedor} aria-current={filtro === 'todos' ? 'page' : undefined}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d={indicadores[2].desenho} /></svg>Todos</Link>
         {opcoes.map(f => <Link key={f.id} href={`/whatsapp?vendedor=${encodeURIComponent(f.id)}`} className={filtro === f.id ? styles.todosSelecionado : styles.pilotoVendedor} aria-current={filtro === f.id ? 'page' : undefined}><span className={styles.avatarPiloto} aria-hidden="true">{f.id === 'piloto' ? 'T' : f.nome.slice(0, 1).toUpperCase()}</span><span>{f.nome}{f.id === 'piloto' && <small>Piloto</small>}</span></Link>)}

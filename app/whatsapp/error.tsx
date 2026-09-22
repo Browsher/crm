@@ -8,7 +8,7 @@ export default function ErroWhatsApp({ reset }: { error: Error; reset: () => voi
     <h1>WhatsApp</h1>
     <section className={styles.estado} role="alert">
       <h2>Não foi possível carregar as mensagens</h2>
-      <p>Confira a conexão da instância na Evolution e tente novamente.</p>
+      <p>Confira a conexão do WhatsApp e tente novamente.</p>
       <Button type="button" variant="outline" onClick={reset}>Tentar novamente</Button>
     </section>
   </main>

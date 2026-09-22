@@ -191,7 +191,6 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
 
   return <>
   {opcoes && <VisaoGeralWhatsApp opcoes={opcoes} filtro={filtro} valores={valores} estado={erro || consultaParcial || avisos.length ? 'Histórico incompleto' : 'Carregando histórico…'} />}
-  {opcoes && <p className={styles.dicaHistorico}>Indicadores sobre o histórico disponível na Evolution. O tempo de resposta considera dias úteis, sem descontar feriados.</p>}
   {children}
   {!conversas.length ? <section className={styles.estado} role="status">
     <h2>Nenhuma mensagem carregada</h2>
@@ -248,7 +247,6 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
         <time dateTime={mensagem.em} title={horario.format(new Date(mensagem.em))}>{hora.format(new Date(mensagem.em))}{mensagem.direcao === 'enviada' && <span aria-label="Enviada"> ↗</span>}</time>
         </div>
       </li>)}</ol>
-      <footer className={styles.rodape}>{atualizando ? 'Atualizando mensagens…' : 'Atualização automática a cada 15 segundos.'} As respostas continuam no WhatsApp Business do celular.</footer>
       </>}
     </div>
   </section>}
