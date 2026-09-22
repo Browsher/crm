@@ -75,4 +75,6 @@ Validar migração e invariantes do banco, testes focados de unidade e integraç
 
 ## Estado
 
-Proposta documentada para revisão. Nenhuma migração aplicada e nenhum vínculo real alterado nesta etapa de desenho.
+Implementação aprovada e concluída em 22/09/2026. Migração 0032 aplicada somente no banco local, com invariantes aprovadas. Nenhum vínculo real criado automaticamente. A interface está disponível em `/whatsapp/configuracao`; os cards permanecem para a etapa seguinte.
+
+Verificação: testes de unidade, integração em banco descartável, tipos, lint e build isolado aprovados. No navegador local, o piloto continuou consultável, o histórico avançou de 50 para 100 mensagens e o formulário foi conferido em desktop e celular (390px, sem transbordamento horizontal). Várias instâncias foram verificadas com dados sintéticos nos testes; ainda não foram vinculados telefones reais dos vendedores.

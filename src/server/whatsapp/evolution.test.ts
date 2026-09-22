@@ -62,6 +62,7 @@ test('consulta somente mensagens da instância de teste e reduz as duas direçõ
   expect(fetch).toHaveBeenCalledWith('https://exemplo.up.railway.app/chat/findMessages/NTV%20Box%20-%20Suporte', {
     method: 'POST', headers: { apikey: 'segredo-sintetico', 'Content-Type': 'application/json' },
     body: JSON.stringify({ page: 1, offset: 50, sort: 'desc', where: { messageTimestamp: { gte: '1970-01-01T00:00:00.000Z', lte: limiteHistorico } } }), cache: 'no-store',
+    redirect: 'error', signal: expect.any(AbortSignal),
   })
   expect(resultado).toEqual({ configurado: true, total: 590, limiteHistorico, temMais: true, mensagens: [
     { id: 'm1', conversa: '5511999999999@s.whatsapp.net', telefone: '+5511999999999', nome: 'Cliente', direcao: 'recebida', texto: 'Olá', em: '2026-09-21T14:13:20.000Z' },

@@ -4,9 +4,9 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { PainelWhatsApp } from './painel'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
-import { historicoMensagensAcao } from './historico-acao'
+import { historicoMensagensAcao, historicoFontesAcao } from './historico-acao'
 
-vi.mock('./historico-acao', () => ({ historicoMensagensAcao: vi.fn() }))
+vi.mock('./historico-acao', () => ({ historicoMensagensAcao: vi.fn(), historicoFontesAcao: vi.fn() }))
 const historico = { limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: true }
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }))
@@ -17,6 +17,53 @@ const mensagens: Mensagem[] = [
   { id: '1', conversa: 'a@lid', nome: 'Ana', direcao: 'recebida', texto: 'Mensagem A', em: '2026-09-21T15:00:00Z' },
   { id: '2', conversa: 'b@lid', nome: 'Bia', direcao: 'recebida', texto: 'Mensagem B', em: '2026-09-21T16:00:00Z' },
 ]
+test('mesmo cliente e mesmo ID em vendedores distintos não misturam conversa', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[
+    { ...mensagens[0], fonteId: 'a', vendedor: 'Vendedor A' },
+    { ...mensagens[0], fonteId: 'b', vendedor: 'Vendedor B', texto: 'Segunda fonte' },
+  ]} />))
+  expect(host.textContent).toContain('2 mensagens carregadas')
+  expect(host.querySelectorAll('button')).toHaveLength(2)
+  expect(host.querySelectorAll('ol li')).toHaveLength(1)
+  expect(host.textContent).toContain('Vendedor A')
+  expect(host.textContent).toContain('Vendedor B')
+})
+test('remover outra fonte na atualização preserva seleção e histórico da fonte restante', async () => {
+  const fontes = [
+    { ...mensagens[0], fonteId: 'a', vendedor: 'Vendedor A' },
+    { ...mensagens[1], fonteId: 'b', vendedor: 'Vendedor B' },
+  ]
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={fontes} fontesAtivas={['a', 'b']} />))
+  await act(async () => host.querySelectorAll('button')[1].click())
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[]} fontesAtivas={['a']} />))
+  expect(host.textContent).toContain('Mensagem A')
+  expect(host.textContent).not.toContain('Vendedor B')
+  expect(host.querySelector('button[aria-current]')?.textContent).toContain('Ana')
+})
+test('resposta pendente de escopo antigo não reintroduz fonte removida', async () => {
+  const cursores = { a: { pagina: 2, limite: historico.limiteHistorico, temMais: true }, b: { pagina: 2, limite: historico.limiteHistorico, temMais: true } }
+  const a = { ...mensagens[0], fonteId: 'a', vendedor: 'Vendedor A' }
+  const b = { ...mensagens[1], fonteId: 'b', vendedor: 'Vendedor B' }
+  let concluir!: (r: Awaited<ReturnType<typeof historicoFontesAcao>>) => void
+  vi.mocked(historicoFontesAcao).mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a, b]} fontesAtivas={['a', 'b']} cursores={cursores} {...historico} />))
+  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!.click())
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a']} cursores={{ a: cursores.a }} {...historico} />))
+  await act(async () => concluir({ ok: true, mensagens: [b], cursores, temMais: true, avisos: [] }))
+  expect(host.textContent).not.toContain('Vendedor B')
+  expect(host.textContent).toContain('1 mensagens carregadas')
+})
+test('falha pendente de escopo antigo não bloqueia o novo histórico', async () => {
+  const cursores = { a: { pagina: 2, limite: historico.limiteHistorico, temMais: true }, b: { pagina: 2, limite: historico.limiteHistorico, temMais: true } }
+  const a = { ...mensagens[0], fonteId: 'a' }
+  let rejeitar!: (e: Error) => void
+  vi.mocked(historicoFontesAcao).mockReturnValueOnce(new Promise((_resolve, reject) => { rejeitar = reject }))
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a', 'b']} cursores={cursores} {...historico} />))
+  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Carregar mensagens anteriores')!.click())
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[a]} fontesAtivas={['a']} cursores={{ a: cursores.a }} {...historico} />))
+  await act(async () => rejeitar(new Error('rede')))
+  expect(host.querySelector('[role=alert]')).toBeNull()
+})
 beforeEach(() => {
   vi.useFakeTimers()
   router.refresh.mockClear()

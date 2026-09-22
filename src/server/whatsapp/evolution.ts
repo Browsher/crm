@@ -2,6 +2,8 @@ import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 import { descreverMidia, type Midia } from '@/src/lib/whatsapp-midia'
 
 export type Mensagem = {
+  fonteId?: string
+  vendedor?: string
   id: string
   conversa: string
   nome: string | null
@@ -57,10 +59,10 @@ export async function lerMensagensRecentes(): Promise<Resultado> {
   return lerPaginaMensagens(1, new Date().toISOString())
 }
 
-export async function lerPaginaMensagens(pagina: number, limiteHistorico: string): Promise<Resultado> {
+export async function lerPaginaMensagens(pagina: number, limiteHistorico: string, instanciaResolvida?: string): Promise<Resultado> {
   const base = process.env.EVOLUTION_API_URL?.trim()
   const chave = process.env.EVOLUTION_API_KEY?.trim()
-  const instancia = process.env.EVOLUTION_INSTANCE_NAME?.trim()
+  const instancia = instanciaResolvida ?? process.env.EVOLUTION_INSTANCE_NAME?.trim()
   if (!base || !chave || !instancia) return { configurado: false, total: 0, mensagens: [], limiteHistorico, temMais: false }
 
   const url = new URL(base)
@@ -71,6 +73,8 @@ export async function lerPaginaMensagens(pagina: number, limiteHistorico: string
     headers: { apikey: chave, 'Content-Type': 'application/json' },
     body: JSON.stringify({ page: pagina, offset: 50, sort: 'desc', where: { messageTimestamp: { gte: '1970-01-01T00:00:00.000Z', lte: limiteHistorico } } }),
     cache: 'no-store',
+    redirect: 'error',
+    signal: AbortSignal.timeout(30_000),
   })
   if (!resposta.ok) throw new Error(`Falha ao consultar a Evolution (${resposta.status})`)
   const raiz = objeto(await resposta.json())

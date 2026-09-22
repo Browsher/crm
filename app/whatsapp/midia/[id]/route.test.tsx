@@ -2,11 +2,24 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { GET } from './route'
 import { usuarioAtual } from '@/src/server/autenticacao/guarda'
 import { lerMidia } from '@/src/server/whatsapp/midia'
+import { resolverFontes } from '@/src/server/whatsapp/consulta'
+vi.mock('@/src/server/whatsapp/consulta', () => ({ resolverFontes: vi.fn() }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ usuarioAtual: vi.fn() }))
 vi.mock('@/src/server/whatsapp/midia', () => ({ lerMidia: vi.fn() }))
 const sessao = { usuarioId: 'u', nome: 'Gestor', papel: 'gestor' as const, senhaProvisoriaPendente: false }
 const pedir = () => GET(new Request('https://crm.example/whatsapp/midia/ABC?conversa=123%40lid'), { params: Promise.resolve({ id: 'ABC' }) })
-beforeEach(() => vi.resetAllMocks())
+beforeEach(() => {
+  vi.resetAllMocks()
+  vi.mocked(resolverFontes).mockResolvedValue({ fontes: [{ id: 'piloto', nome: 'Teste', instancia: 'teste' }], opcoes: [], vendedores: [] })
+})
+
+test('fonte removida não consulta mídia nem recai no piloto', async () => {
+  vi.mocked(usuarioAtual).mockResolvedValue(sessao as Awaited<ReturnType<typeof usuarioAtual>>)
+  vi.mocked(resolverFontes).mockResolvedValue({ fontes: [], opcoes: [], vendedores: [] })
+  const r = await GET(new Request('https://crm.example/whatsapp/midia/ABC?conversa=123%40lid&fonte=removida'), { params: Promise.resolve({ id: 'ABC' }) })
+  expect(r.status).toBe(404)
+  expect(lerMidia).not.toHaveBeenCalled()
+})
 test('nega anônimo, vendedor e senha provisória antes de consultar mídia', async () => {
   for (const [usuario, status] of [[null, 401], [{ ...sessao, papel: 'vendedor' }, 403], [{ ...sessao, senhaProvisoriaPendente: true }, 403]] as const) {
     vi.mocked(usuarioAtual).mockResolvedValue(usuario as Awaited<ReturnType<typeof usuarioAtual>>)

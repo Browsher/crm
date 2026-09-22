@@ -5,7 +5,7 @@ import type { Midia } from '@/src/lib/whatsapp-midia'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/src/components/ui/dialog'
 import styles from './whatsapp.module.css'
 
-export function MidiaMensagem({ id, conversa, midia }: { id: string; conversa: string; midia: Midia }) {
+export function MidiaMensagem({ id, conversa, midia, fonte }: { id: string; conversa: string; midia: Midia; fonte?: string }) {
   const [url, mudarUrl] = useState<string | null>(null)
   const [carregando, mudarCarregando] = useState(false)
   const [erro, mudarErro] = useState('')
@@ -30,7 +30,7 @@ export function MidiaMensagem({ id, conversa, midia }: { id: string; conversa: s
     mudarCarregando(true)
     mudarErro('')
     try {
-      const resposta = await fetch(`/whatsapp/midia/${encodeURIComponent(id)}?conversa=${encodeURIComponent(conversa)}`, {
+      const resposta = await fetch(`/whatsapp/midia/${encodeURIComponent(id)}?conversa=${encodeURIComponent(conversa)}${fonte ? `&fonte=${encodeURIComponent(fonte)}` : ''}`, {
         credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controle.signal,
       })
       if (!resposta.ok) {

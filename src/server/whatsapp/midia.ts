@@ -28,10 +28,10 @@ async function jsonLimitado(resposta: Response, limite: number): Promise<unknown
   } finally { leitor.releaseLock() }
 }
 
-export async function lerMidia(id: string, conversa: string): Promise<Resultado> {
+export async function lerMidia(id: string, conversa: string, instanciaResolvida?: string): Promise<Resultado> {
   const base = process.env.EVOLUTION_API_URL?.trim()
   const chave = process.env.EVOLUTION_API_KEY?.trim()
-  const instancia = process.env.EVOLUTION_INSTANCE_NAME?.trim()
+  const instancia = instanciaResolvida ?? process.env.EVOLUTION_INSTANCE_NAME?.trim()
   if (!base || !chave || !instancia) return { ok: false, motivo: 'indisponivel' }
   try {
     const url = new URL(base)

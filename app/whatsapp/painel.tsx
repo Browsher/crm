@@ -4,7 +4,8 @@ import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'rea
 import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
-import { historicoMensagensAcao } from './historico-acao'
+import { historicoMensagensAcao, historicoFontesAcao } from './historico-acao'
+import type { Cursores } from '@/src/server/whatsapp/consulta'
 import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 import { MidiaMensagem } from './midia-mensagem'
 
@@ -25,19 +26,34 @@ function identificar(jid: string, itens: Mensagem[]) {
 }
 
 function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
-  return [...new Map([...anteriores, ...novas].map(m => [JSON.stringify([m.conversa, m.id]), m])).values()]
+  return [...new Map([...anteriores, ...novas].map(m => [JSON.stringify([m.fonteId, m.conversa, m.id]), m])).values()]
 }
 
-export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: {
-  mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean
+export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas }: {
+  mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean, cursores?: Cursores, filtro?: string, fontesAtivas?: string[]
 }) {
-  const [dados, guardar] = useState({ amostra: mensagens, acumuladas: mesclar([], mensagens) })
-  if (dados.amostra !== mensagens) guardar({ amostra: mensagens, acumuladas: mesclar(dados.acumuladas, mensagens) })
+  const escopo = JSON.stringify(fontesAtivas?.toSorted() ?? null)
+  const [dados, guardar] = useState({ amostra: mensagens, acumuladas: mesclar([], mensagens), escopo })
   const [limite] = useState(limiteHistorico)
   const [pagina, mudarPagina] = useState(2)
+  const [proximos, mudarProximos] = useState(cursores)
+  const [avisos, mudarAvisos] = useState<string[]>([])
   const [mais, mudarMais] = useState(temMais)
   const [carregando, mudarCarregando] = useState(false)
   const [erro, mudarErro] = useState(false)
+  if (dados.amostra !== mensagens || dados.escopo !== escopo) {
+    const preservadas = fontesAtivas ? dados.acumuladas.filter(m => !!m.fonteId && fontesAtivas.includes(m.fonteId)) : dados.acumuladas
+    guardar({ amostra: mensagens, acumuladas: mesclar(preservadas, mensagens), escopo })
+    if (dados.escopo !== escopo && cursores) {
+      const reconciliados = Object.fromEntries(Object.entries(cursores).map(([id, cursor]) => [id, proximos?.[id] ?? cursor]))
+      mudarProximos(reconciliados)
+      mudarMais(Object.values(reconciliados).some(c => c.temMais))
+      mudarErro(false)
+      mudarAvisos([])
+    }
+  }
+  const geracao = useRef(0)
+  useLayoutEffect(() => { geracao.current += 1 }, [escopo])
   const requisicao = useRef(false)
   const rolagem = useRef<HTMLOListElement>(null)
   const posicao = useRef({ id: '', topo: 0, noFim: true })
@@ -48,15 +64,23 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
     requisicao.current = true
     mudarCarregando(true)
     mudarErro(false)
+    const geracaoInicial = geracao.current
     try {
-      const resultado = await historicoMensagensAcao(pagina, limite)
+      const resultado = proximos ? await historicoFontesAcao(filtro, proximos) : await historicoMensagensAcao(pagina, limite)
+      if (geracao.current !== geracaoInicial) return
       if (!resultado.ok) { ancora.current = null; mudarErro(true); return }
+      if (resultado.cursores) {
+        mudarProximos(resultado.cursores)
+        mudarAvisos(resultado.avisos ?? [])
+        mudarErro((resultado.avisos?.length ?? 0) > 0)
+      }
       const lista = rolagem.current
       ancora.current = lista ? { id: posicao.current.id, altura: lista.scrollHeight, topo: lista.scrollTop } : null
       guardar(atual => ({ ...atual, acumuladas: mesclar(resultado.mensagens, atual.acumuladas) }))
       mudarMais(resultado.temMais)
       mudarPagina(atual => atual + 1)
     } catch {
+      if (geracao.current !== geracaoInicial) return
       ancora.current = null
       mudarErro(true)
     } finally {
@@ -84,14 +108,16 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
 
   const agrupadas = new Map<string, Mensagem[]>()
   for (const mensagem of dados.acumuladas) {
-    const conversa = agrupadas.get(mensagem.conversa) ?? []
+    const id = JSON.stringify([mensagem.fonteId, mensagem.conversa])
+    const conversa = agrupadas.get(id) ?? []
     conversa.push(mensagem)
-    agrupadas.set(mensagem.conversa, conversa)
+    agrupadas.set(id, conversa)
   }
   const conversas = [...agrupadas].map(([id, itens]) => ({
     id,
     itens: itens.toSorted((a, b) => a.em.localeCompare(b.em)),
-    ...identificar(id, itens),
+    ...identificar(itens[0].conversa, itens),
+    vendedor: itens[0].vendedor,
     ultima: itens.reduce((atual, item) => item.em > atual.em ? item : atual),
   })).toSorted((a, b) => b.ultima.em.localeCompare(a.ultima.em))
   const [selecionada, selecionar] = useState(conversas[0]?.id ?? '')
@@ -138,7 +164,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
       }}>
         {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
           <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
-          <strong>{conversa.nome}</strong>
+          <strong>{conversa.nome}{conversa.vendedor && <small className={styles.origem}>{conversa.vendedor}</small>}</strong>
           <span className={styles.previa}>{conversa.ultima.direcao === 'enviada' ? 'Você: ' : ''}{conversa.ultima.texto}</span>
           <time dateTime={conversa.ultima.em}>{horario.format(new Date(conversa.ultima.em))}</time>
         </button>)}
@@ -146,7 +172,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
       </div>
     </div>
     <div className={styles.chat}>
-      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p></div><span className={styles.leitura}>Somente visualização</span></header>
+      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}</div><span className={styles.leitura}>Somente visualização</span></header>
       <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
         if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
       }} onScroll={e => {
@@ -154,10 +180,10 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
         const subindo = el.scrollTop < posicao.current.topo
         posicao.current = { id: conversaAtual.id, topo: el.scrollTop, noFim: el.scrollHeight - el.clientHeight - el.scrollTop < 60 }
         if (subindo && el.scrollTop < 60 && !erro) void carregar()
-      }}>{conversaAtual.itens.map((mensagem, i) => <li key={JSON.stringify([mensagem.conversa, mensagem.id])} className={styles.linhaMensagem}>
+      }}>{conversaAtual.itens.map((mensagem, i) => <li key={JSON.stringify([mensagem.fonteId, mensagem.conversa, mensagem.id])} className={styles.linhaMensagem}>
         {(i === 0 || dia.format(new Date(mensagem.em)) !== dia.format(new Date(conversaAtual.itens[i - 1].em))) && <span className={styles.dataConversa}>{dia.format(new Date(mensagem.em))}</span>}
         <div className={mensagem.direcao === 'enviada' ? styles.enviada : styles.recebida}>
-        {mensagem.midia ? <MidiaMensagem id={mensagem.id} conversa={mensagem.conversa} midia={mensagem.midia} /> : <span>{mensagem.texto}</span>}
+        {mensagem.midia ? <MidiaMensagem id={mensagem.id} conversa={mensagem.conversa} fonte={mensagem.fonteId} midia={mensagem.midia} /> : <span>{mensagem.texto}</span>}
         <time dateTime={mensagem.em} title={horario.format(new Date(mensagem.em))}>{hora.format(new Date(mensagem.em))}{mensagem.direcao === 'enviada' && <span aria-label="Enviada"> ↗</span>}</time>
         </div>
       </li>)}</ol>
@@ -169,6 +195,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
     {mais && <span className={styles.dicaHistorico}>Role a lista para baixo ou a conversa para cima para carregar mais.</span>}
     {mais && limite ? <button type="button" onClick={carregar} disabled={carregando}>{carregando ? 'Carregando…' : 'Carregar mensagens anteriores'}</button> : <span>Fim do histórico disponível nesta consulta.</span>}
     {erro && <p role="alert">Não foi possível carregar o histórico. Tente novamente.</p>}
+    {avisos.length > 0 && <p role="status">Histórico parcial. Indisponível: {avisos.join(', ')}.</p>}
   </div>
   </>
 }

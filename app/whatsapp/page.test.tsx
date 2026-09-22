@@ -4,6 +4,8 @@ import PaginaWhatsApp from './page'
 import LayoutWhatsApp from './layout'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerMensagensRecentes } from '@/src/server/whatsapp/evolution'
+import { consultarFontes } from '@/src/server/whatsapp/consulta'
+vi.mock('@/src/server/whatsapp/consulta', () => ({ consultarFontes: vi.fn() }))
 
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: vi.fn() }))
 vi.mock('@/src/server/whatsapp/evolution', () => ({ lerMensagensRecentes: vi.fn() }))
@@ -11,6 +13,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(consultarFontes).mockImplementation(async () => ({ ...await lerMensagensRecentes(), fontes: [{ id: 'piloto', nome: 'Número de teste', instancia: 'teste' }], vendedores: [], opcoes: [{ id: 'piloto', nome: 'Número de teste', instancia: 'teste' }], cursores: {}, avisos: [] }))
   vi.mocked(exigir).mockResolvedValue({ usuarioId: 'gestor', nome: 'Ana', papel: 'gestor' } as Awaited<ReturnType<typeof exigir>>)
   vi.mocked(lerMensagensRecentes).mockResolvedValue({ configurado: true, limiteHistorico: '2026-09-21T20:00:00.000Z', temMais: true, total: 590, mensagens: [
     { id: 'm1', conversa: '5511999999999@s.whatsapp.net', nome: 'Cliente', direcao: 'recebida', texto: 'Olá', em: '2026-09-21T14:13:20.000Z' },
@@ -45,7 +48,18 @@ test('mostra estrutura do mockup sem inventar métricas ou vendedores', async ()
   expect(html).toContain('Filtrar por vendedor')
   expect(html).toContain('Todos')
   expect(html).toContain('Nenhum vendedor vinculado')
-  expect(html).toMatch(/disabled=""[^>]*>Vendedores/)
+  expect(html).toContain('Configurar vendedores')
+})
+
+test('filtro seleciona vínculo no servidor e mostra links reais e aviso parcial', async () => {
+  const fonte = { id: 'v1', nome: 'Ana vendedora', instancia: 'privada' }
+  vi.mocked(consultarFontes).mockResolvedValue({ configurado: true, total: 0, mensagens: [], fontes: [fonte], vendedores: [fonte], opcoes: [fonte], cursores: {}, avisos: ['Ana vendedora'], temMais: true, limiteHistorico: '2026-09-22T12:00:00.000Z' })
+  const html = renderToStaticMarkup(await PaginaWhatsApp({ searchParams: Promise.resolve({ vendedor: 'v1' }) }))
+  expect(consultarFontes).toHaveBeenCalledWith('gestor', 'v1')
+  expect(html).toContain('/whatsapp?vendedor=v1')
+  expect(html).toContain('Ana vendedora')
+  expect(html).toContain('Consulta parcial')
+  expect(html).not.toContain('privada')
 })
 
 test('sem configuração mostra instrução sem fingir ausência de mensagens', async () => {

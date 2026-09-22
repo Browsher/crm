@@ -78,6 +78,14 @@ describe('avaliar', () => {
     umaViolacao(e, /FORCE.*public\.usuario.*bloqueio/)
   })
 
+  test('FORCE é permitido somente no vínculo WhatsApp, sem definidoras que dependem da tabela', () => {
+    const e = sao()
+    e.tabelas.push({ schema: 'public', nome: 'whatsapp_vinculo', rls: true, force: true })
+    expect(avaliar(e)).toEqual([])
+    e.tabelas[2].schema = 'outro'
+    umaViolacao(e, /FORCE.*outro\.whatsapp_vinculo/)
+  })
+
   test('função SECURITY DEFINER sem search_path, em qualquer schema', () => {
     const e = sao()
     e.funcoesDefinidoras.push({ schema: 'autenticacao', nome: 'sessao_atual', temSearchPath: false })
