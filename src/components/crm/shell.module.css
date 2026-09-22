@@ -9,8 +9,11 @@
 .topbar { position: sticky; top: 0; z-index: 10; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 24px; background: var(--ui-background); border-bottom: 1px solid var(--ui-border); }
 .titulo { font-weight: 600; }
 .caminho { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; }
-.caminho a, .caminho > span:not(.titulo) { color: var(--ui-muted-foreground); text-decoration: none; }
-.caminho .titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.caminho ol { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; list-style: none; padding: 0; margin: 0; }
+.caminho li { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.caminho a, .separador { color: var(--ui-muted-foreground); text-decoration: none; }
+.caminho a:hover { text-decoration: underline; }
+.caminho .titulo { overflow-wrap: anywhere; }
 .controles { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .controles select { max-width: 132px; }
 .tema { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ui-muted-foreground); }
@@ -35,7 +38,8 @@
   .marca { display: none; }
   .shell .topbar .menu { display: inline-flex; }
   .topbar { padding: 8px 16px; }
-  .caminho { display: none; }
+  .topbar { flex-wrap: wrap; }
+  .caminho { display: flex; order: 3; flex-basis: 100%; font-size: 12px; }
   .controles { gap: 10px; }
   .tema > span { display: none; }
   .perfil { gap: 7px; padding-left: 10px; }

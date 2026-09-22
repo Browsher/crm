@@ -9,7 +9,7 @@ vi.mock('@/src/server/whatsapp/consulta', () => ({ consultarFontes: vi.fn() }))
 
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: vi.fn() }))
 vi.mock('@/src/server/whatsapp/evolution', () => ({ lerMensagensRecentes: vi.fn() }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }), usePathname: () => '/whatsapp' }))
 
 beforeEach(() => {
   vi.clearAllMocks()

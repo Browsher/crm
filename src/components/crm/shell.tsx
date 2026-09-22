@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { Suspense, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { Button } from '@/src/components/ui/button'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { TemaCrmContext, type TemaCrm } from './tema'
 import styles from './shell.module.css'
+import { CaminhoCrm } from './caminho'
 
 const TITULO = { funil: 'Funil', fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas', usuarios: 'Usuários', gestao: 'Gestão', whatsapp: 'WhatsApp' } as const
 const TEMA = { funil: 'Tema do Funil', fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia', empresas: 'Tema de Empresas', usuarios: 'Tema de Usuários', gestao: 'Tema da Gestão', whatsapp: 'Tema do WhatsApp' } as const
@@ -32,9 +33,7 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
       <div className={styles.workspace}>
         <header className={styles.topbar}>
           <Button className={styles.menu} variant="ghost" size="icon" aria-label="Menu do CRM" aria-controls="menu-fila" aria-expanded={aberto} onClick={() => setAberto(!aberto)}>☰</Button>
-          <nav className={styles.caminho} aria-label="Localização atual">
-            <Link href="/">CRM</Link><span aria-hidden="true">/</span><span className={styles.titulo} aria-current="page">{TITULO[area]}</span>
-          </nav>
+          <Suspense fallback={<span className={styles.titulo}>{TITULO[area]}</span>}><CaminhoCrm area={area} titulo={TITULO[area]} /></Suspense>
           <div className={styles.controles}>
             <label className={styles.tema}><span>Tema</span><NativeSelect aria-label={TEMA[area]} value={tema} onChange={e => setTema(e.target.value as TemaCrm)}><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Escuro</option></NativeSelect></label>
             <div className={styles.perfil}>
