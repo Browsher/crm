@@ -1,4 +1,5 @@
 import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
+import { descreverMidia, type Midia } from '@/src/lib/whatsapp-midia'
 
 export type Mensagem = {
   id: string
@@ -8,6 +9,7 @@ export type Mensagem = {
   direcao: 'recebida' | 'enviada'
   texto: string
   em: string
+  midia?: Midia
 }
 
 type Resultado = { configurado: boolean; total: number; mensagens: Mensagem[]; limiteHistorico: string; temMais: boolean }
@@ -38,6 +40,7 @@ function reduzir(valor: unknown): Mensagem | null {
 
   const data = new Date(timestamp * 1000)
   if (Number.isNaN(data.getTime())) return null
+  const midia = descreverMidia(registro?.message)
   return {
     id: chave.id,
     conversa: chave.remoteJid,
@@ -46,6 +49,7 @@ function reduzir(valor: unknown): Mensagem | null {
     direcao: chave.fromMe ? 'enviada' : 'recebida',
     texto: textoDe(registro?.message),
     em: data.toISOString(),
+    ...(midia ? { midia } : {}),
   }
 }
 

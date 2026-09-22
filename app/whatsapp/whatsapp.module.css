@@ -34,4 +34,14 @@
 .historico button:disabled { opacity: .6; cursor: wait; }
 .historico button:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
 .historico p { flex-basis: 100%; }
+.midia { display: grid; gap: 8px; min-width: 0; }
+.midia audio { width: 280px; max-width: 100%; }
+.midia p { font-size: 13px; }
+.midiaBotao { display: inline-block; border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface); color: var(--ui-foreground); font: inherit; padding: 10px 12px; cursor: pointer; text-align: left; text-decoration: underline; }
+.midiaBotao:disabled { opacity: .6; cursor: wait; }
+.miniatura { border: 0; padding: 0; background: transparent; cursor: zoom-in; }
+.miniatura img { display: block; max-width: 100%; width: 260px; max-height: 240px; object-fit: contain; border-radius: 6px; }
+.midiaBotao:focus-visible, .miniatura:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 3px; }
+.imagemDialogo { width: min(900px, 95vw); max-width: 95vw; }
+.imagemDialogo img { display: block; width: 100%; max-height: 75vh; object-fit: contain; }
 @media (max-width: 760px) { .cabecalho { display: grid; } .painel { grid-template-columns: 1fr; } .lista { border-right: 0; border-bottom: 1px solid var(--ui-border); } .conversas { max-height: 220px; } .mensagens { min-height: 350px; } }

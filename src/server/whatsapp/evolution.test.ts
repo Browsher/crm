@@ -3,6 +3,19 @@ import { lerMensagensRecentes, lerPaginaMensagens } from './evolution'
 
 const limiteHistorico = '2026-09-21T20:00:00.000Z'
 
+test('histórico entrega descritores de mídia sem URL, chave ou binário ao navegador', async () => {
+  vi.stubEnv('EVOLUTION_API_URL', 'https://exemplo.up.railway.app')
+  vi.stubEnv('EVOLUTION_API_KEY', 'segredo-sintetico')
+  vi.stubEnv('EVOLUTION_INSTANCE_NAME', 'Piloto')
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ messages: { total: 1, records: [{
+    key: { id: 'foto', remoteJid: '123@lid', fromMe: false }, messageTimestamp: 1790000000,
+    message: { imageMessage: { caption: 'Pedido', url: 'https://privado.example', mediaKey: 'segredo', jpegThumbnail: 'binario' } },
+  }] } })))
+  const r = await lerMensagensRecentes()
+  expect(r.mensagens[0].midia).toEqual({ tipo: 'imagem', legenda: 'Pedido' })
+  expect(JSON.stringify(r)).not.toMatch(/segredo|privado.example|binario/)
+})
+
 test('extrai telefone confirmado sem transformar LID ou grupo em telefone', async () => {
   vi.stubEnv('EVOLUTION_API_URL', 'https://exemplo.up.railway.app')
   vi.stubEnv('EVOLUTION_API_KEY', 'segredo-sintetico')

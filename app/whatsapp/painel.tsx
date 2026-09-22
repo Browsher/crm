@@ -6,6 +6,7 @@ import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
 import { historicoMensagensAcao } from './historico-acao'
 import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
+import { MidiaMensagem } from './midia-mensagem'
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -102,8 +103,8 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
     </div>
     <div className={styles.chat}>
       <header className={styles.chatCabecalho}><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p></div><span>Somente visualização</span></header>
-      <ol className={styles.mensagens}>{conversaAtual.itens.map(mensagem => <li key={mensagem.id} className={mensagem.direcao === 'enviada' ? styles.enviada : styles.recebida}>
-        <span>{mensagem.texto}</span>
+      <ol className={styles.mensagens}>{conversaAtual.itens.map(mensagem => <li key={JSON.stringify([mensagem.conversa, mensagem.id])} className={mensagem.direcao === 'enviada' ? styles.enviada : styles.recebida}>
+        {mensagem.midia ? <MidiaMensagem id={mensagem.id} conversa={mensagem.conversa} midia={mensagem.midia} /> : <span>{mensagem.texto}</span>}
         <time dateTime={mensagem.em}>{horario.format(new Date(mensagem.em))}</time>
       </li>)}</ol>
       <footer className={styles.rodape}>{atualizando ? 'Atualizando mensagens…' : 'Atualização automática a cada 15 segundos.'} As respostas continuam no WhatsApp Business do celular.</footer>
