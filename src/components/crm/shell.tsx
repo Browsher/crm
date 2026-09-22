@@ -14,7 +14,6 @@ const TEMA = { funil: 'Tema do Funil', fila: 'Tema da Fila', carteira: 'Tema da 
 const ICONES = {
   inicio: 'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',
   empresas: 'M4 21V3h12v18 M8 7h4 M8 11h4 M8 15h4 M16 9h4v12 M2 21h20',
-  grupos: 'M3 7V4h6l3 3h9v13H3Z M3 10h18',
   usuarios: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M17 3a4 4 0 0 1 0 8 M22 21v-2a4 4 0 0 0-3-4',
   whatsapp: 'M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z',
   dia: 'M4 5h16v16H4Z M8 3v4 M16 3v4 M4 11h16 M8 15h3',
@@ -49,7 +48,7 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
         </div>
         <nav aria-label="Navegação do CRM" onClick={() => setAberto(false)}>
           {papel === 'vendedor' && <><ItemMenu href="/meu-dia" nome="Meu dia" icone="dia" atual={area === 'meu-dia'} /><ItemMenu href="/fila" nome="Prospecção" icone="fila" atual={area === 'fila'} /><ItemMenu href="/funil" nome="Funil" icone="funil" atual={area === 'funil'} /><ItemMenu href="/carteira" nome="Carteira" icone="carteira" atual={area === 'carteira'} /></>}
-          {papel === 'gestor' && <><ItemMenu href="/gestao" nome="Início" icone="inicio" atual={area === 'gestao'} /><ItemMenu href="/empresas" nome="Empresas" icone="empresas" atual={area === 'empresas'} /><ItemMenu href="/empresas/grupos" nome="Grupos" icone="grupos" /><ItemMenu href="/usuarios" nome="Usuários" icone="usuarios" atual={area === 'usuarios'} /><ItemMenu href="/whatsapp" nome="WhatsApp" icone="whatsapp" atual={area === 'whatsapp'} /></>}
+          {papel === 'gestor' && <><ItemMenu href="/gestao" nome="Início" icone="inicio" atual={area === 'gestao'} /><ItemMenu href="/empresas" nome="Empresas" icone="empresas" atual={area === 'empresas'} /><ItemMenu href="/usuarios" nome="Usuários" icone="usuarios" atual={area === 'usuarios'} /><ItemMenu href="/whatsapp" nome="WhatsApp" icone="whatsapp" atual={area === 'whatsapp'} /></>}
         </nav>
         <form className={styles.saida} action="/sair" method="post">
           <Button type="submit" variant="ghost" title="Sair"><Icone nome="sair" /><span className={styles.rotuloMenu}>Sair</span></Button>

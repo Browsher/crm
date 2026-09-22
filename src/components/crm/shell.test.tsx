@@ -27,7 +27,7 @@ test('gestor tem início e administração sem links de atendimento', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="gestao">Gestão</ShellCrm>)
   expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/gestao"')
   expect(html).toContain('href="/usuarios"')
-  expect(html).toContain('href="/empresas/grupos"')
+  expect(html).not.toContain('href="/empresas/grupos"')
   expect(html).toContain('href="/whatsapp"')
   for (const rota of ['/fila', '/carteira', '/meu-dia']) expect(html).not.toContain(`href="${rota}"`)
 })
