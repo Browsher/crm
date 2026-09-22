@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import styles from './whatsapp.module.css'
@@ -11,6 +11,10 @@ import { MidiaMensagem } from './midia-mensagem'
 const horario = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
 })
+const dia = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: 'numeric', month: 'long', year: 'numeric' })
+const hora = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+const normalizar = (texto: string) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+const iniciais = (nome: string) => nome === 'Contato não identificado' ? '?' : nome.startsWith('+') ? '#' : nome.split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase()
 
 function identificar(jid: string, itens: Mensagem[]) {
   const telefones = [...new Set(itens.map(m => m.telefone).filter((t): t is string => !!t && /^\+[1-9]\d{6,14}$/.test(t)))]
@@ -35,6 +39,10 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
   const [carregando, mudarCarregando] = useState(false)
   const [erro, mudarErro] = useState(false)
   const requisicao = useRef(false)
+  const rolagem = useRef<HTMLOListElement>(null)
+  const posicao = useRef({ id: '', topo: 0, noFim: true })
+  const ancora = useRef<{ id: string; altura: number; topo: number } | null>(null)
+  const [busca, mudarBusca] = useState('')
   async function carregar() {
     if (requisicao.current || !mais || !limite) return
     requisicao.current = true
@@ -42,11 +50,14 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
     mudarErro(false)
     try {
       const resultado = await historicoMensagensAcao(pagina, limite)
-      if (!resultado.ok) { mudarErro(true); return }
+      if (!resultado.ok) { ancora.current = null; mudarErro(true); return }
+      const lista = rolagem.current
+      ancora.current = lista ? { id: posicao.current.id, altura: lista.scrollHeight, topo: lista.scrollTop } : null
       guardar(atual => ({ ...atual, acumuladas: mesclar(resultado.mensagens, atual.acumuladas) }))
       mudarMais(resultado.temMais)
       mudarPagina(atual => atual + 1)
     } catch {
+      ancora.current = null
       mudarErro(true)
     } finally {
       requisicao.current = false
@@ -85,6 +96,27 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
   })).toSorted((a, b) => b.ultima.em.localeCompare(a.ultima.em))
   const [selecionada, selecionar] = useState(conversas[0]?.id ?? '')
   const conversaAtual = conversas.find(item => item.id === selecionada) ?? conversas[0]
+  const termo = normalizar(busca)
+  const digitos = busca.replace(/\D/g, '')
+  const visiveis = conversas.filter(c => !termo || normalizar(c.nome).includes(termo)
+    || (digitos.length >= 3 && /^[\d\s()+.-]+$/.test(busca) && c.telefone?.includes(digitos))
+    || c.itens.some(m => normalizar(m.texto).includes(termo)))
+  const conversaId = conversaAtual?.id
+  useLayoutEffect(() => {
+    const lista = rolagem.current
+    if (!lista || !conversaId) return
+    if (posicao.current.id !== conversaId) {
+      lista.scrollTop = lista.scrollHeight
+      posicao.current = { id: conversaId, topo: lista.scrollTop, noFim: true }
+    } else if (ancora.current?.id === conversaId) {
+      lista.scrollTop = ancora.current.topo + lista.scrollHeight - ancora.current.altura
+      posicao.current.topo = lista.scrollTop
+    } else if (posicao.current.noFim) {
+      lista.scrollTop = lista.scrollHeight
+      posicao.current.topo = lista.scrollTop
+    }
+    ancora.current = null
+  }, [dados.acumuladas, conversaId])
 
   return <>
   {!conversaAtual ? <section className={styles.estado} role="status">
@@ -92,26 +124,49 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false }: 
     <p>{mais ? 'Consulte as próximas páginas do histórico.' : 'As novas mensagens aparecerão automaticamente.'}</p>
   </section> : <section className={styles.painel} aria-label="Conversas carregadas">
     <div className={styles.lista}>
-      <h2>Conversas carregadas <small>{conversas.length}</small></h2>
-      <div className={styles.conversas}>
-        {conversas.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
+      <div className={styles.listaCabecalho}>
+        <h2>Conversas carregadas <small>{conversas.length}</small></h2>
+        <label className={styles.busca}><span>Buscar conversa</span><input type="search" value={busca} onChange={e => mudarBusca(e.target.value)} placeholder="Nome, telefone ou mensagem" aria-describedby="alcance-busca" /></label>
+        <p id="alcance-busca">Busca nas conversas carregadas.</p>
+      </div>
+      <div className={styles.conversas} aria-label="Lista de conversas" tabIndex={0} onWheel={e => {
+        const el = e.currentTarget
+        if (e.deltaY > 0 && !erro && el.scrollHeight - el.clientHeight - el.scrollTop < 80) void carregar()
+      }} onScroll={e => {
+        const el = e.currentTarget
+        if (!erro && el.scrollTop > 0 && el.scrollHeight - el.clientHeight - el.scrollTop < 80) void carregar()
+      }}>
+        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
+          <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
           <strong>{conversa.nome}</strong>
-          <span>{conversa.ultima.texto}</span>
+          <span className={styles.previa}>{conversa.ultima.direcao === 'enviada' ? 'Você: ' : ''}{conversa.ultima.texto}</span>
           <time dateTime={conversa.ultima.em}>{horario.format(new Date(conversa.ultima.em))}</time>
         </button>)}
+        {visiveis.length === 0 && <div className={styles.semResultado} role="status"><strong>Nenhuma conversa encontrada</strong><p>Tente outro nome ou telefone.{mais ? ' Carregue mais histórico para ampliar a busca.' : ''}</p></div>}
       </div>
     </div>
     <div className={styles.chat}>
-      <header className={styles.chatCabecalho}><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p></div><span>Somente visualização</span></header>
-      <ol className={styles.mensagens}>{conversaAtual.itens.map(mensagem => <li key={JSON.stringify([mensagem.conversa, mensagem.id])} className={mensagem.direcao === 'enviada' ? styles.enviada : styles.recebida}>
+      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p></div><span className={styles.leitura}>Somente visualização</span></header>
+      <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
+        if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
+      }} onScroll={e => {
+        const el = e.currentTarget
+        const subindo = el.scrollTop < posicao.current.topo
+        posicao.current = { id: conversaAtual.id, topo: el.scrollTop, noFim: el.scrollHeight - el.clientHeight - el.scrollTop < 60 }
+        if (subindo && el.scrollTop < 60 && !erro) void carregar()
+      }}>{conversaAtual.itens.map((mensagem, i) => <li key={JSON.stringify([mensagem.conversa, mensagem.id])} className={styles.linhaMensagem}>
+        {(i === 0 || dia.format(new Date(mensagem.em)) !== dia.format(new Date(conversaAtual.itens[i - 1].em))) && <span className={styles.dataConversa}>{dia.format(new Date(mensagem.em))}</span>}
+        <div className={mensagem.direcao === 'enviada' ? styles.enviada : styles.recebida}>
         {mensagem.midia ? <MidiaMensagem id={mensagem.id} conversa={mensagem.conversa} midia={mensagem.midia} /> : <span>{mensagem.texto}</span>}
-        <time dateTime={mensagem.em}>{horario.format(new Date(mensagem.em))}</time>
+        <time dateTime={mensagem.em} title={horario.format(new Date(mensagem.em))}>{hora.format(new Date(mensagem.em))}{mensagem.direcao === 'enviada' && <span aria-label="Enviada"> ↗</span>}</time>
+        </div>
       </li>)}</ol>
       <footer className={styles.rodape}>{atualizando ? 'Atualizando mensagens…' : 'Atualização automática a cada 15 segundos.'} As respostas continuam no WhatsApp Business do celular.</footer>
     </div>
   </section>}
   <div className={styles.historico}>
     <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
+    {mais && <span className={styles.dicaHistorico}>Role a lista para baixo ou a conversa para cima para carregar mais.</span>}
     {mais && limite ? <button type="button" onClick={carregar} disabled={carregando}>{carregando ? 'Carregando…' : 'Carregar mensagens anteriores'}</button> : <span>Fim do histórico disponível nesta consulta.</span>}
     {erro && <p role="alert">Não foi possível carregar o histórico. Tente novamente.</p>}
   </div>

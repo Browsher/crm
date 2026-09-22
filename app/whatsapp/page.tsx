@@ -10,11 +10,10 @@ export default async function PaginaWhatsApp() {
   return <main className={styles.pagina}>
     <header className={styles.cabecalho}>
       <div>
-        <p className={styles.sobretitulo}>Piloto · Número de teste</p>
         <h1>WhatsApp</h1>
-        <p>Visualização das mensagens da instância de suporte. Ainda não há vínculo com vendedores.</p>
+        <p>Acompanhe as conversas e os arquivos em um só lugar.</p>
       </div>
-      <span className={styles.somenteLeitura}>Somente visualização</span>
+      <div className={styles.identificacao}><span className={styles.sobretitulo}>Número de teste</span><span className={styles.somenteLeitura}>Somente visualização</span></div>
     </header>
     {!resultado.configurado ? <section className={styles.estado} role="status">
       <h2>Integração ainda não configurada</h2>
@@ -22,7 +21,7 @@ export default async function PaginaWhatsApp() {
     </section> : <>
       <div className={styles.resumo}>
         <strong>{resultado.total.toLocaleString('pt-BR')} {resultado.total === 1 ? 'mensagem' : 'mensagens'} na Evolution</strong>
-        <span>Carregue mensagens anteriores para consultar o histórico armazenado na Evolution.</span>
+        <span>Histórico disponível para consulta. As respostas continuam pelo celular.</span>
       </div>
       <PainelWhatsApp mensagens={resultado.mensagens} limiteHistorico={resultado.limiteHistorico} temMais={resultado.temMais} />
     </>}

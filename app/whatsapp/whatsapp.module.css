@@ -1,39 +1,58 @@
-.pagina { display: grid; gap: 24px; }
+.pagina { display: grid; gap: 18px; }
 .cabecalho { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
 .cabecalho p { color: var(--ui-muted-foreground); margin: 6px 0 0; }
-.cabecalho .sobretitulo { color: var(--ui-success); font-size: 12px; font-weight: 700; letter-spacing: .08em; margin: 0 0 8px; text-transform: uppercase; }
+.identificacao { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 8px; }
+.sobretitulo { color: var(--ui-success); background: var(--ui-success-background); border-radius: 6px; padding: 5px 9px; font-size: 12px; font-weight: 600; }
 .somenteLeitura { border: 1px solid var(--ui-border); border-radius: 999px; color: var(--ui-muted-foreground); padding: 6px 12px; white-space: nowrap; }
-.resumo { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 20px; background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 8px; padding: 14px 18px; }
+.resumo { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; }
 .resumo span { color: var(--ui-muted-foreground); }
 .estado { border: 1px solid var(--ui-border); border-radius: 8px; padding: 32px; }
 .estado h2 { font-size: 18px; font-weight: 600; }
 .estado p { color: var(--ui-muted-foreground); margin-top: 8px; }
-.painel { display: grid; grid-template-columns: minmax(240px, 34%) minmax(0, 1fr); min-height: 520px; border: 1px solid var(--ui-border); border-radius: 10px; overflow: hidden; }
-.lista { border-right: 1px solid var(--ui-border); min-width: 0; }
-.lista h2 { font-size: 16px; font-weight: 600; padding: 18px; border-bottom: 1px solid var(--ui-border); }
+.painel { display: grid; grid-template-columns: minmax(270px, 34%) minmax(0, 1fr); height: clamp(460px, calc(100dvh - 290px), 850px); border: 1px solid var(--ui-border); border-radius: 14px; overflow: hidden; background: var(--ui-background); }
+.lista { display: grid; grid-template-rows: auto minmax(0, 1fr); border-right: 1px solid var(--ui-border); min-width: 0; min-height: 0; }
+.listaCabecalho { display: grid; gap: 10px; padding: 18px 16px 12px; background: var(--ui-surface); border-bottom: 1px solid var(--ui-border); }
+.lista h2 { font-size: 15px; font-weight: 600; }
 .lista h2 small { color: var(--ui-muted-foreground); font-size: 13px; margin-left: 6px; }
-.conversas { max-height: 600px; overflow: auto; }
-.conversa { display: grid; gap: 4px; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); color: var(--ui-foreground); cursor: pointer; font: inherit; padding: 16px 18px; text-align: left; }
-.conversa:hover, .conversa[aria-current='true'] { background: var(--ui-surface); }
+.busca { display: grid; gap: 5px; font-size: 12px; color: var(--ui-muted-foreground); }
+.busca input { min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--ui-border-control); border-radius: 8px; color: var(--ui-foreground); background: var(--ui-background); font: inherit; font-size: 13px; }
+.busca input:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 2px; }
+.listaCabecalho p { font-size: 11px; color: var(--ui-muted-foreground); margin: 0; }
+.conversas { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--ui-border-control) transparent; }
+.conversa { display: grid; grid-template-columns: 38px minmax(0, 1fr); column-gap: 10px; row-gap: 3px; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--ui-border); color: var(--ui-foreground); cursor: pointer; font: inherit; padding: 16px; text-align: left; }
+.conversa:hover { background: var(--ui-surface); }
+.conversa[aria-current='true'] { background: var(--ui-success-background); }
 .conversa[aria-current='true'] { box-shadow: inset 3px 0 var(--ui-success); }
-.conversa span { color: var(--ui-muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conversa time { color: var(--ui-muted-foreground); font-size: 12px; }
+.avatar { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: var(--ui-surface); border: 1px solid var(--ui-border); color: var(--ui-success); font-size: 13px; font-weight: 600; }
+.conversa .avatar { grid-row: 1 / 4; align-self: center; }
+.conversa strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversa .previa { color: var(--ui-muted-foreground); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversa time { grid-column: 2; color: var(--ui-muted-foreground); font-size: 11px; }
+.semResultado { padding: 24px 18px; font-size: 13px; }
+.semResultado p { margin-top: 8px; color: var(--ui-muted-foreground); }
 .conversa:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: -3px; }
-.chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
-.chatCabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--ui-border); padding: 16px 20px; }
+.chat { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.chatCabecalho { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--ui-border); padding: 16px 20px; background: var(--ui-surface); }
+.chatCabecalho > div { min-width: 0; overflow-wrap: anywhere; }
+.chatCabecalho .leitura { margin-left: auto; font-size: 11px; white-space: nowrap; }
 .chatCabecalho h2 { font-size: 16px; font-weight: 600; }
 .chatCabecalho p, .chatCabecalho span { color: var(--ui-muted-foreground); font-size: 12px; }
-.mensagens { display: flex; flex-direction: column; gap: 12px; list-style: none; max-height: 600px; overflow: auto; padding: 20px; }
-.mensagens li { display: grid; gap: 6px; max-width: 80%; overflow-wrap: anywhere; padding: 10px 14px; border-radius: 10px; }
+.mensagens { display: flex; flex-direction: column; gap: 12px; list-style: none; min-height: 0; overflow: auto; overflow-anchor: none; overscroll-behavior: contain; padding: 20px 24px; scrollbar-width: thin; scrollbar-color: var(--ui-border-control) transparent; background-image: radial-gradient(var(--ui-border) .6px, transparent .6px); background-size: 18px 18px; }
+.mensagens .linhaMensagem { display: flex; flex-direction: column; flex: 0 0 auto; gap: 12px; width: 100%; overflow-wrap: anywhere; }
+.linhaMensagem > .recebida, .linhaMensagem > .enviada { display: grid; gap: 5px; max-width: 85%; padding: 10px 14px; border-radius: 10px; white-space: pre-wrap; }
+.dataConversa { align-self: center; color: var(--ui-muted-foreground); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 6px; font-size: 11px; padding: 3px 9px; margin: 6px 0; }
 .mensagens time { font-size: 11px; opacity: .75; text-align: right; }
 .recebida { align-self: start; background: var(--ui-surface); border: 1px solid var(--ui-border); }
 .enviada { align-self: end; background: var(--ui-success-background); color: var(--ui-success); }
-.rodape { border-top: 1px solid var(--ui-border); color: var(--ui-muted-foreground); padding: 16px 20px; text-align: center; }
+.rodape { border-top: 1px solid var(--ui-border); color: var(--ui-muted-foreground); padding: 12px 18px; text-align: center; font-size: 11px; background: var(--ui-surface); }
 .historico { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: var(--ui-muted-foreground); }
 .historico button { border: 1px solid var(--ui-border); border-radius: 8px; background: var(--ui-surface); color: var(--ui-foreground); font: inherit; padding: 10px 16px; cursor: pointer; }
 .historico button:disabled { opacity: .6; cursor: wait; }
 .historico button:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 2px; }
 .historico p { flex-basis: 100%; }
+.historico { font-size: 12px; }
+.historico button { padding: 7px 12px; font-size: 12px; }
+.dicaHistorico { flex: 1; }
 .midia { display: grid; gap: 8px; min-width: 0; }
 .midia audio { width: 280px; max-width: 100%; }
 .midia p { font-size: 13px; }
@@ -44,4 +63,5 @@
 .midiaBotao:focus-visible, .miniatura:focus-visible { outline: 3px solid var(--ui-focus); outline-offset: 3px; }
 .imagemDialogo { width: min(900px, 95vw); max-width: 95vw; }
 .imagemDialogo img { display: block; width: 100%; max-height: 75vh; object-fit: contain; }
-@media (max-width: 760px) { .cabecalho { display: grid; } .painel { grid-template-columns: 1fr; } .lista { border-right: 0; border-bottom: 1px solid var(--ui-border); } .conversas { max-height: 220px; } .mensagens { min-height: 350px; } }
+@media (max-width: 960px) { .chatCabecalho .leitura { display: none; } .painel { grid-template-columns: minmax(230px, 38%) minmax(0, 1fr); } .mensagens { padding: 16px; } }
+@media (max-width: 760px) { .cabecalho { display: grid; gap: 12px; } .identificacao { justify-content: start; } .painel { grid-template-columns: 1fr; grid-template-rows: 300px 540px; height: auto; } .lista { border-right: 0; border-bottom: 1px solid var(--ui-border); } .historico { align-items: start; } .dicaHistorico { flex-basis: 100%; } .linhaMensagem > .recebida, .linhaMensagem > .enviada { max-width: 95%; } .resumo span { display: none; } }

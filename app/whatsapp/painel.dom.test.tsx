@@ -117,3 +117,66 @@ test('novos dados preservam a conversa escolhida e mostram a mensagem nova', asy
   expect(host.querySelector('ol')?.textContent).toContain('Nova resposta')
   expect(host.querySelector('ol')?.textContent).not.toContain('Mensagem B')
 })
+
+async function buscar(valor: string) {
+  const input = host.querySelector<HTMLInputElement>('input[type="search"]')!
+  expect(input).not.toBeNull()
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, valor)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+test('busca nome sem acento, telefone formatado e texto sem perder a seleção', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[{ ...mensagens[0], nome: 'Âna', telefone: '+5511999998888' }, mensagens[1]]} />))
+  await buscar('ana')
+  expect(host.querySelectorAll('button[aria-current]')).toHaveLength(0)
+  expect(host.textContent).toContain('Âna')
+  expect(host.querySelector('ol')?.textContent).toContain('Mensagem B')
+  await buscar('(11) 99999-8888')
+  expect(host.querySelector('[aria-label="Lista de conversas"]')?.textContent).toContain('Âna')
+  await buscar('Mensagem A')
+  expect(host.querySelector('[aria-label="Lista de conversas"]')?.textContent).toContain('Âna')
+  await buscar('inexistente')
+  expect(host.textContent).toContain('Nenhuma conversa encontrada')
+  await buscar('')
+  expect(host.querySelector('button[aria-current="true"]')?.textContent).toContain('Bia')
+})
+
+test('rolar ao fim da lista carrega uma página e não repete automaticamente após erro', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
+  const lista = host.querySelector<HTMLElement>('[aria-label="Lista de conversas"]')!
+  expect(lista).not.toBeNull()
+  Object.defineProperties(lista, { scrollHeight: { configurable: true, value: 1000 }, clientHeight: { configurable: true, value: 300 } })
+  vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: false, motivo: 'indisponivel' })
+  await act(async () => { lista.scrollTop = 690; lista.dispatchEvent(new Event('scroll')) })
+  expect(historicoMensagensAcao).toHaveBeenCalledTimes(1)
+  await act(async () => lista.dispatchEvent(new Event('scroll')))
+  expect(historicoMensagensAcao).toHaveBeenCalledTimes(1)
+})
+
+test('carregar pelo topo mantém âncora e nova mensagem não arrasta quem está lendo acima', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
+  const chat = host.querySelector<HTMLOListElement>('ol')!
+  Object.defineProperties(chat, { scrollHeight: { configurable: true, get: () => chat.querySelectorAll('li').length >= 3 ? 1200 : 1000 }, clientHeight: { configurable: true, value: 300 } })
+  await act(async () => { chat.scrollTop = 250; chat.dispatchEvent(new Event('scroll')) })
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[...mensagens, { ...mensagens[1], id: 'nova', em: '2026-09-21T17:00:00Z' }]} {...historico} />))
+  expect(chat.scrollTop).toBe(250)
+  vi.mocked(historicoMensagensAcao).mockImplementationOnce(async () => {
+    return { ok: true, mensagens: [{ ...mensagens[1], id: 'antiga', em: '2026-09-20T15:00:00Z' }], temMais: true }
+  })
+  await act(async () => { chat.scrollTop = 20; chat.dispatchEvent(new Event('scroll')) })
+  expect(historicoMensagensAcao).toHaveBeenCalledOnce()
+  expect(chat.scrollTop).toBe(220)
+})
+
+test('continuar rolando no limite busca outra página mesmo sem aparecer conversa nova', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
+  const lista = host.querySelector<HTMLElement>('[aria-label="Lista de conversas"]')!
+  Object.defineProperties(lista, { scrollHeight: { configurable: true, value: 1000 }, clientHeight: { configurable: true, value: 300 } })
+  vi.mocked(historicoMensagensAcao).mockResolvedValue({ ok: true, mensagens: [], temMais: true })
+  await act(async () => { lista.scrollTop = 700; lista.dispatchEvent(new Event('scroll')) })
+  expect(historicoMensagensAcao).toHaveBeenCalledTimes(1)
+  await act(async () => lista.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true })))
+  expect(historicoMensagensAcao).toHaveBeenCalledTimes(2)
+})
