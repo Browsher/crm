@@ -27,8 +27,17 @@ test('gestor tem início e administração sem links de atendimento', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="gestao">Gestão</ShellCrm>)
   expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/gestao"')
   expect(html).toContain('href="/usuarios"')
-  expect(html).toContain('href="/empresas/grupos"')
+  expect(html).not.toContain('href="/empresas/grupos"')
+  expect(html).toContain('href="/whatsapp"')
   for (const rota of ['/fila', '/carteira', '/meu-dia']) expect(html).not.toContain(`href="${rota}"`)
+})
+
+test('WhatsApp é exclusivo do menu do gestor', () => {
+  const gestor = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="whatsapp">Mensagens</ShellCrm>)
+  const vendedor = renderToStaticMarkup(<ShellCrm nome="Bia" papel="vendedor" area="carteira">Carteira</ShellCrm>)
+  expect(gestor.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/whatsapp"')
+  expect(gestor).toContain('Tema do WhatsApp')
+  expect(vendedor).not.toContain('href="/whatsapp"')
 })
 
 test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
@@ -43,5 +52,6 @@ test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   expect(html).not.toContain('>Início</a>')
   expect(html).toContain('action="/sair"')
   expect(html).toContain('method="post"')
-  expect(html).toContain('>Sair</button>')
+  const saida = html.match(/<form\b[^>]*action="\/sair"[^>]*>([\s\S]*?)<\/form>/)?.[1] ?? ''
+  expect(saida.replace(/<[^>]+>/g, '')).toBe('Sair')
 })

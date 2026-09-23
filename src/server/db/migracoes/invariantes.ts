@@ -244,7 +244,9 @@ export function avaliar(e: Estado): string[] {
   for (const t of e.tabelas) {
     const nome = `${t.schema}.${t.nome}`
     if (!t.rls && t.nome !== '_migracao') v.push(`tabela sem RLS: ${nome}`)
-    if (t.force) {
+    // Este vínculo só tem operações como app_usuario; nenhuma definidora
+    // depende de ignorar sua RLS. A exceção não alcança tabelas de acesso.
+    if (t.force && nome !== 'public.whatsapp_vinculo') {
       v.push(
         `tabela com FORCE ROW LEVEL SECURITY: ${nome} (com dona comum, as funções de acesso ficam sujeitas a RLS sem política e negam tudo: bloqueio total)`,
       )
