@@ -16,3 +16,9 @@ export function selecionarGrupo(grupo: string | null): Filtros {
 export function limparFiltros(filtros: Filtros): Filtros {
   return selecionarGrupo(filtros.grupo)
 }
+
+export function urlEscolhaLista(filtros: Filtros, atendimento = false, aberta = true): string {
+  const consulta = urlConsulta(filtros, filtros.pagina)
+  const destino = atendimento ? consulta.replace('/fila/localizar', '/fila') : consulta
+  return aberta ? `${destino}&escolher_lista=1` : destino
+}

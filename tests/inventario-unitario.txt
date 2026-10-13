@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1217
+# Total: 1220
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -207,10 +207,13 @@ app/fila/localizar/componentes.test.tsx :: seletores dependentes ficam desabilit
 app/fila/localizar/componentes.test.tsx :: URL usa codificação segura e mudança de filtro volta para página um
 app/fila/localizar/contexto-grupo.test.tsx :: atendimento oferece escolher a próxima lista sem sair da tela
 app/fila/localizar/contexto-grupo.test.tsx :: grupo inativo não busca geral e mantém atendimento vigente
+app/fila/localizar/contexto-grupo.test.tsx :: grupo malformado oferece todas as listas ativas sem consulta geral
 app/fila/localizar/contexto-grupo.test.tsx :: grupo sozinho consulta só a lista e mostra contexto comercial escapado
+app/fila/localizar/navegacao.test.tsx :: abrir e fechar escolha conserva grupo, refinamentos e paginação
 app/fila/localizar/navegacao.test.tsx :: limpar conserva somente a lista e selecionar reinicia os demais filtros
 app/fila/localizar/navegacao.test.tsx :: paginação conserva a lista selecionada
 app/fila/localizar/perfil.test.tsx :: ação valida UUID, usa sessão e revalida lista somente no sucesso
+app/fila/localizar/perfil.test.tsx :: perfil com grupo malformado oferece todas as listas ativas sem ler empresa
 app/fila/localizar/perfil.test.tsx :: perfil disponível oferece reserva sem exibir dados privados
 app/fila/localizar/perfil.test.tsx :: perfil inválido ou inexistente responde 404
 app/fila/localizar/perfil.test.tsx :: perfil mostra resumo e retorno filtrado sem gravar durante render

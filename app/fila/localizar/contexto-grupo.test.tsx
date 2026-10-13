@@ -47,7 +47,24 @@ test('grupo inativo não busca geral e mantém atendimento vigente',async()=>{
   expect(fila).toContain('Todas as listas ativas')
 })
 test('atendimento oferece escolher a próxima lista sem sair da tela',async()=>{
-  const html=renderToStaticMarkup(await Fila({searchParams:Promise.resolve({grupo})}))
+  const entrada={grupo,nome:'Luz & Cia',cnae:'4742300',uf:'SP',cidade:'3550308',bairro:'Centro',pagina:'3'}
+  const html=renderToStaticMarkup(await Fila({searchParams:Promise.resolve(entrada)}))
   expect(html).toContain('Escolher outra lista')
-  expect(html).toContain('/fila?escolher_lista=1')
+  const href=html.match(/href="([^"]+)"[^>]*>Escolher outra lista/)![1].replaceAll('&amp;','&')
+  const abertura=new URL(href,'https://crm.test')
+  expect(abertura.pathname).toBe('/fila')
+  expect(Object.fromEntries(abertura.searchParams)).toEqual({...entrada,escolher_lista:'1'})
+  const busca=renderToStaticMarkup(await Pagina({searchParams:Promise.resolve(entrada)}))
+  const escolher=busca.match(/href="([^"]+)"[^>]*>Escolher outra lista/)![1].replaceAll('&amp;','&')
+  expect(Object.fromEntries(new URL(escolher,'https://crm.test').searchParams)).toEqual({...entrada,escolher_lista:'1'})
+})
+
+test('grupo malformado oferece todas as listas ativas sem consulta geral',async()=>{
+  const html=renderToStaticMarkup(await Pagina({searchParams:Promise.resolve({grupo:'invalido'})}))
+  expect(html).toContain('Todas as listas ativas')
+  expect(html).toContain('/fila/localizar?escolher_lista=1')
+  expect(mocks.consultar).not.toHaveBeenCalled()
+  expect(mocks.recentes).not.toHaveBeenCalled()
+  expect(mocks.sugestoes).not.toHaveBeenCalled()
+  expect(mocks.grupo).not.toHaveBeenCalled()
 })

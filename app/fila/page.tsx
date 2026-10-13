@@ -33,7 +33,7 @@ export default async function PaginaFila({ searchParams }: { searchParams: Promi
         </nav>
       </header>
       <div>
-        {entrada.ok ? <ContextoGrupo resultado={grupo} atendimento /> : <p role="alert">Filtros inválidos. A busca não foi executada. <Link href="/fila?escolher_lista=1">Todas as listas ativas</Link></p>}
+        {entrada.ok ? <ContextoGrupo resultado={grupo} filtros={filtros} atendimento escolhendo={params.escolher_lista === '1'} /> : <p role="alert">Filtros inválidos. A busca não foi executada. <Link href="/fila?escolher_lista=1">Todas as listas ativas</Link></p>}
       </div>
       <div>
       {r.ok ? (

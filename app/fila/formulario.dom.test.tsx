@@ -27,7 +27,8 @@ test('trocar só grupo e abrir escolha mantém editor, reserva e nota digitada',
     await act(async()=>root.render(<RascunhosProvider>{pagina}</RascunhosProvider>))
   }
   try {
-    await mostrar({grupo:grupo1})
+    const atuais={grupo:grupo1,nome:'Luz & Cia',cnae:'4742300',uf:'SP',cidade:'3550308',bairro:'Centro',pagina:'3'}
+    await mostrar(atuais)
     await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent==='Registrar resultado')!.click())
     const nota=host.querySelector<HTMLTextAreaElement>('textarea[name="nota"]')!
     await act(async()=>{
@@ -35,9 +36,27 @@ test('trocar só grupo e abrir escolha mantém editor, reserva e nota digitada',
       nota.dispatchEvent(new Event('input',{bubbles:true}))
     })
     expect(nota.value).toBe('Nota digitada durante atendimento')
-    await mostrar({grupo:grupo1,escolher_lista:'1'})
+    const abrir=[...host.querySelectorAll('a')].find(a=>a.textContent==='Escolher outra lista')!
+    const abertura=new URL(abrir.getAttribute('href')!,'https://crm.test')
+    await mostrar(Object.fromEntries(abertura.searchParams))
+    for(const [campo,valor] of Object.entries(atuais)) {
+      if(campo==='pagina') continue
+      expect(host.querySelector(`input[name="${campo}"]`)?.getAttribute('value')).toBe(valor)
+    }
+    expect(abertura.searchParams.get('pagina')).toBe('3')
     expect(host.querySelector('textarea[name="nota"]')).toBe(nota)
     expect(host.querySelector('[data-escolher-lista]')?.getAttribute('data-escolher-lista')).toBe('aberto')
+    const fechar=[...host.querySelectorAll('a')].find(a=>a.textContent==='Fechar escolha de lista')!
+    const fechamento=new URL(fechar.getAttribute('href')!,'https://crm.test')
+    expect(Object.fromEntries(fechamento.searchParams)).toEqual(atuais)
+    await mostrar(Object.fromEntries(fechamento.searchParams))
+    expect(host.querySelector('textarea[name="nota"]')).toBe(nota)
+    expect(nota.value).toBe('Nota digitada durante atendimento')
+    expect(host.querySelector('[data-escolher-lista]')?.getAttribute('data-escolher-lista')).toBe('fechado')
+    expect(host.querySelector('input[name="grupo"]')?.getAttribute('value')).toBe(grupo1)
+    expect(host.querySelector('input[name="contexto"]')?.getAttribute('value')).toBe('versao')
+    expect(host.textContent).toContain('Cliente atual')
+    expect(mocks.acao).not.toHaveBeenCalled()
     await mostrar({grupo:grupo2})
     expect(host.querySelector('textarea[name="nota"]')).toBe(nota)
     expect(nota.value).toBe('Nota digitada durante atendimento')

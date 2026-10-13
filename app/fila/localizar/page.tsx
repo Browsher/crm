@@ -20,12 +20,13 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function PaginaLocalizar({ searchParams }: Props) {
   const eu = await exigir('vendedor')
-  const r = lerFiltros(await searchParams)
+  const params = await searchParams
+  const r = lerFiltros(params)
   if (!r.ok) return (
     <main className={styles.pagina}>
       <h1>Começar a prospecção</h1>
       <p role="alert">Um dos filtros é inválido. Limpe os filtros e tente novamente.</p>
-      <Link href="/fila/localizar" className="underline">Limpar filtros</Link>
+      <Link href="/fila/localizar?escolher_lista=1" className="underline">Todas as listas ativas</Link>
     </main>
   )
   const filtros = r.filtros
@@ -47,7 +48,7 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
         <p>Puxe a próxima empresa disponível. A reserva mantém o cliente com você enquanto registra a conversa.</p>
         {minhas?.ok && minhas.reserva && <Button asChild variant="outline" className={styles.acaoCabecalho}><Link href={urlConsulta(filtros, filtros.pagina).replace('/fila/localizar', '/fila')}>Voltar para a fila</Link></Button>}
       </header>
-      <ContextoGrupo resultado={grupoIndisponivel ? {ok:false,motivo:'grupo_indisponivel'} : grupo} />
+      <ContextoGrupo resultado={grupoIndisponivel ? {ok:false,motivo:'grupo_indisponivel'} : grupo} filtros={filtros} escolhendo={params.escolher_lista === '1'} />
       <section className={styles.painel} aria-labelledby="titulo-localizar">
       <h2 id="titulo-localizar">Localizar empresa</h2>
       <p className={styles.ajuda}>Pesquise pelo nome ou refine os resultados pelos filtros.</p>
