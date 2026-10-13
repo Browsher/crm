@@ -16,6 +16,7 @@ const csv = (cnpj: string, cnae?: string) => new TextEncoder().encode(
 const operacao = () => ({
   chave: randomUUID(),
   nome: 'CNAE',
+  metadados: { descricao: 'Lista de regressão', origem: 'Fixture de integração', criterios: null },
   arquivoNome: 'cnae.csv',
   assinatura: 'c'.repeat(64),
 })

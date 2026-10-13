@@ -19,8 +19,8 @@ function cnpjUnico() {
   return base
 }
 const linha = () => ({ cnpj: cnpjUnico(), razao_social: 'Empresa original', telefone: '11999999999', cnae_principal: '1234567' })
-const sqlConfirmar = 'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6)'
-const parametros = (linhas: unknown, chave = randomUUID()) => [chave, 'Mooca', 'mooca.xlsx', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ total: 2 })]
+const sqlConfirmar = 'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6,$7)'
+const parametros = (linhas: unknown, chave = randomUUID()) => [chave, 'Mooca', 'mooca.xlsx', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ total: 2 }), JSON.stringify({ descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null })]
 async function confirmar(linhas: unknown, chave = randomUUID(), usuario = gestor) {
   const r = await banco.comoUsuario(usuario, e => e<{grupo_id:string; inseridas:number; vinculadas:number; relatorio:unknown}>(sqlConfirmar, parametros(linhas, chave)))
   return r.linhas[0]

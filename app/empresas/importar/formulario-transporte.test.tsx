@@ -40,7 +40,7 @@ test('argumentos reais do wrapper cabem em 2 MiB sem reenviar relatório de 4.99
   if (!analise.ok) throw new Error('esperava CSV válido')
   expect(analise.conferencia.linhasAceitas).toHaveLength(1)
   expect(analise.conferencia.recusadasIdentidade).toHaveLength(4999)
-  const operacao = { chave: '11111111-1111-4111-8111-111111111111', nome: 'Mooca', arquivoNome: 'empresas.csv', assinatura: 'a'.repeat(64) }
+  const operacao = { chave: '11111111-1111-4111-8111-111111111111', nome: 'Mooca', arquivoNome: 'empresas.csv', metadados: { descricao: '📷'.repeat(500), origem: '📷'.repeat(500), criterios: '📷'.repeat(2000) }, assinatura: 'a'.repeat(64) }
   const token = emitirConferencia({ usuarioId: 'gestor', operacao }, analise.conferencia, { IMPORTACAO_CONFERENCIA_SEGREDO: 'ab'.repeat(32) })!
   const anterior: EstadoImportar = { ...inicial, relatorio: analise.relatorio, conferencia: token }
   const form = new FormData()
@@ -48,6 +48,9 @@ test('argumentos reais do wrapper cabem em 2 MiB sem reenviar relatório de 4.99
   form.set('arquivo', arquivo)
   form.set('nome', operacao.nome)
   form.set('chave', operacao.chave)
+  form.set('descricao', operacao.metadados.descricao)
+  form.set('origem', operacao.metadados.origem)
+  form.set('criterios', operacao.metadados.criterios)
   form.set('confirmar', '1')
   form.set('conferencia', token)
 

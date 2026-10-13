@@ -7,8 +7,8 @@ const deps = vi.hoisted(() => ({ listar: vi.fn(), detalhe: vi.fn(), exigir: vi.f
 vi.mock('@/src/features/empresas/grupos', async original => ({ ...await original<object>(), listarGrupos: deps.listar, detalharGrupo: deps.detalhe }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: deps.exigir }))
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('404') } }))
-vi.mock('./acoes', () => ({ alterarGrupoAcao: vi.fn() }))
-const grupo = { id: '11111111-1111-4111-8111-111111111111', nome: 'Base de testes', ativo: true, arquivoNome: null, autor: null, criadoEm: '2026-09-14T12:00:00Z', total: 60 }
+vi.mock('./acoes', () => ({ alterarGrupoAcao: vi.fn(), atualizarMetadadosGrupoAcao: vi.fn() }))
+const grupo = { id: '11111111-1111-4111-8111-111111111111', nome: 'Base de testes', ativo: true, arquivoNome: null, autor: null, criadoEm: '2026-09-14T12:00:00Z', total: 60, descricao: null, origem: null, criterios: null }
 beforeEach(() => {
   deps.exigir.mockResolvedValue({ usuarioId: 'gestor' })
   deps.listar.mockResolvedValue({ ok: true, grupos: [grupo], resumo: { total: 51, ativos: 49, desativados: 2, empresas: 300 } })
@@ -61,4 +61,11 @@ test('detalhe usa nome comercial conhecido e CNPJ não informado', async () => {
   const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({}) }))
   expect(html).toContain('<strong>Câmeras Aurora</strong>')
   expect(html).toContain('Não informado')
+})
+
+
+test('detalhe de lista antiga exibe origem não informada e permite corrigir contexto', async () => {
+  const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({}) }))
+  expect(html).toContain('Origem não informada')
+  expect(html).toContain('Salvar contexto')
 })

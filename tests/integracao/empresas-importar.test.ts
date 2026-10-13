@@ -36,6 +36,7 @@ const relatorio = (novas: number, jaCadastradas = 0): Relatorio => ({
 const operacao = (nome = 'Mooca', chave = randomUUID()): OperacaoGrupo => ({
   chave,
   nome,
+  metadados: { descricao: 'Lista de regressão', origem: 'Fixture de integração', criterios: null },
   arquivoNome: `${nome.toLocaleLowerCase('pt-BR')}.csv`,
   assinatura: 'a'.repeat(64),
 })

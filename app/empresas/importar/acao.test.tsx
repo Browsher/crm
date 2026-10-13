@@ -24,6 +24,9 @@ function formCom(arquivo: File, confirmar = false, dados: { nome?: string; chave
   form.set('arquivo', arquivo)
   form.set('nome', dados.nome ?? 'Mooca')
   form.set('chave', dados.chave ?? CHAVE)
+  form.set('descricao', 'Mooca CFTV')
+  form.set('origem', 'Google Maps')
+  form.set('criterios', '')
   form.set('assinatura', 'hash-enviado-pelo-navegador-nao-e-confiavel')
   if (confirmar) form.set('confirmar', '1')
   return form
@@ -119,6 +122,7 @@ describe('importarAcao: arquivo', () => {
         chave: CHAVE,
         nome: 'Mooca',
         arquivoNome: 'empresas.csv',
+        metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null },
         assinatura: '53bb9b0b38ac812554abeb88ea6d56760d07ec147a75e8761c4f57ecc298218f',
       },
       { linhasAceitas: [2], recusadasIdentidade: [] },
@@ -212,4 +216,73 @@ test.each([[true, false], [false, false], [true, true]])('Action completa: lote 
     expect(r).toMatchObject({ erro: 'A confirmação mudou. Confira o arquivo novamente.', inseridas: null, grupoId: null })
     expect(gravadas).toEqual([])
   }
+})
+
+test('recusa resumo ausente antes de ler bytes', async () => {
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const ler = vi.spyOn(arquivo, 'arrayBuffer')
+  const form = formCom(arquivo)
+  form.set('descricao', '')
+  form.set('origem', 'Google Maps')
+  const r = await importarAcao(INICIAL, form)
+  expect(r.erro).toContain('Resumo')
+  expect(ler).not.toHaveBeenCalled()
+})
+
+test('trocar somente origem invalida o comprovante emitido na conferência', async () => {
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const form = formCom(arquivo)
+  form.set('descricao', 'Mooca CFTV')
+  form.set('origem', 'Google Maps')
+  const r = await importarAcao(INICIAL, form)
+  form.set('confirmar', '1')
+  form.set('conferencia', r.conferencia!)
+  form.set('origem', 'Outra coleta')
+  dependencias.importar.mockResolvedValue({ ok: true, relatorio: r.relatorio, inseridas: 1, grupoId: 'grupo' })
+  const confirmado = await importarAcao(INICIAL, form)
+  expect(confirmado.erro).toBe('A confirmação mudou. Confira o arquivo novamente.')
+  expect(dependencias.importar).not.toHaveBeenCalled()
+})
+
+
+test.each(['descricao', 'origem', 'criterios'] as const)('mudar só %s recusa confirmação sem gravar', async campo => {
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const r = await importarAcao(INICIAL, formCom(arquivo))
+  const form = formCom(arquivo, true)
+  form.set('conferencia', r.conferencia!)
+  form.set(campo, 'Outro contexto')
+  expect((await importarAcao(INICIAL, form)).erro).toBe('A confirmação mudou. Confira o arquivo novamente.')
+  expect(dependencias.importar).not.toHaveBeenCalled()
+})
+test('equivalência normalizada vincula os mesmos metadados na conferência e confirmação', async () => {
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const form = formCom(arquivo)
+  form.set('descricao', ' Mooca\r\nCFTV \r')
+  form.set('origem', ' Google Maps ')
+  form.set('criterios', '\r\n ')
+  const r = await importarAcao(INICIAL, form)
+  form.set('descricao', 'Mooca\nCFTV')
+  form.set('origem', 'Google Maps')
+  form.set('criterios', '')
+  form.set('confirmar', '1')
+  form.set('conferencia', r.conferencia!)
+  dependencias.importar.mockResolvedValue({ ok: true, relatorio: r.relatorio, inseridas: 1, grupoId: 'grupo' })
+  expect((await importarAcao(INICIAL, form)).erro).toBeNull()
+  expect(dependencias.importar.mock.calls[0][2].metadados).toEqual({ descricao: 'Mooca\nCFTV', origem: 'Google Maps', criterios: null })
+})
+test('Action preserva emoji no limite 500/2000 e recusa limite excedido e controles antes de ler', async () => {
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const form = formCom(arquivo)
+  const ler = vi.spyOn(arquivo, 'arrayBuffer')
+  form.set('descricao', '📷'.repeat(500))
+  form.set('origem', '📷'.repeat(500))
+  form.set('criterios', '📷'.repeat(2000))
+  expect((await importarAcao(INICIAL, form)).erro).toBeNull()
+  expect(ler).toHaveBeenCalledTimes(1)
+  ler.mockClear()
+  form.set('descricao', '📷'.repeat(501))
+  expect((await importarAcao(INICIAL, form)).erro).toContain('Resumo')
+  form.set('descricao', 'Mooca\u0001')
+  expect((await importarAcao(INICIAL, form)).erro).toContain('Resumo')
+  expect(ler).not.toHaveBeenCalled()
 })

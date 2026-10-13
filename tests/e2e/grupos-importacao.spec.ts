@@ -32,6 +32,9 @@ function linha(cnpj: string, nome: string, telefone = '11999990777') {
 async function conferir(page: Page, nome: string, buffer: Buffer) {
   await page.goto('/empresas/importar')
   await page.getByLabel('Nome do grupo', { exact: true }).fill(nome)
+  await page.getByLabel('Resumo da lista', { exact: true }).fill('Lista de regressão com contato disponível')
+  await page.getByLabel('Origem dos dados', { exact: true }).fill('Coleta fictícia E2E')
+  await page.getByLabel('Critérios usados', { exact: true }).fill('Telefone informado')
   await page.getByLabel('Arquivo Excel ou CSV').setInputFiles({ name: 'jornada-grupos.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer })
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Confira antes de importar' })).toBeFocused()
@@ -94,6 +97,18 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   await expect(page.getByRole('heading', { name: NOME, exact: true })).toBeVisible()
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(4)
   expect(await comBancoGrupos(async c => (await c.query('SELECT * FROM empresa WHERE cnpj=$1', [CNPJ_JORNADA_CARTEIRA])).rows)).toEqual(cadastroAntes)
+
+  const contextoLista = page.getByRole('region', { name: 'Contexto da lista' })
+  await expect(contextoLista.locator('dl')).toContainText('Coleta fictícia E2E')
+  const pedidoOriginal = await comBancoGrupos(async c => (await c.query('SELECT pedido FROM grupo_importacao WHERE id=$1', [urlGrupo.split('/').at(-1)])).rows)
+  await contextoLista.getByText('Corrigir contexto da lista', { exact: true }).click()
+  await contextoLista.getByLabel('Resumo da lista', { exact: true }).fill('Contexto revisado pelo gestor')
+  await contextoLista.getByLabel('Origem dos dados', { exact: true }).fill('Revisão da coleta fictícia')
+  await contextoLista.getByLabel('Critérios usados', { exact: true }).fill('Contato validado na revisão')
+  await contextoLista.getByRole('button', { name: 'Salvar contexto', exact: true }).click()
+  await expect(contextoLista.getByRole('status')).toHaveText('Contexto atualizado.')
+  await expect(contextoLista.locator('dl')).toContainText('Revisão da coleta fictícia')
+  expect(await comBancoGrupos(async c => (await c.query('SELECT pedido FROM grupo_importacao WHERE id=$1', [urlGrupo.split('/').at(-1)])).rows)).toEqual(pedidoOriginal)
 
   const aposPrimeira = await estadoImportacao()
   await conferir(page, 'Outra origem da jornada', await planilha([linha(CNPJ_JORNADA_OVERLAP, OVERLAP, '11955556666')]))

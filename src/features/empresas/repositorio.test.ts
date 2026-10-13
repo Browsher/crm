@@ -16,7 +16,7 @@ const operacao: OperacaoGrupo = {
   chave: '11111111-1111-4111-8111-111111111111',
   nome: 'Mooca',
   arquivoNome: 'mooca.csv',
-  assinatura: 'a'.repeat(64),
+  metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64),
 }
 const linha: LinhaAceita = {
   linha: 2,
@@ -85,6 +85,7 @@ describe('repositorioPostgres.gravar', () => {
         cnae_principal: '4742300',
       }]),
       JSON.stringify(relatorio),
+      JSON.stringify(operacao.metadados),
     ])
   })
 

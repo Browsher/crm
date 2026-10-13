@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1160
+# Total: 1201
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -69,13 +69,19 @@ app/empresas/formulario.dom.test.tsx :: novas props depois de navegação reinic
 app/empresas/formulario.dom.test.tsx :: trocar estado limpa cidade e bairro, preserva busca e CNAE e reinicia página
 app/empresas/formulario.test.tsx :: expõe busca e selects acessíveis com dependências desabilitadas
 app/empresas/grupos/acoes.test.tsx :: ação desconhecida e SQL negado permanecem recuperáveis sem invalidar cache
+app/empresas/grupos/acoes.test.tsx :: correção autentica gestor, normaliza contexto e revalida consumidores administrativos/comerciais
+app/empresas/grupos/acoes.test.tsx :: correção inválida ou sem permissão é recuperável e não invalida cache
 app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação desativar e invalida todos os consumidores
 app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação reativar e invalida todos os consumidores
 app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação renomear e invalida todos os consumidores
+app/empresas/grupos/acoes.test.tsx :: guarda negada precede correção
 app/empresas/grupos/acoes.test.tsx :: guarda recusada não altera nada
 app/empresas/grupos/controles.dom.test.tsx :: desativação abre confirmação com retrato atual, cancelamento e Escape restauram foco
 app/empresas/grupos/controles.dom.test.tsx :: erro fica no diálogo com nome editado e permite tentar de novo; sucesso fecha
 app/empresas/grupos/controles.dom.test.tsx :: pendente impede duplo envio e fecha só após resultado; reativar envia ação correta
+app/empresas/grupos/metadados.test.tsx :: contexto preserva os três textos conhecidos, inclusive caracteres Unicode
+app/empresas/grupos/metadados.test.tsx :: grupo antigo mostra nulos sem inventar contexto e correção exige resumo e origem
+app/empresas/grupos/page.test.tsx :: detalhe de lista antiga exibe origem não informada e permite corrigir contexto
 app/empresas/grupos/page.test.tsx :: detalhe identifica responsável inativo, outras origens e paginação
 app/empresas/grupos/page.test.tsx :: detalhe usa nome comercial conhecido e CNPJ não informado
 app/empresas/grupos/page.test.tsx :: estado vazio oferece importação
@@ -85,9 +91,11 @@ app/empresas/grupos/page.test.tsx :: recurso ausente vira 404
 app/empresas/importar/acao.test.tsx :: Action completa: lote misto=false, recusa preexistente=false
 app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=false
 app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=true
+app/empresas/importar/acao.test.tsx :: Action preserva emoji no limite 500/2000 e recusa limite excedido e controles antes de ler
 app/empresas/importar/acao.test.tsx :: configuração inválida não autoriza confirmar nem revela segredo
 app/empresas/importar/acao.test.tsx :: configuração vazia não autoriza confirmar nem revela segredo
 app/empresas/importar/acao.test.tsx :: confirmação sem conferência autêntica não chama importar
+app/empresas/importar/acao.test.tsx :: equivalência normalizada vincula os mesmos metadados na conferência e confirmação
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo 22023 volta como erro recuperavel que exige nova conferencia
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo conferencia envia formato e bytes ao servico
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo confirmacao chama importar com o arquivo original para reanalise
@@ -96,13 +104,23 @@ app/empresas/importar/acao.test.tsx :: importarAcao: arquivo formato desconhecid
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo tamanho acima do limite volta como erro recuperavel sem ler bytes
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { chave: 'nao-e-uuid' }
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { nome: '   ' }
+app/empresas/importar/acao.test.tsx :: mudar só criterios recusa confirmação sem gravar
+app/empresas/importar/acao.test.tsx :: mudar só descricao recusa confirmação sem gravar
+app/empresas/importar/acao.test.tsx :: mudar só origem recusa confirmação sem gravar
 app/empresas/importar/acao.test.tsx :: protocolo recusa arquivo alterado após conferência sem chamar importar
 app/empresas/importar/acao.test.tsx :: protocolo recusa chave alterado após conferência sem chamar importar
 app/empresas/importar/acao.test.tsx :: protocolo recusa gestor alterado após conferência sem chamar importar
 app/empresas/importar/acao.test.tsx :: protocolo recusa nome alterado após conferência sem chamar importar
 app/empresas/importar/acao.test.tsx :: protocolo recusa selecao alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: recusa resumo ausente antes de ler bytes
+app/empresas/importar/acao.test.tsx :: trocar somente origem invalida o comprovante emitido na conferência
 app/empresas/importar/formulario-transporte.test.tsx :: argumentos reais do wrapper cabem em 2 MiB sem reenviar relatório de 4.999 recusas
+app/empresas/importar/formulario.dom.test.tsx :: alterar criterios invalida conferência, renova chave e conserva arquivo
+app/empresas/importar/formulario.dom.test.tsx :: alterar descricao invalida conferência, renova chave e conserva arquivo
+app/empresas/importar/formulario.dom.test.tsx :: alterar origem invalida conferência, renova chave e conserva arquivo
 app/empresas/importar/formulario.dom.test.tsx :: conferir e confirmar usam a mesma chave, nome e arquivo
+app/empresas/importar/formulario.dom.test.tsx :: dois envios de confirmação sem mudança repetem chave e comprovante
+app/empresas/importar/formulario.dom.test.tsx :: emoji no limite atravessa duas submissões sem mudar chave e reiniciar limpa os campos
 app/empresas/importar/formulario.dom.test.tsx :: mudar arquivo invalida a conferência e inicia outra operação
 app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
 app/empresas/importar/formulario.dom.test.tsx :: reiniciar limpa nome e arquivo e gera outra chave
@@ -117,6 +135,7 @@ app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro rend
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render pede um nome para o grupo
+app/empresas/importar/formulario.test.tsx :: pede resumo e origem obrigatórios e critérios opcionais sem limitar emoji por UTF-16
 app/empresas/importar/relatorio.test.tsx :: recusa de identidade exige revisão e não oferece fusão automática
 app/empresas/importar/relatorio.test.tsx :: relatório explica identificação por origem e complemento seguro antes de confirmar
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
@@ -405,6 +424,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0031.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0032.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0035.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
@@ -662,6 +682,9 @@ src/features/empresas/cnpj.test.ts :: validarCnpj alfanumerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico com um digito trocado reprova
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj todos os digitos iguais reprova
+src/features/empresas/conferencia.test.ts :: alterar somente metadado criterios invalida o recibo assinado
+src/features/empresas/conferencia.test.ts :: alterar somente metadado descricao invalida o recibo assinado
+src/features/empresas/conferencia.test.ts :: alterar somente metadado origem invalida o recibo assinado
 src/features/empresas/conferencia.test.ts :: comprovante de 5.000 recusas conserva seleção e schema no round-trip
 src/features/empresas/conferencia.test.ts :: comprovante excessivo é recusado
 src/features/empresas/conferencia.test.ts :: comprovante preserva seleção e recusas sem depender de memória de processo
@@ -748,6 +771,10 @@ src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai co
 src/features/empresas/formato.test.ts :: formatarTelefone celular, 11 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone fixo, 10 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone valor fora de forma sai como veio
+src/features/empresas/grupos.test.ts :: correção inválida não toca o banco e UUID ausente é recuperável
+src/features/empresas/grupos.test.ts :: correção traduz SQLSTATE 22023
+src/features/empresas/grupos.test.ts :: correção traduz SQLSTATE 42501
+src/features/empresas/grupos.test.ts :: correção usa função definidora com contexto normalizado e quatro argumentos
 src/features/empresas/grupos.test.ts :: id malformado nunca chega ao banco
 src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: " "
 src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: "nome\nnovo"
@@ -956,6 +983,20 @@ src/lib/comercial.test.ts :: funil aceita somente as três etapas abertas
 src/lib/comercial.test.ts :: próxima etapa segue sequência fechada e termina na proposta
 src/lib/empresa-apresentacao.test.ts :: formata CNPJ numérico e alfanumérico conservando valores fora de forma
 src/lib/empresa-apresentacao.test.ts :: usa o nome conhecido sem transformar fantasia em razão social
+src/lib/grupo-metadados.test.ts :: campo descricao exige texto não vazio
+src/lib/grupo-metadados.test.ts :: campo origem exige texto não vazio
+src/lib/grupo-metadados.test.ts :: controle Unicode 0 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 1 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 11 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 127 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 128 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 159 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 31 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 9 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: limite de criterios conta pontos de código, preservando emoji
+src/lib/grupo-metadados.test.ts :: limite de descricao conta pontos de código, preservando emoji
+src/lib/grupo-metadados.test.ts :: limite de origem conta pontos de código, preservando emoji
+src/lib/grupo-metadados.test.ts :: normaliza CRLF e CR, remove só espaço ASCII/LF das extremidades e mantém LF interno
 src/lib/whatsapp-indicadores.test.ts :: conta conversas por fonte, pendências antigas e vendedores com envio hoje
 src/lib/whatsapp-indicadores.test.ts :: desconta noites e fim de semana do tempo até resposta
 src/lib/whatsapp-indicadores.test.ts :: dia é de Brasília, duplicatas não contam duas vezes e grupos/status são excluídos

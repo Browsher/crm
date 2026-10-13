@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { detalharGrupo, paginaGrupos, type EmpresaGrupo } from '@/src/features/empresas/grupos'
 import { dataGrupo, PaginacaoGrupos, SituacaoGrupo } from '../apresentacao'
+import { MetadadosGrupo } from '../metadados'
 import { ControlesGrupo } from '../controles'
 import styles from '../grupos.module.css'
 
@@ -27,6 +28,7 @@ export default async function DetalheGrupo({ params, searchParams }: Props) {
     <nav aria-label="Navegação estrutural" className={styles.breadcrumb}><Link href={`/empresas/grupos?pagina=${gruposPagina}`}>Grupos de importação</Link><span aria-hidden="true">/</span><span>{g.nome}</span></nav>
     <header className={styles.cabecalho}><div><h1>{g.nome}</h1><p>{g.arquivoNome ?? 'Cadastros anteriores'}</p><p>Importado por {g.autor ?? 'Migração'} em <time dateTime={g.criadoEm}>{dataGrupo(g.criadoEm)}</time></p></div><ControlesGrupo id={g.id} nome={g.nome} ativo={g.ativo} impactoDesativacao={r.impactoDesativacao} /></header>
     <div className={styles.faixa}><SituacaoGrupo ativo={g.ativo} /><Link href="/empresas">Todas as empresas</Link></div>
+    <MetadadosGrupo id={g.id} descricao={g.descricao} origem={g.origem} criterios={g.criterios} />
     <dl className={styles.resumo}>
       <div><dt>Empresas</dt><dd>{c.total}</dd></div><div><dt>Disponíveis</dt><dd>{c.disponiveis}</dd></div><div><dt>Em carteiras</dt><dd>{c.carteiras}</dd></div><div><dt>Reservadas</dt><dd>{c.reservadas}</dd></div><div><dt>Outros impedimentos</dt><dd>{c.outros}</dd></div>
     </dl>

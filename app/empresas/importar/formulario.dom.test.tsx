@@ -230,3 +230,71 @@ test('reiniciar limpa nome e arquivo e gera outra chave', async () => {
   expect(chave()).not.toBe(primeira)
   expect(document.activeElement).toBe(tituloEnviar())
 })
+
+
+async function preencherMetadado(campo: string, valor: string) {
+  const input = host.querySelector<HTMLTextAreaElement>(`textarea[name=${campo}]`)!
+  expect(input).toBeTruthy()
+  const definir = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+  await act(async () => { definir.call(input, valor); input.dispatchEvent(new Event('input', { bubbles: true })) })
+  return input
+}
+
+test.each(['descricao', 'origem', 'criterios'])('alterar %s invalida conferência, renova chave e conserva arquivo', async campo => {
+  mock.mockResolvedValue(conferido)
+  await montar()
+  await preencherNome()
+  await preencherMetadado('descricao', 'Mooca CFTV')
+  await preencherMetadado('origem', 'Google Maps')
+  await preencherMetadado('criterios', 'Telefone disponível')
+  const { input, file } = await arquivo()
+  const primeira = chave()
+  await clicar('Conferir arquivo')
+  expect(host.querySelector('dl')?.textContent).toContain('Google Maps')
+  await preencherMetadado(campo, 'Outra coleta')
+  expect(chave()).not.toBe(primeira)
+  expect(host.querySelector('button[name=confirmar]')).toBeNull()
+  expect(host.querySelector<HTMLInputElement>('input[name=conferencia]')!.value).toBe('')
+  expect(host.querySelector('input[type=file]')).toBe(input)
+  expect(input.files?.[0]).toBe(file)
+})
+
+test('emoji no limite atravessa duas submissões sem mudar chave e reiniciar limpa os campos', async () => {
+  mock.mockResolvedValueOnce(conferido).mockResolvedValueOnce(concluido)
+  await montar()
+  await preencherNome()
+  const descricao = await preencherMetadado('descricao', '📷'.repeat(500))
+  const origem = await preencherMetadado('origem', '📷'.repeat(500))
+  const criterios = await preencherMetadado('criterios', '📷'.repeat(2000))
+  await arquivo()
+  const mesma = chave()
+  await clicar('Conferir arquivo')
+  await clicar('Confirmar importação')
+  for (const chamada of [0, 1]) {
+    expect(dadosDaChamada(chamada).get('descricao')).toBe('📷'.repeat(500))
+    expect(dadosDaChamada(chamada).get('criterios')).toBe('📷'.repeat(2000))
+    expect(dadosDaChamada(chamada).get('chave')).toBe(mesma)
+  }
+  await clicar('Importar outro arquivo')
+  expect([descricao.value, origem.value, criterios.value]).toEqual(['', '', ''])
+})
+
+
+test('dois envios de confirmação sem mudança repetem chave e comprovante', async () => {
+  mock.mockResolvedValue(conferido)
+  await montar()
+  await preencherNome()
+  await preencherMetadado('descricao', 'Mooca CFTV')
+  await preencherMetadado('origem', 'Google Maps')
+  await arquivo()
+  const operacao = chave()
+  await clicar('Conferir arquivo')
+  await clicar('Confirmar importação')
+  await clicar('Confirmar importação')
+  expect(mock).toHaveBeenCalledTimes(3)
+  for (const i of [1, 2]) {
+    expect(dadosDaChamada(i).get('chave')).toBe(operacao)
+    expect(dadosDaChamada(i).get('conferencia')).toBe('comprovante-autenticado')
+    expect(dadosDaChamada(i).get('origem')).toBe('Google Maps')
+  }
+})

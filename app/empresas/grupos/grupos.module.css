@@ -31,3 +31,8 @@
 .aviso p { margin:.35rem 0; }
 @media (max-width:760px) { .pagina { padding:1.25rem; } .cabecalho { align-items:flex-start; flex-direction:column; } }
 @media (max-width:520px) { .pagina { padding:1rem; } .resumo { gap:1rem; } .resumo>div { flex:1 1 40%; } }
+
+.campo textarea { box-sizing:border-box; max-width:100%; width:100%; border:1px solid var(--ui-border); background:var(--ui-background); color:var(--ui-foreground); border-radius:.5rem; padding:.75rem; resize:vertical; min-height:5rem; }
+.pagina section[aria-label="Contexto da lista"] dl { display:grid; gap:.5rem; }
+.pagina section[aria-label="Contexto da lista"] dd { margin:0 0 .75rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+.pagina section[aria-label="Contexto da lista"] fieldset { display:grid; gap:1rem; min-width:0; border:0; padding:0; margin:1rem 0; }

@@ -1,8 +1,10 @@
+import { validarMetadadosGrupo, type MetadadosGrupo } from '../../lib/grupo-metadados'
 import { comoUsuario, type Executar } from '../../server/db/como-usuario'
 
 export type ResumoGrupo = {
   id: string; nome: string; arquivoNome: string | null; ativo: boolean
   criadoEm: string; autor: string | null; total: number
+  descricao: string | null; origem: string | null; criterios: string | null
 }
 export type ContagensGrupo = { total: number; disponiveis: number; carteiras: number; reservadas: number; outros: number }
 export type ResumoGrupos = { total: number; ativos: number; desativados: number; empresas: number }
@@ -26,7 +28,7 @@ export function paginaGrupos(valor: unknown): number {
 }
 
 // Uma fotografia por statement: resumo global independente de LIMIT/OFFSET.
-const GRUPOS = `SELECT g.id, g.nome, g.arquivo_nome AS "arquivoNome", g.ativo,
+const GRUPOS = `SELECT g.id, g.nome, g.arquivo_nome AS "arquivoNome", g.ativo, g.descricao, g.origem, g.criterios,
   g.criado_em::text AS "criadoEm", u.nome AS autor,
   (SELECT count(*)::integer FROM public.grupo_importacao_empresa ge WHERE ge.grupo_id = g.id) AS total
   FROM public.grupo_importacao g LEFT JOIN public.usuario u ON u.id = g.criado_por`
@@ -125,4 +127,24 @@ export async function renomearGrupo(usuarioId: string, id: string, nome: string)
 
 export async function definirSituacaoGrupo(usuarioId: string, id: string, ativo: boolean) {
   return alterar(usuarioId, id, 'SELECT public.grupo_importacao_situacao_definir($1,$2) AS resultado', ativo)
+}
+
+export async function atualizarMetadadosGrupo(usuarioId: string, id: string, metadados: MetadadosGrupo): Promise<{ ok: true } | { ok: false; motivo: 'sem_permissao' | 'nao_encontrado' | 'metadados_invalidos' }> {
+  if (!UUID.test(id)) return { ok: false, motivo: 'nao_encontrado' }
+  const validado = validarMetadadosGrupo(metadados)
+  if (!validado.ok) return { ok: false, motivo: 'metadados_invalidos' }
+  try {
+    return await comoUsuario(usuarioId, async executar => {
+      const { descricao, origem, criterios } = validado.metadados
+      const { linhas } = await executar<{ resultado: 'ok' | 'nao_encontrado' }>(
+        'SELECT public.grupo_importacao_metadados_definir($1,$2,$3,$4) AS resultado', [id, descricao, origem, criterios],
+      )
+      return linhas[0].resultado === 'ok' ? { ok: true } : { ok: false, motivo: 'nao_encontrado' }
+    })
+  } catch (erro) {
+    const codigo = (erro as { code?: string })?.code
+    if (codigo === '42501') return { ok: false, motivo: 'sem_permissao' }
+    if (codigo === '22023') return { ok: false, motivo: 'metadados_invalidos' }
+    throw erro
+  }
 }

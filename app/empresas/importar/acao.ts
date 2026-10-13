@@ -1,5 +1,6 @@
 'use server'
 
+import { validarMetadadosGrupo } from '@/src/lib/grupo-metadados'
 import { emitirConferencia, verificarConferencia } from '@/src/features/empresas/conferencia'
 import { createHash } from 'node:crypto'
 import { textoDaFalhaDeArquivo, textoDoMotivo } from '@/src/features/empresas/mensagens'
@@ -42,6 +43,13 @@ export async function importarAcao(_anterior: EstadoImportar, form: FormData): P
     return { ...INICIAL, erro: 'Informe um nome de grupo com até 100 caracteres.' }
   }
 
+  const contextoGrupo = validarMetadadosGrupo({ descricao: form.get('descricao'), origem: form.get('origem'), criterios: form.get('criterios') })
+  if (!contextoGrupo.ok) {
+    const rotulos = { descricao: 'Resumo da lista', origem: 'Origem dos dados', criterios: 'Critérios usados' }
+    const limite = contextoGrupo.campo === 'criterios' ? 2000 : 500
+    return { ...INICIAL, erro: `${rotulos[contextoGrupo.campo]}: informe um texto com até ${limite} caracteres, sem caracteres de controle.` }
+  }
+
   const chave = form.get('chave')
   if (typeof chave !== 'string' || !UUID.test(chave)) {
     return { ...INICIAL, erro: 'A operação não pôde ser identificada. Confira novamente o arquivo.' }
@@ -70,7 +78,7 @@ export async function importarAcao(_anterior: EstadoImportar, form: FormData): P
   // Confirmar reenvia o MESMO arquivo. O comprovante autentica a seleção
   // entre requisições sem persistir dados na conferência.
   const assinatura = createHash('sha256').update(bytes).digest('hex')
-  const operacao = { chave, nome, arquivoNome: arquivo.name, assinatura }
+  const operacao = { chave, nome, arquivoNome: arquivo.name, assinatura, metadados: contextoGrupo.metadados }
   const contexto = { usuarioId: eu.usuarioId, operacao }
   if (form.get('confirmar') !== null) {
     const conferencia = verificarConferencia(form.get('conferencia'), contexto)

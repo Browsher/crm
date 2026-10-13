@@ -1,3 +1,4 @@
+import type { MetadadosGrupo } from '../../lib/grupo-metadados'
 import { resolverCeps, type Endereco } from '../../server/cep/resolver'
 import { comoUsuario, type Executar } from '../../server/db/como-usuario'
 import type { LinhaAceita } from './planilha'
@@ -11,6 +12,7 @@ export type OperacaoGrupo = {
   nome: string
   arquivoNome: string
   assinatura: string
+  metadados: MetadadosGrupo
 }
 
 export type ConfirmacaoGrupo = {
@@ -97,7 +99,7 @@ export function repositorioPostgres(gestorId: string): RepositorioEmpresas {
       return tentar(gestorId, async (e) => {
         const r = await e<{ grupo_id: string; inseridas: number; vinculadas: number; relatorio: Relatorio }>(
           `SELECT grupo_id, inseridas, vinculadas, relatorio
-             FROM grupo_importacao_confirmar($1::uuid, $2::text, $3::text, $4::text, $5::jsonb, $6::jsonb)`,
+             FROM grupo_importacao_confirmar($1::uuid, $2::text, $3::text, $4::text, $5::jsonb, $6::jsonb, $7::jsonb)`,
           [
             operacao.chave,
             operacao.nome,
@@ -115,6 +117,7 @@ export function repositorioPostgres(gestorId: string): RepositorioEmpresas {
               cnae_principal: l.cnaePrincipal,
             }))),
             JSON.stringify(relatorio),
+            JSON.stringify(operacao.metadados),
           ],
         )
         const confirmado = r.linhas[0]

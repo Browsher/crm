@@ -54,3 +54,15 @@ describe('FormularioImportar: o primeiro render', () => {
     expect(html()).not.toContain('name="confirmar"')
   })
 })
+
+test('pede resumo e origem obrigatórios e critérios opcionais sem limitar emoji por UTF-16', () => {
+  const markup = html()
+  for (const [campo, rotulo] of [['descricao', 'Resumo da lista'], ['origem', 'Origem dos dados'], ['criterios', 'Critérios usados']]) {
+    expect(markup).toContain(rotulo)
+    const input = markup.match(new RegExp(`<textarea[^>]*name="${campo}"[^>]*>`))?.[0]
+    expect(input).toBeDefined()
+    expect(input).not.toContain('maxLength')
+    expect(input).not.toContain('maxlength')
+    if (campo !== 'criterios') expect(input).toContain('required=""')
+  }
+})

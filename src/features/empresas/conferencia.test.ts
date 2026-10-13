@@ -2,7 +2,7 @@ import { expect, test } from 'vitest'
 import { emitirConferencia, verificarConferencia } from './conferencia'
 
 const env = { IMPORTACAO_CONFERENCIA_SEGREDO: 'ab'.repeat(32) }
-const contexto = { usuarioId: 'gestor-a', operacao: { chave: '11111111-1111-4111-8111-111111111111', nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) } }
+const contexto = { usuarioId: 'gestor-a', operacao: { chave: '11111111-1111-4111-8111-111111111111', nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) } }
 const conferencia = { linhasAceitas: [2, 4], recusadasIdentidade: [{ tipo: 'identidade' as const, linha: 3, motivo: 'cnpj_divergente' as const }] }
 test('comprovante preserva seleção e recusas sem depender de memória de processo', () => {
   const token = emitirConferencia(contexto, conferencia, env)
@@ -50,4 +50,11 @@ test('comprovante de 5.000 recusas conserva seleção e schema no round-trip', (
   // O transporte é medido com encodeReply e argumentos reais do wrapper em
   // app/empresas/importar/formulario-transporte.test.tsx. Aqui é só o envelope.
   expect(verificarConferencia(token, contexto, env)).toEqual(maximo)
+})
+
+
+test.each(['descricao', 'origem', 'criterios'] as const)('alterar somente metadado %s invalida o recibo assinado', campo => {
+  const token = emitirConferencia(contexto, conferencia, env)
+  const operacao = { ...contexto.operacao, metadados: { ...contexto.operacao.metadados, [campo]: 'Outro contexto' } }
+  expect(verificarConferencia(token, { ...contexto, operacao }, env)).toBeNull()
 })

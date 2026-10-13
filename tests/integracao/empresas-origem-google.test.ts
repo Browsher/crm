@@ -13,8 +13,8 @@ let outro: string
 const prospect = (id = 'ChIJ-ficticio-a') => ({ cnpj: null, razao_social: null, nome_fantasia: 'Câmeras Aurora', telefone: '11987654321', google_place_id: id })
 async function confirmar(linhas: unknown[], chave = randomUUID(), usuario = gestor) {
   const r = await banco.comoUsuario(usuario, e => e<{ grupo_id: string; inseridas: number; vinculadas: number; relatorio: unknown }>(
-    'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6)',
-    [chave, 'Mooca', 'mooca.csv', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ novas: linhas.length })],
+    'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6,$7)',
+    [chave, 'Mooca', 'mooca.csv', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ novas: linhas.length }), JSON.stringify({ descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null })],
   ))
   return r.linhas[0]
 }
@@ -140,7 +140,7 @@ test('conflito surgido após análise produz nova conferência sem salvar parte 
     await confirmar([{ ...prospect('ChIJ-conflito'), cnpj: '11444777000161', razao_social: 'Outro cadastro' }])
     return gravar(...argumentos)
   }
-  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
   expect(r).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
   expect(textoDoMotivo('confirmacao_invalida')).toBe('A confirmação mudou. Confira o arquivo novamente.')
   expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
@@ -159,7 +159,7 @@ test.each([true, false])('conflito antes da reanálise não muda seleção aprov
   if (!conferido.ok) throw new Error('esperava análise válida')
   await confirmar([{ ...prospect('ChIJ-conflito'), cnpj: '11444777000161', razao_social: 'Outro cadastro' }])
   const antes = await banco.sql('SELECT * FROM empresa ORDER BY id')
-  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }, conferido.conferencia)
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }, conferido.conferencia)
   expect(r).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
   expect(await banco.sql('SELECT * FROM empresa ORDER BY id')).toEqual(antes)
   expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
@@ -172,7 +172,7 @@ test('recusa preexistente não amplia seleção quando deixa de divergir', async
   if (!conferido.ok) throw new Error('esperava análise válida')
   expect(conferido.relatorio).toMatchObject({ novas: 1, recusadas: [{ tipo: 'identidade', motivo: 'cnpj_divergente' }] })
   await banco.sql("UPDATE empresa SET cnpj='11222333000181',razao_social='Aurora LTDA'")
-  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }, conferido.conferencia)
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }, conferido.conferencia)
   expect(r).toMatchObject({ ok: true, inseridas: 1, vinculadas: 1, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [{ tipo: 'identidade', motivo: 'cnpj_divergente' }] } })
 })
 test('replay da seleção aprovada permanece válido após divergência cadastral posterior', async () => {
@@ -180,7 +180,7 @@ test('replay da seleção aprovada permanece válido após divergência cadastra
   const fonte = new TextEncoder().encode([CABECALHO_GOOGLE, '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito'].join('\n'))
   const conferido = await analisar(repo, fonte)
   if (!conferido.ok) throw new Error('esperava análise válida')
-  const op = { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }
+  const op = { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }
   const primeira = await importar(repo, fonte, op, conferido.conferencia)
   expect(primeira).toMatchObject({ ok: true, inseridas: 1 })
   await banco.sql("UPDATE empresa SET cnpj='11444777000161',razao_social='Outra LTDA'")

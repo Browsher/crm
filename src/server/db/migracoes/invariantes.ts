@@ -39,6 +39,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.grupo_importacao_confirmar',
   'public.grupo_importacao_situacao_definir',
   'public.grupo_importacao_renomear',
+  'public.grupo_importacao_metadados_definir',
   'public.empresa_filtros_administracao',
   'public.funil_etapa_definir',
   'public.funil_venda_registrar',
