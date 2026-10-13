@@ -150,8 +150,8 @@ describe('importar: confirmação idempotente', () => {
   test('retry após o primeiro commit devolve grupo, contagens e relatório originais', async () => {
     const repo = repositorioPostgres(gestor)
     const op = operacao('Replay')
-    const primeira = await importar(repo, duas, op)
-    const segunda = await importar(repo, duas, op)
+    const primeira = await importar(repo, duas, op, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
+    const segunda = await importar(repo, duas, op, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
 
     if (!primeira.ok || !segunda.ok) throw new Error('esperava duas confirmações válidas')
     expect(primeira.relatorio).toMatchObject({ novas: 2, jaCadastradas: 0 })
@@ -163,7 +163,7 @@ describe('importar: confirmação idempotente', () => {
   })
 
   test('arquivo somente com existentes ainda cria grupo e vínculos', async () => {
-    const r = await importar(repositorioPostgres(gestor), duas, operacao('Somente existentes'))
+    const r = await importar(repositorioPostgres(gestor), duas, operacao('Somente existentes'), { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     expect(r).toMatchObject({ ok: true, inseridas: 0, vinculadas: 2 })
   })
 })

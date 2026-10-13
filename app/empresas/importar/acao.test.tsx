@@ -1,5 +1,5 @@
 // .tsx mantém este teste no projeto unitário, conforme o include do Vitest.
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const dependencias = vi.hoisted(() => ({
   exigir: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('@/src/features/empresas/servico', () => ({
 }))
 
 const { importarAcao } = await import('./acao')
-const INICIAL = { erro: null, relatorio: null, inseridas: null, grupoId: null }
+const INICIAL = { erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null }
 const CHAVE = '11111111-1111-4111-8111-111111111111'
 
 function formCom(arquivo: File, confirmar = false, dados: { nome?: string; chave?: string } = {}) {
@@ -29,8 +29,11 @@ function formCom(arquivo: File, confirmar = false, dados: { nome?: string; chave
   return form
 }
 
+afterEach(() => vi.unstubAllEnvs())
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubEnv('IMPORTACAO_CONFERENCIA_SEGREDO', 'a'.repeat(64))
+  dependencias.analisar.mockResolvedValue({ ok: true, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [], cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null }, conferencia: { linhasAceitas: [2], recusadasIdentidade: [] } })
   dependencias.exigir.mockResolvedValue({ usuarioId: 'gestor-1' })
   dependencias.repositorioPostgres.mockReturnValue({ nome: 'repo' })
 })
@@ -80,6 +83,7 @@ describe('importarAcao: arquivo', () => {
   test('conferencia envia formato e bytes ao servico', async () => {
     dependencias.analisar.mockResolvedValue({
       ok: true,
+      conferencia: { linhasAceitas: [], recusadasIdentidade: [] },
       relatorio: { novas: 0, jaCadastradas: 0, recusadas: [], cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null },
     })
     const arquivo = new File([new Uint8Array([1, 2, 3])], 'EMPRESAS.XLSX')
@@ -102,7 +106,11 @@ describe('importarAcao: arquivo', () => {
     })
     const arquivo = new File(['csv'], 'empresas.csv', { type: 'text/csv' })
 
-    const resultado = await importarAcao(INICIAL, formCom(arquivo, true))
+    const conferido = await importarAcao(INICIAL, formCom(arquivo))
+    const form = formCom(arquivo, true)
+    form.set('conferencia', conferido.conferencia!)
+    dependencias.analisar.mockClear()
+    const resultado = await importarAcao(INICIAL, form)
 
     expect(dependencias.importar).toHaveBeenCalledWith(
       { nome: 'repo' },
@@ -113,6 +121,7 @@ describe('importarAcao: arquivo', () => {
         arquivoNome: 'empresas.csv',
         assinatura: '53bb9b0b38ac812554abeb88ea6d56760d07ec147a75e8761c4f57ecc298218f',
       },
+      { linhasAceitas: [2], recusadasIdentidade: [] },
     )
     expect(dependencias.analisar).not.toHaveBeenCalled()
     expect(resultado.inseridas).toBe(1)
@@ -122,9 +131,85 @@ describe('importarAcao: arquivo', () => {
   test('22023 volta como erro recuperavel que exige nova conferencia', async () => {
     dependencias.importar.mockResolvedValue({ ok: false, motivo: 'confirmacao_invalida' })
 
-    const resultado = await importarAcao(INICIAL, formCom(new File(['csv'], 'empresas.csv'), true))
+    const arquivo = new File(['csv'], 'empresas.csv')
+    const conferido = await importarAcao(INICIAL, formCom(arquivo))
+    const form = formCom(arquivo, true)
+    form.set('conferencia', conferido.conferencia!)
+    const resultado = await importarAcao(INICIAL, form)
 
-    expect(resultado).toMatchObject({ relatorio: null, inseridas: null, grupoId: null })
+    expect(resultado).toMatchObject({ relatorio: null, inseridas: null, grupoId: null, conferencia: null })
     expect(resultado.erro).toContain('Confira o arquivo novamente')
   })
+})
+
+
+test('confirmação sem conferência autêntica não chama importar', async () => {
+  dependencias.importar.mockResolvedValue({ ok: true, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [], cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null }, grupoId: 'grupo', inseridas: 1 })
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const r = await importarAcao(INICIAL, formCom(arquivo, true))
+  expect(r).toMatchObject({ erro: 'A confirmação mudou. Confira o arquivo novamente.', inseridas: null, grupoId: null, conferencia: null })
+  expect(dependencias.importar).not.toHaveBeenCalled()
+})
+
+
+test.each(['arquivo', 'nome', 'chave', 'gestor', 'selecao'] as const)('protocolo recusa %s alterado após conferência sem chamar importar', async campo => {
+  const arquivo = new File(['csv'], 'empresas.csv')
+  const conferido = await importarAcao(INICIAL, formCom(arquivo))
+  const form = formCom(arquivo, true)
+  form.set('conferencia', conferido.conferencia!)
+  if (campo === 'arquivo') form.set('arquivo', new File(['outros bytes'], 'empresas.csv'))
+  if (campo === 'nome') form.set('nome', 'Centro')
+  if (campo === 'chave') form.set('chave', '22222222-2222-4222-8222-222222222222')
+  if (campo === 'gestor') dependencias.exigir.mockResolvedValue({ usuarioId: 'gestor-2' })
+  if (campo === 'selecao') {
+    const [payload, mac] = conferido.conferencia!.split('.')
+    const dados = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+    dados.linhasAceitas = []
+    form.set('conferencia', `${Buffer.from(JSON.stringify(dados)).toString('base64url')}.${mac}`)
+  }
+  const r = await importarAcao({ ...conferido, relatorio: { ...conferido.relatorio!, novas: 100 } }, form)
+  expect(r).toMatchObject({ erro: 'A confirmação mudou. Confira o arquivo novamente.', inseridas: null, grupoId: null, conferencia: null })
+  expect(dependencias.importar).not.toHaveBeenCalled()
+})
+test.each([['vazia', ''], ['inválida', 'invalido']])('configuração %s não autoriza confirmar nem revela segredo', async (_rotulo, segredo) => {
+  vi.stubEnv('IMPORTACAO_CONFERENCIA_SEGREDO', segredo)
+  const r = await importarAcao(INICIAL, formCom(new File(['csv'], 'empresas.csv')))
+  expect(r).toMatchObject({ relatorio: null, conferencia: null, inseridas: null })
+  expect(r.erro).toBe('Não foi possível concluir a conferência. Tente novamente mais tarde.')
+  expect(dependencias.importar).not.toHaveBeenCalled()
+})
+test.each([[true, false], [false, false], [true, true]])('Action completa: lote misto=%s, recusa preexistente=%s', async (misto, preexistente) => {
+  const real = await vi.importActual<typeof import('@/src/features/empresas/servico')>('@/src/features/empresas/servico')
+  let conflito = preexistente
+  const gravadas: unknown[] = []
+  const repo: import('@/src/features/empresas/repositorio').RepositorioEmpresas = {
+    async preparar() { return { porCnpj: new Map(), porGoogle: new Map(conflito ? [['ChIJ-conflito', { id: 'empresa-b', cnpj: '11444777000161', razaoSocial: 'Outra LTDA' }]] : []), enderecos: new Map(), basePublicadaEm: null } },
+    async gravar(_op, linhas, relatorio) {
+      if (linhas.some(l => l.googlePlaceId === 'ChIJ-conflito') && conflito) return { ok: false, motivo: 'confirmacao_invalida' }
+      gravadas.push(linhas)
+      return { ok: true, grupoId: 'grupo', inseridas: linhas.length, vinculadas: linhas.length, relatorio }
+    },
+  }
+  dependencias.repositorioPostgres.mockReturnValue(repo)
+  dependencias.analisar.mockImplementation(real.analisar)
+  dependencias.importar.mockImplementation(real.importar)
+  const arquivo = new File([
+    ['cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,cnae_principal,google_place_id',
+      '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
+      ...(misto ? [',,Nova,,11987654321,,,,ChIJ-nova'] : []),
+    ].join('\n'),
+  ], 'empresas.csv')
+  const conferido = await importarAcao(INICIAL, formCom(arquivo))
+  expect(conferido.relatorio?.novas).toBe(preexistente ? 1 : misto ? 2 : 1)
+  conflito = true
+  const form = formCom(arquivo, true)
+  form.set('conferencia', conferido.conferencia!)
+  const r = await importarAcao(conferido, form)
+  if (preexistente) {
+    expect(r).toMatchObject({ erro: null, inseridas: 1, grupoId: 'grupo', relatorio: { novas: 1, recusadas: [{ tipo: 'identidade', linha: 2, motivo: 'cnpj_divergente' }] } })
+    expect(gravadas).toHaveLength(1)
+  } else {
+    expect(r).toMatchObject({ erro: 'A confirmação mudou. Confira o arquivo novamente.', inseridas: null, grupoId: null })
+    expect(gravadas).toEqual([])
+  }
 })

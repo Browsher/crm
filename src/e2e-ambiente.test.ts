@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { ambienteDoServidor, exigirAdminLocal } from '../tests/e2e/ambiente'
+import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal } from '../tests/e2e/ambiente'
 
 test('isola credenciais e SSL herdados sem alterar o ambiente pai', () => {
   const fonte: NodeJS.ProcessEnv = { NODE_ENV: 'test', DATABASE_URL_ADMIN: 'admin', DATABASE_URL: 'remota', ALVO: 'railway', PG_SSL: 'verify', PG_SSL_CA: 'ca' }
@@ -20,4 +20,12 @@ test.each([
   'postgres://app_teste:teste@localhost/crm',
 ])('recusa URL fora do banco descartável restrito: %s', (url) => {
   expect(() => ambienteDoServidor({ NODE_ENV: 'test' }, url)).toThrow()
+})
+
+
+test('build não herda segredo de conferência e servidor usa somente chave de teste', () => {
+  const fonte: NodeJS.ProcessEnv = { NODE_ENV: 'test', IMPORTACAO_CONFERENCIA_SEGREDO: 'chave real que não deve entrar em E2E' }
+  expect(ambienteDoBuild(fonte).IMPORTACAO_CONFERENCIA_SEGREDO).toBe('')
+  expect(ambienteDoServidor(fonte, 'postgres://app_teste:teste@localhost:5432/teste_0123456789ab').IMPORTACAO_CONFERENCIA_SEGREDO).toBe('e2'.repeat(32))
+  expect(fonte.IMPORTACAO_CONFERENCIA_SEGREDO).toBe('chave real que não deve entrar em E2E')
 })

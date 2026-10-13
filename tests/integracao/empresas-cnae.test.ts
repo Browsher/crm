@@ -33,13 +33,13 @@ test('coluna opcional nasce nula para INSERT legado', async () => {
 })
 
 test('importa CNAE pontuado e lista o código normalizado', async () => {
-  expect(await importar(repositorioPostgres(gestor), csv('11222333000181', '4742-3/00'), operacao())).toMatchObject({ ok: true, inseridas: 1 })
+  expect(await importar(repositorioPostgres(gestor), csv('11222333000181', '4742-3/00'), operacao(), { linhasAceitas: [2], recusadasIdentidade: [] })).toMatchObject({ ok: true, inseridas: 1 })
   const lista = await listarEmpresas(gestor, lerConsulta({ q: '11222333000181' }))
   expect(lista).toMatchObject({ ok: true, linhas: [{ cnpj: '11222333000181', cnaePrincipal: '4742300' }] })
 })
 
 test('reimportação não atualiza CNAE de CNPJ existente', async () => {
-  expect(await importar(repositorioPostgres(gestor), csv('11444777000161', '4742300'), operacao())).toMatchObject({ ok: true, inseridas: 0, relatorio: { jaCadastradas: 1 } })
+  expect(await importar(repositorioPostgres(gestor), csv('11444777000161', '4742300'), operacao(), { linhasAceitas: [2], recusadasIdentidade: [] })).toMatchObject({ ok: true, inseridas: 0, relatorio: { jaCadastradas: 1 } })
   expect(await banco.sql('SELECT cnae_principal FROM empresa WHERE cnpj=$1', ['11444777000161'])).toEqual([{ cnae_principal: null }])
 })
 

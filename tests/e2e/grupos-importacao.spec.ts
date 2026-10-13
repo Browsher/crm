@@ -80,7 +80,7 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   const contatoAntes = await comBancoGrupos(async c => (await c.query('SELECT c.* FROM contato c JOIN empresa e ON e.id=c.empresa_id WHERE e.cnpj=$1', [CNPJ_JORNADA_CARTEIRA])).rows)
   expect(filaAntes).toHaveLength(1)
   expect(contatoAntes).toHaveLength(1)
-  await conferir(page, NOME, await planilha([linha(CNPJ_JORNADA_NOVA, NOVA), linha(CNPJ_JORNADA_OVERLAP, OVERLAP), linha(CNPJ_JORNADA_CARTEIRA, 'Sobrescrita proibida')]))
+  await conferir(page, NOME, await planilha([linha(CNPJ_JORNADA_NOVA, NOVA), linha(CNPJ_JORNADA_OVERLAP, OVERLAP), linha(CNPJ_JORNADA_CARTEIRA, CARTEIRA)]))
   await expect(resumo(page, 'Novas empresas')).toHaveText('2')
   await expect(resumo(page, 'Já cadastradas')).toHaveText('1')
   expect(await estadoImportacao()).toEqual(antes)
@@ -96,7 +96,7 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   expect(await comBancoGrupos(async c => (await c.query('SELECT * FROM empresa WHERE cnpj=$1', [CNPJ_JORNADA_CARTEIRA])).rows)).toEqual(cadastroAntes)
 
   const aposPrimeira = await estadoImportacao()
-  await conferir(page, 'Outra origem da jornada', await planilha([linha(CNPJ_JORNADA_OVERLAP, 'Outro nome proibido', '11955556666')]))
+  await conferir(page, 'Outra origem da jornada', await planilha([linha(CNPJ_JORNADA_OVERLAP, OVERLAP, '11955556666')]))
   await expect(resumo(page, 'Novas empresas')).toHaveText('0')
   await expect(resumo(page, 'Já cadastradas')).toHaveText('1')
   expect(await estadoImportacao()).toEqual(aposPrimeira)

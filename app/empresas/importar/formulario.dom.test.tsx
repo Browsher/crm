@@ -11,12 +11,13 @@ const { importarAcao } = await import('./acao')
 const { FormularioImportar } = await import('./formulario')
 const mock = vi.mocked(importarAcao)
 const relatorio = { novas: 2, jaCadastradas: 1, recusadas: [], cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null }
-const conferido: EstadoImportar = { erro: null, relatorio, inseridas: null, grupoId: null }
+const conferido: EstadoImportar = { erro: null, relatorio, inseridas: null, grupoId: null, conferencia: 'comprovante-autenticado' }
 const concluido: EstadoImportar = {
   erro: null,
   relatorio,
   inseridas: 2,
   grupoId: '77777777-7777-4777-8777-777777777777',
+  conferencia: null,
 }
 let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
@@ -102,6 +103,7 @@ test('conferir e confirmar usam a mesma chave, nome e arquivo', async () => {
   expect(dadosDaChamada(1).get('chave')).toBe(operacao)
   expect(dadosDaChamada(0).get('nome')).toBe('Mooca')
   expect(dadosDaChamada(1).get('nome')).toBe('Mooca')
+  expect(dadosDaChamada(1).get('conferencia')).toBe('comprovante-autenticado')
   expect(input.files?.[0]).toBe(file)
 })
 
@@ -177,7 +179,7 @@ test('pendente bloqueia troca e navegação, erro descarta confirmação antiga'
   await clicar('Confirmar importação')
   expect(host.querySelector('fieldset')?.disabled).toBe(true)
   expect(host.querySelector('nav button')).toBeNull()
-  await act(async () => resolver({ erro: 'Confira novamente.', relatorio: null, inseridas: null, grupoId: null }))
+  await act(async () => resolver({ erro: 'Confira novamente.', relatorio: null, inseridas: null, grupoId: null, conferencia: null }))
   const alerta = host.querySelector('[role=alert]')
   expect(alerta?.textContent).toBe('Confira novamente.')
   expect(document.activeElement).toBe(alerta)
@@ -185,6 +187,7 @@ test('pendente bloqueia troca e navegação, erro descarta confirmação antiga'
   expect(input.files?.[0]).toBe(file)
   expect(chave()).toBe(operacao)
   expect(host.querySelector('button[name=confirmar]')).toBeNull()
+  expect(host.querySelector<HTMLInputElement>('input[name=conferencia]')?.value).toBe('')
 
   mock.mockResolvedValueOnce(conferido)
   await clicar('Conferir arquivo')

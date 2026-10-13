@@ -140,9 +140,50 @@ test('conflito surgido após análise produz nova conferência sem salvar parte 
     await confirmar([{ ...prospect('ChIJ-conflito'), cnpj: '11444777000161', razao_social: 'Outro cadastro' }])
     return gravar(...argumentos)
   }
-  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) })
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
   expect(r).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
   expect(textoDoMotivo('confirmacao_invalida')).toBe('A confirmação mudou. Confira o arquivo novamente.')
   expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
   expect(await banco.sql('SELECT google_place_id FROM empresa_origem_google')).toEqual([{ google_place_id: 'ChIJ-conflito' }])
+})
+
+
+test.each([true, false])('conflito antes da reanálise não muda seleção aprovada, lote misto=%s', async misto => {
+  const repo = repositorioPostgres(gestor)
+  const fonte = new TextEncoder().encode([
+    CABECALHO_GOOGLE,
+    '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
+    ...(misto ? [',,Nova,,11987654321,,,,ChIJ-nova'] : []),
+  ].join('\n'))
+  const conferido = await analisar(repo, fonte)
+  if (!conferido.ok) throw new Error('esperava análise válida')
+  await confirmar([{ ...prospect('ChIJ-conflito'), cnpj: '11444777000161', razao_social: 'Outro cadastro' }])
+  const antes = await banco.sql('SELECT * FROM empresa ORDER BY id')
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }, conferido.conferencia)
+  expect(r).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
+  expect(await banco.sql('SELECT * FROM empresa ORDER BY id')).toEqual(antes)
+  expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
+})
+test('recusa preexistente não amplia seleção quando deixa de divergir', async () => {
+  const repo = repositorioPostgres(gestor)
+  await confirmar([{ ...prospect('ChIJ-conflito'), cnpj: '11444777000161', razao_social: 'Outra LTDA' }])
+  const fonte = new TextEncoder().encode([CABECALHO_GOOGLE, '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito', ',,Nova,,11987654321,,,,ChIJ-nova'].join('\n'))
+  const conferido = await analisar(repo, fonte)
+  if (!conferido.ok) throw new Error('esperava análise válida')
+  expect(conferido.relatorio).toMatchObject({ novas: 1, recusadas: [{ tipo: 'identidade', motivo: 'cnpj_divergente' }] })
+  await banco.sql("UPDATE empresa SET cnpj='11222333000181',razao_social='Aurora LTDA'")
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }, conferido.conferencia)
+  expect(r).toMatchObject({ ok: true, inseridas: 1, vinculadas: 1, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [{ tipo: 'identidade', motivo: 'cnpj_divergente' }] } })
+})
+test('replay da seleção aprovada permanece válido após divergência cadastral posterior', async () => {
+  const repo = repositorioPostgres(gestor)
+  const fonte = new TextEncoder().encode([CABECALHO_GOOGLE, '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito'].join('\n'))
+  const conferido = await analisar(repo, fonte)
+  if (!conferido.ok) throw new Error('esperava análise válida')
+  const op = { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', assinatura: 'a'.repeat(64) }
+  const primeira = await importar(repo, fonte, op, conferido.conferencia)
+  expect(primeira).toMatchObject({ ok: true, inseridas: 1 })
+  await banco.sql("UPDATE empresa SET cnpj='11444777000161',razao_social='Outra LTDA'")
+  expect(await importar(repo, fonte, op, conferido.conferencia)).toEqual(primeira)
+  expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
 })

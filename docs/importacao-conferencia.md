@@ -1,0 +1,13 @@
+# Comprovante da conferência de importação
+
+O runtime do CRM precisa de `IMPORTACAO_CONFERENCIA_SEGREDO`: 32 bytes aleatórios escritos em 64 caracteres hexadecimais. Configure somente no servidor, sem prefixo `NEXT_PUBLIC_`, e conserve a mesma chave em todas as instâncias. Gerar uma chave local pode ser feito com `node -p "require('node:crypto').randomBytes(32).toString('hex')"`; guarde o resultado no gerenciador de segredos do ambiente. Não versione o valor nem reutilize senha de banco, DSN ou cookie.
+
+A validação é preguiçosa, ao emitir/verificar o comprovante. Build sem configuração continua possível. Com segredo ausente ou inválido a conferência não produz autorização de confirmação; a confirmação falha fechada, sem gravar ou revelar o valor. Não há fallback para memória local ou outro segredo. Rotacionar a chave invalida comprovantes ainda abertos; o gestor precisa conferir novamente.
+
+`src/features/empresas/conferencia.ts` usa um envelope versão 1 e HMAC-SHA256. Vincula gestor e toda a operação (chave, nome do grupo, nome do arquivo, SHA-256 dos bytes), mais posições aceitas e recusas de identidade já conferidas. O contexto vem do servidor. Campos ocultos e estado anterior do navegador não são autoridade. A assinatura cobre o objeto da operação inteiro, permitindo acrescentar campos futuros ao contrato sem esquecer seu vínculo; metadados de grupo não são implementados nesta etapa.
+
+`analisar` devolve `conferencia` com as posições aceitas. A Action assina esse retrato e o formulário reenvia o comprovante. `importar` reparseia os mesmos bytes e envia exatamente as linhas aprovadas ao SQL, conservando as recusas anteriores. Uma mudança percebida na classificação atual não pode retirar silenciosamente uma dessas linhas. O banco revalida os identificadores e recusa conflitos com rollback integral. O replay do mesmo pedido continua retornando seu resultado persistido antes de reavaliar o cadastro.
+
+O comprovante não persiste dados na conferência. Seu envelope com até 5.000 linhas cabe no limite de transporte atual junto ao arquivo de até 1,5 MB. A seleção não ganha autorização de escrita: guarda de gestor, RLS, senha provisória e validações SQL continuam obrigatórias.
+
+E2E e CI usam o runtime isolado de `tests/e2e/ambiente.ts`: o build remove qualquer segredo herdado e o servidor descartável usa somente a chave fixa de teste. Essa chave não é válida para uso operacional. A mudança requer configurar o segredo no deploy posterior, antes de permitir importações. Não foi alterado nenhum segredo nem ambiente de produção nesta execução.

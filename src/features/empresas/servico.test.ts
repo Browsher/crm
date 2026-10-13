@@ -74,6 +74,7 @@ describe('analisar', () => {
     const r = await analisar(repo, bytes(AURORA, BELA, SEM_CEP_NA_BASE))
     expect(r).toEqual({
       ok: true,
+      conferencia: { linhasAceitas: [2, 3, 4], recusadasIdentidade: [] },
       relatorio: {
         novas: 2,
         jaCadastradas: 1,
@@ -152,7 +153,7 @@ describe('analisar: a base de CEP nao carregada', () => {
 describe('importar', () => {
   test('confirma todas as aceitas, inclusive as ja cadastradas', async () => {
     const { repo, gravadas } = repoFalso(['11444777000161'])
-    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     if (!r.ok) throw new Error('esperava ok')
     expect(r.inseridas).toBe(1)
     expect(r.vinculadas).toBe(2)
@@ -168,7 +169,7 @@ describe('importar', () => {
 
   test('so CNPJs existentes ainda cria o grupo e devolve zero inseridas', async () => {
     const { repo, gravadas } = repoFalso(['11222333000181', '11444777000161'])
-    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     expect(r).toMatchObject({
       ok: true,
       grupoId: '77777777-7777-4777-8777-777777777777',
@@ -180,15 +181,15 @@ describe('importar', () => {
 
   test('devolve o relatorio persistido pelo repositorio em vez da reanalise atual', async () => {
     const { repo } = repoFalso(['11444777000161'])
-    const primeira = await importar(repo, bytes(AURORA, BELA), OPERACAO)
-    const segunda = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const primeira = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
+    const segunda = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     if (!primeira.ok || !segunda.ok) throw new Error('esperava ok nos dois')
     expect(segunda).toEqual(primeira)
   })
 
   test('nao confirma quando todas as linhas foram recusadas', async () => {
     const { repo, gravadas } = repoFalso()
-    const r = await importar(repo, bytes('11222333000182,Erro LTDA,,,11987654321,,'), OPERACAO)
+    const r = await importar(repo, bytes('11222333000182,Erro LTDA,,,11987654321,,'), OPERACAO, { linhasAceitas: [], recusadasIdentidade: [] })
     expect(r).toEqual({ ok: false, motivo: 'sem_linhas_aceitas' })
     expect(gravadas).toEqual([])
   })
@@ -232,4 +233,48 @@ test('conferência usa os dois identificadores antes de contar e não grava', as
   expect(await analisar(repo, csv)).toMatchObject({ ok: true, relatorio: { novas: 1, jaCadastradas: 1,
     recusadas: [{ tipo: 'identidade', linha: 2, motivo: 'identificadores_divergentes' }] } })
   expect(gravadas).toEqual([])
+})
+
+
+describe('seleção aprovada na conferência', () => {
+  const fonte = (misto: boolean) => new TextEncoder().encode([
+    `${CABECALHO},cnae_principal,google_place_id`,
+    '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
+    ...(misto ? [',,Nova,,11987654321,,,,ChIJ-nova'] : []),
+  ].join('\n'))
+  function repoMutavel() {
+    const { repo, gravadas } = repoFalso()
+    const prepararAnterior = repo.preparar
+    let conflito = false
+    repo.preparar = async () => {
+      const p = await prepararAnterior([], [])
+      if ('motivo' in p) throw new Error(p.motivo)
+      return { ...p, porGoogle: new Map(conflito ? [['ChIJ-conflito', { id: 'empresa-b', cnpj: '11444777000161', razaoSocial: 'Outro cadastro' }]] : []) }
+    }
+    const gravarAnterior = repo.gravar
+    repo.gravar = async (operacao, linhas, relatorio) => {
+      if (conflito && linhas.some(l => l.googlePlaceId === 'ChIJ-conflito')) return { ok: false, motivo: 'confirmacao_invalida' }
+      return gravarAnterior(operacao, linhas, relatorio)
+    }
+    return { repo, gravadas, divergir: () => { conflito = true } }
+  }
+  test.each([true, false])('conflito entre analisar e importar exige reconferir sem gravação, lote misto=%s', async misto => {
+    const { repo, gravadas, divergir } = repoMutavel()
+    const arquivo = fonte(misto)
+    const conferido = await analisar(repo, arquivo)
+    if (!conferido.ok) throw new Error('esperava análise válida')
+    divergir()
+    expect(await importar(repo, arquivo, OPERACAO, conferido.conferencia)).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
+    expect(gravadas).toEqual([])
+  })
+  test('recusa de identidade já conferida permite confirmar as linhas válidas', async () => {
+    const { repo, gravadas, divergir } = repoMutavel()
+    divergir()
+    const arquivo = fonte(true)
+    const conferido = await analisar(repo, arquivo)
+    if (!conferido.ok) throw new Error('esperava análise válida')
+    expect(conferido.relatorio).toMatchObject({ novas: 1, recusadas: [{ tipo: 'identidade', linha: 2 }] })
+    expect(await importar(repo, arquivo, OPERACAO, conferido.conferencia)).toMatchObject({ ok: true, vinculadas: 1 })
+    expect(gravadas[0].linhas.map(l => l.googlePlaceId)).toEqual(['ChIJ-nova'])
+  })
 })

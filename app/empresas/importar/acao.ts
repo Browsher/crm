@@ -1,5 +1,6 @@
 'use server'
 
+import { emitirConferencia, verificarConferencia } from '@/src/features/empresas/conferencia'
 import { createHash } from 'node:crypto'
 import { textoDaFalhaDeArquivo, textoDoMotivo } from '@/src/features/empresas/mensagens'
 import { formatoDoArquivo, LIMITE_BYTES_ARQUIVO } from '@/src/features/empresas/arquivo'
@@ -19,6 +20,7 @@ export type EstadoImportar = {
   // Preenchido só depois de gravar: é o que troca a tela de "confira" para "pronto".
   inseridas: number | null
   grupoId: string | null
+  conferencia: string | null
 }
 
 // NÃO exportar: arquivo com 'use server' só exporta função. Exportado, o Next
@@ -26,7 +28,7 @@ export type EstadoImportar = {
 // função no lugar do objeto — foi o bug do estado inicial desta tela. O valor
 // inicial vive no componente cliente, como em app/usuarios/formulario-criar.tsx.
 // A catraca está em src/server/diretivas.test.ts.
-const INICIAL: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null }
+const INICIAL: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
 const CONTROLE = /[\u0000-\u001f\u007f-\u009f]/u
@@ -65,18 +67,24 @@ export async function importarAcao(_anterior: EstadoImportar, form: FormData): P
   // união não estreita o tipo — o membro sem o campo ganha a propriedade como
   // `unknown` em vez de sumir da união.
   //
-  // Confirmar reenvia o MESMO arquivo e refaz as três fases. Sem estado no
-  // servidor entre a conferência e a gravação: nada a expirar, nada a limpar.
+  // Confirmar reenvia o MESMO arquivo. O comprovante autentica a seleção
+  // entre requisições sem persistir dados na conferência.
+  const assinatura = createHash('sha256').update(bytes).digest('hex')
+  const operacao = { chave, nome, arquivoNome: arquivo.name, assinatura }
+  const contexto = { usuarioId: eu.usuarioId, operacao }
   if (form.get('confirmar') !== null) {
-    const assinatura = createHash('sha256').update(bytes).digest('hex')
-    const r = await importar(repo, fonte, { chave, nome, arquivoNome: arquivo.name, assinatura })
+    const conferencia = verificarConferencia(form.get('conferencia'), contexto)
+    if (conferencia === null) return { ...INICIAL, erro: textoDoMotivo('confirmacao_invalida') }
+    const r = await importar(repo, fonte, operacao, conferencia)
     if (!r.ok) return { ...INICIAL, erro: aoFalhar(r) }
-    return { erro: null, relatorio: r.relatorio, inseridas: r.inseridas, grupoId: r.grupoId }
+    return { erro: null, relatorio: r.relatorio, inseridas: r.inseridas, grupoId: r.grupoId, conferencia: null }
   }
 
   const r = await analisar(repo, fonte)
   if (!r.ok) return { ...INICIAL, erro: aoFalhar(r) }
-  return { erro: null, relatorio: r.relatorio, inseridas: null, grupoId: null }
+  const conferencia = emitirConferencia(contexto, r.conferencia)
+  if (conferencia === null) return { ...INICIAL, erro: 'Não foi possível concluir a conferência. Tente novamente mais tarde.' }
+  return { erro: null, relatorio: r.relatorio, inseridas: null, grupoId: null, conferencia }
 }
 
 function aoFalhar(r: Extract<ResultadoAnalise | ResultadoImportar, { ok: false }>): string {

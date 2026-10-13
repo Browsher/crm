@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1126
+# Total: 1159
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -82,6 +82,12 @@ app/empresas/grupos/page.test.tsx :: estado vazio oferece importação
 app/empresas/grupos/page.test.tsx :: lista compacta usa totais globais, origem migrada e navegação real
 app/empresas/grupos/page.test.tsx :: página além do fim orienta voltar sem apresentar a base como vazia
 app/empresas/grupos/page.test.tsx :: recurso ausente vira 404
+app/empresas/importar/acao.test.tsx :: Action completa: lote misto=false, recusa preexistente=false
+app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=false
+app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=true
+app/empresas/importar/acao.test.tsx :: configuração inválida não autoriza confirmar nem revela segredo
+app/empresas/importar/acao.test.tsx :: configuração vazia não autoriza confirmar nem revela segredo
+app/empresas/importar/acao.test.tsx :: confirmação sem conferência autêntica não chama importar
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo 22023 volta como erro recuperavel que exige nova conferencia
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo conferencia envia formato e bytes ao servico
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo confirmacao chama importar com o arquivo original para reanalise
@@ -90,6 +96,11 @@ app/empresas/importar/acao.test.tsx :: importarAcao: arquivo formato desconhecid
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo tamanho acima do limite volta como erro recuperavel sem ler bytes
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { chave: 'nao-e-uuid' }
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { nome: '   ' }
+app/empresas/importar/acao.test.tsx :: protocolo recusa arquivo alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa chave alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa gestor alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa nome alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa selecao alterado após conferência sem chamar importar
 app/empresas/importar/formulario.dom.test.tsx :: conferir e confirmar usam a mesma chave, nome e arquivo
 app/empresas/importar/formulario.dom.test.tsx :: mudar arquivo invalida a conferência e inicia outra operação
 app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
@@ -395,6 +406,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-lateral-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-estrutura-visual.md não tem caractere de controle literal
@@ -480,6 +492,7 @@ src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md 
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle README.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle REGRAS.md não tem caractere de controle literal
+src/e2e-ambiente.test.ts :: build não herda segredo de conferência e servidor usa somente chave de teste
 src/e2e-ambiente.test.ts :: isola credenciais e SSL herdados sem alterar o ambiente pai
 src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@localhost/crm
 src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@railway.internal/teste_0123456789ab
@@ -648,6 +661,23 @@ src/features/empresas/cnpj.test.ts :: validarCnpj alfanumerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico com um digito trocado reprova
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj todos os digitos iguais reprova
+src/features/empresas/conferencia.test.ts :: comprovante de 5.000 recusas cabe junto ao arquivo no limite de transporte
+src/features/empresas/conferencia.test.ts :: comprovante excessivo é recusado
+src/features/empresas/conferencia.test.ts :: comprovante preserva seleção e recusas sem depender de memória de processo
+src/features/empresas/conferencia.test.ts :: comprovante texto comum é recusado
+src/features/empresas/conferencia.test.ts :: comprovante vazio é recusado
+src/features/empresas/conferencia.test.ts :: configuração ausente não reutiliza segredo da conexão ou cookie
+src/features/empresas/conferencia.test.ts :: configuração curta falha fechada
+src/features/empresas/conferencia.test.ts :: configuração não hexadecimal falha fechada
+src/features/empresas/conferencia.test.ts :: configuração texto comum falha fechada
+src/features/empresas/conferencia.test.ts :: configuração vazia falha fechada
+src/features/empresas/conferencia.test.ts :: mudança de arquivoNome invalida o comprovante
+src/features/empresas/conferencia.test.ts :: mudança de assinatura invalida o comprovante
+src/features/empresas/conferencia.test.ts :: mudança de chave invalida o comprovante
+src/features/empresas/conferencia.test.ts :: mudança de nome invalida o comprovante
+src/features/empresas/conferencia.test.ts :: outro gestor ou outra chave de servidor não reconhece comprovante
+src/features/empresas/conferencia.test.ts :: schema autenticado também exige versão e seleção sem repetições
+src/features/empresas/conferencia.test.ts :: seleção adulterada não pode confirmar um subconjunto arbitrário
 src/features/empresas/consulta.test.ts :: destinoCanonico a página sobrevive à limpeza
 src/features/empresas/consulta.test.ts :: destinoCanonico com termo de verdade, nada a limpar
 src/features/empresas/consulta.test.ts :: destinoCanonico o próprio destino já é canônico
@@ -844,6 +874,9 @@ src/features/empresas/servico.test.ts :: importar confirma todas as aceitas, inc
 src/features/empresas/servico.test.ts :: importar devolve o relatorio persistido pelo repositorio em vez da reanalise atual
 src/features/empresas/servico.test.ts :: importar nao confirma quando todas as linhas foram recusadas
 src/features/empresas/servico.test.ts :: importar so CNPJs existentes ainda cria o grupo e devolve zero inseridas
+src/features/empresas/servico.test.ts :: seleção aprovada na conferência conflito entre analisar e importar exige reconferir sem gravação, lote misto=false
+src/features/empresas/servico.test.ts :: seleção aprovada na conferência conflito entre analisar e importar exige reconferir sem gravação, lote misto=true
+src/features/empresas/servico.test.ts :: seleção aprovada na conferência recusa de identidade já conferida permite confirmar as linhas válidas
 src/features/empresas/telefone.test.ts :: normalizarTelefone "  11987654321 " vira "11987654321"
 src/features/empresas/telefone.test.ts :: normalizarTelefone "" vira null
 src/features/empresas/telefone.test.ts :: normalizarTelefone "(11) 98765-4321" vira "11987654321"

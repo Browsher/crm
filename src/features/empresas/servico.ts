@@ -16,8 +16,13 @@ export type Relatorio = {
   basePublicadaEm: string | null
 }
 
+export type Conferencia = {
+  linhasAceitas: number[]
+  recusadasIdentidade: Extract<Recusa, { tipo: 'identidade' }>[]
+}
+
 export type ResultadoAnalise =
-  | { ok: true; relatorio: Relatorio }
+  | { ok: true; relatorio: Relatorio; conferencia: Conferencia }
   | { ok: false; motivo: 'arquivo_invalido'; falha: FalhaDeArquivo }
   | Falha
 
@@ -26,11 +31,11 @@ export type ResultadoImportar =
   | { ok: false; motivo: 'arquivo_invalido'; falha: FalhaDeArquivo }
   | Falha
 
-type Preparado = { relatorio: Relatorio; aceitas: LinhaAceita[] }
+type Preparado = { relatorio: Relatorio; aceitas: LinhaAceita[]; linhasDoArquivo: LinhaAceita[]; novasPorLinha: Set<number> }
 
 // As fases 0, 1 e 2, sem escrever nada. A conferência chama isto; a gravação
-// chama de novo com o mesmo arquivo. É determinístico, então não há estado
-// guardado no servidor entre uma coisa e outra.
+// chama de novo com o mesmo arquivo. O comprovante autenticado conserva a
+// seleção aprovada; a classificação cadastral pode mudar entre requisições.
 async function preparar(
   repo: RepositorioEmpresas,
   fonte: FonteEmpresas,
@@ -44,7 +49,7 @@ async function preparar(
 
   const aceitas: LinhaAceita[] = []
   const recusadas = [...analise.recusadas]
-  let novas = 0
+  const novasPorLinha = new Set<number>()
   for (const linha of analise.aceitas) {
     const identidade = resolverIdentidade(linha, p)
     if (!identidade.ok) {
@@ -52,7 +57,7 @@ async function preparar(
       continue
     }
     aceitas.push(linha)
-    if (identidade.empresaId === null) novas++
+    if (identidade.empresaId === null) novasPorLinha.add(linha.linha)
   }
   recusadas.sort((a, b) => a.linha - b.linha)
   // CEP não encontrado NÃO recusa a empresa: ela entra sem endereço resolvido,
@@ -62,9 +67,11 @@ async function preparar(
 
   return {
     aceitas,
+    linhasDoArquivo: analise.aceitas,
+    novasPorLinha,
     relatorio: {
-      novas,
-      jaCadastradas: aceitas.length - novas,
+      novas: novasPorLinha.size,
+      jaCadastradas: aceitas.length - novasPorLinha.size,
       recusadas,
       cepsPedidos: ceps.length,
       cepsNaoEncontrados,
@@ -76,16 +83,31 @@ async function preparar(
 export async function analisar(repo: RepositorioEmpresas, fonte: FonteEmpresas): Promise<ResultadoAnalise> {
   const p = await preparar(repo, fonte)
   if ('ok' in p) return p
-  return { ok: true, relatorio: p.relatorio }
+  return { ok: true, relatorio: p.relatorio, conferencia: {
+    linhasAceitas: p.aceitas.map(l => l.linha),
+    recusadasIdentidade: p.relatorio.recusadas.filter((r): r is Extract<Recusa, { tipo: 'identidade' }> => r.tipo === 'identidade'),
+  } }
 }
 
 export async function importar(
   repo: RepositorioEmpresas,
   fonte: FonteEmpresas,
   operacao: OperacaoGrupo,
+  conferencia: Conferencia,
 ): Promise<ResultadoImportar> {
   const p = await preparar(repo, fonte)
   if ('ok' in p) return p
-  if (p.aceitas.length === 0) return { ok: false, motivo: 'sem_linhas_aceitas' }
-  return repo.gravar(operacao, p.aceitas, p.relatorio)
+  // A seleção foi autenticada pela Action. Reparsear conserva exatamente essas
+  // linhas, mesmo se uma identidade mudou: SQL revalida tudo ou devolve o replay
+  // persistido antes de resolver cadastros. Filtrar pela classificação atual
+  // apagaria conflitos novos e impediria retries legítimos após o primeiro commit.
+  const numeros = new Set(conferencia.linhasAceitas)
+  const selecionadas = p.linhasDoArquivo.filter(l => numeros.has(l.linha))
+  if (numeros.size !== conferencia.linhasAceitas.length || selecionadas.length !== numeros.size) return { ok: false, motivo: 'confirmacao_invalida' }
+  if (selecionadas.length === 0) return { ok: false, motivo: 'sem_linhas_aceitas' }
+  const novas = selecionadas.filter(l => p.novasPorLinha.has(l.linha)).length
+  const relatorio = { ...p.relatorio, novas, jaCadastradas: selecionadas.length - novas,
+    recusadas: [...p.relatorio.recusadas.filter(r => r.tipo !== 'identidade'), ...conferencia.recusadasIdentidade].sort((a, b) => a.linha - b.linha),
+  }
+  return repo.gravar(operacao, selecionadas, relatorio)
 }

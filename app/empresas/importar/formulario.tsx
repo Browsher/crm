@@ -8,7 +8,7 @@ import { EtapasImportacao, type EtapaImportacao } from './etapas-importacao'
 import { RelatorioImportacao } from './relatorio'
 import styles from './importar.module.css'
 
-const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null }
+const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null }
 
 export function FormularioImportar() {
   const [etapa, setEtapa] = useState<EtapaImportacao>('enviar')
@@ -67,6 +67,7 @@ export function FormularioImportar() {
       {erro && <p ref={erroRef} tabIndex={-1} role="alert" className={styles.erro}>{erro}</p>}
       <fieldset disabled={pendente}>
         <input type="hidden" name="chave" value={chave} />
+        <input type="hidden" name="conferencia" value={limpo ? '' : estado.conferencia ?? ''} />
         <div hidden={etapa !== 'enviar'}>
           <p>Preencha o modelo Excel e envie o arquivo diretamente. Se preferir, o CSV UTF-8 continua aceito.</p>
           <label className={styles.campo}>
