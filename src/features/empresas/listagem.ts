@@ -4,8 +4,8 @@ import type { Falha } from './repositorio'
 
 export type EmpresaNaLista = {
   id: string
-  cnpj: string
-  razaoSocial: string
+  cnpj: string | null
+  razaoSocial: string | null
   nomeFantasia: string | null
   telefone: string
   email: string | null
@@ -30,8 +30,8 @@ export type ResultadoOpcoesEmpresas = { ok: true; opcoes: OpcaoFiltroEmpresa[] }
 
 type LinhaCrua = {
   id: string
-  cnpj: string
-  razao_social: string
+  cnpj: string | null
+  razao_social: string | null
   nome_fantasia: string | null
   telefone: string
   email: string | null
@@ -87,7 +87,7 @@ const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e
                 AND ($4::text IS NULL OR c.uf = $4)
                 AND ($5::text IS NULL OR c.ibge = $5)
                 AND ($6::text IS NULL OR nullif(btrim(c.bairro), '') = $6)
-              ORDER BY e.razao_social, e.id
+              ORDER BY coalesce(e.razao_social,e.nome_fantasia), e.id
               LIMIT $7 OFFSET $8`
 
 export async function listarEmpresas(gestorId: string, consulta: Consulta | ConsultaEmpresas): Promise<ResultadoListagem> {

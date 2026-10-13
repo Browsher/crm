@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 946
+# Total: 1090
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -22,6 +22,7 @@ app/carteira/[id]/ficha.test.tsx :: Ficha o formulario fica fechado inicialmente
 app/carteira/[id]/ficha.test.tsx :: Ficha sem proximo passo, diz que nao ha combinado
 app/carteira/[id]/ficha.test.tsx :: Ficha tem o caminho de devolver, que a carteira nao tinha
 app/carteira/[id]/ficha.test.tsx :: Ficha vencido aparece com palavra
+app/carteira/filtros.test.tsx :: cadastro parcial busca o nome real sem pesquisar a palavra null
 app/carteira/filtros.test.tsx :: filtros da carteira aceita filtros conhecidos e normaliza estado
 app/carteira/filtros.test.tsx :: filtros da carteira busca por razao ou fantasia e combina estado e retorno
 app/carteira/filtros.test.tsx :: filtros da carteira devolve array novo ordenado por nome e id
@@ -76,6 +77,7 @@ app/empresas/grupos/controles.dom.test.tsx :: desativação abre confirmação c
 app/empresas/grupos/controles.dom.test.tsx :: erro fica no diálogo com nome editado e permite tentar de novo; sucesso fecha
 app/empresas/grupos/controles.dom.test.tsx :: pendente impede duplo envio e fecha só após resultado; reativar envia ação correta
 app/empresas/grupos/page.test.tsx :: detalhe identifica responsável inativo, outras origens e paginação
+app/empresas/grupos/page.test.tsx :: detalhe usa nome comercial conhecido e CNPJ não informado
 app/empresas/grupos/page.test.tsx :: estado vazio oferece importação
 app/empresas/grupos/page.test.tsx :: lista compacta usa totais globais, origem migrada e navegação real
 app/empresas/grupos/page.test.tsx :: página além do fim orienta voltar sem apresentar a base como vazia
@@ -113,6 +115,7 @@ app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem nome fantasia, n�
 app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP que a base não resolveu mostra o CEP e diz isso
 app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP resolvido mostra cidade e UF
 app/empresas/linha.test.tsx :: Linha: os três estados do endereço empresa sem CEP diz que não tem CEP
+app/empresas/linha.test.tsx :: nome comercial ocupa o título e explicita CNPJ desconhecido
 app/empresas/lista.test.tsx :: Lista com empresas, monta uma lista
 app/empresas/lista.test.tsx :: Lista vazia, diz que não achou
 app/empresas/lista.test.tsx :: Lista vazia, oferece o caminho de volta para a lista inteira
@@ -138,6 +141,7 @@ app/fila/cartao.test.tsx :: Cartao na etapa registrar coloca os dados ao lado do
 app/fila/cartao.test.tsx :: Cartao o cartao mostra o historico de quem ligou antes
 app/fila/cartao.test.tsx :: Cartao o cartao NAO tem mais botoes soltos de assumir e devolver
 app/fila/cartao.test.tsx :: Cartao prazo expirado oculta detalhes e histórico preservando anotações bloqueadas
+app/fila/cartao.test.tsx :: reserva parcial mostra nome comercial no título e CNPJ desconhecido
 app/fila/entrada-reserva.test.tsx :: puxar usa filtros e contexto original, sem aceitar identidade do formulário
 app/fila/entrada-reserva.test.tsx :: recusa alvo/contexto inválidos e filtros inválidos sem ampliar busca
 app/fila/entrada-reserva.test.tsx :: resultado sem candidata explica preservação e não usa travessão
@@ -198,6 +202,7 @@ app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de er
 app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado
 app/meu-dia/agenda.test.tsx :: agenda traz só atrasado e hoje, atrasados primeiro
 app/meu-dia/agenda.test.tsx :: busca por nome ignora acento e caixa, e o filtro de retorno recorta
+app/meu-dia/agenda.test.tsx :: cadastro parcial usa fantasia na busca e no desempate sem mudar precedência de data
 app/meu-dia/agenda.test.tsx :: dentro do mesmo estado ordena por data, nome e id
 app/meu-dia/agenda.test.tsx :: filtro inválido cai no literal fixo /meu-dia
 app/meu-dia/agenda.test.tsx :: filtro recusa valor fora da lista, repetido e nome longo
@@ -237,6 +242,88 @@ app/usuarios/usuarios.dom.test.tsx :: pendência bloqueia botões e Escape; nova
 app/usuarios/vendedores/[id]/page.test.tsx :: alvo recusado vira 404
 app/usuarios/vendedores/[id]/page.test.tsx :: gestor vê estados vazios sem ações nem links para ficha de empresa
 app/usuarios/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não inventa atividade ao consultar carteira
+app/whatsapp/configuracao/acoes.test.tsx :: falha externa é sanitizada e não salva
+app/whatsapp/configuracao/acoes.test.tsx :: instância não configurada não é persistida
+app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
+app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco erro segredo é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco instancia_em_uso é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco sem_permissao é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco vendedor_invalido é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: remoção inválida e falha de infraestrutura não vazam dados
+app/whatsapp/configuracao/acoes.test.tsx :: remove somente vínculo identificado sem consultar Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: valida consulta da instância exata antes de salvar ou substituir
+app/whatsapp/configuracao/formulario.dom.test.tsx :: erro preserva vendedor e instância e permite tentar salvar novamente
+app/whatsapp/configuracao/formulario.dom.test.tsx :: remoção envia apenas o vínculo e apresenta falha recuperável
+app/whatsapp/configuracao/page.test.tsx :: estado vazio informa falta de vendedores e impede envio
+app/whatsapp/configuracao/page.test.tsx :: lista vínculos indisponíveis mas só oferece vendedores ativos no formulário
+app/whatsapp/configuracao/page.test.tsx :: nega acesso à página antes de listar
+app/whatsapp/error.test.tsx :: falha da Evolution exibe retomada sem revelar mensagem interna ou chave
+app/whatsapp/historico-acao.test.tsx :: configuração ausente é distinta de histórico vazio
+app/whatsapp/historico-acao.test.tsx :: consulta a página autorizada com o limite recebido sem trocar a instância
+app/whatsapp/historico-acao.test.tsx :: exige gestor antes de ler histórico
+app/whatsapp/historico-acao.test.tsx :: falha externa não vaza chave nem se apresenta como fim do histórico
+app/whatsapp/historico-acao.test.tsx :: histórico por fonte revalida gestor e encaminha apenas escopo e cursores
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido 
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido 2026-02-30T00:00:00.000Z
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido abc
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido null
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida -1 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 0 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 1 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 100001 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 2 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 2.5 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida NaN sem consultar Evolution
+app/whatsapp/midia-mensagem.dom.test.tsx :: atualização da mensagem preserva arquivo e evita download duplicado
+app/whatsapp/midia-mensagem.dom.test.tsx :: áudio tem controles sem autoplay e documento permite baixar
+app/whatsapp/midia-mensagem.dom.test.tsx :: carrega imagem sob demanda, amplia sem nova consulta e libera blob
+app/whatsapp/midia-mensagem.dom.test.tsx :: falha mostra erro e permite tentar novamente
+app/whatsapp/midia-mensagem.dom.test.tsx :: sair da conversa cancela download sem criar blob depois de desmontar
+app/whatsapp/midia/[id]/route.test.tsx :: erro de infraestrutura não revela credenciais
+app/whatsapp/midia/[id]/route.test.tsx :: fonte removida não consulta mídia nem recai no piloto
+app/whatsapp/midia/[id]/route.test.tsx :: gestor recebe anexo privado sem nome capaz de injetar cabeçalhos
+app/whatsapp/midia/[id]/route.test.tsx :: nega anônimo, vendedor e senha provisória antes de consultar mídia
+app/whatsapp/midia/[id]/route.test.tsx :: valida pedido antes da Evolution e mantém erro de arquivo privado
+app/whatsapp/page.test.tsx :: autoriza gestor antes de consultar e exibe amostra somente leitura
+app/whatsapp/page.test.tsx :: bloqueio de acesso impede consulta externa
+app/whatsapp/page.test.tsx :: filtro seleciona vínculo no servidor e mostra links reais e aviso parcial
+app/whatsapp/page.test.tsx :: layout exige gestor
+app/whatsapp/page.test.tsx :: mensagem enviada não apresenta o nome da empresa como nome do cliente
+app/whatsapp/page.test.tsx :: mostra estrutura do mockup sem inventar métricas ou vendedores
+app/whatsapp/page.test.tsx :: nome recente e telefone confirmado identificam conversa LID sem exibir código
+app/whatsapp/page.test.tsx :: sem configuração mostra instrução sem fingir ausência de mensagens
+app/whatsapp/page.test.tsx :: telefones conflitantes não são apresentados como identificação confirmada
+app/whatsapp/painel.dom.test.tsx :: amostra vazia permite buscar histórico e IDs iguais em conversas diferentes são preservados
+app/whatsapp/painel.dom.test.tsx :: atualiza periodicamente mesmo vazio e encerra consultas ao sair
+app/whatsapp/painel.dom.test.tsx :: busca nome sem acento, telefone formatado e texto sem perder a seleção
+app/whatsapp/painel.dom.test.tsx :: cadastro com telefone diferente do contato confirmado não produz vínculo
+app/whatsapp/painel.dom.test.tsx :: cards aguardam histórico completo e acompanham novas mensagens sem nova carga
+app/whatsapp/painel.dom.test.tsx :: cards não apresentam números de consulta parcial e retiram vendedor removido
+app/whatsapp/painel.dom.test.tsx :: carga automática espera aba visível e internet e cancela agendamento ao sair
+app/whatsapp/painel.dom.test.tsx :: carga normal não oferece botão manual nem anuncia fim enquanto ainda há páginas
+app/whatsapp/painel.dom.test.tsx :: carga por vendedor aguarda a página pendente e continua com os cursores retornados
+app/whatsapp/painel.dom.test.tsx :: carrega histórico sem duplicar, preserva seleção e mantém páginas durante atualização
+app/whatsapp/painel.dom.test.tsx :: carregar pelo topo mantém âncora e nova mensagem não arrasta quem está lendo acima
+app/whatsapp/painel.dom.test.tsx :: continuar rolando no limite busca outra página mesmo sem aparecer conversa nova
+app/whatsapp/painel.dom.test.tsx :: erro de transporte não expõe detalhes e permite nova tentativa
+app/whatsapp/painel.dom.test.tsx :: etiqueta comercial aparece na lista e no cabeçalho e acompanha atualização
+app/whatsapp/painel.dom.test.tsx :: falha automática pausa sem perder dados e tentativa manual retoma o restante
+app/whatsapp/painel.dom.test.tsx :: falha mantém mensagens e tenta a mesma página pelo botão de recuperação
+app/whatsapp/painel.dom.test.tsx :: falha pendente de escopo antigo não bloqueia o novo histórico
+app/whatsapp/painel.dom.test.tsx :: filtros combinam busca, pendência e ausência confirmada; empresa única abre ficha
+app/whatsapp/painel.dom.test.tsx :: histórico carrega sozinho até o fim e atualização recente não reinicia páginas
+app/whatsapp/painel.dom.test.tsx :: mesmo cliente e mesmo ID em vendedores distintos não misturam conversa
+app/whatsapp/painel.dom.test.tsx :: novos dados preservam a conversa escolhida e mostram a mensagem nova
+app/whatsapp/painel.dom.test.tsx :: pausa oculta ou offline e consulta ao retornar
+app/whatsapp/painel.dom.test.tsx :: remover outra fonte na atualização preserva seleção e histórico da fonte restante
+app/whatsapp/painel.dom.test.tsx :: resposta pendente de escopo antigo não reintroduz fonte removida
+app/whatsapp/painel.dom.test.tsx :: rolar ao fim da lista carrega uma página e não repete automaticamente após erro
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
@@ -244,21 +331,31 @@ src/ci-conferencia.test.ts :: URL=false fork=true autor=alguem: pular
 src/ci-conferencia.test.ts :: URL=true fork=false autor=Browsher: conferir
 src/ci-conferencia.test.ts :: URL=true fork=false autor=dependabot[bot]: conferir
 src/ci-conferencia.test.ts :: URL=true fork=true autor=alguem: conferir
+src/components/crm/caminho.test.tsx :: mapeia /carteira/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/grupos com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/grupos/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/importar com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /fila/localizar com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /fila/localizar/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /usuarios/vendedores/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /whatsapp/configuracao com retorno ao nível existente
 src/components/crm/etapas.test.tsx :: identifica a navegação e somente a etapa atual
 src/components/crm/etapas.test.tsx :: renderiza a ação de retorno fornecida pela tela
 src/components/crm/etapas.test.tsx :: sem ações fornecidas, os indicadores são texto sem navegação
+src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do gestor mantendo nomes e saída POST
+src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do vendedor mantendo nomes e saída POST
 src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
 src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: gestor tem início e administração sem links de atendimento
 src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
 src/components/crm/shell.test.tsx :: usuários ativa seu menu e oferece tema próprio ao gestor
+src/components/crm/shell.test.tsx :: WhatsApp é exclusivo do menu do gestor
 src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
 src/components/ui/controles.test.tsx :: componentes de formulario botao desabilitado preserva a semantica nativa
 src/components/ui/controles.test.tsx :: componentes de formulario campos preservam aria-invalid e atributos nativos
 src/components/ui/controles.test.tsx :: componentes de formulario label mantem a associacao explicita com o campo
-src/docs.test.ts :: documentos sem caractere de controle AGENTS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle CLAUDE.md não tem caractere de controle literal
-src/docs.test.ts :: documentos sem caractere de controle CONTINUIDADE-CODEX.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0000.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0001.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0002.md não tem caractere de controle literal
@@ -291,9 +388,21 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0028.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0029.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0030.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0031.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0032.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-lateral-crm.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-estrutura-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-etiquetas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-filtros-empresas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-historico-automatico.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-indicadores.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-midias.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-tela.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-vendedores-execucao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-vendedores.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-fundacao-banco.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-login-sessao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-usuarios.md não tem caractere de controle literal
@@ -329,6 +438,9 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-base.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-vendas-carteira-agenda.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-historico.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-piloto-leitura.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-13-prospeccao-grupos-cnpj-opcional.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -357,6 +469,9 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-usuarios-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-15-funil-comercial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-15-vendas-carteira-agenda-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-21-whatsapp-gestor-evolution.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-22-whatsapp-identificacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-13-prospeccao-cnpj-opcional-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
@@ -589,6 +704,7 @@ src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-l
 src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"sp"}
 src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP1"}
 src/features/empresas/filtros.test.ts :: sem selects, filtros de Empresas ficam ausentes
+src/features/empresas/formato.test.ts :: CNPJ desconhecido aparece como Não informado
 src/features/empresas/formato.test.ts :: formatarCnpj alfanumérico
 src/features/empresas/formato.test.ts :: formatarCnpj numérico
 src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai como veio
@@ -768,6 +884,13 @@ src/features/usuarios/repositorio.test.ts :: traduzirResultado vocabulário conh
 src/features/usuarios/servico.test.ts :: criarUsuario dados inválidos: faltas nomeadas, sem tocar o repositório nem gerar hash
 src/lib/comercial.test.ts :: funil aceita somente as três etapas abertas
 src/lib/comercial.test.ts :: próxima etapa segue sequência fechada e termina na proposta
+src/lib/empresa-apresentacao.test.ts :: formata CNPJ numérico e alfanumérico conservando valores fora de forma
+src/lib/empresa-apresentacao.test.ts :: usa o nome conhecido sem transformar fantasia em razão social
+src/lib/whatsapp-indicadores.test.ts :: conta conversas por fonte, pendências antigas e vendedores com envio hoje
+src/lib/whatsapp-indicadores.test.ts :: desconta noites e fim de semana do tempo até resposta
+src/lib/whatsapp-indicadores.test.ts :: dia é de Brasília, duplicatas não contam duas vezes e grupos/status são excluídos
+src/lib/whatsapp-indicadores.test.ts :: média usa primeira recebida de cada sequência e somente respostas de hoje
+src/lib/whatsapp-indicadores.test.ts :: vazio e ausência de respostas não inventam média; piloto não é vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso exigência vendedor mantém login e troca de senha antes do papel
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor não entra no atendimento de vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor sem pendência passa em tudo
@@ -917,6 +1040,7 @@ src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao superusuário
 src/server/db/migracoes/invariantes.test.ts :: avaliar definidora concedida a app_usuario fora da lista, mesmo sem tocar autenticacao
 src/server/db/migracoes/invariantes.test.ts :: avaliar definidora concedida em outro schema também é acusada
 src/server/db/migracoes/invariantes.test.ts :: avaliar estado são não tem violação
+src/server/db/migracoes/invariantes.test.ts :: avaliar FORCE é permitido somente no vínculo WhatsApp, sem definidoras que dependem da tabela
 src/server/db/migracoes/invariantes.test.ts :: avaliar função de acesso ausente é violação, não verde
 src/server/db/migracoes/invariantes.test.ts :: avaliar função de schema de aplicação executável por PUBLIC
 src/server/db/migracoes/invariantes.test.ts :: avaliar função registrada ausente ou sem GRANT é violação, não verde
@@ -951,5 +1075,25 @@ src/server/diretivas.test.ts :: arquivos 'use server' app\login\acao.ts só expo
 src/server/diretivas.test.ts :: arquivos 'use server' app\meu-dia\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\trocar-senha\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\usuarios\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\configuracao\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
 src/server/diretivas.test.ts :: arquivos 'use server' src\features\contato\acao.ts só exporta função
+src/server/whatsapp/consulta.test.ts :: cursor forjado e vínculo removido não fazem consulta
+src/server/whatsapp/consulta.test.ts :: enriquece mensagens com empresa por telefone confirmado e mantém mensagens quando CRM falha
+src/server/whatsapp/consulta.test.ts :: falha parcial conserva cursor; sucesso avança e tentativa seguinte só consulta pendentes
+src/server/whatsapp/consulta.test.ts :: fontes distintas conservam mensagens com mesmo ID e conversa
+src/server/whatsapp/consulta.test.ts :: instância piloto vinculada não aparece duplicada; inativo não libera consulta
+src/server/whatsapp/consulta.test.ts :: Todos não reabre piloto quando existem vínculos mas todos ficam inativos
+src/server/whatsapp/consulta.test.ts :: Todos separa piloto; filtro desconhecido não cai no piloto
+src/server/whatsapp/evolution.test.ts :: consulta somente mensagens da instância de teste e reduz as duas direções
+src/server/whatsapp/evolution.test.ts :: extrai telefone confirmado sem transformar LID ou grupo em telefone
+src/server/whatsapp/evolution.test.ts :: histórico entrega descritores de mídia sem URL, chave ou binário ao navegador
+src/server/whatsapp/evolution.test.ts :: histórico mantém limite temporal original e termina na última página
+src/server/whatsapp/evolution.test.ts :: sem configuração não chama a API nem expõe segredo
+src/server/whatsapp/midia.test.ts :: baixa pela chave armazenada e instância do servidor, sem seguir redirecionamentos
+src/server/whatsapp/midia.test.ts :: descritor preserva legenda/nome, sem transportar segredos e sem abrir visualização única
+src/server/whatsapp/midia.test.ts :: falha de rede ou mídia expirada retorna erro sem conteúdo da resposta
+src/server/whatsapp/midia.test.ts :: interrompe resposta grande mesmo sem content-length
+src/server/whatsapp/midia.test.ts :: não baixa arquivo de outra conversa nem ID ambíguo
+src/server/whatsapp/midia.test.ts :: rejeita imagem ativa, base64 inválido e resposta excessiva

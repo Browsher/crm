@@ -4,8 +4,8 @@ import type { Falha } from './repositorio'
 
 export type EmpresaComigo = {
   id: string
-  cnpj: string
-  razaoSocial: string
+  cnpj: string | null
+  razaoSocial: string | null
   nomeFantasia: string | null
   cnaePrincipal: string | null
   ultimoContato: { nota: string | null; criadoEm: Date } | null
@@ -34,8 +34,8 @@ export type ResultadoMinhasEmpresas = { ok: true; reserva: EmpresaComigo | null;
 type LinhaCrua = {
   id: string | null
   contexto: string | null
-  cnpj: string
-  razao_social: string
+  cnpj: string | null
+  razao_social: string | null
   nome_fantasia: string | null
   cnae_principal: string | null
   ultimo_contato_id: string | null
@@ -90,11 +90,11 @@ const SQL = `WITH minhas AS (SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasi
               WHERE (f.vendedor_id = $1
                  OR (f.reservado_por = $1 AND f.reservado_ate > now()))
                 AND (NOT $2::boolean OR e.id IN (SELECT empresa_id FROM minhas_empresas_clientes()))
-              ORDER BY ultimo.proximo_passo_data ASC NULLS LAST, e.razao_social, e.id)
+              ORDER BY ultimo.proximo_passo_data ASC NULLS LAST, coalesce(e.razao_social,e.nome_fantasia), e.id)
               SELECT minhas.*, contexto.versao AS contexto
                 FROM (SELECT (SELECT versao FROM fila_contexto WHERE usuario_id = $1) AS versao) contexto
                 LEFT JOIN minhas ON true
-               ORDER BY minhas.proximo_passo_data ASC NULLS LAST, minhas.razao_social, minhas.id`
+               ORDER BY minhas.proximo_passo_data ASC NULLS LAST, coalesce(minhas.razao_social,minhas.nome_fantasia), minhas.id`
 
 export async function lerMinhasEmpresas(usuarioId: string, somenteClientes = false): Promise<ResultadoMinhasEmpresas> {
   try {

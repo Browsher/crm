@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
@@ -36,8 +37,8 @@ export default async function PaginaPerfil({ params, searchParams }: {
     : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
   return <main className={styles.pagina}>
     <Link href={voltar} className={styles.voltar}>Voltar para empresas</Link>
-    <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{empresa.razaoSocial}</h1>
-      <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p><p>{endereco}</p></div>
+    <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{nomeEmpresa(empresa)}</h1>
+      {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
       <Badge variant="outline">{situacoes[empresa.situacao]}</Badge></header>
     <div className={styles.colunas}><div className={styles.detalhes}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent>

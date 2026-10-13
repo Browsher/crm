@@ -1,7 +1,7 @@
 import { comoUsuario } from '../../server/db/como-usuario'
 
 export type PerfilEmpresa = {
-  id: string; cnpj: string; razaoSocial: string; nomeFantasia: string | null
+  id: string; cnpj: string | null; razaoSocial: string | null; nomeFantasia: string | null
   contatoNome: string | null; telefone: string; email: string | null; cnae: string | null
   cep: string | null; logradouro: string | null; bairro: string | null; cidade: string | null; uf: string | null
   responsavel: string | null; responsavelAtivo: boolean | null

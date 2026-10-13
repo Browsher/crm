@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 
 export type FiltrosMeuDia = { nome: string; retorno: '' | 'atrasado' | 'hoje' }
@@ -34,14 +35,14 @@ export function agendaDoDia(linhas: EmpresaComigo[]): EmpresaComigo[] {
     .sort((a, b) =>
       PESO[a.situacaoRetorno] - PESO[b.situacaoRetorno]
       || (a.proximoPassoData ?? '').localeCompare(b.proximoPassoData ?? '')
-      || a.razaoSocial.localeCompare(b.razaoSocial, 'pt-BR')
+      || nomeEmpresa(a).localeCompare(nomeEmpresa(b), 'pt-BR')
       || a.id.localeCompare(b.id))
 }
 
 export function filtrarAgenda(linhas: EmpresaComigo[], filtros: FiltrosMeuDia): EmpresaComigo[] {
   const nome = textoComparavel(filtros.nome)
   return linhas.filter(linha => {
-    const nomes = textoComparavel(`${linha.razaoSocial} ${linha.nomeFantasia ?? ''}`)
+    const nomes = textoComparavel(`${linha.razaoSocial ?? ''} ${linha.nomeFantasia ?? ''}`)
     if (nome && !nomes.includes(nome)) return false
     if (filtros.retorno && linha.situacaoRetorno !== filtros.retorno) return false
     return true

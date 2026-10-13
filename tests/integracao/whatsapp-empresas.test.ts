@@ -27,7 +27,7 @@ beforeEach(async () => {
 test('telefone exato encontra empresa única, diferencia ausência de ambiguidade', async () => {
   const { consultarEmpresas } = await import('@/src/server/whatsapp/empresas')
   expect(await consultarEmpresas(gestor, ['+5511911111111', '+5511922222222', '+5511933333333'])).toEqual({
-    '+5511911111111': { telefone: '+5511911111111', estado: 'encontrada', empresa: { id: empresa, nome: 'Loja Única', situacao: 'inativa' } },
+    '+5511911111111': { telefone: '+5511911111111', estado: 'encontrada', empresa: { id: empresa, nome: 'Empresa Única', situacao: 'inativa' } },
     '+5511922222222': { telefone: '+5511922222222', estado: 'ambigua' },
     '+5511933333333': { telefone: '+5511933333333', estado: 'ausente' },
   })
@@ -74,4 +74,13 @@ test('etapa só pertence ao ciclo aberto do responsável ativo atual', async () 
   expect(await ler()).toMatchObject({ empresa: { situacao: 'carteira' } })
   await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1', [vendedor])
   expect(await ler()).toMatchObject({ empresa: { situacao: 'inativa' } })
+})
+
+
+test('telefone mantém o UUID e nome comercial de cadastro parcial', async () => {
+  const [{ id }] = await banco.sql<{ id: string }>("INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone) VALUES (NULL,NULL,'Câmeras Aurora','11944444444') RETURNING id")
+  const { consultarEmpresas } = await import('@/src/server/whatsapp/empresas')
+  expect(await consultarEmpresas(gestor, ['+5511944444444'])).toEqual({
+    '+5511944444444': { telefone: '+5511944444444', estado: 'encontrada', empresa: { id, nome: 'Câmeras Aurora', situacao: 'inativa' } },
+  })
 })

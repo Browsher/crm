@@ -7,7 +7,7 @@ export type ResumoGrupo = {
 export type ContagensGrupo = { total: number; disponiveis: number; carteiras: number; reservadas: number; outros: number }
 export type ResumoGrupos = { total: number; ativos: number; desativados: number; empresas: number }
 export type EmpresaGrupo = {
-  id: string; cnpj: string; razaoSocial: string
+  id: string; cnpj: string | null; razaoSocial: string | null; nomeFantasia: string | null
   situacao: 'disponivel' | 'carteira' | 'reservada' | 'em_descanso' | 'origem_bloqueada'
   responsavel: string | null; responsavelAtivo: boolean | null
   reservadoPor: string | null; reservadoAte: string | null; elegivelEm: string | null
@@ -66,7 +66,7 @@ export async function detalharGrupo(usuarioId: string, id: string, pagina = 1): 
     // segue elegível como em fila_reservar; os helpers privados não são chamados.
     const { linhas } = await executar<Omit<Extract<ResultadoGrupo, { ok: true }>, 'ok'>>(`
       WITH grupo AS (${GRUPOS} WHERE g.id = $1), membros AS (
-        SELECT e.id,e.cnpj,e.razao_social AS "razaoSocial",dono.nome AS responsavel,
+        SELECT e.id,e.cnpj,e.razao_social AS "razaoSocial",e.nome_fantasia AS "nomeFantasia",dono.nome AS responsavel,
           dono.ativo AS "responsavelAtivo",reserva.nome AS "reservadoPor",
           f.reservado_ate::text AS "reservadoAte",f.elegivel_em::text AS "elegivelEm",
           coalesce(origens.outros,'[]') AS "outrosGrupos",
@@ -87,9 +87,9 @@ export async function detalharGrupo(usuarioId: string, id: string, pagina = 1): 
           FROM public.grupo_importacao_empresa vinculo
           JOIN public.grupo_importacao g ON g.id = vinculo.grupo_id WHERE vinculo.empresa_id = e.id
         ) origens ON true WHERE ge.grupo_id = $1
-      ), pagina AS (SELECT * FROM membros ORDER BY "razaoSocial",id LIMIT 50 OFFSET $2)
+      ), pagina AS (SELECT * FROM membros ORDER BY coalesce("razaoSocial","nomeFantasia"),id LIMIT 50 OFFSET $2)
       SELECT (SELECT to_jsonb(g) FROM grupo g) AS grupo,
-        coalesce((SELECT jsonb_agg(to_jsonb(p) - 'outra_ativa' ORDER BY p."razaoSocial",p.id) FROM pagina p),'[]') AS empresas,
+        coalesce((SELECT jsonb_agg(to_jsonb(p) - 'outra_ativa' ORDER BY coalesce(p."razaoSocial",p."nomeFantasia"),p.id) FROM pagina p),'[]') AS empresas,
         jsonb_build_object('total',count(*),'disponiveis',count(*) FILTER (WHERE situacao = 'disponivel'),
           'carteiras',count(*) FILTER (WHERE situacao = 'carteira'),'reservadas',count(*) FILTER (WHERE situacao = 'reservada'),
           'outros',count(*) FILTER (WHERE situacao IN ('em_descanso','origem_bloqueada'))) AS contagens,

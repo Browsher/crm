@@ -32,3 +32,8 @@ describe('formatarTelefone', () => {
     expect(formatarTelefone('123')).toBe('123')
   })
 })
+
+
+test('CNPJ desconhecido aparece como Não informado', () => {
+  expect(formatarCnpj(null)).toBe('Não informado')
+})

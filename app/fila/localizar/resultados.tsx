@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import type { ResumoEmpresa } from '@/src/features/prospeccao/tipos'
 import { mensagemDisponibilidade } from '@/src/features/prospeccao/mensagens'
 import type { Filtros } from '@/src/features/prospeccao/tipos'
@@ -18,8 +19,8 @@ export function Resultados({ empresas, reserva, filtros = reserva?.filtros, most
         return (
           <li key={empresa.id} className={styles.itemResultado}>
           <Card className={styles.cartaoEmpresa}>
-            <CardHeader><CardTitle><h2 className={styles.tituloEmpresa}>{empresa.razaoSocial}</h2></CardTitle>
-              {empresa.nomeFantasia && <p className="text-sm">{empresa.nomeFantasia}</p>}
+            <CardHeader><CardTitle><h2 className={styles.tituloEmpresa}>{nomeEmpresa(empresa)}</h2></CardTitle>
+              {empresa.razaoSocial && empresa.nomeFantasia && <p className="text-sm">{empresa.nomeFantasia}</p>}
             </CardHeader>
             <CardContent className={styles.conteudoCartao}>
             <dl className="grid gap-2 text-sm sm:grid-cols-2">

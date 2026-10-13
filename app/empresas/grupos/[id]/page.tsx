@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
@@ -34,7 +35,7 @@ export default async function DetalheGrupo({ params, searchParams }: Props) {
       <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Empresas do grupo"><table className={styles.tabela}>
         <thead><tr><th scope="col">Empresa</th><th scope="col">Atendimento</th><th scope="col">Outros grupos</th></tr></thead>
         <tbody>{r.empresas.map(e => <tr key={e.id}>
-          <td><strong>{e.razaoSocial}</strong><span className={styles.secundario}>{e.cnpj}</span></td>
+          <td><strong>{nomeEmpresa(e)}</strong><span className={styles.secundario}>{e.cnpj ?? 'Não informado'}</span></td>
           <td><strong>{SITUACOES[e.situacao]}</strong>
             {e.responsavel && <span className={styles.secundario}>{e.responsavel}{e.responsavelAtivo === false ? ' (inativo)' : ''}</span>}
             {e.situacao === 'reservada' && <span className={styles.secundario}>{e.reservadoPor}{e.reservadoAte ? ` até ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(e.reservadoAte))}` : ''}</span>}

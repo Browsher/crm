@@ -37,7 +37,7 @@ export async function lerDashboard(usuarioId: string): Promise<Dashboard | null>
             AND c.criado_em < ((d.hoje+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')) AS "contatosHoje"
         FROM ativos a CROSS JOIN dia d
       ), recentes AS (
-        SELECT c.id,a.nome AS vendedor,e.razao_social AS empresa,c.tipo,c.criado_em AS em
+        SELECT c.id,a.nome AS vendedor,coalesce(e.razao_social,e.nome_fantasia) AS empresa,c.tipo,c.criado_em AS em
         FROM contato c JOIN ativos a ON a.id=c.criado_por JOIN empresa e ON e.id=c.empresa_id
         ORDER BY c.criado_em DESC,c.id DESC LIMIT 10
       )

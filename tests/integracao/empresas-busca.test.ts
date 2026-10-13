@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { conferirInvariantes } from '@/src/server/db/migracoes/invariantes'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { vincularGrupoAtivo } from './grupos-fixtures'
+import { listarEmpresas } from '@/src/features/empresas/listagem'
+import { lerConsulta } from '@/src/features/empresas/consulta'
+import { consultarEmpresas } from '@/src/features/prospeccao/repositorio'
+import { listarSugestoes, lerPerfil } from '@/src/features/prospeccao/recentes'
+import { detalharGrupo } from '@/src/features/empresas/grupos'
 
 let banco: BancoDeTeste
 let gestor: string
@@ -76,4 +82,32 @@ describe('0015: a maquinaria de busca', () => {
       ),
     ).rejects.toMatchObject({ code: '428C9' })
   })
+})
+
+
+test('busca e ordena o nome comercial parcial mantendo os nulos reais em lista, perfil e grupo', async () => {
+  const vendedor = await criarUsuario(banco, 'vendedor', 'VendedorParcial')
+  const [{ id }] = await banco.sql<{ id: string }>("INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone) VALUES (NULL,NULL,'Alfa Câmeras Aurora','11955555555') RETURNING id")
+  await vincularGrupoAtivo(banco, [id])
+  const consulta = lerConsulta({ q: 'cameras aurora' })
+  const lista = await listarEmpresas(gestor, consulta)
+  expect(lista).toMatchObject({ ok: true, linhas: [{ id, cnpj: null, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' }] })
+  const filtros = { nome: 'cameras aurora', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1 }
+  expect(await consultarEmpresas(vendedor, filtros)).toMatchObject({ ok: true, empresas: [{ id, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' }] })
+  expect(await lerPerfil(vendedor, id)).toMatchObject({ ok: true, empresa: { id, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' } })
+  expect(await listarSugestoes(vendedor)).toMatchObject({ ok: true, empresas: [{ id }] })
+  const [{ grupo_id }] = await banco.sql<{ grupo_id: string }>('SELECT grupo_id FROM grupo_importacao_empresa WHERE empresa_id=$1', [id])
+  expect(await detalharGrupo(gestor, grupo_id)).toMatchObject({ ok: true, empresas: [{ id, cnpj: null, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' }] })
+})
+
+test('consultas SQL usam fantasia no desempate sem incluir empresas sem origem ativa', async () => {
+  const vendedor = await criarUsuario(banco, 'vendedor', 'VendedorOrdemParcial')
+  const empresas = await banco.sql<{ id: string; nome_fantasia: string }>(`INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone) VALUES
+    (NULL,NULL,'Ordem Alfa','11966666666'),(NULL,'Ordem Zeta',NULL,'11977777777'),
+    (NULL,NULL,'Ordem Inativa','11988888888') RETURNING id,nome_fantasia`)
+  await vincularGrupoAtivo(banco, empresas.slice(0,2).map(e => e.id))
+  const consulta = await banco.comoUsuario(vendedor, e => e<{ id: string }>("SELECT id FROM empresa_consultar('Ordem',NULL,NULL,NULL,NULL,1)"))
+  expect(consulta.linhas.map(e => e.id)).toEqual(empresas.slice(0,2).map(e => e.id))
+  const sugestoes = await banco.comoUsuario(vendedor, e => e<{ id: string }>('SELECT id FROM empresa_sugestoes()'))
+  expect(sugestoes.linhas.map(e => e.id).filter(id => empresas.some(e => e.id === id))).toEqual(empresas.slice(0,2).map(e => e.id))
 })

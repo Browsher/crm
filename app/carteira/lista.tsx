@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import Link from 'next/link'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 import { filtrarCarteira, urlFicha, type FiltrosCarteira } from './filtros'
@@ -57,8 +58,8 @@ export function ListaCarteira({ linhas, filtros = SEM_FILTROS }: { linhas: Empre
           <article className={styles.card}>
             <header className={styles.cardCabecalho}>
               <div>
-                <h3>{empresa.razaoSocial}</h3>
-                {empresa.nomeFantasia ? <p>{empresa.nomeFantasia}</p> : null}
+                <h3>{nomeEmpresa(empresa)}</h3>
+                {empresa.razaoSocial && empresa.nomeFantasia ? <p>{empresa.nomeFantasia}</p> : null}
               </div>
               <span className={styles.estado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
             </header>

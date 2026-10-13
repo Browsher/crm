@@ -3,7 +3,7 @@ import type { Disponibilidade, Filtros, OpcoesFiltro, ResultadoConsulta, Resulta
 
 type Linha = {
   id: string
-  razao_social: string
+  razao_social: string | null
   nome_fantasia: string | null
   cnae_principal: string | null
   cidade: string | null

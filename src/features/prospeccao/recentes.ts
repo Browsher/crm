@@ -5,7 +5,7 @@ type Falha = { ok: false; motivo: 'sem_permissao' }
 type Lista = { ok: true; empresas: ResumoEmpresa[] } | Falha
 type Linha = {
   id: string
-  razao_social: string
+  razao_social: string | null
   nome_fantasia: string | null
   cnae_principal: string | null
   cidade: string | null

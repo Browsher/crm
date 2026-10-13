@@ -9,7 +9,7 @@ export type NegociacaoResumo = {
   etapa: EtapaFunil
 }
 export type NegociacaoDetalhe = NegociacaoResumo & {
-  cnpj: string
+  cnpj: string | null
   uf: string | null
   proximoPasso: string | null
   retorno: string | null
@@ -34,7 +34,7 @@ function conferirEtapa<T extends { etapa: string }>(dado: T): T & { etapa: Etapa
 export async function lerFunil(usuarioId: string): Promise<NegociacaoResumo[]> {
   return comoUsuario(usuarioId, async executar => {
     const r = await executar<NegociacaoResumo>(`SELECT n.id, n.empresa_id AS "empresaId",
-      e.razao_social AS nome, endereco.localidade AS cidade, n.etapa
+      coalesce(e.razao_social,e.nome_fantasia) AS nome, endereco.localidade AS cidade, n.etapa
       ${ORIGEM} ORDER BY n.iniciada_em, n.id`, [usuarioId])
     return r.linhas.map(conferirEtapa)
   })
@@ -44,7 +44,7 @@ export async function lerNegociacao(usuarioId: string, id: string): Promise<Nego
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return null
   return comoUsuario(usuarioId, async executar => {
     const r = await executar<{ detalhe: NegociacaoDetalhe }>(`
-      WITH alvo AS (SELECT n.id,n.empresa_id,e.razao_social AS nome,e.cnpj,
+      WITH alvo AS (SELECT n.id,n.empresa_id,coalesce(e.razao_social,e.nome_fantasia) AS nome,e.cnpj,
         endereco.localidade AS cidade,endereco.uf,n.etapa ${ORIGEM} AND n.id=$2),
       contatos AS MATERIALIZED (
         SELECT c.id,c.tipo,c.nota,c.criado_em AS em,c.proximo_passo AS "proximoPasso",

@@ -16,7 +16,7 @@ export type Disponibilidade =
 
 export type ResumoEmpresa = {
   id: string
-  razaoSocial: string
+  razaoSocial: string | null
   nomeFantasia: string | null
   cnaePrincipal: string | null
   cidade: string | null

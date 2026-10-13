@@ -1,4 +1,5 @@
 'use client'
+
 import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from '@/src/components/ui/dialog'
 import { Button } from '@/src/components/ui/button'
@@ -95,7 +96,7 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
             Avançar para {ROTULOS_ETAPA[proximaEtapa(detalhe.etapa)!]}
           </Button>}
         </div>
-        <dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>
+        <dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj ?? 'Não informado'}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>
         <div className={styles.acoes}><Button disabled={pendente||dirty} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty} onClick={()=>{chave.current=crypto.randomUUID();setModo('venda')}}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty} onClick={()=>setModo('devolver')}>Devolver à prospecção</Button></div>
         <section><h3>Seus atendimentos</h3>{!detalhe.historico.length?<p className={styles.muted}>Nenhum atendimento seu registrado.</p>:<ol className={styles.historico}>{detalhe.historico.map(c=><li key={c.id}><time>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(c.em))}</time><p>{c.nota??'Sem anotação'}</p>{c.proximoPasso&&<p>Próximo passo: {c.proximoPasso}</p>}</li>)}</ol>}</section>
       </>:<>

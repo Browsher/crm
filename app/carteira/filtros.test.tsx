@@ -102,3 +102,11 @@ describe('filtros da carteira', () => {
     expect(html).toContain('Limpar filtros')
   })
 })
+
+
+test('cadastro parcial busca o nome real sem pesquisar a palavra null', () => {
+  const parcial = empresa({ id: 'parcial', cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Aurora' })
+  expect(filtrarCarteira([parcial], { ...SEM_FILTROS, nome: 'null' })).toEqual([])
+  expect(filtrarCarteira([BETA, parcial], SEM_FILTROS).map(e => e.id)).toEqual(['a', 'parcial'])
+  expect(filtrarCarteira([parcial], { ...SEM_FILTROS, nome: 'cameras' })).toEqual([parcial])
+})

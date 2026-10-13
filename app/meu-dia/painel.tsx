@@ -1,5 +1,7 @@
 'use client'
 
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
+
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { Contato } from '@/src/features/contato/historico'
@@ -189,7 +191,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
                 // diferentes; isto cobre o caso em que o id bate de novo.
                 setHistorico(null)
               }}>
-              <strong>{empresa.razaoSocial}</strong>
+              <strong>{nomeEmpresa(empresa)}</strong>
               <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
               <span>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</span>
               {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
@@ -206,8 +208,8 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
       </div> : atual ? <div className={styles.colunaPerfil}>
         <article className={styles.perfil}>
           <header>
-            <h2>{atual.razaoSocial}</h2>
-            {atual.nomeFantasia ? <p>{atual.nomeFantasia}</p> : null}
+            <h2>{nomeEmpresa(atual)}</h2>
+            {atual.razaoSocial && atual.nomeFantasia ? <p>{atual.nomeFantasia}</p> : null}
           </header>
           <dl className={styles.dados}>
             <div><dt>Contato principal</dt><dd>{atual.contatoNome ?? 'Contato principal não informado'}</dd></div>
