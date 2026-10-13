@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
 import { EtapasFila } from './etapas'
 
-const filtros = { nome: 'Cliente', cnae: null, uf: 'SP', cidade: null, bairro: null, pagina: 2 }
+const filtros = { nome: 'Cliente', cnae: null, uf: 'SP', cidade: null, bairro: null, pagina: 2, grupo: null }
 
 test('em Puxar, etapas futuras não são links nem botões', () => {
   const html = renderToStaticMarkup(<EtapasFila etapa="puxar" filtros={filtros} />)

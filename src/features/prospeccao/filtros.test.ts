@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { lerFiltros } from './filtros'
 
-const vazio = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1 }
+const vazio = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
 
 describe('lerFiltros', () => {
   it('aceita ausência e campos vazios do formulário', () => {
@@ -12,13 +12,13 @@ describe('lerFiltros', () => {
 
   it('preserva os filtros combinados e literais de busca', () => {
     expect(lerFiltros({ nome: '  Café %_\\  ', cnae: '1234567', uf: 'SP', cidade: '3550308', bairro: 'Centro', pagina: '2' }))
-      .toEqual({ ok: true, filtros: { nome: 'Café %_\\', cnae: '1234567', uf: 'SP', cidade: '3550308', bairro: 'Centro', pagina: 2 } })
+      .toEqual({ ok: true, filtros: { nome: 'Café %_\\', cnae: '1234567', uf: 'SP', cidade: '3550308', bairro: 'Centro', pagina: 2, grupo: null } })
     expect(lerFiltros({ cnae: 'nao_informado' })).toEqual({ ok: true, filtros: { ...vazio, cnae: 'nao_informado' } })
   })
 
   it('usa apenas o primeiro parâmetro duplicado', () => {
     expect(lerFiltros({ nome: ['Loja', 'Outra'], pagina: ['2', 'abc'], uf: [] }))
-      .toEqual({ ok: true, filtros: { ...vazio, nome: 'Loja', pagina: 2 } })
+      .toEqual({ ok: true, filtros: { ...vazio, nome: 'Loja', pagina: 2, grupo: null } })
     expect(lerFiltros({ cnae: ['abc', '1234567'] })).toEqual({ ok: false, motivo: 'filtro_invalido' })
   })
 
@@ -45,4 +45,10 @@ describe('lerFiltros', () => {
   ])('recusa filtro inválido sem ampliar a consulta: %j', params => {
     expect(lerFiltros(params)).toEqual({ ok: false, motivo: 'filtro_invalido' })
   })
+})
+
+it('conserva grupo e recusa UUID inválido sem ampliar a busca', () => {
+  const grupo = '00000000-0000-4000-8000-000000000701'
+  expect(lerFiltros({ grupo })).toMatchObject({ ok: true, filtros: { grupo } })
+  expect(lerFiltros({ grupo: 'invalido' })).toEqual({ ok: false, motivo: 'filtro_invalido' })
 })

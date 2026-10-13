@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1201
+# Total: 1217
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -175,6 +175,8 @@ app/fila/cartao.test.tsx :: Cartao o cartao mostra o historico de quem ligou ant
 app/fila/cartao.test.tsx :: Cartao o cartao NAO tem mais botoes soltos de assumir e devolver
 app/fila/cartao.test.tsx :: Cartao prazo expirado oculta detalhes e histórico preservando anotações bloqueadas
 app/fila/cartao.test.tsx :: reserva parcial mostra nome comercial no título e CNPJ desconhecido
+app/fila/entrada-reserva.test.tsx :: a reserva transporta a lista e recusa lista malformada
+app/fila/entrada-reserva.test.tsx :: lista indisponível explica preservação da reserva e das notas
 app/fila/entrada-reserva.test.tsx :: puxar usa filtros e contexto original, sem aceitar identidade do formulário
 app/fila/entrada-reserva.test.tsx :: recusa alvo/contexto inválidos e filtros inválidos sem ampliar busca
 app/fila/entrada-reserva.test.tsx :: resultado sem candidata explica preservação e não usa travessão
@@ -184,6 +186,7 @@ app/fila/entrada-sem-reserva.test.tsx :: mantém editor quando a reserva expirou
 app/fila/etapas.test.tsx :: durante gravação, não permite sair pelas etapas
 app/fila/etapas.test.tsx :: em Puxar, etapas futuras não são links nem botões
 app/fila/etapas.test.tsx :: em Registrar, volta à consulta e à busca preservando filtros
+app/fila/formulario.dom.test.tsx :: trocar só grupo e abrir escolha mantém editor, reserva e nota digitada
 app/fila/formulario.test.tsx :: Formulario erro aparece na tela
 app/fila/formulario.test.tsx :: Formulario fila vazia diz POR QUE, e nao usa a palavra quarentena
 app/fila/formulario.test.tsx :: Formulario gravação de contato bloqueia voltar pela etapa sem bloquear o envio por si mesma
@@ -195,12 +198,18 @@ app/fila/formulario.test.tsx :: Formulario uma reserva nova começa em consultar
 app/fila/formulario.test.tsx :: Formulario voltar para uma empresa anterior reinicia em consultar
 app/fila/localizar/componentes.test.tsx :: ação automática usa puxar sem empresa e preserva os filtros
 app/fila/localizar/componentes.test.tsx :: filtro de URL antiga ausente nas opções continua visível e selecionado
+app/fila/localizar/componentes.test.tsx :: filtros, paginação, perfil e reserva conservam a lista selecionada
 app/fila/localizar/componentes.test.tsx :: formulário tem nome e seletores com rótulos e valores atuais
 app/fila/localizar/componentes.test.tsx :: paginação preserva filtros e oferece retorno mesmo em página vazia
 app/fila/localizar/componentes.test.tsx :: resultado de empresa alheia só contém cadastro resumido e estado separado
 app/fila/localizar/componentes.test.tsx :: resultado vazio informa ausência
 app/fila/localizar/componentes.test.tsx :: seletores dependentes ficam desabilitados sem seus pais
 app/fila/localizar/componentes.test.tsx :: URL usa codificação segura e mudança de filtro volta para página um
+app/fila/localizar/contexto-grupo.test.tsx :: atendimento oferece escolher a próxima lista sem sair da tela
+app/fila/localizar/contexto-grupo.test.tsx :: grupo inativo não busca geral e mantém atendimento vigente
+app/fila/localizar/contexto-grupo.test.tsx :: grupo sozinho consulta só a lista e mostra contexto comercial escapado
+app/fila/localizar/navegacao.test.tsx :: limpar conserva somente a lista e selecionar reinicia os demais filtros
+app/fila/localizar/navegacao.test.tsx :: paginação conserva a lista selecionada
 app/fila/localizar/perfil.test.tsx :: ação valida UUID, usa sessão e revalida lista somente no sucesso
 app/fila/localizar/perfil.test.tsx :: perfil disponível oferece reserva sem exibir dados privados
 app/fila/localizar/perfil.test.tsx :: perfil inválido ou inexistente responde 404
@@ -425,6 +434,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0032.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0035.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0036.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
@@ -917,6 +927,7 @@ src/features/fila/mensagens.test.ts :: textoDoMotivo ja_e_sua tem texto de gente
 src/features/fila/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto de gente
 src/features/fila/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto de gente
 src/features/fila/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto de gente
+src/features/fila/repositorio.test.ts :: reserva envia grupo final e traduz indisponibilidade preservando campos vigentes
 src/features/fila/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
 src/features/fila/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
 src/features/fila/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
@@ -925,6 +936,7 @@ src/features/fila/repositorio.test.ts :: traduzirResultado reserva_expirada vira
 src/features/fila/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
 src/features/funil/regras.test.ts :: venda converte reais em centavos exatos e normaliza observação
 src/features/funil/regras.test.ts :: venda recusa valores ambíguos, fora do limite, data impossível e chave inválida
+src/features/prospeccao/filtros.test.ts :: conserva grupo e recusa UUID inválido sem ampliar a busca
 src/features/prospeccao/filtros.test.ts :: lerFiltros aceita ausência e campos vazios do formulário
 src/features/prospeccao/filtros.test.ts :: lerFiltros aceita os limites de texto e página
 src/features/prospeccao/filtros.test.ts :: lerFiltros preserva os filtros combinados e literais de busca
@@ -959,6 +971,7 @@ src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido se
 src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"sp"}
 src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SPX"}
 src/features/prospeccao/filtros.test.ts :: lerFiltros usa apenas o primeiro parâmetro duplicado
+src/features/prospeccao/mensagens.test.ts :: consulta explica lista indisponível como estado recuperável
 src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz comigo em texto acessível sem travessão
 src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz disponivel em texto acessível sem travessão
 src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz em_descanso em texto acessível sem travessão
@@ -1190,6 +1203,9 @@ src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\configuracao\
 src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
 src/server/diretivas.test.ts :: arquivos 'use server' src\features\contato\acao.ts só exporta função
+src/server/grupos/prospeccao.test.ts :: erro de infraestrutura continua visível
+src/server/grupos/prospeccao.test.ts :: leitor comercial traduz somente campos públicos e contagens numéricas
+src/server/grupos/prospeccao.test.ts :: leitor vazio e recusa de leitura devolvem motivos próprios
 src/server/whatsapp/consulta.test.ts :: cursor forjado e vínculo removido não fazem consulta
 src/server/whatsapp/consulta.test.ts :: enriquece mensagens com empresa por telefone confirmado e mantém mensagens quando CRM falha
 src/server/whatsapp/consulta.test.ts :: falha parcial conserva cursor; sucesso avança e tentativa seguinte só consulta pendentes

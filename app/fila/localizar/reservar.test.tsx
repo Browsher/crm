@@ -12,7 +12,7 @@ import { RascunhosProvider, useRascunhos } from '../rascunhos'
 import { Reservar } from './reservar'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
-const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1 }
+const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
 const raizes: ReturnType<typeof createRoot>[] = []
 
 afterEach(async () => {

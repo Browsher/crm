@@ -44,6 +44,7 @@ async function tentar<T>(usuarioId: string, trabalho: (executar: Executar) => Pr
 }
 
 export type FiltrosReserva = {
+  grupo: string | null
   nome: string
   cnae: string | null
   uf: string | null
@@ -52,7 +53,7 @@ export type FiltrosReserva = {
 }
 export type ResultadoReserva = {
   ok: true
-  resultado: 'ok' | 'sem_candidata' | 'indisponivel' | 'contexto_alterado'
+  resultado: 'ok' | 'sem_candidata' | 'indisponivel' | 'contexto_alterado' | 'grupo_indisponivel'
   empresaId: string | null
   reservadoAte: Date | null
   contexto: string | null
@@ -65,14 +66,14 @@ export function reservarEmpresa(usuarioId: string, alvo: string | null, filtros:
       empresa_id: string | null
       reservado_ate: Date | null
       contexto: string | null
-    }>('SELECT * FROM fila_reservar($1,$2,$3,$4,$5,$6,$7)', [alvo, filtros.nome, filtros.cnae, filtros.uf, filtros.cidade, filtros.bairro, contexto])
+    }>('SELECT * FROM fila_reservar($1,$2,$3,$4,$5,$6,$7,$8)', [alvo, filtros.nome, filtros.cnae, filtros.uf, filtros.cidade, filtros.bairro, contexto, filtros.grupo])
     const linha = r.linhas[0]
-    if (!linha || !['ok', 'sem_candidata', 'indisponivel', 'contexto_alterado'].includes(linha.resultado)) {
+    if (!linha || !['ok', 'sem_candidata', 'indisponivel', 'contexto_alterado', 'grupo_indisponivel'].includes(linha.resultado)) {
       throw new ResultadoDesconhecido('fila_reservar', linha?.resultado ?? '')
     }
     return {
       ok: true as const,
-      resultado: linha.resultado as 'ok' | 'sem_candidata' | 'indisponivel' | 'contexto_alterado',
+      resultado: linha.resultado as 'ok' | 'sem_candidata' | 'indisponivel' | 'contexto_alterado' | 'grupo_indisponivel',
       empresaId: linha.empresa_id,
       reservadoAte: linha.reservado_ate,
       contexto: linha.contexto,

@@ -9,6 +9,8 @@ import { RegistrarVisita } from '../registrar-visita'
 import { urlConsulta } from '../navegacao'
 import { EtapasFila } from '../../etapas'
 import styles from '../localizar.module.css'
+import { lerGrupoProspeccao } from '@/src/server/grupos/prospeccao'
+import { ContextoGrupo } from '../contexto-grupo'
 
 export default async function PaginaPerfil({ params, searchParams }: {
   params: Promise<{ id: string }>
@@ -24,14 +26,16 @@ export default async function PaginaPerfil({ params, searchParams }: {
   if (!r.empresa) notFound()
   const minhas = await lerMinhasEmpresas(eu.usuarioId)
   const filtros = entrada.filtros
+  const grupo = filtros.grupo ? await lerGrupoProspeccao(eu.usuarioId,filtros.grupo) : null
   return <main className={styles.pagina}>
     <EtapasFila etapa="consultar" filtros={filtros} />
     <header className={styles.cabecalho}>
       <h1>Perfil da empresa</h1>
       <Link href={urlConsulta(filtros, filtros.pagina)} className="text-sm underline">Voltar para localizar</Link>
     </header>
+    <ContextoGrupo resultado={grupo} />
     <RegistrarVisita empresaId={id} />
     <Resultados empresas={[r.empresa]} mostrarPerfil={false} filtros={filtros}
-      reserva={minhas.ok ? { contexto: minhas.contexto, filtros, empresaAtual: minhas.reserva?.id ?? null } : undefined} />
+      reserva={minhas.ok && (!grupo || grupo.ok) ? { contexto: minhas.contexto, filtros, empresaAtual: minhas.reserva?.id ?? null } : undefined} />
   </main>
 }

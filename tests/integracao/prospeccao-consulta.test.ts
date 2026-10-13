@@ -158,7 +158,7 @@ test('paginação SQL busca 21, ordena empates por id e respeita offset', async 
 test('repositório traduz campos, limita a 20 e informa próxima página', async () => {
   const { consultarEmpresas, listarOpcoes } = await import('@/src/features/prospeccao/repositorio')
   for (let i = 0; i < 21; i++) await empresa('Mesmo nome','01000000','1234567')
-  const filtros = {nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1}
+  const filtros = {nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1,grupo:null}
   const primeira = await consultarEmpresas(eu,filtros)
   expect(primeira.ok).toBe(true)
   if (!primeira.ok) throw new Error('esperava sucesso')
@@ -167,9 +167,9 @@ test('repositório traduz campos, limita a 20 e informa próxima página', async
   expect(primeira.empresas[0]).toMatchObject({razaoSocial:'Mesmo nome',nomeFantasia:'Fantasia',cnaePrincipal:'1234567',cidade:'Homônima',uf:'SP',bairro:'Centro',disponibilidade:'disponivel'})
   expect(await consultarEmpresas(eu,{...filtros,pagina:3})).toEqual({ok:true,empresas:[],temProxima:false})
   expect(await consultarEmpresas(inativo,filtros)).toEqual({ok:false,motivo:'sem_permissao'})
-  expect(await listarOpcoes(inativo,null,null)).toEqual({ok:false,motivo:'sem_permissao'})
-  expect(await listarOpcoes(eu,'SP','3550308')).toMatchObject({ok:true,opcoes:expect.arrayContaining([{tipo:'bairro',valor:'Centro',rotulo:'Centro'}])})
+  expect(await listarOpcoes(inativo,null,null,null)).toEqual({ok:false,motivo:'sem_permissao'})
+  expect(await listarOpcoes(eu,'SP','3550308',null)).toMatchObject({ok:true,opcoes:expect.arrayContaining([{tipo:'bairro',valor:'Centro',rotulo:'Centro'}])})
   await expect(consultarEmpresas(eu,{...filtros,pagina:0})).rejects.toMatchObject({code:'22023'})
-  await banco.sql('DROP FUNCTION empresa_filtros(text,text)')
-  await expect(listarOpcoes(eu,null,null)).rejects.toMatchObject({code:'42883'})
+  await banco.sql('DROP FUNCTION empresa_filtros(text,text,uuid)')
+  await expect(listarOpcoes(eu,null,null,null)).rejects.toMatchObject({code:'42883'})
 })

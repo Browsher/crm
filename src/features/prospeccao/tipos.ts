@@ -4,6 +4,7 @@ export type Filtros = {
   uf: string | null
   cidade: string | null
   bairro: string | null
+  grupo: string | null
   pagina: number
 }
 
@@ -27,7 +28,7 @@ export type ResumoEmpresa = {
 
 export type ResultadoConsulta =
   | { ok: true; empresas: ResumoEmpresa[]; temProxima: boolean }
-  | { ok: false; motivo: 'sem_permissao' }
+  | { ok: false; motivo: 'sem_permissao' | 'grupo_indisponivel' }
 
 export type OpcoesFiltro = {
   tipo: 'cnae' | 'uf' | 'cidade' | 'bairro'
@@ -37,4 +38,4 @@ export type OpcoesFiltro = {
 
 export type ResultadoOpcoes =
   | { ok: true; opcoes: OpcoesFiltro[] }
-  | { ok: false; motivo: 'sem_permissao' }
+  | { ok: false; motivo: 'sem_permissao' | 'grupo_indisponivel' }

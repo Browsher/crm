@@ -92,7 +92,7 @@ test('busca e ordena o nome comercial parcial mantendo os nulos reais em lista, 
   const consulta = lerConsulta({ q: 'cameras aurora' })
   const lista = await listarEmpresas(gestor, consulta)
   expect(lista).toMatchObject({ ok: true, linhas: [{ id, cnpj: null, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' }] })
-  const filtros = { nome: 'cameras aurora', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1 }
+  const filtros = { nome: 'cameras aurora', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
   expect(await consultarEmpresas(vendedor, filtros)).toMatchObject({ ok: true, empresas: [{ id, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' }] })
   expect(await lerPerfil(vendedor, id)).toMatchObject({ ok: true, empresa: { id, razaoSocial: null, nomeFantasia: 'Alfa Câmeras Aurora' } })
   expect(await listarSugestoes(vendedor)).toMatchObject({ ok: true, empresas: [{ id }] })

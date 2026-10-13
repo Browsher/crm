@@ -105,7 +105,7 @@ test('repositório e leitura entregam contexto inclusive depois de consumir rese
   const { lerMinhasEmpresas } = await import('@/src/features/fila/consulta')
   expect(await lerMinhasEmpresas(eu)).toEqual({ok:true,reserva:null,carteira:[],contexto:null})
   const id = await empresa()
-  const a = await reservarEmpresa(eu,id,{nome:'',cnae:null,uf:null,cidade:null,bairro:null},null)
+  const a = await reservarEmpresa(eu,id,{nome:'',cnae:null,uf:null,cidade:null,bairro:null,grupo:null},null)
   expect(a).toMatchObject({ok:true,resultado:'ok',empresaId:id,contexto:expect.any(String)})
   if (!a.ok) throw new Error('esperava sucesso')
   expect(await lerMinhasEmpresas(eu)).toMatchObject({ok:true,contexto:a.contexto,reserva:{id}})

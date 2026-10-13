@@ -1,0 +1,53 @@
+import { renderToStaticMarkup } from 'react-dom/server'
+import { beforeEach, expect, test, vi } from 'vitest'
+const mocks=vi.hoisted(()=>({ grupo:vi.fn(), consultar:vi.fn(), recentes:vi.fn(), sugestoes:vi.fn(), minhas:vi.fn() }))
+vi.mock('@/src/server/autenticacao/guarda',()=>({ exigir:async()=>({usuarioId:'eu'}) }))
+vi.mock('@/src/server/grupos/prospeccao',()=>({ lerGrupoProspeccao:mocks.grupo }))
+vi.mock('@/src/features/prospeccao/repositorio',()=>({ listarOpcoes:async()=>({ok:true,opcoes:[]}),consultarEmpresas:mocks.consultar }))
+vi.mock('@/src/features/prospeccao/recentes',()=>({ listarRecentes:mocks.recentes,listarSugestoes:mocks.sugestoes }))
+vi.mock('@/src/features/fila/consulta',()=>({ lerMinhasEmpresas:mocks.minhas }))
+vi.mock('@/src/features/contato/historico',()=>({ lerHistorico:async()=>({ok:true,contatos:[]}) }))
+vi.mock('../formulario',()=>({ Formulario:()=> <div>Atendimento vigente</div> }))
+vi.mock('../acoes',()=>({ agirNaFilaAcao:vi.fn() }))
+vi.mock('next/navigation',()=>({ useRouter:()=>({push:vi.fn()}) }))
+import Pagina from './page'
+import Fila from '../page'
+const grupo='00000000-0000-4000-8000-000000000701'
+beforeEach(()=>{
+  vi.clearAllMocks()
+  mocks.grupo.mockResolvedValue({ok:true,grupo:{id:grupo,nome:'Lista <script>',descricao:'Resumo comercial',origem:'Fonte & coleta',criterios:'Somente lojas',criadoEm:'2026-10-13',total:2,disponiveis:1}})
+  mocks.consultar.mockResolvedValue({ok:true,empresas:[],temProxima:false})
+  mocks.recentes.mockResolvedValue({ok:true,empresas:[]})
+  mocks.sugestoes.mockResolvedValue({ok:true,empresas:[]})
+  mocks.minhas.mockResolvedValue({ok:true,reserva:{id:'atual'},contexto:'versao'})
+})
+test('grupo sozinho consulta só a lista e mostra contexto comercial escapado',async()=>{
+  const html=renderToStaticMarkup(await Pagina({searchParams:Promise.resolve({grupo})}))
+  expect(mocks.consultar).toHaveBeenCalledWith('eu',expect.objectContaining({grupo}))
+  expect(mocks.recentes).not.toHaveBeenCalled()
+  expect(mocks.sugestoes).not.toHaveBeenCalled()
+  expect(html).toContain('Lista da próxima busca')
+  expect(html).toContain('Lista &lt;script&gt;')
+  expect(html).toContain('Resumo comercial')
+  expect(html).toContain('Fonte &amp; coleta')
+  expect(html).toContain('Somente lojas')
+  mocks.grupo.mockResolvedValue({ok:true,grupo:{id:grupo,nome:'Lista legada',descricao:null,origem:null,criterios:null,criadoEm:'2026-10-13',total:1,disponiveis:1}})
+  const legado=renderToStaticMarkup(await Pagina({searchParams:Promise.resolve({grupo})}))
+  expect(legado).toContain('Origem não informada')
+})
+test('grupo inativo não busca geral e mantém atendimento vigente',async()=>{
+  mocks.grupo.mockResolvedValue({ok:false,motivo:'grupo_indisponivel'})
+  const busca=renderToStaticMarkup(await Pagina({searchParams:Promise.resolve({grupo})}))
+  expect(busca).toContain('Todas as listas ativas')
+  expect(mocks.consultar).not.toHaveBeenCalled()
+  expect(mocks.recentes).not.toHaveBeenCalled()
+  expect(mocks.sugestoes).not.toHaveBeenCalled()
+  const fila=renderToStaticMarkup(await Fila({searchParams:Promise.resolve({grupo})}))
+  expect(fila).toContain('Atendimento vigente')
+  expect(fila).toContain('Todas as listas ativas')
+})
+test('atendimento oferece escolher a próxima lista sem sair da tela',async()=>{
+  const html=renderToStaticMarkup(await Fila({searchParams:Promise.resolve({grupo})}))
+  expect(html).toContain('Escolher outra lista')
+  expect(html).toContain('/fila?escolher_lista=1')
+})

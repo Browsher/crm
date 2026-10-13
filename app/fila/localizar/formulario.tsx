@@ -9,6 +9,7 @@ import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import styles from './localizar.module.css'
+import { limparFiltros, urlConsulta } from './navegacao'
 
 const campos = [
   { nome: 'cnae', label: 'CNAE' },
@@ -38,6 +39,7 @@ export function Formulario({ filtros, opcoes }: { filtros: Filtros; opcoes: Opco
       new FormData(e.currentTarget).forEach((valor,chave) => params.set(chave,String(valor)))
       router.push(`/fila/localizar?${params}`)
     }} className={styles.formulario}>
+      <input type="hidden" name="grupo" value={filtros.grupo ?? ''} />
       <div className={styles.gradeFiltros}>
       <div className={styles.campo}>
         <Label htmlFor="filtro-nome">Nome</Label>
@@ -62,7 +64,7 @@ export function Formulario({ filtros, opcoes }: { filtros: Filtros; opcoes: Opco
       <p id="filtros-dependentes" className={styles.ajuda}>Ao mudar estado ou cidade, a página atualiza as opções seguintes.</p>
       <div className={styles.acoes}>
         <Button type="submit" variant="outline">Consultar</Button>
-        <Button asChild variant="ghost"><Link href="/fila/localizar">Limpar filtros</Link></Button>
+        <Button asChild variant="ghost"><Link href={urlConsulta(limparFiltros(filtros),1)}>Limpar filtros</Link></Button>
       </div>
     </form>
   )

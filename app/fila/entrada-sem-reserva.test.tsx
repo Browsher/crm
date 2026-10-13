@@ -7,7 +7,7 @@ const estado = vi.hoisted(() => ({ entradas: {} as Record<string, unknown> }))
 vi.mock('./rascunhos', () => ({ useRascunhos: () => estado }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
 vi.mock('./formulario', () => ({ Formulario: () => <div>Recuperar anotações</div> }))
-const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1 }
+const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
 
 test('mantém editor quando a reserva expirou mesmo com nota vazia', () => {
   estado.entradas = { a: { nome: 'Empresa', valor: rascunhoInicial(false), expirada: true } }

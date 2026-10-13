@@ -38,6 +38,7 @@ const sao = (): Estado => ({
     'public.contato_registrar',
     'public.empresa_consultar',
     'public.empresa_filtros',
+    'public.grupo_prospeccao_ler',
     'public.empresa_perfil',
     'public.empresa_recentes',
     'public.empresa_sugestoes',

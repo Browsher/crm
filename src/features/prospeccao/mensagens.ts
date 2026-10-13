@@ -11,3 +11,7 @@ const mensagens: Record<Disponibilidade, { titulo: string; detalhe: string | nul
 export function mensagemDisponibilidade(disponibilidade: Disponibilidade) {
   return mensagens[disponibilidade]
 }
+
+export function mensagemConsulta(motivo: 'sem_permissao' | 'grupo_indisponivel'): string {
+  return motivo === 'grupo_indisponivel' ? 'Esta lista está indisponível. Escolha outra lista ativa.' : 'Você não tem permissão para consultar empresas.'
+}

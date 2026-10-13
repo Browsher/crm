@@ -7,7 +7,7 @@ import { Resultados } from './resultados'
 import { Paginacao } from './paginacao'
 import { urlConsulta } from './navegacao'
 
-const filtros = { nome: 'Luz & Cia', cnae: '4742300', uf: 'SP', cidade: '3550308', bairro: 'Centro', pagina: 2 }
+const filtros = { nome: 'Luz & Cia', cnae: '4742300', uf: 'SP', cidade: '3550308', bairro: 'Centro', pagina: 2, grupo: null }
 
 test('formulário tem nome e seletores com rótulos e valores atuais', () => {
   const html = renderToStaticMarkup(<Formulario filtros={filtros} opcoes={[
@@ -78,4 +78,17 @@ test('URL usa codificação segura e mudança de filtro volta para página um', 
   const url = new URL(urlConsulta({ ...filtros, nome: 'A&B #1' }, 1), 'http://localhost')
   expect(url.searchParams.get('nome')).toBe('A&B #1')
   expect(url.searchParams.get('pagina')).toBe('1')
+})
+
+test('filtros, paginação, perfil e reserva conservam a lista selecionada',()=>{
+  const grupo='00000000-0000-4000-8000-000000000701'
+  const selecionados={...filtros,grupo}
+  const form=renderToStaticMarkup(<Formulario filtros={selecionados} opcoes={[]} />)
+  expect(form).toContain(`name="grupo" value="${grupo}"`)
+  expect(form).toContain(`/fila/localizar?grupo=${grupo}&amp;pagina=1`)
+  const paginacao=renderToStaticMarkup(<Paginacao filtros={selecionados} temProxima />)
+  expect(paginacao).toContain(`grupo=${grupo}`)
+  const html=renderToStaticMarkup(<Resultados filtros={selecionados} empresas={[{id:'e',razaoSocial:'Empresa',nomeFantasia:null,cnaePrincipal:null,cidade:null,uf:null,bairro:null,disponibilidade:'disponivel'}]} reserva={{contexto:'v',filtros:selecionados,empresaAtual:null}} />)
+  expect(html).toContain(`grupo=${grupo}`)
+  expect(html).toContain(`name="grupo" value="${grupo}"`)
 })
