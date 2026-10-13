@@ -104,6 +104,8 @@ test('conferir e confirmar usam a mesma chave, nome e arquivo', async () => {
   expect(dadosDaChamada(0).get('nome')).toBe('Mooca')
   expect(dadosDaChamada(1).get('nome')).toBe('Mooca')
   expect(dadosDaChamada(1).get('conferencia')).toBe('comprovante-autenticado')
+  expect(mock.mock.calls[1][0]).toEqual({ erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null })
+  expect(mock.mock.calls[1][0]).not.toBe(conferido)
   expect(input.files?.[0]).toBe(file)
 })
 

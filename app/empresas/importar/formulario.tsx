@@ -19,8 +19,10 @@ export function FormularioImportar() {
   const tituloRef = useRef<HTMLHeadingElement>(null)
   const erroRef = useRef<HTMLParagraphElement>(null)
   const focarAoVoltarRef = useRef(false)
-  const [estado, acao, pendente] = useActionState(async (anterior: EstadoImportar, form: FormData) => {
-    const resultado = await importarAcao(anterior, form)
+  const [estado, acao, pendente] = useActionState(async (_anterior: EstadoImportar, form: FormData) => {
+    // A Action ignora o estado anterior: relatório e comprovante continuam na
+    // tela, mas o HTTP envia apenas estado compacto e o token no FormData.
+    const resultado = await importarAcao(inicial, form)
     setLimpo(false)
     setEtapa(resultado.inseridas !== null ? 'concluir' : resultado.relatorio ? 'conferir' : 'enviar')
     return resultado

@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1159
+# Total: 1160
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -101,6 +101,7 @@ app/empresas/importar/acao.test.tsx :: protocolo recusa chave alterado após con
 app/empresas/importar/acao.test.tsx :: protocolo recusa gestor alterado após conferência sem chamar importar
 app/empresas/importar/acao.test.tsx :: protocolo recusa nome alterado após conferência sem chamar importar
 app/empresas/importar/acao.test.tsx :: protocolo recusa selecao alterado após conferência sem chamar importar
+app/empresas/importar/formulario-transporte.test.tsx :: argumentos reais do wrapper cabem em 2 MiB sem reenviar relatório de 4.999 recusas
 app/empresas/importar/formulario.dom.test.tsx :: conferir e confirmar usam a mesma chave, nome e arquivo
 app/empresas/importar/formulario.dom.test.tsx :: mudar arquivo invalida a conferência e inicia outra operação
 app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
@@ -661,7 +662,7 @@ src/features/empresas/cnpj.test.ts :: validarCnpj alfanumerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico com um digito trocado reprova
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj todos os digitos iguais reprova
-src/features/empresas/conferencia.test.ts :: comprovante de 5.000 recusas cabe junto ao arquivo no limite de transporte
+src/features/empresas/conferencia.test.ts :: comprovante de 5.000 recusas conserva seleção e schema no round-trip
 src/features/empresas/conferencia.test.ts :: comprovante excessivo é recusado
 src/features/empresas/conferencia.test.ts :: comprovante preserva seleção e recusas sem depender de memória de processo
 src/features/empresas/conferencia.test.ts :: comprovante texto comum é recusado

@@ -44,9 +44,10 @@ test('schema autenticado também exige versão e seleção sem repetições', ()
 })
 
 
-test('comprovante de 5.000 recusas cabe junto ao arquivo no limite de transporte', () => {
+test('comprovante de 5.000 recusas conserva seleção e schema no round-trip', () => {
   const maximo = { linhasAceitas: [], recusadasIdentidade: Array.from({ length: 5000 }, (_, i) => ({ tipo: 'identidade' as const, linha: 1_000_000 + i, motivo: 'identificadores_divergentes' as const })) }
   const token = emitirConferencia(contexto, maximo, env)!
-  expect(Buffer.byteLength(token) + 1_500_000 + 20_000).toBeLessThan(2 * 1024 * 1024)
+  // O transporte é medido com encodeReply e argumentos reais do wrapper em
+  // app/empresas/importar/formulario-transporte.test.tsx. Aqui é só o envelope.
   expect(verificarConferencia(token, contexto, env)).toEqual(maximo)
 })
