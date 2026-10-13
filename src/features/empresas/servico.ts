@@ -1,3 +1,4 @@
+import { resolverIdentidade } from './identidade'
 import { analisarArquivo, type FonteEmpresas } from './arquivo'
 import type { FalhaDeArquivo, LinhaAceita, Recusa } from './planilha'
 import type { Falha, OperacaoGrupo, RepositorioEmpresas } from './repositorio'
@@ -37,23 +38,34 @@ async function preparar(
   const analise = await analisarArquivo(fonte)
   if (!analise.ok) return { ok: false, motivo: 'arquivo_invalido', falha: analise.falha }
 
-  const cnpjs = analise.aceitas.map((l) => l.cnpj)
   const ceps = [...new Set(analise.aceitas.map((l) => l.cep).filter((c): c is string => c !== null))]
-  const p = await repo.preparar(cnpjs, ceps)
+  const p = await repo.preparar(analise.aceitas, ceps)
   if ('motivo' in p) return p
 
-  const novas = analise.aceitas.filter((l) => !p.jaCadastrados.has(l.cnpj))
+  const aceitas: LinhaAceita[] = []
+  const recusadas = [...analise.recusadas]
+  let novas = 0
+  for (const linha of analise.aceitas) {
+    const identidade = resolverIdentidade(linha, p)
+    if (!identidade.ok) {
+      recusadas.push({ tipo: 'identidade', linha: linha.linha, motivo: identidade.motivo })
+      continue
+    }
+    aceitas.push(linha)
+    if (identidade.empresaId === null) novas++
+  }
+  recusadas.sort((a, b) => a.linha - b.linha)
   // CEP não encontrado NÃO recusa a empresa: ela entra sem endereço resolvido,
   // porque prospecção começa por telefone. O relatório só conta, e cita a data
   // da base para "não encontrado" não parecer defeito.
   const cepsNaoEncontrados = ceps.filter((c) => !p.enderecos.has(c)).length
 
   return {
-    aceitas: analise.aceitas,
+    aceitas,
     relatorio: {
-      novas: novas.length,
-      jaCadastradas: analise.aceitas.length - novas.length,
-      recusadas: analise.recusadas,
+      novas,
+      jaCadastradas: aceitas.length - novas,
+      recusadas,
       cepsPedidos: ceps.length,
       cepsNaoEncontrados,
       basePublicadaEm: p.basePublicadaEm,

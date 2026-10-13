@@ -1,8 +1,8 @@
-import { CABECALHO } from './planilha'
+import { CABECALHO_GOOGLE } from './planilha'
 
 // Monta o .xlsx do modelo de importação, sem dependência nenhuma.
 //
-// Um .xlsx é um zip de XMLs. O que importa neste arquivo é UMA coisa: as oito
+// Um .xlsx é um zip de XMLs. O que importa neste arquivo é UMA coisa: as nove
 // colunas nascerem formatadas como Texto, para o Excel não comer o zero à
 // esquerda do CEP nem transformar o CNPJ em notação científica quando alguém
 // digitar as próximas linhas. Isso é o `style="1"` no <col>, apontando para um
@@ -22,6 +22,7 @@ const EXEMPLO = [
   'contato@aurora.com.br',
   '01310100',
   '4742300',
+  'ChIJ-ficticio-aurora',
 ]
 
 const escapar = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -86,9 +87,9 @@ const PARTES: [string, string][] = [
     // células já preenchidas. É disso que depende a linha 3 em diante, digitada
     // pelo gestor, manter o zero à esquerda do CEP.
     `${XML}<worksheet xmlns="${NS}">` +
-      '<dimension ref="A1:H2"/>' +
-      '<cols><col min="1" max="8" width="22" style="1" customWidth="1"/></cols><sheetData>' +
-      linha(1, CABECALHO.split(','), 2) +
+      '<dimension ref="A1:I2"/>' +
+      '<cols><col min="1" max="9" width="22" style="1" customWidth="1"/></cols><sheetData>' +
+      linha(1, CABECALHO_GOOGLE.split(','), 2) +
       linha(2, EXEMPLO, 1) +
       '</sheetData></worksheet>',
   ],

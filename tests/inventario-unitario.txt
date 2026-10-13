@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1090
+# Total: 1126
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -105,6 +105,8 @@ app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro rend
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render pede um nome para o grupo
+app/empresas/importar/relatorio.test.tsx :: recusa de identidade exige revisão e não oferece fusão automática
+app/empresas/importar/relatorio.test.tsx :: relatório explica identificação por origem e complemento seguro antes de confirmar
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
@@ -390,6 +392,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0030.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0031.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0032.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
@@ -613,6 +616,9 @@ src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa linha com 
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa mais de 5000 linhas de empresas
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa nomes definidos antes de o ExcelJS expandir a faixa
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa workbook que expande alem do limite antes de carrega-lo
+src/features/empresas/arquivo.test.ts :: XLSX com Google Place ID fórmula na nona coluna sem resultado calculado é recusada
+src/features/empresas/arquivo.test.ts :: XLSX com Google Place ID preenche opcionais até a nona coluna vazia sem recusar CNPJ conhecido
+src/features/empresas/arquivo.test.ts :: XLSX com Google Place ID preserva a nona coluna como texto e mantém prospects nulos distintos
 src/features/empresas/cnae.test.ts :: normaliza 
 src/features/empresas/cnae.test.ts :: normaliza   
 src/features/empresas/cnae.test.ts :: normaliza  4742300 
@@ -723,10 +729,20 @@ src/features/empresas/grupos.test.ts :: paginação malformada 1000001 recupera 
 src/features/empresas/grupos.test.ts :: paginação malformada Infinity recupera primeira página
 src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
 src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
+src/features/empresas/identidade.test.ts :: dois identificadores que apontam para UUIDs diferentes exigem revisão
+src/features/empresas/identidade.test.ts :: Google conhecido com CNPJ diferente exige revisão
+src/features/empresas/identidade.test.ts :: identificadores iguais ou complemento vazio preservam UUID
+src/features/empresas/identidade.test.ts :: novo não procura chave nula em nenhum mapa
+src/features/empresas/identidade.test.ts :: razão social conhecida divergente exige revisão
 src/features/empresas/mensagens.test.ts :: CNAE invalido explica as duas formas aceitas
+src/features/empresas/mensagens.test.ts :: duplicata de Place ID identifica a origem e a linha do par
 src/features/empresas/mensagens.test.ts :: falhas recuperaveis de confirmacao orientam nova conferencia
+src/features/empresas/mensagens.test.ts :: recusa cnpj_divergente orienta revisão na origem
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 7
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 8
+src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 9
+src/features/empresas/mensagens.test.ts :: recusa identificadores_divergentes orienta revisão na origem
+src/features/empresas/mensagens.test.ts :: recusa razao_social_divergente orienta revisão na origem
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo excede limite mostra os dois numeros
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo formula informa a linha e a coluna que precisam virar valor
@@ -744,9 +760,11 @@ src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o
 src/features/empresas/modelo.test.ts :: modelo de importação a oitava coluna contém o cabeçalho e um exemplo de CNAE
 src/features/empresas/modelo.test.ts :: modelo de importação existe e é um zip, que é o que um xlsx é
 src/features/empresas/modelo.test.ts :: modelo de importação o arquivo versionado é o que o gerador produz hoje
-src/features/empresas/modelo.test.ts :: modelo de importação o cabeçalho do modelo é o CABECALHO da fase 1
+src/features/empresas/modelo.test.ts :: modelo de importação o cabeçalho do modelo é o CABECALHO_GOOGLE da fase 1
 src/features/empresas/modelo.test.ts :: modelo de importação o exemplo tem CEP com zero à esquerda
-src/features/empresas/modelo.test.ts :: modelo de importação todas as oito colunas são Texto, inclusive nas linhas ainda vazias
+src/features/empresas/modelo.test.ts :: modelo de importação todas as nove colunas são Texto, inclusive nas linhas ainda vazias
+src/features/empresas/modelo.test.ts :: nona coluna apresenta origem fictícia como texto
+src/features/empresas/planilha.test.ts :: cabeçalho de nove colunas recusa campo ausente ou excedente
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho cabecalho novo acrescenta somente cnae_principal
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho CNAE invalido recusa a linha
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho duplicatas com CNAE 
@@ -759,6 +777,7 @@ src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo acei
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo exige oito campos: 11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo exige oito campos: 11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100,4742300,extra
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho NUL em CNAE informa a coluna
+src/features/empresas/planilha.test.ts :: controle não vira Place ID ausente depois de aparar espaços
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro acima do limite recusa o arquivo
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro arquivo vazio
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro aspas nao fechadas recusam o arquivo
@@ -779,7 +798,7 @@ src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa col
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa email_forma
-src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa razao_social_vazia
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa nome_ausente
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa telefone_forma
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa telefone_vazio
 src/features/empresas/planilha.test.ts :: fase 1: byte NUL linha limpa ao lado de linha com NUL: so a suja sai
@@ -792,9 +811,24 @@ src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo re
 src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo todo nome de coluna do relatorio existe no CABECALHO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio a recusa aponta para a linha do ARQUIVO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio duplicata depois de linha em branco cita as linhas certas
+src/features/empresas/planilha.test.ts :: identidade de origem aceita identidades diferentes sem CNPJ nem razão social e conserva telefone igual
+src/features/empresas/planilha.test.ts :: identidade de origem identidade conhecida aceita CNPJ com Place ID ausente e pelo menos um nome
+src/features/empresas/planilha.test.ts :: identidade de origem legado cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep continua exigindo CNPJ
+src/features/empresas/planilha.test.ts :: identidade de origem legado cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,cnae_principal continua exigindo CNPJ
+src/features/empresas/planilha.test.ts :: identidade de origem Place ID aparado mede pontos de código até 255
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,,,11987654321,,,,ChIJ-a por nome_ausente
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Aurora,,,,,,ChIJ-a por telefone_vazio
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,, por identidade_ausente
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,,ab por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,,a b por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa 11222333000182,,Câmeras Aurora,,11987654321,,,,ChIJ-a por cnpj_dv
+src/features/empresas/planilha.test.ts :: identidade de origem repetição de Place ID ou CNPJ remove todas as linhas envolvidas
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar confirma o grupo com todas as linhas e devolve o relatorio persistido pelo banco
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar propaga falha de infraestrutura
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar traduz 22023 em falha recuperavel
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.preparar consulta identificadores não nulos separados e devolve os dois mapas
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.preparar identificadores ausentes não geram consulta de empresa
 src/features/empresas/servico.test.ts :: analisar aceita a fonte XLSX explicita e reaproveita o mesmo relatorio
 src/features/empresas/servico.test.ts :: analisar arquivo invalido devolve a falha do arquivo
 src/features/empresas/servico.test.ts :: analisar conta novas, ja cadastradas e ceps nao encontrados
@@ -804,6 +838,8 @@ src/features/empresas/servico.test.ts :: analisar sem_permissao do repositorio s
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada arquivo sem nenhum CEP pede zero
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada basePublicadaEm nulo e todos os ceps pedidos sem resposta
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada cepsPedidos conta CEP distinto, nao linha
+src/features/empresas/servico.test.ts :: conferência exige revisão quando razão social conhecida diverge
+src/features/empresas/servico.test.ts :: conferência usa os dois identificadores antes de contar e não grava
 src/features/empresas/servico.test.ts :: importar confirma todas as aceitas, inclusive as ja cadastradas
 src/features/empresas/servico.test.ts :: importar devolve o relatorio persistido pelo repositorio em vez da reanalise atual
 src/features/empresas/servico.test.ts :: importar nao confirma quando todas as linhas foram recusadas

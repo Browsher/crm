@@ -6,6 +6,7 @@ import {
   analisarLinhas,
   analisarPlanilha,
   CABECALHO,
+  CABECALHO_GOOGLE,
   CABECALHO_LEGADO,
   LIMITE_DE_LINHAS,
   type Analise,
@@ -263,7 +264,7 @@ function lerLinhas(planilha: ExcelJS.Worksheet): Analise | LinhaBruta[] {
       return
     }
 
-    const esperado = cabecalho.join(',') === CABECALHO ? 8 : cabecalho.join(',') === CABECALHO_LEGADO ? 7 : 0
+    const esperado = cabecalho.join(',') === CABECALHO_GOOGLE ? 9 : cabecalho.join(',') === CABECALHO ? 8 : cabecalho.join(',') === CABECALHO_LEGADO ? 7 : 0
     linhas.push({ numero, campos: camposDaLinha(linha, esperado) })
   })
 

@@ -23,7 +23,8 @@ function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } =
       // semBase: cep_carga vazia E cep vazia, que é como um ambiente novo
       // nasce — a Railway inclusive, enquanto a carga não roda lá.
       return {
-        jaCadastrados: new Set(jaCadastrados),
+        porCnpj: new Map(jaCadastrados.map(cnpj => [cnpj, { id: `empresa-${cnpj}`, cnpj, razaoSocial: null }])),
+        porGoogle: new Map(),
         enderecos: opcoes.semBase ? new Map() : new Map([['01310100', endereco]]),
         basePublicadaEm: opcoes.semBase ? null : '2024-07-08',
       }
@@ -35,7 +36,7 @@ function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } =
       const resultado = {
         ok: true as const,
         grupoId: '77777777-7777-4777-8777-777777777777',
-        inseridas: linhas.filter((linha) => !jaCadastrados.includes(linha.cnpj)).length,
+        inseridas: linhas.filter((linha) => linha.cnpj === null || !jaCadastrados.includes(linha.cnpj)).length,
         vinculadas: linhas.length,
         relatorio,
       }
@@ -191,4 +192,44 @@ describe('importar', () => {
     expect(r).toEqual({ ok: false, motivo: 'sem_linhas_aceitas' })
     expect(gravadas).toEqual([])
   })
+})
+
+
+test('conferência exige revisão quando razão social conhecida diverge', async () => {
+  const { repo, gravadas } = repoFalso(['11222333000181'])
+  const anterior = repo.preparar
+  repo.preparar = async () => {
+    const preparo = await anterior([], [])
+    if ('motivo' in preparo) throw new Error(preparo.motivo)
+    return { ...preparo,
+    porCnpj: new Map([['11222333000181', { id: 'empresa-a', cnpj: '11222333000181', razaoSocial: 'Original LTDA' }]]),
+    porGoogle: new Map(),
+  } }
+  const r = await analisar(repo, bytes(AURORA))
+  expect(r).toMatchObject({ ok: true, relatorio: { novas: 0, jaCadastradas: 0,
+    recusadas: [{ tipo: 'identidade', linha: 2, motivo: 'razao_social_divergente' }] } })
+  expect(gravadas).toEqual([])
+})
+
+
+test('conferência usa os dois identificadores antes de contar e não grava', async () => {
+  const { repo, gravadas } = repoFalso()
+  const anterior = repo.preparar
+  repo.preparar = async () => {
+    const p = await anterior([], [])
+    if ('motivo' in p) throw new Error(p.motivo)
+    return { ...p,
+      porCnpj: new Map([['11222333000181', { id: 'empresa-a', cnpj: '11222333000181', razaoSocial: 'Aurora LTDA' }]]),
+      porGoogle: new Map([['ChIJ-conflito', { id: 'empresa-b', cnpj: null, razaoSocial: null }], ['ChIJ-existente', { id: 'empresa-c', cnpj: null, razaoSocial: null }]]),
+    }
+  }
+  const csv = new TextEncoder().encode([
+    `${CABECALHO},cnae_principal,google_place_id`,
+    '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
+    ',,Existente,,11987654321,,,,ChIJ-existente',
+    ',,Nova,,11987654321,,,,ChIJ-nova',
+  ].join('\n'))
+  expect(await analisar(repo, csv)).toMatchObject({ ok: true, relatorio: { novas: 1, jaCadastradas: 1,
+    recusadas: [{ tipo: 'identidade', linha: 2, motivo: 'identificadores_divergentes' }] } })
+  expect(gravadas).toEqual([])
 })

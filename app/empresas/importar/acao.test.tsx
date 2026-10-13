@@ -125,6 +125,6 @@ describe('importarAcao: arquivo', () => {
     const resultado = await importarAcao(INICIAL, formCom(new File(['csv'], 'empresas.csv'), true))
 
     expect(resultado).toMatchObject({ relatorio: null, inseridas: null, grupoId: null })
-    expect(resultado.erro).toContain('Confira novamente')
+    expect(resultado.erro).toContain('Confira o arquivo novamente')
   })
 })

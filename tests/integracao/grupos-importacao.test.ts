@@ -8,7 +8,17 @@ let gestor: string
 let outroGestor: string
 let vendedor: string
 let numero = 0
-const linha = () => ({ cnpj: String(++numero).padStart(14, '0'), razao_social: 'Empresa original', telefone: '11999999999', cnae_principal: '1234567' })
+function cnpjUnico() {
+  let base = String(++numero).padStart(12, '0')
+  for (let rodada = 0; rodada < 2; rodada++) {
+    let soma = 0
+    for (let i = base.length - 1, peso = 2; i >= 0; i--, peso = peso === 9 ? 2 : peso + 1) soma += (base.charCodeAt(i) - 48) * peso
+    const resto = soma % 11
+    base += String(resto < 2 ? 0 : 11 - resto)
+  }
+  return base
+}
+const linha = () => ({ cnpj: cnpjUnico(), razao_social: 'Empresa original', telefone: '11999999999', cnae_principal: '1234567' })
 const sqlConfirmar = 'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6)'
 const parametros = (linhas: unknown, chave = randomUUID()) => [chave, 'Mooca', 'mooca.xlsx', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ total: 2 })]
 async function confirmar(linhas: unknown, chave = randomUUID(), usuario = gestor) {
@@ -30,6 +40,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM fila_contexto')
   await banco.sql("DO $$ BEGIN IF to_regclass('grupo_importacao_empresa') IS NOT NULL THEN DELETE FROM grupo_importacao_empresa; DELETE FROM grupo_importacao; END IF; END $$")
+  await banco.sql('DELETE FROM empresa_origem_google')
   await banco.sql('DELETE FROM empresa')
 })
 
@@ -42,7 +53,7 @@ test('banco vazio não cria Base de testes; novas empresas pertencem só ao grup
 test('dois grupos compartilham CNPJ sem duplicar ou sobrescrever empresa', async () => {
   const existente = linha()
   await confirmar([existente])
-  const r = await confirmar([{ ...existente, razao_social: 'Não sobrescrever' }, linha()])
+  const r = await confirmar([existente, linha()])
   expect(r).toMatchObject({ inseridas: 1, vinculadas: 2 })
   expect(await banco.sql('SELECT razao_social FROM empresa WHERE cnpj=$1', [existente.cnpj])).toEqual([{ razao_social: 'Empresa original' }])
   expect(await banco.sql('SELECT count(*)::int AS n FROM empresa')).toEqual([{ n: 2 }])

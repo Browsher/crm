@@ -28,7 +28,7 @@ beforeAll(async () => {
 afterAll(async () => { if (banco) await banco.derrubar() })
 
 test('coluna opcional nasce nula para INSERT legado', async () => {
-  await banco.comoUsuario(gestor, (e) => e("INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ('11444777000161','Legada','11987654321')"))
+  await banco.comoUsuario(gestor, (e) => e("INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ('11444777000161','Empresa CNAE','11987654321')"))
   expect(await banco.sql('SELECT cnae_principal FROM empresa WHERE cnpj=$1', ['11444777000161'])).toEqual([{ cnae_principal: null }])
 })
 
