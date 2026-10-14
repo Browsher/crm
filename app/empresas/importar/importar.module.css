@@ -6,7 +6,7 @@
 .painel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .titulo { font-size: 20px; font-weight: 600; margin-bottom: 16px; outline: none; }
 .campo, .arquivo { display: grid; gap: 8px; margin: 20px 0; }
-.campo input, .arquivo input { max-width: 100%; width: 100%; border: 1px solid var(--ui-border); background: var(--ui-background); border-radius: 6px; padding: 12px; }
+.campo input, .campo textarea, .arquivo input { max-width: 100%; width: 100%; border: 1px solid var(--ui-border); background: var(--ui-background); border-radius: 6px; padding: 12px; }
 .grupo { margin-bottom: 16px; }
 .acoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 .orientacoes { margin: 20px 0; color: var(--ui-muted-foreground); }
@@ -24,3 +24,6 @@
 .aviso { color: var(--ui-warning); }
 .pendente { color: var(--ui-muted-foreground); margin-top: 12px; }
 @media(max-width: 600px) { .painel { padding: 18px; } .resumo { gap: 8px; } }
+
+.painel dl dd { white-space: pre-wrap; overflow-wrap: anywhere; }
+.campo textarea { color: var(--ui-foreground); resize: vertical; min-height: 5rem; }

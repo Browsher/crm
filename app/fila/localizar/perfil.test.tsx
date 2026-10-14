@@ -51,3 +51,12 @@ test('ação valida UUID, usa sessão e revalida lista somente no sucesso', asyn
   expect((await registrarVisitaAcao(id)).erro).toBeTruthy()
   expect(mocks.revalidar).not.toHaveBeenCalled()
 })
+
+test('perfil com grupo malformado oferece todas as listas ativas sem ler empresa',async()=>{
+  const { default: Pagina } = await import('./[id]/page')
+  const html=renderToStaticMarkup(await Pagina({params:Promise.resolve({id}),searchParams:Promise.resolve({grupo:'invalido'})}))
+  expect(html).toContain('Todas as listas ativas')
+  expect(html).toContain('/fila/localizar?escolher_lista=1')
+  expect(mocks.perfil).not.toHaveBeenCalled()
+  expect(mocks.registrar).not.toHaveBeenCalled()
+})

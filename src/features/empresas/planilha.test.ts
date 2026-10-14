@@ -71,6 +71,7 @@ describe('fase 1: a linha valida', () => {
         email: 'contato@aurora.com.br',
         cep: '01310100',
         cnaePrincipal: null,
+        googlePlaceId: null,
       },
     ])
     expect(a.recusadas).toEqual([])
@@ -95,7 +96,7 @@ describe('fase 1: as recusas de campo', () => {
     ['cnpj_notacao_cientifica', '"1,23457E+13",Aurora LTDA,,,11987654321,,', '1,23457E+13'],
     ['cnpj_forma', '1122233300018,Aurora LTDA,,,11987654321,,', '1122233300018'],
     ['cnpj_dv', '11222333000182,Aurora LTDA,,,11987654321,,', '11222333000182'],
-    ['razao_social_vazia', '11222333000181,   ,,,11987654321,,', '   '],
+    ['nome_ausente', '11222333000181,   ,,,11987654321,,', ''],
     ['telefone_vazio', '11222333000181,Aurora LTDA,,,,,', ''],
     ['telefone_forma', '11222333000181,Aurora LTDA,,,987654321,,', '987654321'],
     ['email_forma', '11222333000181,Aurora LTDA,,,11987654321,contato.aurora.com,', 'contato.aurora.com'],
@@ -119,8 +120,8 @@ describe('fase 1: duplicata dentro do arquivo', () => {
     const a = ok(analisarPlanilha(comCabecalho(VALIDA, VALIDA)))
     expect(a.aceitas).toEqual([])
     expect(a.recusadas).toEqual([
-      { tipo: 'repetido', linha: 2, par: 3, cnpj: '11222333000181', divergencia: null },
-      { tipo: 'repetido', linha: 3, par: 2, cnpj: '11222333000181', divergencia: null },
+      { tipo: 'repetido', linha: 2, par: 3, identificador: 'cnpj', valor: '11222333000181', divergencia: null },
+      { tipo: 'repetido', linha: 3, par: 2, identificador: 'cnpj', valor: '11222333000181', divergencia: null },
     ])
   })
 
@@ -128,8 +129,8 @@ describe('fase 1: duplicata dentro do arquivo', () => {
     const outra = VALIDA.replace('11987654321', '11999998888')
     const a = ok(analisarPlanilha(comCabecalho(VALIDA, outra)))
     expect(a.recusadas).toEqual([
-      { tipo: 'repetido', linha: 2, par: 3, cnpj: '11222333000181', divergencia: 'telefone' },
-      { tipo: 'repetido', linha: 3, par: 2, cnpj: '11222333000181', divergencia: 'telefone' },
+      { tipo: 'repetido', linha: 2, par: 3, identificador: 'cnpj', valor: '11222333000181', divergencia: 'telefone' },
+      { tipo: 'repetido', linha: 3, par: 2, identificador: 'cnpj', valor: '11222333000181', divergencia: 'telefone' },
     ])
   })
 
@@ -271,4 +272,65 @@ describe('CNAE e formatos de cabecalho', () => {
     expect(a.aceitas).toEqual([])
     expect(a.recusadas.map((r) => r.tipo === 'repetido' ? r.divergencia : 'campo')).toEqual([divergencia, divergencia])
   })
+})
+
+
+describe('identidade de origem', () => {
+  const cabecalho = `${CABECALHO_NOVO},google_place_id`
+  const google = (...linhas: string[]) => analisarPlanilha(bytes([cabecalho, ...linhas].join('\n')))
+  const prospect = (id = 'ChIJ-ficticio-a', cnpj = '', razao = '', nome = 'Câmeras Aurora', telefone = '11987654321') =>
+    [cnpj, razao, nome, '', telefone, '', '', '', id].join(',')
+
+  test('aceita identidades diferentes sem CNPJ nem razão social e conserva telefone igual', () => {
+    const a = google(prospect(), prospect('ChIJ-ficticio-b'))
+    expect(a.ok).toBe(true)
+    const r = ok(a)
+    expect(r.aceitas).toHaveLength(2)
+    expect(r.aceitas[0]).toMatchObject({ cnpj: null, razaoSocial: null, googlePlaceId: 'ChIJ-ficticio-a' })
+  })
+  test('identidade conhecida aceita CNPJ com Place ID ausente e pelo menos um nome', () => {
+    expect(ok(google(prospect('', '11222333000181'))).aceitas[0]).toMatchObject({ cnpj: '11222333000181', razaoSocial: null, googlePlaceId: null })
+    expect(ok(google(prospect('ChIJ-ficticio-a', '', 'Aurora LTDA', ''))).aceitas[0].nomeFantasia).toBe(null)
+  })
+  test.each([
+    [prospect('', ''), 'identidade_ausente'],
+    [prospect('ChIJ-a', '11222333000182'), 'cnpj_dv'],
+    [prospect('ChIJ-a', '', '', ''), 'nome_ausente'],
+    [prospect('ChIJ-a', '', '', 'Aurora', ''), 'telefone_vazio'],
+    [prospect('a'.repeat(256)), 'google_place_id_invalido'],
+    [prospect('a\u0001b'), 'google_place_id_invalido'],
+    [prospect('a\u0000b'), 'google_place_id_invalido'],
+  ])('recusa %j por %s', (linha, motivo) => {
+    const r = ok(google(linha))
+    expect(r.aceitas).toEqual([])
+    expect(r.recusadas[0]).toMatchObject({ tipo: 'campo', motivo, linha: 2 })
+  })
+  test('Place ID aparado mede pontos de código até 255', () => {
+    expect(ok(google(prospect(`  ${'😀'.repeat(255)}  `))).aceitas[0].googlePlaceId).toBe('😀'.repeat(255))
+  })
+  test('repetição de Place ID ou CNPJ remove todas as linhas envolvidas', () => {
+    const a = ok(google(prospect('ChIJ-a', '11222333000181'), prospect('ChIJ-a'), prospect('ChIJ-b', '11222333000181')))
+    expect(a.aceitas).toEqual([])
+    expect(new Set(a.recusadas.map(r => r.linha))).toEqual(new Set([2, 3, 4]))
+    expect(a.recusadas).toContainEqual(expect.objectContaining({ identificador: 'google_place_id', valor: 'ChIJ-a' }))
+    expect(a.recusadas).toContainEqual(expect.objectContaining({ identificador: 'cnpj', valor: '11222333000181' }))
+  })
+  test.each([CABECALHO, CABECALHO_NOVO])('legado %s continua exigindo CNPJ', cab => {
+    const quantidade = cab.split(',').length
+    const r = ok(analisarPlanilha(bytes([cab, prospect().split(',').slice(0, quantidade).join(',')].join('\n'))))
+    expect(r.recusadas[0]).toMatchObject({ motivo: 'cnpj_vazio' })
+  })
+})
+
+
+test('controle não vira Place ID ausente depois de aparar espaços', () => {
+  const r = ok(analisarPlanilha(bytes([`${CABECALHO_NOVO},google_place_id`, '11222333000181,Aurora,,,11987654321,,,,\t'].join('\n'))))
+  expect(r.aceitas).toEqual([])
+  expect(r.recusadas[0]).toMatchObject({ motivo: 'google_place_id_invalido' })
+})
+test('cabeçalho de nove colunas recusa campo ausente ou excedente', () => {
+  for (const linha of [`${VALIDA},4742300`, `${VALIDA},4742300,ChIJ-a,extra`]) {
+    const r = ok(analisarPlanilha(bytes([`${CABECALHO_NOVO},google_place_id`, linha].join('\n'))))
+    expect(r.recusadas[0]).toMatchObject({ motivo: 'colunas_erradas', esperado: 9 })
+  }
 })

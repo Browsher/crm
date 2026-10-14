@@ -23,7 +23,8 @@ function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } =
       // semBase: cep_carga vazia E cep vazia, que é como um ambiente novo
       // nasce — a Railway inclusive, enquanto a carga não roda lá.
       return {
-        jaCadastrados: new Set(jaCadastrados),
+        porCnpj: new Map(jaCadastrados.map(cnpj => [cnpj, { id: `empresa-${cnpj}`, cnpj, razaoSocial: null }])),
+        porGoogle: new Map(),
         enderecos: opcoes.semBase ? new Map() : new Map([['01310100', endereco]]),
         basePublicadaEm: opcoes.semBase ? null : '2024-07-08',
       }
@@ -35,7 +36,7 @@ function repoFalso(jaCadastrados: string[] = [], opcoes: { semBase?: boolean } =
       const resultado = {
         ok: true as const,
         grupoId: '77777777-7777-4777-8777-777777777777',
-        inseridas: linhas.filter((linha) => !jaCadastrados.includes(linha.cnpj)).length,
+        inseridas: linhas.filter((linha) => linha.cnpj === null || !jaCadastrados.includes(linha.cnpj)).length,
         vinculadas: linhas.length,
         relatorio,
       }
@@ -57,7 +58,7 @@ const OPERACAO: OperacaoGrupo = {
   chave: '11111111-1111-4111-8111-111111111111',
   nome: 'Mooca',
   arquivoNome: 'mooca.csv',
-  assinatura: 'a'.repeat(64),
+  metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64),
 }
 
 describe('analisar', () => {
@@ -73,6 +74,7 @@ describe('analisar', () => {
     const r = await analisar(repo, bytes(AURORA, BELA, SEM_CEP_NA_BASE))
     expect(r).toEqual({
       ok: true,
+      conferencia: { linhasAceitas: [2, 3, 4], recusadasIdentidade: [] },
       relatorio: {
         novas: 2,
         jaCadastradas: 1,
@@ -151,7 +153,7 @@ describe('analisar: a base de CEP nao carregada', () => {
 describe('importar', () => {
   test('confirma todas as aceitas, inclusive as ja cadastradas', async () => {
     const { repo, gravadas } = repoFalso(['11444777000161'])
-    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     if (!r.ok) throw new Error('esperava ok')
     expect(r.inseridas).toBe(1)
     expect(r.vinculadas).toBe(2)
@@ -167,7 +169,7 @@ describe('importar', () => {
 
   test('so CNPJs existentes ainda cria o grupo e devolve zero inseridas', async () => {
     const { repo, gravadas } = repoFalso(['11222333000181', '11444777000161'])
-    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const r = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     expect(r).toMatchObject({
       ok: true,
       grupoId: '77777777-7777-4777-8777-777777777777',
@@ -179,16 +181,149 @@ describe('importar', () => {
 
   test('devolve o relatorio persistido pelo repositorio em vez da reanalise atual', async () => {
     const { repo } = repoFalso(['11444777000161'])
-    const primeira = await importar(repo, bytes(AURORA, BELA), OPERACAO)
-    const segunda = await importar(repo, bytes(AURORA, BELA), OPERACAO)
+    const primeira = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
+    const segunda = await importar(repo, bytes(AURORA, BELA), OPERACAO, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     if (!primeira.ok || !segunda.ok) throw new Error('esperava ok nos dois')
     expect(segunda).toEqual(primeira)
   })
 
   test('nao confirma quando todas as linhas foram recusadas', async () => {
     const { repo, gravadas } = repoFalso()
-    const r = await importar(repo, bytes('11222333000182,Erro LTDA,,,11987654321,,'), OPERACAO)
+    const r = await importar(repo, bytes('11222333000182,Erro LTDA,,,11987654321,,'), OPERACAO, { linhasAceitas: [], recusadasIdentidade: [] })
     expect(r).toEqual({ ok: false, motivo: 'sem_linhas_aceitas' })
     expect(gravadas).toEqual([])
+  })
+})
+
+
+test('conferência exige revisão quando razão social conhecida diverge', async () => {
+  const { repo, gravadas } = repoFalso(['11222333000181'])
+  const anterior = repo.preparar
+  repo.preparar = async () => {
+    const preparo = await anterior([], [])
+    if ('motivo' in preparo) throw new Error(preparo.motivo)
+    return { ...preparo,
+    porCnpj: new Map([['11222333000181', { id: 'empresa-a', cnpj: '11222333000181', razaoSocial: 'Original LTDA' }]]),
+    porGoogle: new Map(),
+  } }
+  const r = await analisar(repo, bytes(AURORA))
+  expect(r).toMatchObject({ ok: true, relatorio: { novas: 0, jaCadastradas: 0,
+    recusadas: [{ tipo: 'identidade', linha: 2, motivo: 'razao_social_divergente' }] } })
+  expect(gravadas).toEqual([])
+})
+
+
+test('conferência usa os dois identificadores antes de contar e não grava', async () => {
+  const { repo, gravadas } = repoFalso()
+  const anterior = repo.preparar
+  repo.preparar = async () => {
+    const p = await anterior([], [])
+    if ('motivo' in p) throw new Error(p.motivo)
+    return { ...p,
+      porCnpj: new Map([['11222333000181', { id: 'empresa-a', cnpj: '11222333000181', razaoSocial: 'Aurora LTDA' }]]),
+      porGoogle: new Map([['ChIJ-conflito', { id: 'empresa-b', cnpj: null, razaoSocial: null }], ['ChIJ-existente', { id: 'empresa-c', cnpj: null, razaoSocial: null }]]),
+    }
+  }
+  const csv = new TextEncoder().encode([
+    `${CABECALHO},cnae_principal,google_place_id`,
+    '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
+    ',,Existente,,11987654321,,,,ChIJ-existente',
+    ',,Nova,,11987654321,,,,ChIJ-nova',
+  ].join('\n'))
+  expect(await analisar(repo, csv)).toMatchObject({ ok: true, relatorio: { novas: 1, jaCadastradas: 1,
+    recusadas: [{ tipo: 'identidade', linha: 2, motivo: 'identificadores_divergentes' }] } })
+  expect(gravadas).toEqual([])
+})
+
+
+describe('seleção aprovada na conferência', () => {
+  const fonte = (misto: boolean) => new TextEncoder().encode([
+    `${CABECALHO},cnae_principal,google_place_id`,
+    '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
+    ...(misto ? [',,Nova,,11987654321,,,,ChIJ-nova'] : []),
+  ].join('\n'))
+  function repoMutavel() {
+    const { repo, gravadas } = repoFalso()
+    const prepararAnterior = repo.preparar
+    let conflito = false
+    repo.preparar = async () => {
+      const p = await prepararAnterior([], [])
+      if ('motivo' in p) throw new Error(p.motivo)
+      return { ...p, porGoogle: new Map(conflito ? [['ChIJ-conflito', { id: 'empresa-b', cnpj: '11444777000161', razaoSocial: 'Outro cadastro' }]] : []) }
+    }
+    const gravarAnterior = repo.gravar
+    repo.gravar = async (operacao, linhas, relatorio) => {
+      if (conflito && linhas.some(l => l.googlePlaceId === 'ChIJ-conflito')) return { ok: false, motivo: 'confirmacao_invalida' }
+      return gravarAnterior(operacao, linhas, relatorio)
+    }
+    return { repo, gravadas, divergir: () => { conflito = true } }
+  }
+  test.each([true, false])('conflito entre analisar e importar exige reconferir sem gravação, lote misto=%s', async misto => {
+    const { repo, gravadas, divergir } = repoMutavel()
+    const arquivo = fonte(misto)
+    const conferido = await analisar(repo, arquivo)
+    if (!conferido.ok) throw new Error('esperava análise válida')
+    divergir()
+    expect(await importar(repo, arquivo, OPERACAO, conferido.conferencia)).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
+    expect(gravadas).toEqual([])
+  })
+  test('recusa de identidade já conferida permite confirmar as linhas válidas', async () => {
+    const { repo, gravadas, divergir } = repoMutavel()
+    divergir()
+    const arquivo = fonte(true)
+    const conferido = await analisar(repo, arquivo)
+    if (!conferido.ok) throw new Error('esperava análise válida')
+    expect(conferido.relatorio).toMatchObject({ novas: 1, recusadas: [{ tipo: 'identidade', linha: 2 }] })
+    expect(await importar(repo, arquivo, OPERACAO, conferido.conferencia)).toMatchObject({ ok: true, vinculadas: 1 })
+    expect(gravadas[0].linhas.map(l => l.googlePlaceId)).toEqual(['ChIJ-nova'])
+  })
+})
+
+describe('conferência por UUID canônico', () => {
+  test.each([['origens sem CNPJ', ''], ['CNPJ e origem', '11222333000181']] as const)('recusa todas as linhas da mesma empresa por %s e conserva a terceira', async (_rotulo, cnpj) => {
+    const { repo, gravadas } = repoFalso()
+    const anterior = repo.preparar
+    repo.preparar = async () => {
+      const p = await anterior([], [])
+      if ('motivo' in p) throw new Error(p.motivo)
+      const empresa = { id: 'empresa-canonica', cnpj: '11222333000181', razaoSocial: null }
+      return { ...p, porCnpj: new Map([[empresa.cnpj, empresa]]), porGoogle: new Map([['ChIJ-a', empresa], ['ChIJ-b', empresa]]) }
+    }
+    const arquivo = new TextEncoder().encode([
+      `${CABECALHO},cnae_principal,google_place_id`,
+      `${cnpj},,Aurora,,11987654321,,,,${cnpj ? '' : 'ChIJ-a'}`,
+      ',,Aurora,,11987654321,,,,ChIJ-b',
+      ',,Aurora,,11987654321,,,,ChIJ-nova',
+    ].join('\n'))
+    const conferido = await analisar(repo, arquivo)
+    expect(conferido).toMatchObject({ ok: true, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [
+      { tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' },
+      { tipo: 'identidade', linha: 3, motivo: 'empresa_repetida' },
+    ] }, conferencia: { linhasAceitas: [4], recusadasIdentidade: [
+      { tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' },
+      { tipo: 'identidade', linha: 3, motivo: 'empresa_repetida' },
+    ] } })
+    expect(gravadas).toEqual([])
+    if (!conferido.ok) throw new Error('esperava conferência válida')
+    expect(await importar(repo, arquivo, OPERACAO, conferido.conferencia)).toMatchObject({ ok: true, vinculadas: 1,
+      relatorio: { novas: 1, jaCadastradas: 0, recusadas: conferido.relatorio.recusadas } })
+    expect(gravadas[0].linhas.map(l => l.linha)).toEqual([4])
+  })
+
+  test('CNPJs nulos com UUIDs distintos continuam independentes apesar do mesmo nome e telefone', async () => {
+    const { repo } = repoFalso()
+    const anterior = repo.preparar
+    repo.preparar = async () => {
+      const p = await anterior([], [])
+      if ('motivo' in p) throw new Error(p.motivo)
+      return { ...p, porGoogle: new Map(['ChIJ-a', 'ChIJ-b'].map((id, i) => [id, { id: `empresa-${i}`, cnpj: null, razaoSocial: null }])) }
+    }
+    const arquivo = new TextEncoder().encode([
+      `${CABECALHO},cnae_principal,google_place_id`,
+      ',,Aurora,,11987654321,,,,ChIJ-a',
+      ',,Aurora,,11987654321,,,,ChIJ-b',
+    ].join('\n'))
+    expect(await analisar(repo, arquivo)).toMatchObject({ ok: true, relatorio: { novas: 0, jaCadastradas: 2, recusadas: [] },
+      conferencia: { linhasAceitas: [2, 3], recusadasIdentidade: [] } })
   })
 })

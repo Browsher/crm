@@ -16,10 +16,11 @@ const operacao: OperacaoGrupo = {
   chave: '11111111-1111-4111-8111-111111111111',
   nome: 'Mooca',
   arquivoNome: 'mooca.csv',
-  assinatura: 'a'.repeat(64),
+  metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64),
 }
 const linha: LinhaAceita = {
   linha: 2,
+  googlePlaceId: null,
   cnpj: '11222333000181',
   razaoSocial: 'Aurora Comércio LTDA',
   nomeFantasia: null,
@@ -74,6 +75,7 @@ describe('repositorioPostgres.gravar', () => {
       operacao.assinatura,
       JSON.stringify([{
         cnpj: '11222333000181',
+        google_place_id: null,
         razao_social: 'Aurora Comércio LTDA',
         nome_fantasia: null,
         contato_nome: null,
@@ -83,6 +85,7 @@ describe('repositorioPostgres.gravar', () => {
         cnae_principal: '4742300',
       }]),
       JSON.stringify(relatorio),
+      JSON.stringify(operacao.metadados),
     ])
   })
 
@@ -97,5 +100,33 @@ describe('repositorioPostgres.gravar', () => {
   test('propaga falha de infraestrutura', async () => {
     dependencias.comoUsuario.mockRejectedValue(new Error('conexao caiu'))
     await expect(repositorioPostgres('gestor-1').gravar(operacao, [linha], relatorio)).rejects.toThrow('conexao caiu')
+  })
+})
+
+
+describe('repositorioPostgres.preparar', () => {
+  test('consulta identificadores não nulos separados e devolve os dois mapas', async () => {
+    const cadastro = { id: 'empresa-a', cnpj: '11222333000181', razaoSocial: 'Aurora LTDA' }
+    dependencias.executar.mockImplementation(async (sql: string) => {
+      if (sql.includes('empresa_origem_google')) return { linhas: [{ id: 'empresa-b', cnpj: null, razaoSocial: null, google_place_id: 'ChIJ-ficticio' }] }
+      if (sql.includes('FROM empresa WHERE')) return { linhas: [cadastro] }
+      return { linhas: [] }
+    })
+    const r = await repositorioPostgres('gestor-1').preparar([
+      { ...linha, googlePlaceId: null }, { ...linha, cnpj: null, razaoSocial: null, googlePlaceId: 'ChIJ-ficticio' },
+    ], [])
+    if ('motivo' in r) throw new Error(r.motivo)
+    expect(r.porCnpj.get('11222333000181')).toEqual(cadastro)
+    expect(r.porGoogle.get('ChIJ-ficticio')).toEqual({ id: 'empresa-b', cnpj: null, razaoSocial: null })
+    const consultas = dependencias.executar.mock.calls.filter(([sql]) => sql.includes('ANY'))
+    expect(consultas.map(([, parametros]) => parametros)).toEqual([[['11222333000181']], [['ChIJ-ficticio']]])
+  })
+  test('identificadores ausentes não geram consulta de empresa', async () => {
+    dependencias.executar.mockResolvedValue({ linhas: [] })
+    const r = await repositorioPostgres('gestor-1').preparar([], [])
+    if ('motivo' in r) throw new Error(r.motivo)
+    expect(r.porCnpj.size).toBe(0)
+    expect(r.porGoogle.size).toBe(0)
+    expect(dependencias.executar.mock.calls.some(([sql]) => sql.includes('ANY'))).toBe(false)
   })
 })

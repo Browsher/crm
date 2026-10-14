@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 946
+# Total: 1252
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -22,6 +22,7 @@ app/carteira/[id]/ficha.test.tsx :: Ficha o formulario fica fechado inicialmente
 app/carteira/[id]/ficha.test.tsx :: Ficha sem proximo passo, diz que nao ha combinado
 app/carteira/[id]/ficha.test.tsx :: Ficha tem o caminho de devolver, que a carteira nao tinha
 app/carteira/[id]/ficha.test.tsx :: Ficha vencido aparece com palavra
+app/carteira/filtros.test.tsx :: cadastro parcial busca o nome real sem pesquisar a palavra null
 app/carteira/filtros.test.tsx :: filtros da carteira aceita filtros conhecidos e normaliza estado
 app/carteira/filtros.test.tsx :: filtros da carteira busca por razao ou fantasia e combina estado e retorno
 app/carteira/filtros.test.tsx :: filtros da carteira devolve array novo ordenado por nome e id
@@ -68,18 +69,33 @@ app/empresas/formulario.dom.test.tsx :: novas props depois de navegação reinic
 app/empresas/formulario.dom.test.tsx :: trocar estado limpa cidade e bairro, preserva busca e CNAE e reinicia página
 app/empresas/formulario.test.tsx :: expõe busca e selects acessíveis com dependências desabilitadas
 app/empresas/grupos/acoes.test.tsx :: ação desconhecida e SQL negado permanecem recuperáveis sem invalidar cache
+app/empresas/grupos/acoes.test.tsx :: correção autentica gestor, normaliza contexto e revalida consumidores administrativos/comerciais
+app/empresas/grupos/acoes.test.tsx :: correção inválida ou sem permissão é recuperável e não invalida cache
 app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação desativar e invalida todos os consumidores
 app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação reativar e invalida todos os consumidores
 app/empresas/grupos/acoes.test.tsx :: guarda gestor precede mutação renomear e invalida todos os consumidores
+app/empresas/grupos/acoes.test.tsx :: guarda negada precede correção
 app/empresas/grupos/acoes.test.tsx :: guarda recusada não altera nada
 app/empresas/grupos/controles.dom.test.tsx :: desativação abre confirmação com retrato atual, cancelamento e Escape restauram foco
 app/empresas/grupos/controles.dom.test.tsx :: erro fica no diálogo com nome editado e permite tentar de novo; sucesso fecha
 app/empresas/grupos/controles.dom.test.tsx :: pendente impede duplo envio e fecha só após resultado; reativar envia ação correta
+app/empresas/grupos/metadados.test.tsx :: contexto preserva os três textos conhecidos, inclusive caracteres Unicode
+app/empresas/grupos/metadados.test.tsx :: grupo antigo mostra nulos sem inventar contexto e correção exige resumo e origem
+app/empresas/grupos/page.test.tsx :: detalhe de lista antiga exibe origem não informada e permite corrigir contexto
 app/empresas/grupos/page.test.tsx :: detalhe identifica responsável inativo, outras origens e paginação
+app/empresas/grupos/page.test.tsx :: detalhe usa nome comercial conhecido e CNPJ não informado
 app/empresas/grupos/page.test.tsx :: estado vazio oferece importação
 app/empresas/grupos/page.test.tsx :: lista compacta usa totais globais, origem migrada e navegação real
 app/empresas/grupos/page.test.tsx :: página além do fim orienta voltar sem apresentar a base como vazia
 app/empresas/grupos/page.test.tsx :: recurso ausente vira 404
+app/empresas/importar/acao.test.tsx :: Action completa: lote misto=false, recusa preexistente=false
+app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=false
+app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=true
+app/empresas/importar/acao.test.tsx :: Action preserva emoji no limite 500/2000 e recusa limite excedido e controles antes de ler
+app/empresas/importar/acao.test.tsx :: configuração inválida não autoriza confirmar nem revela segredo
+app/empresas/importar/acao.test.tsx :: configuração vazia não autoriza confirmar nem revela segredo
+app/empresas/importar/acao.test.tsx :: confirmação sem conferência autêntica não chama importar
+app/empresas/importar/acao.test.tsx :: equivalência normalizada vincula os mesmos metadados na conferência e confirmação
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo 22023 volta como erro recuperavel que exige nova conferencia
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo conferencia envia formato e bytes ao servico
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo confirmacao chama importar com o arquivo original para reanalise
@@ -88,7 +104,23 @@ app/empresas/importar/acao.test.tsx :: importarAcao: arquivo formato desconhecid
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo tamanho acima do limite volta como erro recuperavel sem ler bytes
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { chave: 'nao-e-uuid' }
 app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { nome: '   ' }
+app/empresas/importar/acao.test.tsx :: mudar só criterios recusa confirmação sem gravar
+app/empresas/importar/acao.test.tsx :: mudar só descricao recusa confirmação sem gravar
+app/empresas/importar/acao.test.tsx :: mudar só origem recusa confirmação sem gravar
+app/empresas/importar/acao.test.tsx :: protocolo recusa arquivo alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa chave alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa gestor alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa nome alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: protocolo recusa selecao alterado após conferência sem chamar importar
+app/empresas/importar/acao.test.tsx :: recusa resumo ausente antes de ler bytes
+app/empresas/importar/acao.test.tsx :: trocar somente origem invalida o comprovante emitido na conferência
+app/empresas/importar/formulario-transporte.test.tsx :: argumentos reais do wrapper cabem em 2 MiB sem reenviar relatório de 4.999 recusas
+app/empresas/importar/formulario.dom.test.tsx :: alterar criterios invalida conferência, renova chave e conserva arquivo
+app/empresas/importar/formulario.dom.test.tsx :: alterar descricao invalida conferência, renova chave e conserva arquivo
+app/empresas/importar/formulario.dom.test.tsx :: alterar origem invalida conferência, renova chave e conserva arquivo
 app/empresas/importar/formulario.dom.test.tsx :: conferir e confirmar usam a mesma chave, nome e arquivo
+app/empresas/importar/formulario.dom.test.tsx :: dois envios de confirmação sem mudança repetem chave e comprovante
+app/empresas/importar/formulario.dom.test.tsx :: emoji no limite atravessa duas submissões sem mudar chave e reiniciar limpa os campos
 app/empresas/importar/formulario.dom.test.tsx :: mudar arquivo invalida a conferência e inicia outra operação
 app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
 app/empresas/importar/formulario.dom.test.tsx :: reiniciar limpa nome e arquivo e gera outra chave
@@ -103,6 +135,9 @@ app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro rend
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8
 app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render pede um nome para o grupo
+app/empresas/importar/formulario.test.tsx :: pede resumo e origem obrigatórios e critérios opcionais sem limitar emoji por UTF-16
+app/empresas/importar/relatorio.test.tsx :: recusa de identidade exige revisão e não oferece fusão automática
+app/empresas/importar/relatorio.test.tsx :: relatório explica identificação por origem e complemento seguro antes de confirmar
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
 app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
@@ -113,6 +148,7 @@ app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem nome fantasia, n�
 app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP que a base não resolveu mostra o CEP e diz isso
 app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP resolvido mostra cidade e UF
 app/empresas/linha.test.tsx :: Linha: os três estados do endereço empresa sem CEP diz que não tem CEP
+app/empresas/linha.test.tsx :: nome comercial ocupa o título e explicita CNPJ desconhecido
 app/empresas/lista.test.tsx :: Lista com empresas, monta uma lista
 app/empresas/lista.test.tsx :: Lista vazia, diz que não achou
 app/empresas/lista.test.tsx :: Lista vazia, oferece o caminho de volta para a lista inteira
@@ -138,15 +174,20 @@ app/fila/cartao.test.tsx :: Cartao na etapa registrar coloca os dados ao lado do
 app/fila/cartao.test.tsx :: Cartao o cartao mostra o historico de quem ligou antes
 app/fila/cartao.test.tsx :: Cartao o cartao NAO tem mais botoes soltos de assumir e devolver
 app/fila/cartao.test.tsx :: Cartao prazo expirado oculta detalhes e histórico preservando anotações bloqueadas
+app/fila/cartao.test.tsx :: reserva parcial mostra nome comercial no título e CNPJ desconhecido
+app/fila/entrada-reserva.test.tsx :: a reserva transporta a lista e recusa lista malformada
+app/fila/entrada-reserva.test.tsx :: lista indisponível explica preservação da reserva e das notas
 app/fila/entrada-reserva.test.tsx :: puxar usa filtros e contexto original, sem aceitar identidade do formulário
 app/fila/entrada-reserva.test.tsx :: recusa alvo/contexto inválidos e filtros inválidos sem ampliar busca
 app/fila/entrada-reserva.test.tsx :: resultado sem candidata explica preservação e não usa travessão
+app/fila/entrada-sem-reserva.test.tsx :: entrada vazia deixa escolher uma lista sem redirecionamento automático
 app/fila/entrada-sem-reserva.test.tsx :: entrada vazia oferece localizar empresa
 app/fila/entrada-sem-reserva.test.tsx :: mantém anotações sem reserva atual
 app/fila/entrada-sem-reserva.test.tsx :: mantém editor quando a reserva expirou mesmo com nota vazia
 app/fila/etapas.test.tsx :: durante gravação, não permite sair pelas etapas
 app/fila/etapas.test.tsx :: em Puxar, etapas futuras não são links nem botões
 app/fila/etapas.test.tsx :: em Registrar, volta à consulta e à busca preservando filtros
+app/fila/formulario.dom.test.tsx :: trocar só grupo e abrir escolha mantém editor, reserva e nota digitada
 app/fila/formulario.test.tsx :: Formulario erro aparece na tela
 app/fila/formulario.test.tsx :: Formulario fila vazia diz POR QUE, e nao usa a palavra quarentena
 app/fila/formulario.test.tsx :: Formulario gravação de contato bloqueia voltar pela etapa sem bloquear o envio por si mesma
@@ -156,15 +197,33 @@ app/fila/formulario.test.tsx :: Formulario sem reserva, oferece puxar e nao fala
 app/fila/formulario.test.tsx :: Formulario troca com anotacoes usa dialogo tematico e cancelar preserva a tela
 app/fila/formulario.test.tsx :: Formulario uma reserva nova começa em consultar sem renderizar o formulario de registro
 app/fila/formulario.test.tsx :: Formulario voltar para uma empresa anterior reinicia em consultar
+app/fila/grupos.test.tsx :: atendimento mantém formulário antes do chooser e preserva refinamentos na paginação do catálogo
+app/fila/grupos.test.tsx :: atendimento não carrega catálogo quando a escolha está fechada
+app/fila/grupos.test.tsx :: busca aberta para escolher lista apresenta catálogo conservando a consulta
+app/fila/grupos.test.tsx :: entrada da fila oferece cartão comercial da lista ativa sem reserva
+app/fila/grupos.test.tsx :: explica uma lista antiga sem inventar a origem e mantém CTA real
+app/fila/grupos.test.tsx :: novas listas exibem texto simples, critérios expansíveis e contagens por lista
+app/fila/grupos.test.tsx :: página do catálogo inválida avisa sem consultar listas ou apagar o atendimento
+app/fila/grupos.test.tsx :: página vazia permite voltar sem remover o contexto selecionado
+app/fila/grupos.test.tsx :: paginação contextual na busca preserva página de empresas e só a seleção limpa refinamentos
 app/fila/localizar/componentes.test.tsx :: ação automática usa puxar sem empresa e preserva os filtros
 app/fila/localizar/componentes.test.tsx :: filtro de URL antiga ausente nas opções continua visível e selecionado
+app/fila/localizar/componentes.test.tsx :: filtros, paginação, perfil e reserva conservam a lista selecionada
 app/fila/localizar/componentes.test.tsx :: formulário tem nome e seletores com rótulos e valores atuais
 app/fila/localizar/componentes.test.tsx :: paginação preserva filtros e oferece retorno mesmo em página vazia
 app/fila/localizar/componentes.test.tsx :: resultado de empresa alheia só contém cadastro resumido e estado separado
 app/fila/localizar/componentes.test.tsx :: resultado vazio informa ausência
 app/fila/localizar/componentes.test.tsx :: seletores dependentes ficam desabilitados sem seus pais
 app/fila/localizar/componentes.test.tsx :: URL usa codificação segura e mudança de filtro volta para página um
+app/fila/localizar/contexto-grupo.test.tsx :: atendimento oferece escolher a próxima lista sem sair da tela
+app/fila/localizar/contexto-grupo.test.tsx :: grupo inativo não busca geral e mantém atendimento vigente
+app/fila/localizar/contexto-grupo.test.tsx :: grupo malformado oferece todas as listas ativas sem consulta geral
+app/fila/localizar/contexto-grupo.test.tsx :: grupo sozinho consulta só a lista e mostra contexto comercial escapado
+app/fila/localizar/navegacao.test.tsx :: abrir e fechar escolha conserva grupo, refinamentos e paginação
+app/fila/localizar/navegacao.test.tsx :: limpar conserva somente a lista e selecionar reinicia os demais filtros
+app/fila/localizar/navegacao.test.tsx :: paginação conserva a lista selecionada
 app/fila/localizar/perfil.test.tsx :: ação valida UUID, usa sessão e revalida lista somente no sucesso
+app/fila/localizar/perfil.test.tsx :: perfil com grupo malformado oferece todas as listas ativas sem ler empresa
 app/fila/localizar/perfil.test.tsx :: perfil disponível oferece reserva sem exibir dados privados
 app/fila/localizar/perfil.test.tsx :: perfil inválido ou inexistente responde 404
 app/fila/localizar/perfil.test.tsx :: perfil mostra resumo e retorno filtrado sem gravar durante render
@@ -198,6 +257,7 @@ app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de er
 app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado
 app/meu-dia/agenda.test.tsx :: agenda traz só atrasado e hoje, atrasados primeiro
 app/meu-dia/agenda.test.tsx :: busca por nome ignora acento e caixa, e o filtro de retorno recorta
+app/meu-dia/agenda.test.tsx :: cadastro parcial usa fantasia na busca e no desempate sem mudar precedência de data
 app/meu-dia/agenda.test.tsx :: dentro do mesmo estado ordena por data, nome e id
 app/meu-dia/agenda.test.tsx :: filtro inválido cai no literal fixo /meu-dia
 app/meu-dia/agenda.test.tsx :: filtro recusa valor fora da lista, repetido e nome longo
@@ -237,6 +297,88 @@ app/usuarios/usuarios.dom.test.tsx :: pendência bloqueia botões e Escape; nova
 app/usuarios/vendedores/[id]/page.test.tsx :: alvo recusado vira 404
 app/usuarios/vendedores/[id]/page.test.tsx :: gestor vê estados vazios sem ações nem links para ficha de empresa
 app/usuarios/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não inventa atividade ao consultar carteira
+app/whatsapp/configuracao/acoes.test.tsx :: falha externa é sanitizada e não salva
+app/whatsapp/configuracao/acoes.test.tsx :: instância não configurada não é persistida
+app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
+app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco erro segredo é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco instancia_em_uso é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco sem_permissao é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco vendedor_invalido é recuperável e segura
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: remoção inválida e falha de infraestrutura não vazam dados
+app/whatsapp/configuracao/acoes.test.tsx :: remove somente vínculo identificado sem consultar Evolution
+app/whatsapp/configuracao/acoes.test.tsx :: valida consulta da instância exata antes de salvar ou substituir
+app/whatsapp/configuracao/formulario.dom.test.tsx :: erro preserva vendedor e instância e permite tentar salvar novamente
+app/whatsapp/configuracao/formulario.dom.test.tsx :: remoção envia apenas o vínculo e apresenta falha recuperável
+app/whatsapp/configuracao/page.test.tsx :: estado vazio informa falta de vendedores e impede envio
+app/whatsapp/configuracao/page.test.tsx :: lista vínculos indisponíveis mas só oferece vendedores ativos no formulário
+app/whatsapp/configuracao/page.test.tsx :: nega acesso à página antes de listar
+app/whatsapp/error.test.tsx :: falha da Evolution exibe retomada sem revelar mensagem interna ou chave
+app/whatsapp/historico-acao.test.tsx :: configuração ausente é distinta de histórico vazio
+app/whatsapp/historico-acao.test.tsx :: consulta a página autorizada com o limite recebido sem trocar a instância
+app/whatsapp/historico-acao.test.tsx :: exige gestor antes de ler histórico
+app/whatsapp/historico-acao.test.tsx :: falha externa não vaza chave nem se apresenta como fim do histórico
+app/whatsapp/historico-acao.test.tsx :: histórico por fonte revalida gestor e encaminha apenas escopo e cursores
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido ""
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido "2026-02-30T00:00:00.000Z"
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido "abc"
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido null
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida -1 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 0 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 1 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 100001 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 2 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida 2.5 sem consultar Evolution
+app/whatsapp/historico-acao.test.tsx :: recusa página inválida NaN sem consultar Evolution
+app/whatsapp/midia-mensagem.dom.test.tsx :: atualização da mensagem preserva arquivo e evita download duplicado
+app/whatsapp/midia-mensagem.dom.test.tsx :: áudio tem controles sem autoplay e documento permite baixar
+app/whatsapp/midia-mensagem.dom.test.tsx :: carrega imagem sob demanda, amplia sem nova consulta e libera blob
+app/whatsapp/midia-mensagem.dom.test.tsx :: falha mostra erro e permite tentar novamente
+app/whatsapp/midia-mensagem.dom.test.tsx :: sair da conversa cancela download sem criar blob depois de desmontar
+app/whatsapp/midia/[id]/route.test.tsx :: erro de infraestrutura não revela credenciais
+app/whatsapp/midia/[id]/route.test.tsx :: fonte removida não consulta mídia nem recai no piloto
+app/whatsapp/midia/[id]/route.test.tsx :: gestor recebe anexo privado sem nome capaz de injetar cabeçalhos
+app/whatsapp/midia/[id]/route.test.tsx :: nega anônimo, vendedor e senha provisória antes de consultar mídia
+app/whatsapp/midia/[id]/route.test.tsx :: valida pedido antes da Evolution e mantém erro de arquivo privado
+app/whatsapp/page.test.tsx :: autoriza gestor antes de consultar e exibe amostra somente leitura
+app/whatsapp/page.test.tsx :: bloqueio de acesso impede consulta externa
+app/whatsapp/page.test.tsx :: filtro seleciona vínculo no servidor e mostra links reais e aviso parcial
+app/whatsapp/page.test.tsx :: layout exige gestor
+app/whatsapp/page.test.tsx :: mensagem enviada não apresenta o nome da empresa como nome do cliente
+app/whatsapp/page.test.tsx :: mostra estrutura do mockup sem inventar métricas ou vendedores
+app/whatsapp/page.test.tsx :: nome recente e telefone confirmado identificam conversa LID sem exibir código
+app/whatsapp/page.test.tsx :: sem configuração mostra instrução sem fingir ausência de mensagens
+app/whatsapp/page.test.tsx :: telefones conflitantes não são apresentados como identificação confirmada
+app/whatsapp/painel.dom.test.tsx :: amostra vazia permite buscar histórico e IDs iguais em conversas diferentes são preservados
+app/whatsapp/painel.dom.test.tsx :: atualiza periodicamente mesmo vazio e encerra consultas ao sair
+app/whatsapp/painel.dom.test.tsx :: busca nome sem acento, telefone formatado e texto sem perder a seleção
+app/whatsapp/painel.dom.test.tsx :: cadastro com telefone diferente do contato confirmado não produz vínculo
+app/whatsapp/painel.dom.test.tsx :: cards aguardam histórico completo e acompanham novas mensagens sem nova carga
+app/whatsapp/painel.dom.test.tsx :: cards não apresentam números de consulta parcial e retiram vendedor removido
+app/whatsapp/painel.dom.test.tsx :: carga automática espera aba visível e internet e cancela agendamento ao sair
+app/whatsapp/painel.dom.test.tsx :: carga normal não oferece botão manual nem anuncia fim enquanto ainda há páginas
+app/whatsapp/painel.dom.test.tsx :: carga por vendedor aguarda a página pendente e continua com os cursores retornados
+app/whatsapp/painel.dom.test.tsx :: carrega histórico sem duplicar, preserva seleção e mantém páginas durante atualização
+app/whatsapp/painel.dom.test.tsx :: carregar pelo topo mantém âncora e nova mensagem não arrasta quem está lendo acima
+app/whatsapp/painel.dom.test.tsx :: continuar rolando no limite busca outra página mesmo sem aparecer conversa nova
+app/whatsapp/painel.dom.test.tsx :: erro de transporte não expõe detalhes e permite nova tentativa
+app/whatsapp/painel.dom.test.tsx :: etiqueta comercial aparece na lista e no cabeçalho e acompanha atualização
+app/whatsapp/painel.dom.test.tsx :: falha automática pausa sem perder dados e tentativa manual retoma o restante
+app/whatsapp/painel.dom.test.tsx :: falha mantém mensagens e tenta a mesma página pelo botão de recuperação
+app/whatsapp/painel.dom.test.tsx :: falha pendente de escopo antigo não bloqueia o novo histórico
+app/whatsapp/painel.dom.test.tsx :: filtros combinam busca, pendência e ausência confirmada; empresa única abre ficha
+app/whatsapp/painel.dom.test.tsx :: histórico carrega sozinho até o fim e atualização recente não reinicia páginas
+app/whatsapp/painel.dom.test.tsx :: mesmo cliente e mesmo ID em vendedores distintos não misturam conversa
+app/whatsapp/painel.dom.test.tsx :: novos dados preservam a conversa escolhida e mostram a mensagem nova
+app/whatsapp/painel.dom.test.tsx :: pausa oculta ou offline e consulta ao retornar
+app/whatsapp/painel.dom.test.tsx :: remover outra fonte na atualização preserva seleção e histórico da fonte restante
+app/whatsapp/painel.dom.test.tsx :: resposta pendente de escopo antigo não reintroduz fonte removida
+app/whatsapp/painel.dom.test.tsx :: rolar ao fim da lista carrega uma página e não repete automaticamente após erro
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
@@ -244,21 +386,31 @@ src/ci-conferencia.test.ts :: URL=false fork=true autor=alguem: pular
 src/ci-conferencia.test.ts :: URL=true fork=false autor=Browsher: conferir
 src/ci-conferencia.test.ts :: URL=true fork=false autor=dependabot[bot]: conferir
 src/ci-conferencia.test.ts :: URL=true fork=true autor=alguem: conferir
+src/components/crm/caminho.test.tsx :: mapeia /carteira/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/grupos com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/grupos/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/importar com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /fila/localizar com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /fila/localizar/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /usuarios/vendedores/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /whatsapp/configuracao com retorno ao nível existente
 src/components/crm/etapas.test.tsx :: identifica a navegação e somente a etapa atual
 src/components/crm/etapas.test.tsx :: renderiza a ação de retorno fornecida pela tela
 src/components/crm/etapas.test.tsx :: sem ações fornecidas, os indicadores são texto sem navegação
+src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do gestor mantendo nomes e saída POST
+src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do vendedor mantendo nomes e saída POST
 src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
 src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: gestor tem início e administração sem links de atendimento
 src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
 src/components/crm/shell.test.tsx :: usuários ativa seu menu e oferece tema próprio ao gestor
+src/components/crm/shell.test.tsx :: WhatsApp é exclusivo do menu do gestor
 src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
 src/components/ui/controles.test.tsx :: componentes de formulario botao desabilitado preserva a semantica nativa
 src/components/ui/controles.test.tsx :: componentes de formulario campos preservam aria-invalid e atributos nativos
 src/components/ui/controles.test.tsx :: componentes de formulario label mantem a associacao explicita com o campo
-src/docs.test.ts :: documentos sem caractere de controle AGENTS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle CLAUDE.md não tem caractere de controle literal
-src/docs.test.ts :: documentos sem caractere de controle CONTINUIDADE-CODEX.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0000.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0001.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0002.md não tem caractere de controle literal
@@ -291,9 +443,26 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0028.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0029.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0030.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0031.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0032.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0035.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0036.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0037.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-lateral-crm.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-estrutura-visual.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-etiquetas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-filtros-empresas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-historico-automatico.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-indicadores.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-midias.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-tela.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-vendedores-execucao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-vendedores.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-fundacao-banco.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-login-sessao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-08-usuarios.md não tem caractere de controle literal
@@ -329,6 +498,9 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-base.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-funil-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-15-vendas-carteira-agenda.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-historico.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-piloto-leitura.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-13-prospeccao-grupos-cnpj-opcional.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -357,11 +529,15 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-14-usuarios-visual-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-15-funil-comercial-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-15-vendas-carteira-agenda-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-21-whatsapp-gestor-evolution.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-22-whatsapp-identificacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-13-prospeccao-cnpj-opcional-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle README.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle REGRAS.md não tem caractere de controle literal
+src/e2e-ambiente.test.ts :: build não herda segredo de conferência e servidor usa somente chave de teste
 src/e2e-ambiente.test.ts :: isola credenciais e SSL herdados sem alterar o ambiente pai
 src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@localhost/crm
 src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@railway.internal/teste_0123456789ab
@@ -498,6 +674,9 @@ src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa linha com 
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa mais de 5000 linhas de empresas
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa nomes definidos antes de o ExcelJS expandir a faixa
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX recusa workbook que expande alem do limite antes de carrega-lo
+src/features/empresas/arquivo.test.ts :: XLSX com Google Place ID fórmula na nona coluna sem resultado calculado é recusada
+src/features/empresas/arquivo.test.ts :: XLSX com Google Place ID preenche opcionais até a nona coluna vazia sem recusar CNPJ conhecido
+src/features/empresas/arquivo.test.ts :: XLSX com Google Place ID preserva a nona coluna como texto e mantém prospects nulos distintos
 src/features/empresas/cnae.test.ts :: normaliza 
 src/features/empresas/cnae.test.ts :: normaliza   
 src/features/empresas/cnae.test.ts :: normaliza  4742300 
@@ -527,6 +706,27 @@ src/features/empresas/cnpj.test.ts :: validarCnpj alfanumerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico com um digito trocado reprova
 src/features/empresas/cnpj.test.ts :: validarCnpj numerico valido
 src/features/empresas/cnpj.test.ts :: validarCnpj todos os digitos iguais reprova
+src/features/empresas/conferencia.test.ts :: alterar somente metadado criterios invalida o recibo assinado
+src/features/empresas/conferencia.test.ts :: alterar somente metadado descricao invalida o recibo assinado
+src/features/empresas/conferencia.test.ts :: alterar somente metadado origem invalida o recibo assinado
+src/features/empresas/conferencia.test.ts :: comprovante conserva todas as recusas por UUID repetido e a linha independente
+src/features/empresas/conferencia.test.ts :: comprovante de 5.000 recusas conserva seleção e schema no round-trip
+src/features/empresas/conferencia.test.ts :: comprovante excessivo é recusado
+src/features/empresas/conferencia.test.ts :: comprovante preserva seleção e recusas sem depender de memória de processo
+src/features/empresas/conferencia.test.ts :: comprovante texto comum é recusado
+src/features/empresas/conferencia.test.ts :: comprovante vazio é recusado
+src/features/empresas/conferencia.test.ts :: configuração ausente não reutiliza segredo da conexão ou cookie
+src/features/empresas/conferencia.test.ts :: configuração curta falha fechada
+src/features/empresas/conferencia.test.ts :: configuração não hexadecimal falha fechada
+src/features/empresas/conferencia.test.ts :: configuração texto comum falha fechada
+src/features/empresas/conferencia.test.ts :: configuração vazia falha fechada
+src/features/empresas/conferencia.test.ts :: mudança de arquivoNome invalida o comprovante
+src/features/empresas/conferencia.test.ts :: mudança de assinatura invalida o comprovante
+src/features/empresas/conferencia.test.ts :: mudança de chave invalida o comprovante
+src/features/empresas/conferencia.test.ts :: mudança de nome invalida o comprovante
+src/features/empresas/conferencia.test.ts :: outro gestor ou outra chave de servidor não reconhece comprovante
+src/features/empresas/conferencia.test.ts :: schema autenticado também exige versão e seleção sem repetições
+src/features/empresas/conferencia.test.ts :: seleção adulterada não pode confirmar um subconjunto arbitrário
 src/features/empresas/consulta.test.ts :: destinoCanonico a página sobrevive à limpeza
 src/features/empresas/consulta.test.ts :: destinoCanonico com termo de verdade, nada a limpar
 src/features/empresas/consulta.test.ts :: destinoCanonico o próprio destino já é canônico
@@ -589,12 +789,17 @@ src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-l
 src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"sp"}
 src/features/empresas/filtros.test.ts :: recusa select inválido sem convertê-lo em consulta irrestrita: {"uf":"SP1"}
 src/features/empresas/filtros.test.ts :: sem selects, filtros de Empresas ficam ausentes
+src/features/empresas/formato.test.ts :: CNPJ desconhecido aparece como Não informado
 src/features/empresas/formato.test.ts :: formatarCnpj alfanumérico
 src/features/empresas/formato.test.ts :: formatarCnpj numérico
 src/features/empresas/formato.test.ts :: formatarCnpj valor fora de forma sai como veio
 src/features/empresas/formato.test.ts :: formatarTelefone celular, 11 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone fixo, 10 dígitos
 src/features/empresas/formato.test.ts :: formatarTelefone valor fora de forma sai como veio
+src/features/empresas/grupos.test.ts :: correção inválida não toca o banco e UUID ausente é recuperável
+src/features/empresas/grupos.test.ts :: correção traduz SQLSTATE 22023
+src/features/empresas/grupos.test.ts :: correção traduz SQLSTATE 42501
+src/features/empresas/grupos.test.ts :: correção usa função definidora com contexto normalizado e quatro argumentos
 src/features/empresas/grupos.test.ts :: id malformado nunca chega ao banco
 src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: " "
 src/features/empresas/grupos.test.ts :: nome inválido não envia mutação: "nome\nnovo"
@@ -607,10 +812,21 @@ src/features/empresas/grupos.test.ts :: paginação malformada 1000001 recupera 
 src/features/empresas/grupos.test.ts :: paginação malformada Infinity recupera primeira página
 src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
 src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
+src/features/empresas/identidade.test.ts :: dois identificadores que apontam para UUIDs diferentes exigem revisão
+src/features/empresas/identidade.test.ts :: Google conhecido com CNPJ diferente exige revisão
+src/features/empresas/identidade.test.ts :: identificadores iguais ou complemento vazio preservam UUID
+src/features/empresas/identidade.test.ts :: novo não procura chave nula em nenhum mapa
+src/features/empresas/identidade.test.ts :: razão social conhecida divergente exige revisão
 src/features/empresas/mensagens.test.ts :: CNAE invalido explica as duas formas aceitas
+src/features/empresas/mensagens.test.ts :: duplicata de Place ID identifica a origem e a linha do par
 src/features/empresas/mensagens.test.ts :: falhas recuperaveis de confirmacao orientam nova conferencia
+src/features/empresas/mensagens.test.ts :: recusa cnpj_divergente orienta revisão na origem
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 7
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 8
+src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 9
+src/features/empresas/mensagens.test.ts :: recusa identificadores_divergentes orienta revisão na origem
+src/features/empresas/mensagens.test.ts :: recusa por UUID repetido identifica a linha para limpar antes de reconferir
+src/features/empresas/mensagens.test.ts :: recusa razao_social_divergente orienta revisão na origem
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo excede limite mostra os dois numeros
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo formula informa a linha e a coluna que precisam virar valor
@@ -628,9 +844,11 @@ src/features/empresas/mensagens.test.ts :: textoDoEndereco: da a saida, nao so o
 src/features/empresas/modelo.test.ts :: modelo de importação a oitava coluna contém o cabeçalho e um exemplo de CNAE
 src/features/empresas/modelo.test.ts :: modelo de importação existe e é um zip, que é o que um xlsx é
 src/features/empresas/modelo.test.ts :: modelo de importação o arquivo versionado é o que o gerador produz hoje
-src/features/empresas/modelo.test.ts :: modelo de importação o cabeçalho do modelo é o CABECALHO da fase 1
+src/features/empresas/modelo.test.ts :: modelo de importação o cabeçalho do modelo é o CABECALHO_GOOGLE da fase 1
 src/features/empresas/modelo.test.ts :: modelo de importação o exemplo tem CEP com zero à esquerda
-src/features/empresas/modelo.test.ts :: modelo de importação todas as oito colunas são Texto, inclusive nas linhas ainda vazias
+src/features/empresas/modelo.test.ts :: modelo de importação todas as nove colunas são Texto, inclusive nas linhas ainda vazias
+src/features/empresas/modelo.test.ts :: nona coluna apresenta origem fictícia como texto
+src/features/empresas/planilha.test.ts :: cabeçalho de nove colunas recusa campo ausente ou excedente
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho cabecalho novo acrescenta somente cnae_principal
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho CNAE invalido recusa a linha
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho duplicatas com CNAE 
@@ -643,6 +861,7 @@ src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo acei
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo exige oito campos: 11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho novo exige oito campos: 11222333000181,Aurora Comercio LTDA,Aurora,Jose,11987654321,contato@aurora.com.br,01310100,4742300,extra
 src/features/empresas/planilha.test.ts :: CNAE e formatos de cabecalho NUL em CNAE informa a coluna
+src/features/empresas/planilha.test.ts :: controle não vira Place ID ausente depois de aparar espaços
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro acima do limite recusa o arquivo
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro arquivo vazio
 src/features/empresas/planilha.test.ts :: fase 0: o arquivo inteiro aspas nao fechadas recusam o arquivo
@@ -663,7 +882,7 @@ src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa col
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa email_forma
-src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa razao_social_vazia
+src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa nome_ausente
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa telefone_forma
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa telefone_vazio
 src/features/empresas/planilha.test.ts :: fase 1: byte NUL linha limpa ao lado de linha com NUL: so a suja sai
@@ -676,9 +895,24 @@ src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo re
 src/features/empresas/planilha.test.ts :: fase 1: duplicata dentro do arquivo todo nome de coluna do relatorio existe no CABECALHO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio a recusa aponta para a linha do ARQUIVO
 src/features/empresas/planilha.test.ts :: fase 1: numero da linha com linha em branco no meio duplicata depois de linha em branco cita as linhas certas
+src/features/empresas/planilha.test.ts :: identidade de origem aceita identidades diferentes sem CNPJ nem razão social e conserva telefone igual
+src/features/empresas/planilha.test.ts :: identidade de origem identidade conhecida aceita CNPJ com Place ID ausente e pelo menos um nome
+src/features/empresas/planilha.test.ts :: identidade de origem legado cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep continua exigindo CNPJ
+src/features/empresas/planilha.test.ts :: identidade de origem legado cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,cnae_principal continua exigindo CNPJ
+src/features/empresas/planilha.test.ts :: identidade de origem Place ID aparado mede pontos de código até 255
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,,,11987654321,,,,ChIJ-a" por nome_ausente
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Aurora,,,,,,ChIJ-a" por telefone_vazio
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,," por identidade_ausente
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,,a\u0000b" por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,,a\u0001b" por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa "11222333000182,,Câmeras Aurora,,11987654321,,,,ChIJ-a" por cnpj_dv
+src/features/empresas/planilha.test.ts :: identidade de origem repetição de Place ID ou CNPJ remove todas as linhas envolvidas
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar confirma o grupo com todas as linhas e devolve o relatorio persistido pelo banco
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar propaga falha de infraestrutura
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar traduz 22023 em falha recuperavel
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.preparar consulta identificadores não nulos separados e devolve os dois mapas
+src/features/empresas/repositorio.test.ts :: repositorioPostgres.preparar identificadores ausentes não geram consulta de empresa
 src/features/empresas/servico.test.ts :: analisar aceita a fonte XLSX explicita e reaproveita o mesmo relatorio
 src/features/empresas/servico.test.ts :: analisar arquivo invalido devolve a falha do arquivo
 src/features/empresas/servico.test.ts :: analisar conta novas, ja cadastradas e ceps nao encontrados
@@ -688,10 +922,18 @@ src/features/empresas/servico.test.ts :: analisar sem_permissao do repositorio s
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada arquivo sem nenhum CEP pede zero
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada basePublicadaEm nulo e todos os ceps pedidos sem resposta
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada cepsPedidos conta CEP distinto, nao linha
+src/features/empresas/servico.test.ts :: conferência exige revisão quando razão social conhecida diverge
+src/features/empresas/servico.test.ts :: conferência por UUID canônico CNPJs nulos com UUIDs distintos continuam independentes apesar do mesmo nome e telefone
+src/features/empresas/servico.test.ts :: conferência por UUID canônico recusa todas as linhas da mesma empresa por CNPJ e origem e conserva a terceira
+src/features/empresas/servico.test.ts :: conferência por UUID canônico recusa todas as linhas da mesma empresa por origens sem CNPJ e conserva a terceira
+src/features/empresas/servico.test.ts :: conferência usa os dois identificadores antes de contar e não grava
 src/features/empresas/servico.test.ts :: importar confirma todas as aceitas, inclusive as ja cadastradas
 src/features/empresas/servico.test.ts :: importar devolve o relatorio persistido pelo repositorio em vez da reanalise atual
 src/features/empresas/servico.test.ts :: importar nao confirma quando todas as linhas foram recusadas
 src/features/empresas/servico.test.ts :: importar so CNPJs existentes ainda cria o grupo e devolve zero inseridas
+src/features/empresas/servico.test.ts :: seleção aprovada na conferência conflito entre analisar e importar exige reconferir sem gravação, lote misto=false
+src/features/empresas/servico.test.ts :: seleção aprovada na conferência conflito entre analisar e importar exige reconferir sem gravação, lote misto=true
+src/features/empresas/servico.test.ts :: seleção aprovada na conferência recusa de identidade já conferida permite confirmar as linhas válidas
 src/features/empresas/telefone.test.ts :: normalizarTelefone "  11987654321 " vira "11987654321"
 src/features/empresas/telefone.test.ts :: normalizarTelefone "" vira null
 src/features/empresas/telefone.test.ts :: normalizarTelefone "(11) 98765-4321" vira "11987654321"
@@ -704,6 +946,7 @@ src/features/fila/mensagens.test.ts :: textoDoMotivo ja_e_sua tem texto de gente
 src/features/fila/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto de gente
 src/features/fila/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto de gente
 src/features/fila/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto de gente
+src/features/fila/repositorio.test.ts :: reserva envia grupo final e traduz indisponibilidade preservando campos vigentes
 src/features/fila/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
 src/features/fila/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
 src/features/fila/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
@@ -712,6 +955,7 @@ src/features/fila/repositorio.test.ts :: traduzirResultado reserva_expirada vira
 src/features/fila/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
 src/features/funil/regras.test.ts :: venda converte reais em centavos exatos e normaliza observação
 src/features/funil/regras.test.ts :: venda recusa valores ambíguos, fora do limite, data impossível e chave inválida
+src/features/prospeccao/filtros.test.ts :: conserva grupo e recusa UUID inválido sem ampliar a busca
 src/features/prospeccao/filtros.test.ts :: lerFiltros aceita ausência e campos vazios do formulário
 src/features/prospeccao/filtros.test.ts :: lerFiltros aceita os limites de texto e página
 src/features/prospeccao/filtros.test.ts :: lerFiltros preserva os filtros combinados e literais de busca
@@ -746,6 +990,7 @@ src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido se
 src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"sp"}
 src/features/prospeccao/filtros.test.ts :: lerFiltros recusa filtro inválido sem ampliar a consulta: {"uf":"SPX"}
 src/features/prospeccao/filtros.test.ts :: lerFiltros usa apenas o primeiro parâmetro duplicado
+src/features/prospeccao/mensagens.test.ts :: consulta explica lista indisponível como estado recuperável
 src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz comigo em texto acessível sem travessão
 src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz disponivel em texto acessível sem travessão
 src/features/prospeccao/mensagens.test.ts :: mensagemDisponibilidade traduz em_descanso em texto acessível sem travessão
@@ -768,6 +1013,27 @@ src/features/usuarios/repositorio.test.ts :: traduzirResultado vocabulário conh
 src/features/usuarios/servico.test.ts :: criarUsuario dados inválidos: faltas nomeadas, sem tocar o repositório nem gerar hash
 src/lib/comercial.test.ts :: funil aceita somente as três etapas abertas
 src/lib/comercial.test.ts :: próxima etapa segue sequência fechada e termina na proposta
+src/lib/empresa-apresentacao.test.ts :: formata CNPJ numérico e alfanumérico conservando valores fora de forma
+src/lib/empresa-apresentacao.test.ts :: usa o nome conhecido sem transformar fantasia em razão social
+src/lib/grupo-metadados.test.ts :: campo descricao exige texto não vazio
+src/lib/grupo-metadados.test.ts :: campo origem exige texto não vazio
+src/lib/grupo-metadados.test.ts :: controle Unicode 0 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 1 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 11 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 127 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 128 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 159 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 31 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: controle Unicode 9 é recusado em qualquer campo
+src/lib/grupo-metadados.test.ts :: limite de criterios conta pontos de código, preservando emoji
+src/lib/grupo-metadados.test.ts :: limite de descricao conta pontos de código, preservando emoji
+src/lib/grupo-metadados.test.ts :: limite de origem conta pontos de código, preservando emoji
+src/lib/grupo-metadados.test.ts :: normaliza CRLF e CR, remove só espaço ASCII/LF das extremidades e mantém LF interno
+src/lib/whatsapp-indicadores.test.ts :: conta conversas por fonte, pendências antigas e vendedores com envio hoje
+src/lib/whatsapp-indicadores.test.ts :: desconta noites e fim de semana do tempo até resposta
+src/lib/whatsapp-indicadores.test.ts :: dia é de Brasília, duplicatas não contam duas vezes e grupos/status são excluídos
+src/lib/whatsapp-indicadores.test.ts :: média usa primeira recebida de cada sequência e somente respostas de hoje
+src/lib/whatsapp-indicadores.test.ts :: vazio e ausência de respostas não inventam média; piloto não é vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso exigência vendedor mantém login e troca de senha antes do papel
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor não entra no atendimento de vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor sem pendência passa em tudo
@@ -917,6 +1183,7 @@ src/server/db/migracoes/invariantes.test.ts :: avaliar app_conexao superusuário
 src/server/db/migracoes/invariantes.test.ts :: avaliar definidora concedida a app_usuario fora da lista, mesmo sem tocar autenticacao
 src/server/db/migracoes/invariantes.test.ts :: avaliar definidora concedida em outro schema também é acusada
 src/server/db/migracoes/invariantes.test.ts :: avaliar estado são não tem violação
+src/server/db/migracoes/invariantes.test.ts :: avaliar FORCE é permitido somente no vínculo WhatsApp, sem definidoras que dependem da tabela
 src/server/db/migracoes/invariantes.test.ts :: avaliar função de acesso ausente é violação, não verde
 src/server/db/migracoes/invariantes.test.ts :: avaliar função de schema de aplicação executável por PUBLIC
 src/server/db/migracoes/invariantes.test.ts :: avaliar função registrada ausente ou sem GRANT é violação, não verde
@@ -951,5 +1218,44 @@ src/server/diretivas.test.ts :: arquivos 'use server' app\login\acao.ts só expo
 src/server/diretivas.test.ts :: arquivos 'use server' app\meu-dia\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\trocar-senha\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\usuarios\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\configuracao\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
 src/server/diretivas.test.ts :: arquivos 'use server' src\features\contato\acao.ts só exporta função
+src/server/grupos/prospeccao.test.ts :: catálogo corta a vigésima primeira linha e traduz exclusivamente DTO público
+src/server/grupos/prospeccao.test.ts :: catálogo recusa página não inteira ou fora da faixa antes do banco
+src/server/grupos/prospeccao.test.ts :: catálogo vazio é explícito e permissão negada não vira resultado vazio
+src/server/grupos/prospeccao.test.ts :: erro de infraestrutura continua visível
+src/server/grupos/prospeccao.test.ts :: leitor comercial traduz somente campos públicos e contagens numéricas
+src/server/grupos/prospeccao.test.ts :: leitor vazio e recusa de leitura devolvem motivos próprios
+src/server/importacao/mooca-adaptador.test.ts :: CLI prepara CSV conferido, metadados e hashes com campos originais em texto
+src/server/importacao/mooca-adaptador.test.ts :: CLI recusa bytes que não são UTF-8 antes de criar saída
+src/server/importacao/mooca-adaptador.test.ts :: CLI recusa entrega sem colunas requeridas antes de criar saída
+src/server/importacao/mooca-adaptador.test.ts :: CLI recusa pasta existente e preserva seus arquivos
+src/server/importacao/mooca-adaptador.test.ts :: conserva apenas CNPJ e razão social conhecidos e encaminha inválidos à revisão
+src/server/importacao/mooca-adaptador.test.ts :: controles em campo cadastral exigem revisão e não alteram dado bruto
+src/server/importacao/mooca-adaptador.test.ts :: escapa vírgula e aspas e normaliza telefone sem perder zero do CEP
+src/server/importacao/mooca-adaptador.test.ts :: escolhe primeiro email publicado válido e preserva alternativas com fontes
+src/server/importacao/mooca-adaptador.test.ts :: IDs repetidos no lote exigem revisão das duas linhas sem escolher uma
+src/server/importacao/mooca-adaptador.test.ts :: ignora placeholder e nunca escolhe email do motor não reconfirmado
+src/server/importacao/mooca-adaptador.test.ts :: preserva Place ID e separa cadastro sem telefone
+src/server/importacao/mooca-adaptador.test.ts :: telefone compartilhado sinaliza as duas linhas sem fundir IDs distintos
+src/server/importacao/mooca-adaptador.test.ts :: telefone inválido vai para pendência sem impedir outra linha válida
+src/server/whatsapp/consulta.test.ts :: cursor forjado e vínculo removido não fazem consulta
+src/server/whatsapp/consulta.test.ts :: enriquece mensagens com empresa por telefone confirmado e mantém mensagens quando CRM falha
+src/server/whatsapp/consulta.test.ts :: falha parcial conserva cursor; sucesso avança e tentativa seguinte só consulta pendentes
+src/server/whatsapp/consulta.test.ts :: fontes distintas conservam mensagens com mesmo ID e conversa
+src/server/whatsapp/consulta.test.ts :: instância piloto vinculada não aparece duplicada; inativo não libera consulta
+src/server/whatsapp/consulta.test.ts :: Todos não reabre piloto quando existem vínculos mas todos ficam inativos
+src/server/whatsapp/consulta.test.ts :: Todos separa piloto; filtro desconhecido não cai no piloto
+src/server/whatsapp/evolution.test.ts :: consulta somente mensagens da instância de teste e reduz as duas direções
+src/server/whatsapp/evolution.test.ts :: extrai telefone confirmado sem transformar LID ou grupo em telefone
+src/server/whatsapp/evolution.test.ts :: histórico entrega descritores de mídia sem URL, chave ou binário ao navegador
+src/server/whatsapp/evolution.test.ts :: histórico mantém limite temporal original e termina na última página
+src/server/whatsapp/evolution.test.ts :: sem configuração não chama a API nem expõe segredo
+src/server/whatsapp/midia.test.ts :: baixa pela chave armazenada e instância do servidor, sem seguir redirecionamentos
+src/server/whatsapp/midia.test.ts :: descritor preserva legenda/nome, sem transportar segredos e sem abrir visualização única
+src/server/whatsapp/midia.test.ts :: falha de rede ou mídia expirada retorna erro sem conteúdo da resposta
+src/server/whatsapp/midia.test.ts :: interrompe resposta grande mesmo sem content-length
+src/server/whatsapp/midia.test.ts :: não baixa arquivo de outra conversa nem ID ambíguo
+src/server/whatsapp/midia.test.ts :: rejeita imagem ativa, base64 inválido e resposta excessiva

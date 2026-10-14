@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 
 export type FiltrosCarteira = {
@@ -40,13 +41,13 @@ export function filtrarCarteira(linhas: EmpresaComigo[], filtros: FiltrosCarteir
   const nome = textoComparavel(filtros.nome)
   return linhas
     .filter(linha => {
-      const nomes = textoComparavel(`${linha.razaoSocial} ${linha.nomeFantasia ?? ''}`)
+      const nomes = textoComparavel(`${linha.razaoSocial ?? ''} ${linha.nomeFantasia ?? ''}`)
       if (nome && !nomes.includes(nome)) return false
       if (filtros.uf && linha.endereco?.uf !== filtros.uf) return false
       if (filtros.retorno && linha.situacaoRetorno !== filtros.retorno) return false
       return true
     })
-    .sort((a, b) => a.razaoSocial.localeCompare(b.razaoSocial, 'pt-BR') || a.id.localeCompare(b.id))
+    .sort((a, b) => nomeEmpresa(a).localeCompare(nomeEmpresa(b), 'pt-BR') || a.id.localeCompare(b.id))
 }
 
 export function urlCarteira(filtros: FiltrosCarteira): string {

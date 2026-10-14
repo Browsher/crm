@@ -3,7 +3,7 @@ import JSZip from 'jszip'
 import { createRequire } from 'node:module'
 import { describe, expect, test, vi } from 'vitest'
 import { montarModelo } from './modelo'
-import { CABECALHO, CABECALHO_LEGADO, type Analise } from './planilha'
+import { CABECALHO_GOOGLE, CABECALHO, CABECALHO_LEGADO, type Analise } from './planilha'
 import { analisarArquivo } from './arquivo'
 
 function ok(a: Analise) {
@@ -309,5 +309,33 @@ describe('analisarArquivo: compatibilidade CSV', () => {
     const csv = new TextEncoder().encode(`${CABECALHO_LEGADO}\n${AURORA.slice(0, 7).join(',')}`)
     const a = ok(await analisarArquivo(csv))
     expect(a.aceitas[0]).toMatchObject({ cnpj: '11222333000181', cep: '01310100' })
+  })
+})
+
+
+describe('XLSX com Google Place ID', () => {
+  test('preserva a nona coluna como texto e mantém prospects nulos distintos', async () => {
+    const a = ok(await analisarArquivo({ formato: 'xlsx', bytes: await montarXlsx([
+      CABECALHO_GOOGLE.split(','),
+      ['', '', 'Aurora', '', '11987654321', '', '', '', 'ChIJ-ficticio-a'],
+      ['', '', 'Boreal', '', '11987654321', '', '', '', 'ChIJ-ficticio-b'],
+    ]) }))
+    expect(a.aceitas.map(l => [l.cnpj, l.razaoSocial, l.googlePlaceId])).toEqual([
+      [null, null, 'ChIJ-ficticio-a'], [null, null, 'ChIJ-ficticio-b'],
+    ])
+  })
+  test('preenche opcionais até a nona coluna vazia sem recusar CNPJ conhecido', async () => {
+    const a = ok(await analisarArquivo({ formato: 'xlsx', bytes: await montarXlsx([CABECALHO_GOOGLE.split(','), AURORA]) }))
+    expect(a.recusadas).toEqual([])
+    expect(a.aceitas[0]).toMatchObject({ cnpj: '11222333000181', googlePlaceId: null })
+  })
+  test('fórmula na nona coluna sem resultado calculado é recusada', async () => {
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet('empresas')
+    sheet.addRow(CABECALHO_GOOGLE.split(','))
+    sheet.getCell('I2').value = { formula: '"ChIJ-ficticio"' }
+    expect(await analisarArquivo({ formato: 'xlsx', bytes: new Uint8Array(await workbook.xlsx.writeBuffer()) })).toEqual({
+      ok: false, falha: { motivo: 'formula_nao_permitida', linha: 2, coluna: 'google_place_id' },
+    })
   })
 })

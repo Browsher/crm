@@ -3,7 +3,7 @@ import { textoDaFalhaDeArquivo, textoDaRecusa, textoDoEndereco, textoDoMotivo } 
 
 test('falhas recuperaveis de confirmacao orientam nova conferencia', () => {
   expect(textoDoMotivo('sem_linhas_aceitas')).toContain('linha aceita')
-  expect(textoDoMotivo('confirmacao_invalida')).toContain('Confira novamente')
+  expect(textoDoMotivo('confirmacao_invalida')).toContain('Confira o arquivo novamente')
 })
 
 describe('textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma', () => {
@@ -19,13 +19,13 @@ describe('textoDaRecusa: as mensagens explicam a CAUSA, nao so o sintoma', () =>
   })
 
   test('duplicata identica diz que sao iguais', () => {
-    const t = textoDaRecusa({ tipo: 'repetido', linha: 41, par: 902, cnpj: '11222333000181', divergencia: null })
+    const t = textoDaRecusa({ tipo: 'repetido', linha: 41, par: 902, identificador: 'cnpj', valor: '11222333000181', divergencia: null })
     expect(t).toContain('902')
     expect(t).toContain('iguais')
   })
 
   test('duplicata divergente nomeia o campo', () => {
-    const t = textoDaRecusa({ tipo: 'repetido', linha: 41, par: 902, cnpj: '11222333000181', divergencia: 'telefone' })
+    const t = textoDaRecusa({ tipo: 'repetido', linha: 41, par: 902, identificador: 'cnpj', valor: '11222333000181', divergencia: 'telefone' })
     expect(t).toContain('telefone')
   })
 })
@@ -94,7 +94,7 @@ describe('textoDoEndereco: da a saida, nao so o diagnostico', () => {
 })
 
 
-test.each([7, 8] as const)('recusa de colunas informa o formato esperado %s', (esperado) => {
+test.each([7, 8, 9] as const)('recusa de colunas informa o formato esperado %s', (esperado) => {
   expect(textoDaRecusa({ tipo: 'campo', linha: 2, motivo: 'colunas_erradas', valor: '9', esperado })).toContain(`o modelo tem ${esperado}`)
 })
 
@@ -102,4 +102,25 @@ test('CNAE invalido explica as duas formas aceitas', () => {
   const texto = textoDaRecusa({ tipo: 'campo', linha: 2, motivo: 'cnae_forma', valor: 'abc' })
   expect(texto).toContain('7 dígitos')
   expect(texto).toContain('4742-3/00')
+})
+
+
+test('duplicata de Place ID identifica a origem e a linha do par', () => {
+  const t = textoDaRecusa({ tipo: 'repetido', linha: 4, par: 8, identificador: 'google_place_id', valor: 'ChIJ-ficticio', divergencia: 'cnpj' })
+  expect(t).toContain('Google Place ID ChIJ-ficticio')
+  expect(t).toContain('linha 8')
+  expect(t).toContain('cnpj')
+})
+test.each(['identificadores_divergentes', 'cnpj_divergente', 'razao_social_divergente'] as const)('recusa %s orienta revisão na origem', motivo => {
+  const t = textoDaRecusa({ tipo: 'identidade', linha: 3, motivo })
+  expect(t).toContain('Linha 3')
+  expect(t).toContain('Revise os identificadores')
+})
+
+test('recusa por UUID repetido identifica a linha para limpar antes de reconferir', () => {
+  const texto = textoDaRecusa({ tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' })
+  expect(texto).toContain('Linha 2')
+  expect(texto).toContain('mesma empresa')
+  expect(texto).toContain('Remova as repetições')
+  expect(texto).toContain('confira novamente')
 })

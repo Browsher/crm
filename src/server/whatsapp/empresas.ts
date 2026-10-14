@@ -10,7 +10,7 @@ export async function consultarEmpresas(usuarioId: string, telefones: string[]):
     const lote = validos.slice(inicio, inicio + 200)
     const r = await comoUsuario(usuarioId, e => e<{ telefone: string; quantidade: number; id: string; nome: string; situacao: SituacaoEmpresaWhatsApp }>(`
       WITH candidatas AS (SELECT telefone, count(*)::int AS quantidade, min(id::text) AS id,
-        min(coalesce(nome_fantasia, razao_social)) AS nome
+        min(coalesce(razao_social, nome_fantasia)) AS nome
       FROM empresa WHERE eh_gestor() AND telefone = ANY($1::text[]) GROUP BY telefone)
       SELECT c.*,
         CASE WHEN dono.ativo THEN coalesce(n.etapa, 'carteira')

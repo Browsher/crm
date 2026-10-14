@@ -1,5 +1,7 @@
 'use client'
 
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
+
 import { useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
@@ -137,10 +139,10 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   }
 
   return <article className={styles.ficha}>
-    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{empresa.razaoSocial}</h1><p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p><p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={empresa.razaoSocial} disabled={editando || pendente} /> : null}</div></header>
+    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente} /> : null}</div></header>
     <div className={styles.colunas}><div className={styles.esquerda}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>
-        <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Contato não cadastrado'}</dd><dt>Telefone</dt><dd>{empresa.telefone || 'Telefone não cadastrado'}</dd><dt>E-mail</dt><dd>{empresa.email ?? 'E-mail não cadastrado'}</dd><dt>Localização</dt><dd>{endereco(empresa)}</dd><dt>CNPJ</dt><dd>{empresa.cnpj}</dd><dt>CNAE</dt><dd>{empresa.cnaePrincipal ?? 'CNAE não cadastrado'}</dd>
+        <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Contato não cadastrado'}</dd><dt>Telefone</dt><dd>{empresa.telefone || 'Telefone não cadastrado'}</dd><dt>E-mail</dt><dd>{empresa.email ?? 'E-mail não cadastrado'}</dd><dt>Localização</dt><dd>{endereco(empresa)}</dd><dt>CNPJ</dt><dd>{empresa.cnpj ?? 'Não informado'}</dd><dt>CNAE</dt><dd>{empresa.cnaePrincipal ?? 'CNAE não cadastrado'}</dd>
       </dl></CardContent></Card>
       <Card><CardHeader><CardTitle>Próximo passo</CardTitle></CardHeader><CardContent>{empresa.proximoPasso ? <div className={empresa.vencido ? styles.atrasado : undefined}><p>{empresa.proximoPasso}</p>{empresa.proximoPassoData ? <p>{dataCivil(empresa.proximoPassoData)}{empresa.vencido ? ' · Atrasado' : ''}</p> : null}</div> : <p className={styles.ausente}>Sem próximo passo combinado.</p>}</CardContent></Card>
     </div><Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent><Historico contatos={contatos} erro={erroHistorico} /></CardContent></Card></div>

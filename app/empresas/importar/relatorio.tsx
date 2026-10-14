@@ -16,6 +16,7 @@ export function RelatorioImportacao({ relatorio: r }: { relatorio: Relatorio }) 
       <ul className={styles.recusas}>{r.recusadas.map(rec => <li key={`${rec.linha}-${rec.tipo}`}>{textoDaRecusa(rec)}</li>)}</ul>
     </section>}
     <p>Nada foi gravado. A confirmação cria o grupo e vincula todas as empresas aceitas, incluindo as já cadastradas.</p>
+    <p>Empresas reconhecidas por CNPJ ou Google Place ID conservam seus dados e histórico. A confirmação preenche somente CNPJ e razão social em branco.</p>
     {totalAceitas === 0 && <p>Não há nenhuma linha aceita para vincular. Corrija as linhas recusadas ou confira outro arquivo.</p>}
   </div>
 }

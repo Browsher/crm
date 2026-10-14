@@ -11,12 +11,13 @@ const { importarAcao } = await import('./acao')
 const { FormularioImportar } = await import('./formulario')
 const mock = vi.mocked(importarAcao)
 const relatorio = { novas: 2, jaCadastradas: 1, recusadas: [], cepsPedidos: 0, cepsNaoEncontrados: 0, basePublicadaEm: null }
-const conferido: EstadoImportar = { erro: null, relatorio, inseridas: null, grupoId: null }
+const conferido: EstadoImportar = { erro: null, relatorio, inseridas: null, grupoId: null, conferencia: 'comprovante-autenticado' }
 const concluido: EstadoImportar = {
   erro: null,
   relatorio,
   inseridas: 2,
   grupoId: '77777777-7777-4777-8777-777777777777',
+  conferencia: null,
 }
 let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
@@ -102,6 +103,9 @@ test('conferir e confirmar usam a mesma chave, nome e arquivo', async () => {
   expect(dadosDaChamada(1).get('chave')).toBe(operacao)
   expect(dadosDaChamada(0).get('nome')).toBe('Mooca')
   expect(dadosDaChamada(1).get('nome')).toBe('Mooca')
+  expect(dadosDaChamada(1).get('conferencia')).toBe('comprovante-autenticado')
+  expect(mock.mock.calls[1][0]).toEqual({ erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null })
+  expect(mock.mock.calls[1][0]).not.toBe(conferido)
   expect(input.files?.[0]).toBe(file)
 })
 
@@ -177,7 +181,7 @@ test('pendente bloqueia troca e navegação, erro descarta confirmação antiga'
   await clicar('Confirmar importação')
   expect(host.querySelector('fieldset')?.disabled).toBe(true)
   expect(host.querySelector('nav button')).toBeNull()
-  await act(async () => resolver({ erro: 'Confira novamente.', relatorio: null, inseridas: null, grupoId: null }))
+  await act(async () => resolver({ erro: 'Confira novamente.', relatorio: null, inseridas: null, grupoId: null, conferencia: null }))
   const alerta = host.querySelector('[role=alert]')
   expect(alerta?.textContent).toBe('Confira novamente.')
   expect(document.activeElement).toBe(alerta)
@@ -185,6 +189,7 @@ test('pendente bloqueia troca e navegação, erro descarta confirmação antiga'
   expect(input.files?.[0]).toBe(file)
   expect(chave()).toBe(operacao)
   expect(host.querySelector('button[name=confirmar]')).toBeNull()
+  expect(host.querySelector<HTMLInputElement>('input[name=conferencia]')?.value).toBe('')
 
   mock.mockResolvedValueOnce(conferido)
   await clicar('Conferir arquivo')
@@ -224,4 +229,72 @@ test('reiniciar limpa nome e arquivo e gera outra chave', async () => {
   expect(input.value).toBe('')
   expect(chave()).not.toBe(primeira)
   expect(document.activeElement).toBe(tituloEnviar())
+})
+
+
+async function preencherMetadado(campo: string, valor: string) {
+  const input = host.querySelector<HTMLTextAreaElement>(`textarea[name=${campo}]`)!
+  expect(input).toBeTruthy()
+  const definir = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+  await act(async () => { definir.call(input, valor); input.dispatchEvent(new Event('input', { bubbles: true })) })
+  return input
+}
+
+test.each(['descricao', 'origem', 'criterios'])('alterar %s invalida conferência, renova chave e conserva arquivo', async campo => {
+  mock.mockResolvedValue(conferido)
+  await montar()
+  await preencherNome()
+  await preencherMetadado('descricao', 'Mooca CFTV')
+  await preencherMetadado('origem', 'Google Maps')
+  await preencherMetadado('criterios', 'Telefone disponível')
+  const { input, file } = await arquivo()
+  const primeira = chave()
+  await clicar('Conferir arquivo')
+  expect(host.querySelector('dl')?.textContent).toContain('Google Maps')
+  await preencherMetadado(campo, 'Outra coleta')
+  expect(chave()).not.toBe(primeira)
+  expect(host.querySelector('button[name=confirmar]')).toBeNull()
+  expect(host.querySelector<HTMLInputElement>('input[name=conferencia]')!.value).toBe('')
+  expect(host.querySelector('input[type=file]')).toBe(input)
+  expect(input.files?.[0]).toBe(file)
+})
+
+test('emoji no limite atravessa duas submissões sem mudar chave e reiniciar limpa os campos', async () => {
+  mock.mockResolvedValueOnce(conferido).mockResolvedValueOnce(concluido)
+  await montar()
+  await preencherNome()
+  const descricao = await preencherMetadado('descricao', '📷'.repeat(500))
+  const origem = await preencherMetadado('origem', '📷'.repeat(500))
+  const criterios = await preencherMetadado('criterios', '📷'.repeat(2000))
+  await arquivo()
+  const mesma = chave()
+  await clicar('Conferir arquivo')
+  await clicar('Confirmar importação')
+  for (const chamada of [0, 1]) {
+    expect(dadosDaChamada(chamada).get('descricao')).toBe('📷'.repeat(500))
+    expect(dadosDaChamada(chamada).get('criterios')).toBe('📷'.repeat(2000))
+    expect(dadosDaChamada(chamada).get('chave')).toBe(mesma)
+  }
+  await clicar('Importar outro arquivo')
+  expect([descricao.value, origem.value, criterios.value]).toEqual(['', '', ''])
+})
+
+
+test('dois envios de confirmação sem mudança repetem chave e comprovante', async () => {
+  mock.mockResolvedValue(conferido)
+  await montar()
+  await preencherNome()
+  await preencherMetadado('descricao', 'Mooca CFTV')
+  await preencherMetadado('origem', 'Google Maps')
+  await arquivo()
+  const operacao = chave()
+  await clicar('Conferir arquivo')
+  await clicar('Confirmar importação')
+  await clicar('Confirmar importação')
+  expect(mock).toHaveBeenCalledTimes(3)
+  for (const i of [1, 2]) {
+    expect(dadosDaChamada(i).get('chave')).toBe(operacao)
+    expect(dadosDaChamada(i).get('conferencia')).toBe('comprovante-autenticado')
+    expect(dadosDaChamada(i).get('origem')).toBe('Google Maps')
+  }
 })

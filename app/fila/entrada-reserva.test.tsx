@@ -23,3 +23,14 @@ test('resultado sem candidata explica preservação e não usa travessão', () =
   expect(mensagemReserva('contexto_alterado')).toContain('outra aba')
   expect(mensagemReserva('indisponivel')).not.toContain('—')
 })
+
+test('a reserva transporta a lista e recusa lista malformada', () => {
+  const grupo = '00000000-0000-4000-8000-000000000701'
+  expect(lerEntradaReserva(dados({ acao:'puxar', grupo }))).toMatchObject({ ok:true, filtros:{ grupo } })
+  expect(lerEntradaReserva(dados({ acao:'puxar', grupo:'invalido' })).ok).toBe(false)
+})
+
+test('lista indisponível explica preservação da reserva e das notas',()=>{
+  expect(mensagemReserva('grupo_indisponivel')).toContain('preservadas')
+  expect(mensagemReserva('grupo_indisponivel')).toContain('lista ativa')
+})

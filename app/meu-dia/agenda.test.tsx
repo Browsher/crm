@@ -105,3 +105,13 @@ test('nenhuma tentativa de destino arbitrário na query vira o caminho de volta'
   // o destino de jeito nenhum.
   expect(voltarDoMeuDia({ de: 'meu-dia', href: 'https://exemplo.invalido/roubado' })).toBe('/meu-dia')
 })
+
+
+test('cadastro parcial usa fantasia na busca e no desempate sem mudar precedência de data', () => {
+  const parcial = linha({ id: 'parcial', cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Aurora', situacaoRetorno: 'hoje', proximoPassoData: '2026-09-11' })
+  expect(filtrarAgenda([parcial], { nome: 'null', retorno: '' })).toEqual([])
+  const anterior = linha({ id: 'anterior', razaoSocial: 'Zeta', situacaoRetorno: 'atrasado', proximoPassoData: '2026-09-10' })
+  const depois = linha({ id: 'depois', razaoSocial: 'Zeta', situacaoRetorno: 'hoje', proximoPassoData: '2026-09-11' })
+  expect(agendaDoDia([depois, parcial, anterior]).map(e => e.id)).toEqual(['anterior', 'parcial', 'depois'])
+  expect(filtrarAgenda([parcial], { nome: 'cameras', retorno: '' })).toEqual([parcial])
+})

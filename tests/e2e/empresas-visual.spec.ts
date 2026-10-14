@@ -135,6 +135,9 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   await page.getByRole('link', { name: 'Importar empresas', exact: true }).click()
   await expect(page).toHaveURL('/empresas/importar')
   await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação visual E2E')
+  await page.getByLabel('Resumo da lista', { exact: true }).fill('Lista visual com contato disponível')
+  await page.getByLabel('Origem dos dados', { exact: true }).fill('Coleta fictícia E2E')
+  await page.getByLabel('Critérios usados', { exact: true }).fill('Telefone informado')
   const arquivo = page.getByLabel('Arquivo Excel ou CSV')
   await arquivo.setInputFiles({
     name: 'empresas-mistas-e2e.csv',
@@ -189,6 +192,9 @@ test('troca de arquivo invalida relatório, somente existentes permite grupo e C
   await entrar(page, 'gestore2e')
   await page.goto('/empresas/importar')
   await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação de regressão E2E')
+  await page.getByLabel('Resumo da lista', { exact: true }).fill('Lista de regressão com contato disponível')
+  await page.getByLabel('Origem dos dados', { exact: true }).fill('Coleta fictícia E2E')
+  await page.getByLabel('Critérios usados', { exact: true }).fill('Telefone informado')
   const arquivo = page.getByLabel('Arquivo Excel ou CSV')
   await arquivo.setInputFiles({ name: 'arquivo-inicial.csv', mimeType: 'text/csv', buffer: Buffer.from(CSV_TROCA, 'utf8') })
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()

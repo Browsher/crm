@@ -1,5 +1,7 @@
 'use client'
 
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
+
 import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Contato } from '@/src/features/contato/historico'
@@ -19,10 +21,10 @@ import { Button } from '@/src/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
 
 const INICIAL: EstadoFila = { erro: null, filaVazia: false }
-const SEM_FILTROS: Filtros = { nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1 }
+const SEM_FILTROS: Filtros = { nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1,grupo:null }
 
-export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_FILTROS }: {
-  reserva: EmpresaComigo | null; contatos: Contato[]; contexto?: string | null; filtros?: Filtros
+export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_FILTROS, buscaBloqueada = false }: {
+  reserva: EmpresaComigo | null; contatos: Contato[]; contexto?: string | null; filtros?: Filtros; buscaBloqueada?: boolean
 }) {
   const rascunhos = useRascunhos()
   const tema = useTemaFila()
@@ -41,7 +43,7 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
   useEffect(() => {
     if (expirada && reserva && atualizado.current !== `${reserva.id}:${prazo}`) {
       atualizado.current = `${reserva.id}:${prazo}`
-      rascunhos.marcarExpirada(reserva.id, reserva.razaoSocial)
+      rascunhos.marcarExpirada(reserva.id, nomeEmpresa(reserva))
       router.refresh()
     }
   }, [expirada, reserva, prazo, router, rascunhos])
@@ -81,7 +83,7 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
     <p className="text-sm">A próxima empresa respeita os filtros da busca atual.</p>
     <form action={agir} onSubmit={conferirTroca} className="flex flex-wrap gap-3">
       <CamposReserva filtros={filtros} contexto={contexto} />
-      <Button type="submit" name="acao" value="puxar" variant="outline" disabled={pendente || rascunhos.gravando}>
+      <Button type="submit" name="acao" value="puxar" variant="outline" disabled={pendente || rascunhos.gravando || buscaBloqueada}>
         {pendente ? 'Buscando…' : reserva ? 'Próxima' : 'Puxar próxima'}
       </Button>
     </form>
@@ -91,7 +93,7 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
       <RegistrarVisita empresaId={reserva.id} />
       <Atendimento key={reserva.id} empresa={reserva} agora={agora} contatos={contatos} filtros={filtros}
         rascunho={rascunhos.entradas[reserva.id]?.valor}
-        onDraftChange={valor => rascunhos.atualizar(reserva.id, reserva.razaoSocial, valor)}
+        onDraftChange={valor => rascunhos.atualizar(reserva.id, nomeEmpresa(reserva), valor)}
         onSaved={rascunhos.limpar} bloqueado={pendente || expirada}
         bloqueioNavegacao={pendente || expirada || rascunhos.gravando} somenteLeitura={pendente}
         onPendingChange={rascunhos.setGravando} />

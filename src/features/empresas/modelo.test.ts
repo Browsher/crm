@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { montarModelo } from './modelo'
-import { CABECALHO } from './planilha'
+import { CABECALHO_GOOGLE } from './planilha'
 
 describe('modelo de importação', () => {
   const versionado = readFileSync('public/modelo-empresas.xlsx')
@@ -13,14 +13,14 @@ describe('modelo de importação', () => {
   // A catraca de verdade. O gerador é determinístico (sem compressão, data
   // fixa), então o binário versionado tem que ser byte a byte o que este código
   // produz. Isso pega as duas formas de o modelo apodrecer: alguém muda o
-  // CABECALHO e esquece de regerar, ou alguém edita o .xlsx à mão.
+  // CABECALHO_GOOGLE e esquece de regerar, ou alguém edita o .xlsx à mão.
   test('o arquivo versionado é o que o gerador produz hoje', () => {
     expect(montarModelo().equals(versionado)).toBe(true)
   })
 
-  test('o cabeçalho do modelo é o CABECALHO da fase 1', () => {
+  test('o cabeçalho do modelo é o CABECALHO_GOOGLE da fase 1', () => {
     const sheet = montarModelo().toString('latin1')
-    for (const coluna of CABECALHO.split(',')) {
+    for (const coluna of CABECALHO_GOOGLE.split(',')) {
       expect(sheet).toContain(`<t>${coluna}</t>`)
     }
   })
@@ -36,12 +36,12 @@ describe('modelo de importação', () => {
     const sheet = montarModelo().toString('latin1')
     expect(sheet).toContain('<c r="H1" s="2" t="inlineStr"><is><t>cnae_principal</t>')
     expect(sheet).toContain('<c r="H2" s="1" t="inlineStr"><is><t>4742300</t>')
-    expect(sheet).toContain('<dimension ref="A1:H2"/>')
+    expect(sheet).toContain('<dimension ref="A1:I2"/>')
   })
 
-  test('todas as oito colunas são Texto, inclusive nas linhas ainda vazias', () => {
+  test('todas as nove colunas são Texto, inclusive nas linhas ainda vazias', () => {
     const sheet = montarModelo().toString('latin1')
-    expect(sheet).toContain('<col min="1" max="8" width="22" style="1" customWidth="1"/>')
+    expect(sheet).toContain('<col min="1" max="9" width="22" style="1" customWidth="1"/>')
     expect(sheet).toContain('<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>')
   })
 })
@@ -50,3 +50,10 @@ describe('modelo de importação', () => {
 // Texto. Os testes provam que o XML pede isso; que o Excel obedece é
 // verificação manual, registrada em docs/db/divida-tecnica.md. É a mesma classe
 // de limite honesto da lista POLITICAS_DE_LEITURA_IRRESTRITA e do leitor de CSV.
+
+
+test('nona coluna apresenta origem fictícia como texto', () => {
+  const sheet = montarModelo().toString('utf8')
+  expect(sheet).toContain('<c r="I1" s="2" t="inlineStr"><is><t>google_place_id</t>')
+  expect(sheet).toContain('<c r="I2" s="1" t="inlineStr"><is><t>ChIJ-ficticio-aurora</t>')
+})

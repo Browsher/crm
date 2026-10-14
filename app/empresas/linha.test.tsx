@@ -73,3 +73,10 @@ describe('Linha: os três estados do endereço', () => {
     expect(saida).not.toContain('não encontrado na base')
   })
 })
+
+
+test('nome comercial ocupa o título e explicita CNPJ desconhecido', () => {
+  const saida = html({ cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Aurora' })
+  expect(saida).toMatch(/<strong><a[^>]*>Câmeras Aurora<\/a><\/strong>/)
+  expect(saida).toContain('Não informado')
+})

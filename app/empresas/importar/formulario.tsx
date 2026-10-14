@@ -8,19 +8,22 @@ import { EtapasImportacao, type EtapaImportacao } from './etapas-importacao'
 import { RelatorioImportacao } from './relatorio'
 import styles from './importar.module.css'
 
-const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null }
+const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null }
 
 export function FormularioImportar() {
   const [etapa, setEtapa] = useState<EtapaImportacao>('enviar')
   const [limpo, setLimpo] = useState(true)
   const [nome, setNome] = useState('')
+  const [metadados, setMetadados] = useState({ descricao: '', origem: '', criterios: '' })
   const [chave, setChave] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const tituloRef = useRef<HTMLHeadingElement>(null)
   const erroRef = useRef<HTMLParagraphElement>(null)
   const focarAoVoltarRef = useRef(false)
-  const [estado, acao, pendente] = useActionState(async (anterior: EstadoImportar, form: FormData) => {
-    const resultado = await importarAcao(anterior, form)
+  const [estado, acao, pendente] = useActionState(async (_anterior: EstadoImportar, form: FormData) => {
+    // A Action ignora o estado anterior: relatório e comprovante continuam na
+    // tela, mas o HTTP envia apenas estado compacto e o token no FormData.
+    const resultado = await importarAcao(inicial, form)
     setLimpo(false)
     setEtapa(resultado.inseridas !== null ? 'concluir' : resultado.relatorio ? 'conferir' : 'enviar')
     return resultado
@@ -49,6 +52,7 @@ export function FormularioImportar() {
   function reiniciar() {
     if (inputRef.current) inputRef.current.value = ''
     setNome('')
+    setMetadados({ descricao: '', origem: '', criterios: '' })
     setChave(globalThis.crypto.randomUUID())
     voltar(true)
   }
@@ -67,6 +71,7 @@ export function FormularioImportar() {
       {erro && <p ref={erroRef} tabIndex={-1} role="alert" className={styles.erro}>{erro}</p>}
       <fieldset disabled={pendente}>
         <input type="hidden" name="chave" value={chave} />
+        <input type="hidden" name="conferencia" value={limpo ? '' : estado.conferencia ?? ''} />
         <div hidden={etapa !== 'enviar'}>
           <p>Preencha o modelo Excel e envie o arquivo diretamente. Se preferir, o CSV UTF-8 continua aceito.</p>
           <label className={styles.campo}>
@@ -82,6 +87,17 @@ export function FormularioImportar() {
               }}
             />
           </label>
+          {([
+            ['descricao', 'Resumo da lista', 500], ['origem', 'Origem dos dados', 500], ['criterios', 'Critérios usados', 2000],
+          ] as const).map(([campo, rotulo, limite]) => <label key={campo} className={styles.campo}>
+            {rotulo}
+            <textarea name={campo} aria-label={rotulo} value={metadados[campo]} required={campo !== 'criterios'} rows={campo === 'criterios' ? 3 : 2}
+              aria-describedby={`limite-${campo}`} onChange={evento => {
+                setMetadados(anterior => ({ ...anterior, [campo]: evento.target.value }))
+                iniciarOperacao()
+              }} />
+            <span id={`limite-${campo}`}>Até {limite} caracteres. {campo === 'criterios' ? 'Opcional.' : 'Obrigatório.'}</span>
+          </label>)}
           <label className={styles.arquivo}>
             Arquivo Excel ou CSV
             <input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={iniciarOperacao} />
@@ -99,6 +115,11 @@ export function FormularioImportar() {
         </div>
         {etapa === 'conferir' && estado.relatorio && <>
           <p className={styles.grupo}>Grupo <strong>{nome}</strong></p>
+          <dl>
+            <dt>Resumo da lista</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{metadados.descricao}</dd>
+            <dt>Origem dos dados</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{metadados.origem}</dd>
+            <dt>Critérios usados</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{metadados.criterios || 'Não informados'}</dd>
+          </dl>
           <RelatorioImportacao relatorio={estado.relatorio} />
           <div className={styles.acoes}>
             {totalAceitas > 0 && <Button type="submit" name="confirmar" value="1">{pendente ? 'Importando…' : 'Confirmar importação'}</Button>}

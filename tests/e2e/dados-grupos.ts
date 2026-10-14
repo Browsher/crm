@@ -66,3 +66,20 @@ export function bancoGruposDoHarness(): BancoDeTeste {
     derrubar: () => { throw new Error('Limpeza pertence ao harness') },
   }
 }
+
+export const LISTA_CATALOGO_ALTERNATIVA = '00000000-0000-4000-8000-000000000921'
+export const NOME_CATALOGO_ALTERNATIVA = 'Receita Federal fictícia | Comércio e serviços, lista longa para conferir leitura em telas pequenas'
+export async function prepararCatalogoComercial() {
+  return comBancoGrupos(async c => {
+    for(let i=0;i<22;i++) {
+      const id=`00000000-0000-4000-8000-${String(900+i).padStart(12,'0')}`
+      await c.query(`INSERT INTO grupo_importacao(id,nome,descricao,origem,criterios)
+        VALUES ($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING`,[
+        id,i===21?NOME_CATALOGO_ALTERNATIVA:`Lista vazia fictícia ${i}`,
+        'Lista de empresas de comércio e serviços com dados sintéticos para conferir os critérios e a navegação.',
+        'Exportação fictícia da Receita Federal filtrada por CNAE. Fonte documental distinta da coleta no Google Maps.',
+        'CNAEs de comércio; região de São Paulo.\n'+ 'Critério extenso documentado, sem inferir qualificação comercial. '.repeat(20).trim(),
+      ])
+    }
+  })
+}

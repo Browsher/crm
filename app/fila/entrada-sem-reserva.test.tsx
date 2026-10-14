@@ -7,7 +7,7 @@ const estado = vi.hoisted(() => ({ entradas: {} as Record<string, unknown> }))
 vi.mock('./rascunhos', () => ({ useRascunhos: () => estado }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
 vi.mock('./formulario', () => ({ Formulario: () => <div>Recuperar anotações</div> }))
-const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1 }
+const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
 
 test('mantém editor quando a reserva expirou mesmo com nota vazia', () => {
   estado.entradas = { a: { nome: 'Empresa', valor: rascunhoInicial(false), expirada: true } }
@@ -20,4 +20,11 @@ test('mantém anotações sem reserva atual', () => {
 test('entrada vazia oferece localizar empresa', () => {
   estado.entradas = {}
   expect(renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)).toContain('Localizar empresa')
+})
+
+test('entrada vazia deixa escolher uma lista sem redirecionamento automático', () => {
+  estado.entradas = {}
+  const html = renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)
+  expect(html).toContain('Todas as listas ativas')
+  expect(html).not.toContain('Abrindo a busca')
 })

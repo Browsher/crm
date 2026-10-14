@@ -7,7 +7,7 @@ const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
   sem_permissao: 'Você não tem permissão para importar empresas.',
   texto_invalido: 'O arquivo tem um caractere que o banco não aceita. Reescreva as células com acento ou símbolo estranho.',
   sem_linhas_aceitas: 'O arquivo não tem nenhuma linha aceita para vincular ao grupo. Corrija as linhas recusadas e confira novamente.',
-  confirmacao_invalida: 'A confirmação não corresponde mais ao arquivo conferido. Confira novamente antes de importar.',
+  confirmacao_invalida: 'A confirmação mudou. Confira o arquivo novamente.',
 }
 
 export function textoDoMotivo(m: Motivo): string {
@@ -17,7 +17,10 @@ export function textoDoMotivo(m: Motivo): string {
 // As mensagens de estrago do Excel explicam a CAUSA. Sem isso o gestor lê
 // "CNPJ inválido" e não descobre que a culpa é da formatação da coluna — e o
 // conserto de trinta segundos vira uma tarde.
-const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8) => string> = {
+const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8 | 9) => string> = {
+  nome_ausente: () => 'Informe razão social ou nome fantasia/comercial.',
+  identidade_ausente: () => 'Informe CNPJ ou Google Place ID para identificar a empresa.',
+  google_place_id_invalido: () => 'Google Place ID inválido. Use até 255 caracteres, sem controles.',
   cnpj_vazio: () => 'CNPJ em branco.',
   cnpj_notacao_cientifica: (v) =>
     `CNPJ em notação científica (${v}). Os dígitos se perderam. Formate a coluna como Texto na planilha e preencha de novo.`,
@@ -37,11 +40,20 @@ const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8) =>
 
 export function textoDaRecusa(r: Recusa): string {
   if (r.tipo === 'campo') return `Linha ${r.linha}: ${TEXTO_DO_CAMPO[r.motivo](r.valor, r.esperado)}`
+  if (r.tipo === 'identidade') {
+    if (r.motivo === 'empresa_repetida') return `Linha ${r.linha}: Os identificadores desta linha reconhecem a mesma empresa de outras linhas recusadas. Remova as repetições e confira novamente.`
+    const motivos = {
+      identificadores_divergentes: 'CNPJ e Google Place ID apontam para empresas diferentes.',
+      cnpj_divergente: 'O CNPJ diverge do cadastro reconhecido pelo Google Place ID.',
+      razao_social_divergente: 'A razão social diverge do cadastro existente.',
+    }
+    return `Linha ${r.linha}: ${motivos[r.motivo]} Revise os identificadores e os dados na origem.`
+  }
   const fim =
     r.divergencia === null
       ? 'as duas linhas são iguais, então apague uma.'
       : `as duas divergem na coluna ${r.divergencia}, então alguém precisa decidir qual está certa.`
-  return `Linha ${r.linha}: CNPJ ${r.cnpj} repetido na linha ${r.par}. ${fim}`
+  return `Linha ${r.linha}: ${r.identificador === 'cnpj' ? 'CNPJ' : 'Google Place ID'} ${r.valor} repetido na linha ${r.par}. ${fim}`
 }
 
 export function textoDaFalhaDeArquivo(f: FalhaDeArquivo): string {

@@ -5,7 +5,7 @@ export const EMPRESAS_POR_PAGINA = 50
 export type EmpresaDoVendedor = {
   id: string
   nome: string
-  cnpj: string
+  cnpj: string | null
   proximoPasso: string | null
   retorno: string | null
 }
@@ -42,7 +42,7 @@ export async function lerPerfilVendedor(gestorId: string, vendedorId: string, pa
       ), dia AS (
         SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS hoje
       ), carteira AS MATERIALIZED (
-        SELECT e.id,e.razao_social AS nome,e.cnpj,ultimo.proximo_passo AS "proximoPasso",
+        SELECT e.id,coalesce(e.razao_social,e.nome_fantasia) AS nome,e.cnpj,ultimo.proximo_passo AS "proximoPasso",
           ultimo.proximo_passo_data AS retorno
         FROM empresa_fila f JOIN alvo a ON a.id=f.vendedor_id JOIN empresa e ON e.id=f.empresa_id
         LEFT JOIN LATERAL (
@@ -53,7 +53,7 @@ export async function lerPerfilVendedor(gestorId: string, vendedorId: string, pa
         SELECT id,nome,cnpj,"proximoPasso",to_char(retorno,'YYYY-MM-DD') AS retorno
         FROM carteira ORDER BY nome,id LIMIT 50 OFFSET $2
       ), recentes AS (
-        SELECT c.id,c.empresa_id AS "empresaId",e.razao_social AS empresa,c.tipo,c.nota,
+        SELECT c.id,c.empresa_id AS "empresaId",coalesce(e.razao_social,e.nome_fantasia) AS empresa,c.tipo,c.nota,
           c.proximo_passo AS "proximoPasso",to_char(c.proximo_passo_data,'YYYY-MM-DD') AS retorno,c.criado_em AS em
         FROM contato c JOIN alvo a ON a.id=c.criado_por JOIN empresa e ON e.id=c.empresa_id
         ORDER BY c.criado_em DESC,c.id DESC LIMIT 20

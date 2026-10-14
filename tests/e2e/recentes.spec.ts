@@ -42,6 +42,8 @@ test('perfil não reserva, recentes persistem e pertencem somente ao usuário', 
   await page.getByRole('link', { name: 'Voltar para localizar', exact: true }).click()
   await expect(page.getByRole('list', { name: 'Empresas encontradas', exact: true }).getByRole('listitem')).toHaveCount(1)
   await page.goto('/fila')
+  await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
+  await page.getByRole('link',{name:'Todas as listas ativas',exact:true}).click()
   await expect(page).toHaveURL(/\/fila\/localizar/)
   await expect(page.getByRole('button', { name: 'Buscar cliente', exact: true })).toBeVisible()
 

@@ -5,7 +5,7 @@ import { PainelWhatsApp } from './painel'
 import styles from './whatsapp.module.css'
 import { VisaoGeralWhatsApp } from './visao-geral'
 
-export default async function PaginaWhatsApp({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
+export default async function PaginaWhatsApp({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const eu = await exigir('gestor')
   const parametros = await searchParams
   const filtro = typeof parametros?.vendedor === 'string' ? parametros.vendedor : 'todos'

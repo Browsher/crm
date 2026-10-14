@@ -10,7 +10,7 @@ let vendedor: string
 
 async function reservarProxima(usuarioId: string) {
   const contexto = await banco.sql<{ versao: string }>('SELECT versao FROM fila_contexto WHERE usuario_id=$1', [usuarioId])
-  return reservarEmpresa(usuarioId, null, { nome: '', cnae: null, uf: null, cidade: null, bairro: null }, contexto[0]?.versao ?? null)
+  return reservarEmpresa(usuarioId, null, { nome: '', cnae: null, uf: null, cidade: null, bairro: null, grupo: null }, contexto[0]?.versao ?? null)
 }
 
 beforeAll(async () => {

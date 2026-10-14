@@ -1,3 +1,4 @@
+import { resolverIdentidade } from './identidade'
 import { analisarArquivo, type FonteEmpresas } from './arquivo'
 import type { FalhaDeArquivo, LinhaAceita, Recusa } from './planilha'
 import type { Falha, OperacaoGrupo, RepositorioEmpresas } from './repositorio'
@@ -15,8 +16,13 @@ export type Relatorio = {
   basePublicadaEm: string | null
 }
 
+export type Conferencia = {
+  linhasAceitas: number[]
+  recusadasIdentidade: Extract<Recusa, { tipo: 'identidade' }>[]
+}
+
 export type ResultadoAnalise =
-  | { ok: true; relatorio: Relatorio }
+  | { ok: true; relatorio: Relatorio; conferencia: Conferencia }
   | { ok: false; motivo: 'arquivo_invalido'; falha: FalhaDeArquivo }
   | Falha
 
@@ -25,11 +31,11 @@ export type ResultadoImportar =
   | { ok: false; motivo: 'arquivo_invalido'; falha: FalhaDeArquivo }
   | Falha
 
-type Preparado = { relatorio: Relatorio; aceitas: LinhaAceita[] }
+type Preparado = { relatorio: Relatorio; aceitas: LinhaAceita[]; linhasDoArquivo: LinhaAceita[]; novasPorLinha: Set<number> }
 
 // As fases 0, 1 e 2, sem escrever nada. A conferência chama isto; a gravação
-// chama de novo com o mesmo arquivo. É determinístico, então não há estado
-// guardado no servidor entre uma coisa e outra.
+// chama de novo com o mesmo arquivo. O comprovante autenticado conserva a
+// seleção aprovada; a classificação cadastral pode mudar entre requisições.
 async function preparar(
   repo: RepositorioEmpresas,
   fonte: FonteEmpresas,
@@ -37,23 +43,48 @@ async function preparar(
   const analise = await analisarArquivo(fonte)
   if (!analise.ok) return { ok: false, motivo: 'arquivo_invalido', falha: analise.falha }
 
-  const cnpjs = analise.aceitas.map((l) => l.cnpj)
   const ceps = [...new Set(analise.aceitas.map((l) => l.cep).filter((c): c is string => c !== null))]
-  const p = await repo.preparar(cnpjs, ceps)
+  const p = await repo.preparar(analise.aceitas, ceps)
   if ('motivo' in p) return p
 
-  const novas = analise.aceitas.filter((l) => !p.jaCadastrados.has(l.cnpj))
+  const aceitas: LinhaAceita[] = []
+  const recusadas = [...analise.recusadas]
+  const novasPorLinha = new Set<number>()
+  const resolvidas = analise.aceitas.map(linha => ({ linha, identidade: resolverIdentidade(linha, p) }))
+  const ocorrencias = new Map<string, number>()
+  for (const { identidade } of resolvidas) {
+    if (identidade.ok && identidade.empresaId !== null) {
+      ocorrencias.set(identidade.empresaId, (ocorrencias.get(identidade.empresaId) ?? 0) + 1)
+    }
+  }
+  // Identificadores textuais diferentes podem resolver para o mesmo UUID.
+  // Recusar todas as posições evita escolher uma origem arbitrariamente.
+  for (const { linha, identidade } of resolvidas) {
+    if (!identidade.ok) {
+      recusadas.push({ tipo: 'identidade', linha: linha.linha, motivo: identidade.motivo })
+      continue
+    }
+    if (identidade.empresaId !== null && (ocorrencias.get(identidade.empresaId) ?? 0) > 1) {
+      recusadas.push({ tipo: 'identidade', linha: linha.linha, motivo: 'empresa_repetida' })
+      continue
+    }
+    aceitas.push(linha)
+    if (identidade.empresaId === null) novasPorLinha.add(linha.linha)
+  }
+  recusadas.sort((a, b) => a.linha - b.linha)
   // CEP não encontrado NÃO recusa a empresa: ela entra sem endereço resolvido,
   // porque prospecção começa por telefone. O relatório só conta, e cita a data
   // da base para "não encontrado" não parecer defeito.
   const cepsNaoEncontrados = ceps.filter((c) => !p.enderecos.has(c)).length
 
   return {
-    aceitas: analise.aceitas,
+    aceitas,
+    linhasDoArquivo: analise.aceitas,
+    novasPorLinha,
     relatorio: {
-      novas: novas.length,
-      jaCadastradas: analise.aceitas.length - novas.length,
-      recusadas: analise.recusadas,
+      novas: novasPorLinha.size,
+      jaCadastradas: aceitas.length - novasPorLinha.size,
+      recusadas,
       cepsPedidos: ceps.length,
       cepsNaoEncontrados,
       basePublicadaEm: p.basePublicadaEm,
@@ -64,16 +95,31 @@ async function preparar(
 export async function analisar(repo: RepositorioEmpresas, fonte: FonteEmpresas): Promise<ResultadoAnalise> {
   const p = await preparar(repo, fonte)
   if ('ok' in p) return p
-  return { ok: true, relatorio: p.relatorio }
+  return { ok: true, relatorio: p.relatorio, conferencia: {
+    linhasAceitas: p.aceitas.map(l => l.linha),
+    recusadasIdentidade: p.relatorio.recusadas.filter((r): r is Extract<Recusa, { tipo: 'identidade' }> => r.tipo === 'identidade'),
+  } }
 }
 
 export async function importar(
   repo: RepositorioEmpresas,
   fonte: FonteEmpresas,
   operacao: OperacaoGrupo,
+  conferencia: Conferencia,
 ): Promise<ResultadoImportar> {
   const p = await preparar(repo, fonte)
   if ('ok' in p) return p
-  if (p.aceitas.length === 0) return { ok: false, motivo: 'sem_linhas_aceitas' }
-  return repo.gravar(operacao, p.aceitas, p.relatorio)
+  // A seleção foi autenticada pela Action. Reparsear conserva exatamente essas
+  // linhas, mesmo se uma identidade mudou: SQL revalida tudo ou devolve o replay
+  // persistido antes de resolver cadastros. Filtrar pela classificação atual
+  // apagaria conflitos novos e impediria retries legítimos após o primeiro commit.
+  const numeros = new Set(conferencia.linhasAceitas)
+  const selecionadas = p.linhasDoArquivo.filter(l => numeros.has(l.linha))
+  if (numeros.size !== conferencia.linhasAceitas.length || selecionadas.length !== numeros.size) return { ok: false, motivo: 'confirmacao_invalida' }
+  if (selecionadas.length === 0) return { ok: false, motivo: 'sem_linhas_aceitas' }
+  const novas = selecionadas.filter(l => p.novasPorLinha.has(l.linha)).length
+  const relatorio = { ...p.relatorio, novas, jaCadastradas: selecionadas.length - novas,
+    recusadas: [...p.relatorio.recusadas.filter(r => r.tipo !== 'identidade'), ...conferencia.recusadasIdentidade].sort((a, b) => a.linha - b.linha),
+  }
+  return repo.gravar(operacao, selecionadas, relatorio)
 }

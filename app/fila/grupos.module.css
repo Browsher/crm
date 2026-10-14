@@ -1,0 +1,18 @@
+.catalogo, .listas { display: grid; gap: 16px; min-width: 0; }
+.cabecalho { display: grid; gap: 8px; justify-items: start; }
+.cabecalho h2 { margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; }
+.cabecalho p, .ajuda { margin: 0; color: var(--ui-muted-foreground); }
+.cartao { display: grid; gap: 12px; padding: 20px; background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 8px; min-width: 0; overflow-wrap: anywhere; }
+.cartao h3 { margin: 0 0 4px; font-size: 18px; line-height: 26px; font-weight: 600; }
+.cartao h4 { margin: 0; font-size: 14px; line-height: 21px; font-weight: 600; }
+.texto { margin: 0; white-space: pre-wrap; max-width: 75ch; overflow-wrap: anywhere; }
+.dados { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 0; }
+.dados dt { color: var(--ui-muted-foreground); }
+.dados dd { margin: 0; font-weight: 600; }
+.criterios summary { cursor: pointer; font-weight: 500; width: fit-content; }
+.criterios p { margin-top: 8px; }
+.acao { justify-self: start; white-space: normal; }
+.paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.paginacao a { text-decoration: underline; text-underline-offset: 3px; }
+.catalogo a:focus-visible, .criterios summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 3px; border-radius: 3px; }
+@media (max-width: 640px) { .cartao { padding: 16px; } .acao { justify-self: stretch; } }

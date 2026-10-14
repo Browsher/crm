@@ -8,6 +8,8 @@ for (const papel of ['vendedore2e']) {
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
     await expect(page).toHaveURL('/meu-dia')
     await page.goto('/fila')
+    await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
+    await page.getByRole('link',{name:'Todas as listas ativas',exact:true}).click()
     await expect(page).toHaveURL(/\/fila\/localizar/)
     await expect(page.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()
     await expect(page.getByLabel('Cidade', { exact: true })).toBeDisabled()

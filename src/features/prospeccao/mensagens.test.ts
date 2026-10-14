@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mensagemDisponibilidade } from './mensagens'
+import { mensagemConsulta, mensagemDisponibilidade } from './mensagens'
 import type { Disponibilidade } from './tipos'
 
 describe('mensagemDisponibilidade', () => {
@@ -14,4 +14,9 @@ describe('mensagemDisponibilidade', () => {
     expect(mensagem).toEqual({ titulo, detalhe })
     expect(`${mensagem.titulo} ${mensagem.detalhe ?? ''}`).not.toMatch(/[—–]/)
   })
+})
+
+it('consulta explica lista indisponível como estado recuperável',()=>{
+  expect(mensagemConsulta('grupo_indisponivel')).toContain('Escolha outra lista ativa')
+  expect(mensagemConsulta('sem_permissao')).toContain('permissão')
 })

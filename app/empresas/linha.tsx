@@ -1,3 +1,4 @@
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import { formatarCnpj, formatarTelefone } from '@/src/features/empresas/formato'
 import type { EmpresaNaLista } from '@/src/features/empresas/listagem'
 import styles from './empresas.module.css'
@@ -7,8 +8,8 @@ export function Linha({ empresa, consulta }: { empresa: EmpresaNaLista; consulta
   const href = `/empresas/${empresa.id}${query ? `?${query}` : ''}`
   return <tr>
     <td>
-      <strong><Link href={href} className="underline underline-offset-4">{empresa.razaoSocial}</Link></strong>
-      {empresa.nomeFantasia && <span className={styles.secundario}>{empresa.nomeFantasia}</span>}
+      <strong><Link href={href} className="underline underline-offset-4">{nomeEmpresa(empresa)}</Link></strong>
+      {empresa.razaoSocial && empresa.nomeFantasia && <span className={styles.secundario}>{empresa.nomeFantasia}</span>}
       <span className={styles.documento}>{formatarCnpj(empresa.cnpj)}</span>
     </td>
     <td>{empresa.localidade ? <span>{empresa.localidade}/{empresa.uf}</span> : empresa.cep ? <>

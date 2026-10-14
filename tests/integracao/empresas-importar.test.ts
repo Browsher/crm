@@ -12,6 +12,7 @@ let vendedor: string
 
 const linha = (n: number, cnpj: string, extra: Partial<LinhaAceita> = {}): LinhaAceita => ({
   linha: n,
+  googlePlaceId: null,
   cnpj,
   razaoSocial: 'Aurora Comercio LTDA',
   nomeFantasia: null,
@@ -35,6 +36,7 @@ const relatorio = (novas: number, jaCadastradas = 0): Relatorio => ({
 const operacao = (nome = 'Mooca', chave = randomUUID()): OperacaoGrupo => ({
   chave,
   nome,
+  metadados: { descricao: 'Lista de regressão', origem: 'Fixture de integração', criterios: null },
   arquivoNome: `${nome.toLocaleLowerCase('pt-BR')}.csv`,
   assinatura: 'a'.repeat(64),
 })
@@ -63,9 +65,9 @@ describe('preparar', () => {
       `INSERT INTO empresa (cnpj, razao_social, telefone)
        VALUES ('11222333000181', 'Aurora Comercio LTDA', '11987654321')`,
     )
-    const p = await repo.preparar(['11222333000181', '11444777000161'], ['01310100', '00000000'])
+    const p = await repo.preparar([linha(2, '11222333000181'), linha(3, '11444777000161')], ['01310100', '00000000'])
     if ('motivo' in p) throw new Error(p.motivo)
-    expect([...p.jaCadastrados]).toEqual(['11222333000181'])
+    expect([...p.porCnpj.keys()]).toEqual(['11222333000181'])
     expect(p.enderecos.get('01310100')?.localidade).toBe('São Paulo')
     expect(p.enderecos.has('00000000')).toBe(false)
     expect(p.basePublicadaEm).toBe('2024-07-08')
@@ -74,14 +76,14 @@ describe('preparar', () => {
   test('listas vazias nao vao ao banco atoa e nao quebram', async () => {
     const p = await repositorioPostgres(gestor).preparar([], [])
     if ('motivo' in p) throw new Error(p.motivo)
-    expect(p.jaCadastrados.size).toBe(0)
+    expect(p.porCnpj.size).toBe(0)
     expect(p.enderecos.size).toBe(0)
   })
 
   test('vendedor nao ve empresa nem a data da base', async () => {
-    const p = await repositorioPostgres(vendedor).preparar(['11222333000181'], [])
+    const p = await repositorioPostgres(vendedor).preparar([linha(2, '11222333000181')], [])
     if ('motivo' in p) throw new Error(p.motivo)
-    expect(p.jaCadastrados.size).toBe(0)
+    expect(p.porCnpj.size).toBe(0)
     expect(p.basePublicadaEm).toBe(null)
   })
 })
@@ -90,20 +92,20 @@ describe('gravar', () => {
   test('confirma grupo, insere em lote e registra o gestor', async () => {
     const r = await repositorioPostgres(gestor).gravar(operacao(), [
       linha(2, '11444777000161', { cep: '01310100' }),
-      linha(3, '11555777000160', { nomeFantasia: 'Bela Luz', email: 'oi@bela.com.br' }),
+      linha(3, '11555777000139', { nomeFantasia: 'Bela Luz', email: 'oi@bela.com.br' }),
     ], relatorio(2))
     expect(r).toMatchObject({ ok: true, inseridas: 2, vinculadas: 2, relatorio: relatorio(2) })
     const linhas = await banco.sql<{ cnpj: string; criado_por: string; cep: string | null }>(
-      "SELECT cnpj, criado_por, cep FROM empresa WHERE cnpj IN ('11444777000161', '11555777000160') ORDER BY cnpj",
+      "SELECT cnpj, criado_por, cep FROM empresa WHERE cnpj IN ('11444777000161', '11555777000139') ORDER BY cnpj",
     )
     expect(linhas).toEqual([
       { cnpj: '11444777000161', criado_por: gestor, cep: '01310100' },
-      { cnpj: '11555777000160', criado_por: gestor, cep: null },
+      { cnpj: '11555777000139', criado_por: gestor, cep: null },
     ])
   })
 
   test('vendedor recebe sem_permissao, nao excecao', async () => {
-    const r = await repositorioPostgres(vendedor).gravar(operacao(), [linha(2, '11666777000169')], relatorio(1))
+    const r = await repositorioPostgres(vendedor).gravar(operacao(), [linha(2, '11666777000106')], relatorio(1))
     expect(r).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 
@@ -119,16 +121,20 @@ describe('gravar', () => {
     expect(depois[0].n).toBe(antes[0].n)
   })
 
-  test('CNPJ existente e novo entram juntos no grupo sem sobrescrever o existente', async () => {
+  test('CNPJ existente com razão social divergente exige revisão e desfaz o lote', async () => {
     const repo = repositorioPostgres(gestor)
     const existente = linha(2, '11666777000106', { razaoSocial: 'Original LTDA' })
     expect(await repo.gravar(operacao('Primeiro'), [existente], relatorio(1))).toMatchObject({ ok: true, inseridas: 1 })
+    const gruposAntes = await banco.sql('SELECT * FROM grupo_importacao ORDER BY id')
+    const empresasAntes = await banco.sql('SELECT * FROM empresa ORDER BY id')
     const r = await repo.gravar(
       operacao('Segundo'),
       [linha(2, '11666777000106', { razaoSocial: 'Tentativa de troca LTDA' }), linha(3, '11888777000150')],
       relatorio(1, 1),
     )
-    expect(r).toMatchObject({ ok: true, inseridas: 1, vinculadas: 2 })
+    expect(r).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
+    expect(await banco.sql('SELECT * FROM empresa ORDER BY id')).toEqual(empresasAntes)
+    expect(await banco.sql('SELECT * FROM grupo_importacao ORDER BY id')).toEqual(gruposAntes)
     expect(await banco.sql<{ razao_social: string }>(
       "SELECT razao_social FROM empresa WHERE cnpj = '11666777000106'",
     )).toEqual([{ razao_social: 'Original LTDA' }])
@@ -145,8 +151,8 @@ describe('importar: confirmação idempotente', () => {
   test('retry após o primeiro commit devolve grupo, contagens e relatório originais', async () => {
     const repo = repositorioPostgres(gestor)
     const op = operacao('Replay')
-    const primeira = await importar(repo, duas, op)
-    const segunda = await importar(repo, duas, op)
+    const primeira = await importar(repo, duas, op, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
+    const segunda = await importar(repo, duas, op, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
 
     if (!primeira.ok || !segunda.ok) throw new Error('esperava duas confirmações válidas')
     expect(primeira.relatorio).toMatchObject({ novas: 2, jaCadastradas: 0 })
@@ -158,7 +164,7 @@ describe('importar: confirmação idempotente', () => {
   })
 
   test('arquivo somente com existentes ainda cria grupo e vínculos', async () => {
-    const r = await importar(repositorioPostgres(gestor), duas, operacao('Somente existentes'))
+    const r = await importar(repositorioPostgres(gestor), duas, operacao('Somente existentes'), { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     expect(r).toMatchObject({ ok: true, inseridas: 0, vinculadas: 2 })
   })
 })

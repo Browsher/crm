@@ -134,3 +134,10 @@ describe('Cartao', () => {
     expect(saida).not.toContain('name="acao"')
   })
 })
+
+
+test('reserva parcial mostra nome comercial no título e CNPJ desconhecido', () => {
+  const saida = renderToStaticMarkup(<Cartao empresa={{ ...BASE, cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Aurora' }} agora={AGORA} contatos={[]} />)
+  expect(saida).toMatch(/<h2[^>]*>Câmeras Aurora<\/h2>/)
+  expect(saida).toContain('Não informado')
+})

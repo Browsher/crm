@@ -12,6 +12,7 @@ export function ambienteDoBuild(fonte: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return {
     ...fonte, CRM_E2E: '1', NODE_ENV: 'production', ALVO: '',
     DATABASE_URL: '', DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '',
+    IMPORTACAO_CONFERENCIA_SEGREDO: '',
     PG_SSL: '', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '',
   }
 }
@@ -27,5 +28,7 @@ export function ambienteDoServidor(fonte: NodeJS.ProcessEnv, urlApp: string): No
     DATABASE_URL: urlApp, DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '',
     ALVO: '', PG_SSL: 'off', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '',
     CRM_E2E: '1', NODE_ENV: 'production',
+    // Exclusivamente teste: nunca herdar a chave real do ambiente pai.
+    IMPORTACAO_CONFERENCIA_SEGREDO: 'e2'.repeat(32),
   }
 }
