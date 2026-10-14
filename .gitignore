@@ -44,3 +44,6 @@ next-env.d.ts
 /.next-e2e/
 /playwright-report/
 /test-results/
+
+/.artifact-work/base-prospeccao/
+/outputs/base-prospeccao-2026-10-14/
