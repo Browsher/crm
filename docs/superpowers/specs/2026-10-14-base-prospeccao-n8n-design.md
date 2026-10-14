@@ -45,7 +45,7 @@ Identificação da lista, fonte, região, termos pesquisados, data, arquivo de o
 
 Entrada manual de CSV do coletor → ler e validar campos → normalizar identificações e telefones → consultar registros existentes → consolidar empresas e telefones → consultar apenas números pendentes ou marcados para revalidação → atualizar a planilha → apresentar contagens e pendências.
 
-A v1 recebe o formato da coleta Mooca e aceita um mapeamento documentado para novos coletores. Não depender do nome do arquivo para identificar duplicidades. A autenticação Google deve ter escrita somente na planilha escolhida, e a chave Evolution usa credencial do n8n.
+A v1 recebe o formato da coleta Mooca e aceita um mapeamento documentado para novos coletores. Não depender do nome do arquivo para identificar duplicidades. O workflow acessa somente o ID da planilha escolhida e usa uma credencial Google com permissão de escrita nesse arquivo; a chave Evolution usa credencial do n8n. Não ampliar compartilhamento nem alterar outros arquivos.
 
 A chamada é POST /chat/whatsappNumbers/{instance}, com o campo numbers e números completos. Processar lotes pequenos com intervalo. Somente exists booleano em resposta válida permite marcar encontrado/não encontrado. Timeout, erro HTTP, resposta incompleta ou instância desconectada são inconclusivos, com tentativas limitadas. Conservar data e retorno normalizado; não adivinhar o dono de uma conta pelo nome ou pela foto.
 
