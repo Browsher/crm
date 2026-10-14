@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1234
+# Total: 1247
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -1223,6 +1223,19 @@ src/server/grupos/prospeccao.test.ts :: catálogo vazio é explícito e permiss�
 src/server/grupos/prospeccao.test.ts :: erro de infraestrutura continua visível
 src/server/grupos/prospeccao.test.ts :: leitor comercial traduz somente campos públicos e contagens numéricas
 src/server/grupos/prospeccao.test.ts :: leitor vazio e recusa de leitura devolvem motivos próprios
+src/server/importacao/mooca-adaptador.test.ts :: CLI prepara CSV conferido, metadados e hashes com campos originais em texto
+src/server/importacao/mooca-adaptador.test.ts :: CLI recusa bytes que não são UTF-8 antes de criar saída
+src/server/importacao/mooca-adaptador.test.ts :: CLI recusa entrega sem colunas requeridas antes de criar saída
+src/server/importacao/mooca-adaptador.test.ts :: CLI recusa pasta existente e preserva seus arquivos
+src/server/importacao/mooca-adaptador.test.ts :: conserva apenas CNPJ e razão social conhecidos e encaminha inválidos à revisão
+src/server/importacao/mooca-adaptador.test.ts :: controles em campo cadastral exigem revisão e não alteram dado bruto
+src/server/importacao/mooca-adaptador.test.ts :: escapa vírgula e aspas e normaliza telefone sem perder zero do CEP
+src/server/importacao/mooca-adaptador.test.ts :: escolhe primeiro email publicado válido e preserva alternativas com fontes
+src/server/importacao/mooca-adaptador.test.ts :: IDs repetidos no lote exigem revisão das duas linhas sem escolher uma
+src/server/importacao/mooca-adaptador.test.ts :: ignora placeholder e nunca escolhe email do motor não reconfirmado
+src/server/importacao/mooca-adaptador.test.ts :: preserva Place ID e separa cadastro sem telefone
+src/server/importacao/mooca-adaptador.test.ts :: telefone compartilhado sinaliza as duas linhas sem fundir IDs distintos
+src/server/importacao/mooca-adaptador.test.ts :: telefone inválido vai para pendência sem impedir outra linha válida
 src/server/whatsapp/consulta.test.ts :: cursor forjado e vínculo removido não fazem consulta
 src/server/whatsapp/consulta.test.ts :: enriquece mensagens com empresa por telefone confirmado e mantém mensagens quando CRM falha
 src/server/whatsapp/consulta.test.ts :: falha parcial conserva cursor; sucesso avança e tentativa seguinte só consulta pendentes
