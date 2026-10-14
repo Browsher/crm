@@ -10,7 +10,7 @@
 
 **Spec:** [Especificação aprovada](../specs/2026-10-13-prospeccao-cnpj-opcional-design.md).
 
-Status do plano: aprovado pelo usuário em 13/10/2026; código implementado e revisão SDD final concluída. Este documento registra o checkpoint de fechamento local após a correção 281119b. A criação do PR, seu CI e a entrega são acompanhados no GitHub e no registro final da execução, posteriores a este checkpoint.
+Status do plano: aprovado pelo usuário em 13/10/2026; código implementado e revisão SDD final concluída. Este documento registra o checkpoint de fechamento local após a correção 7398e00. A criação do PR, seu CI e a entrega são acompanhados no GitHub e no registro final da execução, posteriores a este checkpoint.
 
 ## Global Constraints
 
@@ -548,22 +548,22 @@ git diff --check
 
 ## Evidências de execução da branch
 
-Base remota main conferida: `30099cfc509ebb9f5ac618b74f60446d24206640`. Código das tarefas 1–6 entregue até `1f178ee4ed21ae467fc317ac29f95a1a5fd86eb3`, com revisão de conformidade e qualidade aprovada em cada tarefa. Execuções vermelhas comportamentais precederam as implementações; erros de instalação/build não foram contados como TDD.
+Base remota main conferida: `30099cfc509ebb9f5ac618b74f60446d24206640`. Código das tarefas 1–6 entregue até `ee07120909f30e98cdd149e01861dad04e9283de`, com revisão de conformidade e qualidade aprovada em cada tarefa. Execuções vermelhas comportamentais precederam as implementações; erros de instalação/build não foram contados como TDD.
 
 | Requisito | Testes/artefatos verificados | Commits |
 | --- | --- | --- |
-| Cadastro parcial, apresentação e UUID | `tests/integracao/empresa-cadastro-parcial.test.ts`, `src/lib/empresa-apresentacao.test.ts`, consumidores existentes | `ca27c9f` |
-| Identidade Google e conflito sem fusão | `tests/integracao/empresas-origem-google.test.ts`, `src/features/empresas/identidade.test.ts`, parser e reimportação | `9140f26`, `5e6fc29`, `662c1d0` |
-| Conferência sem escrita e transporte confiável | `src/features/empresas/conferencia.test.ts`, `app/empresas/importar/formulario-transporte.test.tsx`, protocolo/replay SQL | `5e6fc29`, `662c1d0`, `e864fd5` |
-| Metadados, Unicode e edição autorizada | `tests/integracao/grupos-metadados.test.ts`, formulário/Action/validador de metadados | `e864fd5` |
-| Consulta/reserva AND grupo, concorrência e contexto | `tests/integracao/prospeccao-consulta.test.ts`, `prospeccao-grupos.test.ts`, `app/fila/formulario.dom.test.tsx` | `8d935c7`, `e3bf9b6` |
-| Catálogo privado/ativo, contagens e paginação | `app/fila/grupos.test.tsx`, `src/server/grupos/prospeccao.test.ts`, integração catálogo | `17e3174` |
-| Jornada, rascunho, temas e teclado | `tests/e2e/prospeccao-grupos.spec.ts`, suite original completa e 18 capturas locais/6 snapshots AX | `17e3174` |
-| Mooca: desconhecidos, fontes e pendências | `src/server/importacao/mooca-adaptador.test.ts`, CLI real e verificador local de hashes/parser/originais | `1f178ee` |
+| Cadastro parcial, apresentação e UUID | `tests/integracao/empresa-cadastro-parcial.test.ts`, `src/lib/empresa-apresentacao.test.ts`, consumidores existentes | `36a9d66` |
+| Identidade Google e conflito sem fusão | `tests/integracao/empresas-origem-google.test.ts`, `src/features/empresas/identidade.test.ts`, parser e reimportação | `1ea20dd`, `68dd564`, `27620de` |
+| Conferência sem escrita e transporte confiável | `src/features/empresas/conferencia.test.ts`, `app/empresas/importar/formulario-transporte.test.tsx`, protocolo/replay SQL | `68dd564`, `27620de`, `90ccd67` |
+| Metadados, Unicode e edição autorizada | `tests/integracao/grupos-metadados.test.ts`, formulário/Action/validador de metadados | `90ccd67` |
+| Consulta/reserva AND grupo, concorrência e contexto | `tests/integracao/prospeccao-consulta.test.ts`, `prospeccao-grupos.test.ts`, `app/fila/formulario.dom.test.tsx` | `9bfb2ca`, `6ab7ec0` |
+| Catálogo privado/ativo, contagens e paginação | `app/fila/grupos.test.tsx`, `src/server/grupos/prospeccao.test.ts`, integração catálogo | `fd37751` |
+| Jornada, rascunho, temas e teclado | `tests/e2e/prospeccao-grupos.spec.ts`, suite original completa e 18 capturas locais/6 snapshots AX | `fd37751` |
+| Mooca: desconhecidos, fontes e pendências | `src/server/importacao/mooca-adaptador.test.ts`, CLI real e verificador local de hashes/parser/originais | `ee07120` |
 
-Gates finais no código `281119b`: unitário completo/inventário **1251 PASS + 1 SKIP**, integração completa **587 PASS + 1 SKIP**, E2E original completo **44 PASS**, typecheck/lint global/checador de migrações exit0 e diff-check desde a base limpo. O build local usou `--webpack` devido à junction de dependências fora da raiz do Turbopack; CI conserva o build padrão e continua como gate próprio antes do merge. O E2E final usa a aplicação recompilada após a correção da conferência; seu banco temporário foi removido pelo harness. Os 38 arquivos SQL versionados (0000–0037) mantêm os hashes; integração aplica o histórico em bancos temporários vazios locais. Nenhuma operação em produção.
+Gates finais no código `7398e00`: unitário completo/inventário **1251 PASS + 1 SKIP**, integração completa **587 PASS + 1 SKIP**, E2E original completo **44 PASS**, typecheck/lint global/checador de migrações exit0 e diff-check desde a base limpo. O build local usou `--webpack` devido à junction de dependências fora da raiz do Turbopack; CI conserva o build padrão e continua como gate próprio antes do merge. O E2E final usa a aplicação recompilada após a correção da conferência; seu banco temporário foi removido pelo harness. Os 38 arquivos SQL versionados (0000–0037) mantêm os hashes; integração aplica o histórico em bancos temporários vazios locais. Nenhuma operação em produção.
 
-A revisão integral identificou a conferência de aliases que resolvem ao mesmo UUID e quatro ajustes concretos de títulos/documentação. A única wave de correção `281119b` recusa todas essas linhas antes da confirmação, preserva seleção assinada/conflito posterior/replay, corrige títulos na fonte e regenera fielmente o inventário, atualiza a documentação do recibo e remove o contato real do plano. Evidências: `src/features/empresas/servico.test.ts`, `conferencia.test.ts`, `mensagens.test.ts`, `tests/integracao/empresas-origem-google.test.ts` e teste de transporte do formulário. A re-revisão focal encerrou os cinco achados sem nova quebra.
+A revisão integral identificou a conferência de aliases que resolvem ao mesmo UUID e quatro ajustes concretos de títulos/documentação. A única wave de correção `7398e00` recusa todas essas linhas antes da confirmação, preserva seleção assinada/conflito posterior/replay, corrige títulos na fonte e regenera fielmente o inventário, atualiza a documentação do recibo e remove o contato real do plano. Evidências: `src/features/empresas/servico.test.ts`, `conferencia.test.ts`, `mensagens.test.ts`, `tests/integracao/empresas-origem-google.test.ts` e teste de transporte do formulário. A re-revisão focal encerrou os cinco achados sem nova quebra.
 
 Duas execuções locais iniciais falharam: timeout do teste de exportação de Server Action e caso de limite de conexões do pool. Os testes inalterados passaram isoladamente e nas execuções integrais finais, com os limites e assertions preservados; as causas não foram demonstradas. Logs de falha e de sucesso foram conservados. O lint global também detectou um auxiliar local de auditoria não versionado; ele foi arquivado como texto com hash idêntico antes do lint final verde. Avisos existentes de Vite/DEP0190 e flags de cor permanecem registrados; não houve correção especulativa de streams/act/timestamp. O defeito comprovado de data civil da fixture Funil segue separado, usando a data de São Paulo.
 
