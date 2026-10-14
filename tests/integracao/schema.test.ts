@@ -49,7 +49,7 @@ describe('migrações reais', () => {
       '0026_empresa_recentes.sql',
       '0027_grupos_importacao.sql',
       '0028_comercial.sql',
-      '0029_funil_comandos.sql', '0030_funil_avanco.sql', '0031_vendas_carteira_agenda.sql', '0032_whatsapp_vinculo.sql', '0033_empresa_identificacao_parcial.sql', '0034_empresa_origem_google.sql', '0035_grupo_metadados.sql', '0036_prospeccao_grupo.sql',
+      '0029_funil_comandos.sql', '0030_funil_avanco.sql', '0031_vendas_carteira_agenda.sql', '0032_whatsapp_vinculo.sql', '0033_empresa_identificacao_parcial.sql', '0034_empresa_origem_google.sql', '0035_grupo_metadados.sql', '0036_prospeccao_grupo.sql', '0037_prospeccao_catalogo_grupos.sql',
     ])
   })
 

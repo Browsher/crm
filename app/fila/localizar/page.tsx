@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { lerGrupoProspeccao } from '@/src/server/grupos/prospeccao'
+import { lerGrupoProspeccao, listarGruposProspeccao } from '@/src/server/grupos/prospeccao'
+import { GruposProspeccao } from '../grupos'
 import { ContextoGrupo } from './contexto-grupo'
 import { mensagemConsulta } from '@/src/features/prospeccao/mensagens'
 import { lerFiltros } from '@/src/features/prospeccao/filtros'
@@ -29,6 +30,9 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
       <Link href="/fila/localizar?escolher_lista=1" className="underline">Todas as listas ativas</Link>
     </main>
   )
+  const escolhendo = params.escolher_lista === '1'
+  const paginaListas = lerFiltros({pagina:params.listas_pagina})
+  const catalogo = escolhendo && paginaListas.ok ? await listarGruposProspeccao(eu.usuarioId,paginaListas.filtros.pagina) : null
   const filtros = r.filtros
   const grupo = filtros.grupo ? await lerGrupoProspeccao(eu.usuarioId,filtros.grupo) : null
   const temFiltro = Boolean(filtros.nome || filtros.cnae || filtros.uf || filtros.cidade || filtros.bairro || filtros.grupo)
@@ -49,6 +53,9 @@ export default async function PaginaLocalizar({ searchParams }: Props) {
         {minhas?.ok && minhas.reserva && <Button asChild variant="outline" className={styles.acaoCabecalho}><Link href={urlConsulta(filtros, filtros.pagina).replace('/fila/localizar', '/fila')}>Voltar para a fila</Link></Button>}
       </header>
       <ContextoGrupo resultado={grupoIndisponivel ? {ok:false,motivo:'grupo_indisponivel'} : grupo} filtros={filtros} escolhendo={params.escolher_lista === '1'} />
+      {escolhendo && (!paginaListas.ok ? <p role="alert">Página de listas inválida. Escolha uma página entre 1 e 10.000.</p>
+        : catalogo?.ok ? <GruposProspeccao grupos={catalogo.grupos} pagina={paginaListas.filtros.pagina} temProxima={catalogo.temProxima} escolha={{filtros,atendimento:false}} />
+        : <p role="alert">Você não tem permissão para consultar as listas.</p>)}
       <section className={styles.painel} aria-labelledby="titulo-localizar">
       <h2 id="titulo-localizar">Localizar empresa</h2>
       <p className={styles.ajuda}>Pesquise pelo nome ou refine os resultados pelos filtros.</p>

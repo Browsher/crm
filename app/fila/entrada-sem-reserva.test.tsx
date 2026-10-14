@@ -21,3 +21,10 @@ test('entrada vazia oferece localizar empresa', () => {
   estado.entradas = {}
   expect(renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)).toContain('Localizar empresa')
 })
+
+test('entrada vazia deixa escolher uma lista sem redirecionamento automático', () => {
+  estado.entradas = {}
+  const html = renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)
+  expect(html).toContain('Todas as listas ativas')
+  expect(html).not.toContain('Abrindo a busca')
+})

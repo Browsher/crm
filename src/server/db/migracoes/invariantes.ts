@@ -33,6 +33,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.empresa_consultar',
   'public.empresa_filtros',
   'public.grupo_prospeccao_ler',
+  'public.grupos_prospeccao_listar',
   'public.empresa_perfil',
   'public.empresa_recentes',
   'public.empresa_sugestoes',

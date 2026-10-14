@@ -6,7 +6,7 @@ import { bancoGruposDoHarness, comBancoGrupos, prepararGrupos, GRUPOS, CNPJ_JORN
 const NOVA = 'Jornada Grupos Nova fictícia'
 const OVERLAP = 'Jornada Grupos Compartilhada fictícia'
 const CARTEIRA = 'Jornada Grupos Carteira fictícia'
-const NOME = 'Jornada de importação XLSX'
+const NOME = 'Mooca | Jornada de prospecção fictícia'
 const RENOMEADO = 'Jornada renomeada'
 
 async function entrar(page: Page, apelido = 'gruposgestore2e') {

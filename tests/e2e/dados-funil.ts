@@ -13,7 +13,7 @@ export async function prepararFunil(banco:BancoDeTeste) {
     await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[id,dono])
     await banco.sql('INSERT INTO negociacao(empresa_id,vendedor_id,etapa) VALUES($1,$2,$3)',[id,dono,['primeiro_contato','em_negociacao','proposta_enviada'][(i-1)%3]])
   }
-  await banco.comoUsuario(eu.id,e=>e("SELECT contato_registrar($1,'acompanhamento','Nota própria Aurora','Retornar hoje',CURRENT_DATE,'nenhum')",[FUNIL_EMPRESA]))
+  await banco.comoUsuario(eu.id,e=>e("SELECT contato_registrar($1,'acompanhamento','Nota própria Aurora','Retornar hoje',(now() AT TIME ZONE 'America/Sao_Paulo')::date,'nenhum')",[FUNIL_EMPRESA]))
   await banco.sql('ALTER TABLE contato DISABLE TRIGGER contato_auditoria')
   try{await banco.sql("INSERT INTO contato(empresa_id,tipo,nota,criado_por,criado_em) VALUES($1,'acompanhamento','SEGREDO DO COLEGA',$2,now()-interval '1 day')",[FUNIL_EMPRESA,outro.id])}
   finally{await banco.sql('ALTER TABLE contato ENABLE TRIGGER contato_auditoria')}

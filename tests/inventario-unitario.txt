@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1220
+# Total: 1234
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -180,6 +180,7 @@ app/fila/entrada-reserva.test.tsx :: lista indisponível explica preservação d
 app/fila/entrada-reserva.test.tsx :: puxar usa filtros e contexto original, sem aceitar identidade do formulário
 app/fila/entrada-reserva.test.tsx :: recusa alvo/contexto inválidos e filtros inválidos sem ampliar busca
 app/fila/entrada-reserva.test.tsx :: resultado sem candidata explica preservação e não usa travessão
+app/fila/entrada-sem-reserva.test.tsx :: entrada vazia deixa escolher uma lista sem redirecionamento automático
 app/fila/entrada-sem-reserva.test.tsx :: entrada vazia oferece localizar empresa
 app/fila/entrada-sem-reserva.test.tsx :: mantém anotações sem reserva atual
 app/fila/entrada-sem-reserva.test.tsx :: mantém editor quando a reserva expirou mesmo com nota vazia
@@ -196,6 +197,15 @@ app/fila/formulario.test.tsx :: Formulario sem reserva, oferece puxar e nao fala
 app/fila/formulario.test.tsx :: Formulario troca com anotacoes usa dialogo tematico e cancelar preserva a tela
 app/fila/formulario.test.tsx :: Formulario uma reserva nova começa em consultar sem renderizar o formulario de registro
 app/fila/formulario.test.tsx :: Formulario voltar para uma empresa anterior reinicia em consultar
+app/fila/grupos.test.tsx :: atendimento mantém formulário antes do chooser e preserva refinamentos na paginação do catálogo
+app/fila/grupos.test.tsx :: atendimento não carrega catálogo quando a escolha está fechada
+app/fila/grupos.test.tsx :: busca aberta para escolher lista apresenta catálogo conservando a consulta
+app/fila/grupos.test.tsx :: entrada da fila oferece cartão comercial da lista ativa sem reserva
+app/fila/grupos.test.tsx :: explica uma lista antiga sem inventar a origem e mantém CTA real
+app/fila/grupos.test.tsx :: novas listas exibem texto simples, critérios expansíveis e contagens por lista
+app/fila/grupos.test.tsx :: página do catálogo inválida avisa sem consultar listas ou apagar o atendimento
+app/fila/grupos.test.tsx :: página vazia permite voltar sem remover o contexto selecionado
+app/fila/grupos.test.tsx :: paginação contextual na busca preserva página de empresas e só a seleção limpa refinamentos
 app/fila/localizar/componentes.test.tsx :: ação automática usa puxar sem empresa e preserva os filtros
 app/fila/localizar/componentes.test.tsx :: filtro de URL antiga ausente nas opções continua visível e selecionado
 app/fila/localizar/componentes.test.tsx :: filtros, paginação, perfil e reserva conservam a lista selecionada
@@ -438,6 +448,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0033.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0035.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0036.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0037.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
@@ -1206,6 +1217,9 @@ src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\configuracao\
 src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
 src/server/diretivas.test.ts :: arquivos 'use server' src\features\contato\acao.ts só exporta função
+src/server/grupos/prospeccao.test.ts :: catálogo corta a vigésima primeira linha e traduz exclusivamente DTO público
+src/server/grupos/prospeccao.test.ts :: catálogo recusa página não inteira ou fora da faixa antes do banco
+src/server/grupos/prospeccao.test.ts :: catálogo vazio é explícito e permissão negada não vira resultado vazio
 src/server/grupos/prospeccao.test.ts :: erro de infraestrutura continua visível
 src/server/grupos/prospeccao.test.ts :: leitor comercial traduz somente campos públicos e contagens numéricas
 src/server/grupos/prospeccao.test.ts :: leitor vazio e recusa de leitura devolvem motivos próprios

@@ -3,11 +3,11 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, test, vi } from 'vitest'
 import { RascunhosProvider } from './rascunhos'
-const mocks=vi.hoisted(()=>({reserva:vi.fn(),acao:vi.fn(),grupo:vi.fn()}))
+const mocks=vi.hoisted(()=>({reserva:vi.fn(),acao:vi.fn(),grupo:vi.fn(),listar:vi.fn()}))
 vi.mock('@/src/server/autenticacao/guarda',()=>({exigir:async()=>({usuarioId:'eu'})}))
 vi.mock('@/src/features/fila/consulta',()=>({lerMinhasEmpresas:mocks.reserva}))
 vi.mock('@/src/features/contato/historico',()=>({lerHistorico:async()=>({ok:true,contatos:[]})}))
-vi.mock('@/src/server/grupos/prospeccao',()=>({lerGrupoProspeccao:mocks.grupo}))
+vi.mock('@/src/server/grupos/prospeccao',()=>({lerGrupoProspeccao:mocks.grupo,listarGruposProspeccao:mocks.listar}))
 vi.mock('./acoes',()=>({agirNaFilaAcao:mocks.acao}))
 vi.mock('@/src/features/contato/acao',()=>({registrarContatoAcao:vi.fn()}))
 vi.mock('./localizar/registrar-visita',()=>({RegistrarVisita:()=>null}))
@@ -20,6 +20,7 @@ test('trocar só grupo e abrir escolha mantém editor, reserva e nota digitada',
   mocks.grupo.mockImplementation(async (_usuario:string,id:string)=>({ok:true,grupo:{id,nome:`Lista ${id}`,descricao:null,origem:null,criterios:null,criadoEm:'2026-10-13',total:2,disponiveis:1}}))
   const grupo1='00000000-0000-4000-8000-000000000701'
   const grupo2='00000000-0000-4000-8000-000000000702'
+  mocks.listar.mockResolvedValue({ok:true,grupos:[{id:grupo2,nome:'Lista alternativa real no cartão',descricao:'Outra origem',origem:'Fonte fictícia',criterios:'Critério',criadoEm:'2026-10-13',total:2,disponiveis:1}],temProxima:false})
   const host=document.createElement('div');document.body.append(host)
   const root=createRoot(host)
   async function mostrar(params:Record<string,string>) {
@@ -57,7 +58,12 @@ test('trocar só grupo e abrir escolha mantém editor, reserva e nota digitada',
     expect(host.querySelector('input[name="contexto"]')?.getAttribute('value')).toBe('versao')
     expect(host.textContent).toContain('Cliente atual')
     expect(mocks.acao).not.toHaveBeenCalled()
-    await mostrar({grupo:grupo2})
+    const reabrir=[...host.querySelectorAll('a')].find(a=>a.textContent==='Escolher outra lista')!
+    await mostrar(Object.fromEntries(new URL(reabrir.getAttribute('href')!,'https://crm.test').searchParams))
+    const selecionar=[...host.querySelectorAll('article a')].find(a=>a.textContent==='Prospectar esta lista')!
+    const selecao=new URL(selecionar.getAttribute('href')!,'https://crm.test')
+    expect(Object.fromEntries(selecao.searchParams)).toEqual({grupo:grupo2,pagina:'1'})
+    await mostrar(Object.fromEntries(selecao.searchParams))
     expect(host.querySelector('textarea[name="nota"]')).toBe(nota)
     expect(nota.value).toBe('Nota digitada durante atendimento')
     expect(host.textContent).toContain('Cliente atual')
