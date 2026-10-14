@@ -116,3 +116,11 @@ test.each(['identificadores_divergentes', 'cnpj_divergente', 'razao_social_diver
   expect(t).toContain('Linha 3')
   expect(t).toContain('Revise os identificadores')
 })
+
+test('recusa por UUID repetido identifica a linha para limpar antes de reconferir', () => {
+  const texto = textoDaRecusa({ tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' })
+  expect(texto).toContain('Linha 2')
+  expect(texto).toContain('mesma empresa')
+  expect(texto).toContain('Remova as repetições')
+  expect(texto).toContain('confira novamente')
+})

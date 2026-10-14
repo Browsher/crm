@@ -43,7 +43,7 @@ export type MotivoDeCampo =
 export type Recusa =
   | { tipo: 'campo'; linha: number; motivo: MotivoDeCampo; valor: string; esperado?: 7 | 8 | 9 }
   | { tipo: 'repetido'; linha: number; par: number; identificador: 'cnpj' | 'google_place_id'; valor: string; divergencia: string | null }
-  | { tipo: 'identidade'; linha: number; motivo: 'identificadores_divergentes' | 'cnpj_divergente' | 'razao_social_divergente' }
+  | { tipo: 'identidade'; linha: number; motivo: 'identificadores_divergentes' | 'cnpj_divergente' | 'razao_social_divergente' | 'empresa_repetida' }
 
 export type FalhaDeArquivo =
   | { motivo: 'nao_utf8' }

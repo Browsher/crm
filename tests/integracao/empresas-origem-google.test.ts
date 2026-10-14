@@ -187,3 +187,68 @@ test('replay da seleção aprovada permanece válido após divergência cadastra
   expect(await importar(repo, fonte, op, conferido.conferencia)).toEqual(primeira)
   expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
 })
+
+test.each([['origens sem CNPJ', ''], ['CNPJ e origem', '11222333000181']] as const)('conferência real recusa UUID repetido por %s e confirma a terceira empresa', async (_rotulo, cnpj) => {
+  const existente = { ...prospect('ChIJ-a'), cnpj: '11222333000181', razao_social: 'Aurora LTDA' }
+  await confirmar([existente])
+  await confirmar([{ ...existente, google_place_id: 'ChIJ-b' }])
+  const antes = await banco.sql('SELECT * FROM empresa ORDER BY id')
+  const repo = repositorioPostgres(gestor)
+  const fonte = new TextEncoder().encode([
+    CABECALHO_GOOGLE,
+    `${cnpj},,Aurora,,11987654321,,,,${cnpj ? '' : 'ChIJ-a'}`,
+    ',,Aurora,,11987654321,,,,ChIJ-b',
+    ',,Aurora,,11987654321,,,,ChIJ-terceira',
+  ].join('\n'))
+  const conferido = await analisar(repo, fonte)
+  if (!conferido.ok) throw new Error('esperava conferência válida')
+  expect(conferido.relatorio).toMatchObject({ novas: 1, jaCadastradas: 0, recusadas: [
+    { tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' },
+    { tipo: 'identidade', linha: 3, motivo: 'empresa_repetida' },
+  ] })
+  expect(conferido.conferencia.linhasAceitas).toEqual([4])
+  expect(await banco.sql('SELECT * FROM empresa ORDER BY id')).toEqual(antes)
+  const r = await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }, conferido.conferencia)
+  expect(r).toMatchObject({ ok: true, inseridas: 1, vinculadas: 1, relatorio: conferido.relatorio })
+  if (!r.ok) throw new Error('esperava confirmação válida')
+  expect(await banco.sql('SELECT o.google_place_id FROM grupo_importacao_empresa g JOIN empresa_origem_google o USING (empresa_id) WHERE g.grupo_id=$1', [r.grupoId])).toEqual([{ google_place_id: 'ChIJ-terceira' }])
+  expect(await banco.sql('SELECT count(*)::int AS n FROM empresa')).toEqual([{ n: 2 }])
+})
+
+test('UUID repetido surgido após conferir chega ao SQL sem reduzir seleção original', async () => {
+  const repo = repositorioPostgres(gestor)
+  const fonte = new TextEncoder().encode([CABECALHO_GOOGLE,
+    '11222333000181,Aurora LTDA,,,11987654321,,,,',
+    ',,Aurora,,11987654321,,,,ChIJ-b',
+    ',,Nova,,11987654321,,,,ChIJ-nova',
+  ].join('\n'))
+  const conferido = await analisar(repo, fonte)
+  if (!conferido.ok) throw new Error('esperava conferência válida')
+  expect(conferido.conferencia.linhasAceitas).toEqual([2, 3, 4])
+  await confirmar([{ ...prospect('ChIJ-b'), cnpj: '11222333000181', razao_social: 'Aurora LTDA' }])
+  const antes = await banco.sql('SELECT * FROM empresa ORDER BY id')
+  expect(await importar(repo, fonte, { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }, conferido.conferencia)).toEqual({ ok: false, motivo: 'confirmacao_invalida' })
+  expect(await banco.sql('SELECT * FROM empresa ORDER BY id')).toEqual(antes)
+  expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
+})
+
+test('replay do recibo anterior conserva resultado mesmo após origens resolverem para o mesmo UUID', async () => {
+  const repo = repositorioPostgres(gestor)
+  const fonte = new TextEncoder().encode([CABECALHO_GOOGLE,
+    ',,Aurora,,11987654321,,,,ChIJ-a',
+    ',,Aurora,,11987654321,,,,ChIJ-b',
+  ].join('\n'))
+  const conferido = await analisar(repo, fonte)
+  if (!conferido.ok) throw new Error('esperava conferência válida')
+  const op = { chave: randomUUID(), nome: 'Mooca', arquivoNome: 'mooca.csv', metadados: { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }, assinatura: 'a'.repeat(64) }
+  const primeira = await importar(repo, fonte, op, conferido.conferencia)
+  expect(primeira).toMatchObject({ ok: true, inseridas: 2, vinculadas: 2 })
+  // Mudança posterior apenas no banco temporário: o replay deve preceder a resolução.
+  await banco.sql("UPDATE empresa_origem_google SET empresa_id=(SELECT empresa_id FROM empresa_origem_google WHERE google_place_id='ChIJ-a') WHERE google_place_id='ChIJ-b'")
+  expect(await analisar(repo, fonte)).toMatchObject({ ok: true, conferencia: { linhasAceitas: [] }, relatorio: { novas: 0, jaCadastradas: 0, recusadas: [
+    { tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' },
+    { tipo: 'identidade', linha: 3, motivo: 'empresa_repetida' },
+  ] } })
+  expect(await importar(repo, fonte, op, conferido.conferencia)).toEqual(primeira)
+  expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
+})

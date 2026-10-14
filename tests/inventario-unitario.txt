@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1247
+# Total: 1252
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -324,9 +324,9 @@ app/whatsapp/historico-acao.test.tsx :: consulta a página autorizada com o limi
 app/whatsapp/historico-acao.test.tsx :: exige gestor antes de ler histórico
 app/whatsapp/historico-acao.test.tsx :: falha externa não vaza chave nem se apresenta como fim do histórico
 app/whatsapp/historico-acao.test.tsx :: histórico por fonte revalida gestor e encaminha apenas escopo e cursores
-app/whatsapp/historico-acao.test.tsx :: recusa limite inválido 
-app/whatsapp/historico-acao.test.tsx :: recusa limite inválido 2026-02-30T00:00:00.000Z
-app/whatsapp/historico-acao.test.tsx :: recusa limite inválido abc
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido ""
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido "2026-02-30T00:00:00.000Z"
+app/whatsapp/historico-acao.test.tsx :: recusa limite inválido "abc"
 app/whatsapp/historico-acao.test.tsx :: recusa limite inválido null
 app/whatsapp/historico-acao.test.tsx :: recusa página inválida -1 sem consultar Evolution
 app/whatsapp/historico-acao.test.tsx :: recusa página inválida 0 sem consultar Evolution
@@ -709,6 +709,7 @@ src/features/empresas/cnpj.test.ts :: validarCnpj todos os digitos iguais reprov
 src/features/empresas/conferencia.test.ts :: alterar somente metadado criterios invalida o recibo assinado
 src/features/empresas/conferencia.test.ts :: alterar somente metadado descricao invalida o recibo assinado
 src/features/empresas/conferencia.test.ts :: alterar somente metadado origem invalida o recibo assinado
+src/features/empresas/conferencia.test.ts :: comprovante conserva todas as recusas por UUID repetido e a linha independente
 src/features/empresas/conferencia.test.ts :: comprovante de 5.000 recusas conserva seleção e schema no round-trip
 src/features/empresas/conferencia.test.ts :: comprovante excessivo é recusado
 src/features/empresas/conferencia.test.ts :: comprovante preserva seleção e recusas sem depender de memória de processo
@@ -824,6 +825,7 @@ src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato e
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 8
 src/features/empresas/mensagens.test.ts :: recusa de colunas informa o formato esperado 9
 src/features/empresas/mensagens.test.ts :: recusa identificadores_divergentes orienta revisão na origem
+src/features/empresas/mensagens.test.ts :: recusa por UUID repetido identifica a linha para limpar antes de reconferir
 src/features/empresas/mensagens.test.ts :: recusa razao_social_divergente orienta revisão na origem
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo cabecalho diferente mostra o que veio
 src/features/empresas/mensagens.test.ts :: textoDaFalhaDeArquivo excede limite mostra os dois numeros
@@ -898,13 +900,13 @@ src/features/empresas/planilha.test.ts :: identidade de origem identidade conhec
 src/features/empresas/planilha.test.ts :: identidade de origem legado cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep continua exigindo CNPJ
 src/features/empresas/planilha.test.ts :: identidade de origem legado cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cep,cnae_principal continua exigindo CNPJ
 src/features/empresas/planilha.test.ts :: identidade de origem Place ID aparado mede pontos de código até 255
-src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,,,11987654321,,,,ChIJ-a por nome_ausente
-src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Aurora,,,,,,ChIJ-a por telefone_vazio
-src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,, por identidade_ausente
-src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa por google_place_id_invalido
-src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,,ab por google_place_id_invalido
-src/features/empresas/planilha.test.ts :: identidade de origem recusa ,,Câmeras Aurora,,11987654321,,,,a b por google_place_id_invalido
-src/features/empresas/planilha.test.ts :: identidade de origem recusa 11222333000182,,Câmeras Aurora,,11987654321,,,,ChIJ-a por cnpj_dv
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,,,11987654321,,,,ChIJ-a" por nome_ausente
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Aurora,,,,,,ChIJ-a" por telefone_vazio
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,," por identidade_ausente
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,,a\u0000b" por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,,a\u0001b" por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa ",,Câmeras Aurora,,11987654321,,,,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" por google_place_id_invalido
+src/features/empresas/planilha.test.ts :: identidade de origem recusa "11222333000182,,Câmeras Aurora,,11987654321,,,,ChIJ-a" por cnpj_dv
 src/features/empresas/planilha.test.ts :: identidade de origem repetição de Place ID ou CNPJ remove todas as linhas envolvidas
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar confirma o grupo com todas as linhas e devolve o relatorio persistido pelo banco
 src/features/empresas/repositorio.test.ts :: repositorioPostgres.gravar propaga falha de infraestrutura
@@ -921,6 +923,9 @@ src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada a
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada basePublicadaEm nulo e todos os ceps pedidos sem resposta
 src/features/empresas/servico.test.ts :: analisar: a base de CEP nao carregada cepsPedidos conta CEP distinto, nao linha
 src/features/empresas/servico.test.ts :: conferência exige revisão quando razão social conhecida diverge
+src/features/empresas/servico.test.ts :: conferência por UUID canônico CNPJs nulos com UUIDs distintos continuam independentes apesar do mesmo nome e telefone
+src/features/empresas/servico.test.ts :: conferência por UUID canônico recusa todas as linhas da mesma empresa por CNPJ e origem e conserva a terceira
+src/features/empresas/servico.test.ts :: conferência por UUID canônico recusa todas as linhas da mesma empresa por origens sem CNPJ e conserva a terceira
 src/features/empresas/servico.test.ts :: conferência usa os dois identificadores antes de contar e não grava
 src/features/empresas/servico.test.ts :: importar confirma todas as aceitas, inclusive as ja cadastradas
 src/features/empresas/servico.test.ts :: importar devolve o relatorio persistido pelo repositorio em vez da reanalise atual

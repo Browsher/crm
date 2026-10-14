@@ -22,7 +22,7 @@ test.each([0, 1, -1, 2.5, NaN, 100001, '2'])('recusa página inválida %s sem co
   expect(await historicoMensagensAcao(pagina as number, limite)).toEqual({ ok: false, motivo: 'parametros_invalidos' })
   expect(mocks.ler).not.toHaveBeenCalled()
 })
-test.each(['', 'abc', '2026-02-30T00:00:00.000Z', null])('recusa limite inválido %s', async limiteInvalido => {
+test.each(['', 'abc', '2026-02-30T00:00:00.000Z', null])('recusa limite inválido %j', async limiteInvalido => {
   expect(await historicoMensagensAcao(2, limiteInvalido as string)).toEqual({ ok: false, motivo: 'parametros_invalidos' })
   expect(mocks.ler).not.toHaveBeenCalled()
 })

@@ -50,10 +50,22 @@ async function preparar(
   const aceitas: LinhaAceita[] = []
   const recusadas = [...analise.recusadas]
   const novasPorLinha = new Set<number>()
-  for (const linha of analise.aceitas) {
-    const identidade = resolverIdentidade(linha, p)
+  const resolvidas = analise.aceitas.map(linha => ({ linha, identidade: resolverIdentidade(linha, p) }))
+  const ocorrencias = new Map<string, number>()
+  for (const { identidade } of resolvidas) {
+    if (identidade.ok && identidade.empresaId !== null) {
+      ocorrencias.set(identidade.empresaId, (ocorrencias.get(identidade.empresaId) ?? 0) + 1)
+    }
+  }
+  // Identificadores textuais diferentes podem resolver para o mesmo UUID.
+  // Recusar todas as posições evita escolher uma origem arbitrariamente.
+  for (const { linha, identidade } of resolvidas) {
     if (!identidade.ok) {
       recusadas.push({ tipo: 'identidade', linha: linha.linha, motivo: identidade.motivo })
+      continue
+    }
+    if (identidade.empresaId !== null && (ocorrencias.get(identidade.empresaId) ?? 0) > 1) {
+      recusadas.push({ tipo: 'identidade', linha: linha.linha, motivo: 'empresa_repetida' })
       continue
     }
     aceitas.push(linha)

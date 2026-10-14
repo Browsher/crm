@@ -41,6 +41,7 @@ const TEXTO_DO_CAMPO: Record<MotivoDeCampo, (valor: string, esperado?: 7 | 8 | 9
 export function textoDaRecusa(r: Recusa): string {
   if (r.tipo === 'campo') return `Linha ${r.linha}: ${TEXTO_DO_CAMPO[r.motivo](r.valor, r.esperado)}`
   if (r.tipo === 'identidade') {
+    if (r.motivo === 'empresa_repetida') return `Linha ${r.linha}: Os identificadores desta linha reconhecem a mesma empresa de outras linhas recusadas. Remova as repetições e confira novamente.`
     const motivos = {
       identificadores_divergentes: 'CNPJ e Google Place ID apontam para empresas diferentes.',
       cnpj_divergente: 'O CNPJ diverge do cadastro reconhecido pelo Google Place ID.',

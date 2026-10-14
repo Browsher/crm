@@ -3,7 +3,7 @@ import type { OperacaoGrupo } from './repositorio'
 import type { Conferencia } from './servico'
 
 export type ContextoConferencia = { usuarioId: string; operacao: OperacaoGrupo }
-const MOTIVOS = new Set(['identificadores_divergentes', 'cnpj_divergente', 'razao_social_divergente'])
+const MOTIVOS = new Set(['identificadores_divergentes', 'cnpj_divergente', 'razao_social_divergente', 'empresa_repetida'])
 
 type ConfiguracaoConferencia = { IMPORTACAO_CONFERENCIA_SEGREDO?: string }
 

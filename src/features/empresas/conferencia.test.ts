@@ -58,3 +58,11 @@ test.each(['descricao', 'origem', 'criterios'] as const)('alterar somente metada
   const operacao = { ...contexto.operacao, metadados: { ...contexto.operacao.metadados, [campo]: 'Outro contexto' } }
   expect(verificarConferencia(token, { ...contexto, operacao }, env)).toBeNull()
 })
+
+test('comprovante conserva todas as recusas por UUID repetido e a linha independente', () => {
+  const repetidas = { linhasAceitas: [4], recusadasIdentidade: [
+    { tipo: 'identidade' as const, linha: 2, motivo: 'empresa_repetida' as const },
+    { tipo: 'identidade' as const, linha: 3, motivo: 'empresa_repetida' as const },
+  ] }
+  expect(verificarConferencia(emitirConferencia(contexto, repetidas, env), contexto, env)).toEqual(repetidas)
+})

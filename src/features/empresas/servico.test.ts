@@ -278,3 +278,52 @@ describe('seleção aprovada na conferência', () => {
     expect(gravadas[0].linhas.map(l => l.googlePlaceId)).toEqual(['ChIJ-nova'])
   })
 })
+
+describe('conferência por UUID canônico', () => {
+  test.each([['origens sem CNPJ', ''], ['CNPJ e origem', '11222333000181']] as const)('recusa todas as linhas da mesma empresa por %s e conserva a terceira', async (_rotulo, cnpj) => {
+    const { repo, gravadas } = repoFalso()
+    const anterior = repo.preparar
+    repo.preparar = async () => {
+      const p = await anterior([], [])
+      if ('motivo' in p) throw new Error(p.motivo)
+      const empresa = { id: 'empresa-canonica', cnpj: '11222333000181', razaoSocial: null }
+      return { ...p, porCnpj: new Map([[empresa.cnpj, empresa]]), porGoogle: new Map([['ChIJ-a', empresa], ['ChIJ-b', empresa]]) }
+    }
+    const arquivo = new TextEncoder().encode([
+      `${CABECALHO},cnae_principal,google_place_id`,
+      `${cnpj},,Aurora,,11987654321,,,,${cnpj ? '' : 'ChIJ-a'}`,
+      ',,Aurora,,11987654321,,,,ChIJ-b',
+      ',,Aurora,,11987654321,,,,ChIJ-nova',
+    ].join('\n'))
+    const conferido = await analisar(repo, arquivo)
+    expect(conferido).toMatchObject({ ok: true, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [
+      { tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' },
+      { tipo: 'identidade', linha: 3, motivo: 'empresa_repetida' },
+    ] }, conferencia: { linhasAceitas: [4], recusadasIdentidade: [
+      { tipo: 'identidade', linha: 2, motivo: 'empresa_repetida' },
+      { tipo: 'identidade', linha: 3, motivo: 'empresa_repetida' },
+    ] } })
+    expect(gravadas).toEqual([])
+    if (!conferido.ok) throw new Error('esperava conferência válida')
+    expect(await importar(repo, arquivo, OPERACAO, conferido.conferencia)).toMatchObject({ ok: true, vinculadas: 1,
+      relatorio: { novas: 1, jaCadastradas: 0, recusadas: conferido.relatorio.recusadas } })
+    expect(gravadas[0].linhas.map(l => l.linha)).toEqual([4])
+  })
+
+  test('CNPJs nulos com UUIDs distintos continuam independentes apesar do mesmo nome e telefone', async () => {
+    const { repo } = repoFalso()
+    const anterior = repo.preparar
+    repo.preparar = async () => {
+      const p = await anterior([], [])
+      if ('motivo' in p) throw new Error(p.motivo)
+      return { ...p, porGoogle: new Map(['ChIJ-a', 'ChIJ-b'].map((id, i) => [id, { id: `empresa-${i}`, cnpj: null, razaoSocial: null }])) }
+    }
+    const arquivo = new TextEncoder().encode([
+      `${CABECALHO},cnae_principal,google_place_id`,
+      ',,Aurora,,11987654321,,,,ChIJ-a',
+      ',,Aurora,,11987654321,,,,ChIJ-b',
+    ].join('\n'))
+    expect(await analisar(repo, arquivo)).toMatchObject({ ok: true, relatorio: { novas: 0, jaCadastradas: 2, recusadas: [] },
+      conferencia: { linhasAceitas: [2, 3], recusadasIdentidade: [] } })
+  })
+})

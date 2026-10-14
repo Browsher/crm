@@ -300,7 +300,7 @@ describe('identidade de origem', () => {
     [prospect('a'.repeat(256)), 'google_place_id_invalido'],
     [prospect('a\u0001b'), 'google_place_id_invalido'],
     [prospect('a\u0000b'), 'google_place_id_invalido'],
-  ])('recusa %s por %s', (linha, motivo) => {
+  ])('recusa %j por %s', (linha, motivo) => {
     const r = ok(google(linha))
     expect(r.aceitas).toEqual([])
     expect(r.recusadas[0]).toMatchObject({ tipo: 'campo', motivo, linha: 2 })
