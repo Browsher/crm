@@ -4,15 +4,20 @@ O site usa HTTPS na Vercel e o banco CRM CH já existente na Railway. O computad
 
 ## Estado em 14/10/2026
 
+- Ambiente de testes publicado em https://crm-prospeccao-bice.vercel.app/login, deployment dpl_7Q9ZqYNVeAEQeWpq1St5uSZKMDzy, estado READY. Código corresponde à main 8019b990b59831389d63618eb38e3fbe5a213b9e, integrado no PR #51 após CI aprovado.
 - Grupos e CNPJ opcional integrados no PR #50, commit 0c7585161ee858810b75a707a727b016a016869d.
-- Railway CRM CH: migrações 0000 a 0037 aplicadas, sem divergências, invariantes aprovadas. Banco sem empresas/vendedores de teste, com um gestor ativo preservado.
-- Projeto vazio crm-prospeccao criado na Vercel, Node 24.x e Next.js, sem Git conectado nem deployments. Cinco variáveis Production configuradas; DATABASE_URL permanece pendente de credencial válida.
-- Conta Vercel disponível: icamera6688-4728s-projects, plano Hobby. O uso comercial requer Pro ou Enterprise. Não houve alteração de cobrança nem publicação desta aplicação.
-- Gestor remoto ainda precisa trocar a senha provisória. A importação depende disso; não usar postgres para contornar essa regra.
+- Railway CRM CH: 38 migrações aplicadas, sem divergências, invariantes aprovadas. Zero empresas e vendedores; um gestor ativo preservado.
+- O usuário autorizou explicitamente a nova senha de app_conexao e sua configuração na Vercel. A conexão usa TLS verificado, sem SUPERUSER, BYPASSRLS ou acesso direto à tabela empresa. A senha e os dados do gestor foram preservados.
+- Projeto separado crm-prospeccao na equipe icamera6688-4728s-projects, Node 24.x e Next.js. Seis variáveis Production configuradas. Nenhuma credencial administrativa enviada ao site, nenhum Git conectado.
+- O usuário autorizou a publicação para testes no Hobby e recusou ativar Pro neste momento. Nenhuma alteração de plano ou cobrança executada. A importação real da Mooca e o cadastro dos vendedores reais ficam para depois da validação pelo gestor.
+- HTTPS, login HTTP 200, login inválido com resposta esperada do banco e redirecionamento de /fila sem sessão aprovados. A tela de login não excede a largura em 390, 820 ou 1280 pixels; nenhum erro JavaScript ou HTTP 5xx observado nessa verificação.
+- Gestor remoto ainda precisa trocar a senha provisória no primeiro acesso. Login autenticado, cookie real e jornadas privadas online dependem desse acesso; não contornar pode_escrever nem fabricar sessão.
+- Limpeza local concluída em transação: 66 empresas, três vendedores e seus registros de teste removidos sem backup. Gestor e sua credencial, 1.209.313 CEPs, a carga de CEP e as 38 migrações preservados. Arquivos originais da coleta permanecem no disco.
+- Atalho existente CRM Prospecção atualizado para o endereço hospedado. Não inicia Docker, banco ou servidor local. CRM Social permaneceu intacto.
 
 ## Configuração do projeto
 
-Criar um projeto separado chamado crm-prospeccao na equipe escolhida, vinculado a Browsher/crm, branch de produção main, raiz do repositório. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.
+Foi criado um projeto separado chamado crm-prospeccao. A publicação atual foi feita pelo CLI, com código já integrado e validado. Uma conexão futura com Browsher/crm deve usar main e a raiz do repositório; ela ainda não foi ativada. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.
 
 O vercel.json declara Next.js, npm ci e npm run build. package.json fixa Node 24.x, a mesma versão principal do CI. O .vercelignore exclui arquivos de ambiente, certificados locais, bases coletadas, logs e artefatos de teste da carga de código.
 
@@ -37,14 +42,14 @@ A integração Evolution é opcional nesta publicação. Se for ativada, manter 
 
 ## Publicação e validação
 
-1. Resolver a equipe Pro/Enterprise e o plano com o gestor. A preparação atual não contrata nem altera serviços pagos.
+1. Para a fase atual, manter o ambiente de testes Hobby autorizado pelo usuário. Uma contratação futura precisa de autorização própria; não alterar serviços pagos.
 2. Criar/linkar o projeto separado; configurar as variáveis Production e conferir Node 24.x.
-3. Gerar a versão candidata de produção sem liberar o endereço aos vendedores. Build deve funcionar sem banco; runtime deve usar somente app_conexao com TLS verificado.
+3. O ambiente de testes publicado usa o alvo técnico Production para receber as variáveis e um endereço estável. Isso não inicia a operação comercial. Build funciona sem banco; runtime usa somente app_conexao com TLS verificado.
 4. Conferir HTTPS, login e troca de senha do gestor, cookie crm_sessao Secure e HttpOnly, navegação em 390/820/1280 e um login inválido sem falha de infraestrutura. Confirmar o acesso ao banco pelo site; HTTP 200 da tela de login sozinho não prova conexão.
 5. Importar a Mooca pelo fluxo de conferência e confirmação do gestor, depois de trocar a senha. O arquivo empresas-crm.csv preparado tem 43 linhas aptas; duas empresas sem telefone ficaram em pendencias.csv. As advertências de telefone compartilhado e CEP continuam documentadas no rastreio.
 6. Criar vendedores reais em /usuarios com nomes/e-mails fornecidos pelo gestor. A senha provisória aparece uma vez e deve ser trocada no primeiro acesso.
 7. Validar como vendedor: selecionar o grupo, reservar empresa, registrar contato/retorno e voltar sem perder notas. Provar que não acessa /usuarios, /empresas/importar e /grupos por URL direta.
-8. Remover somente os registros de teste locais após a validação, sem backup desses dados, preservando gestor, configurações, CEP, migrações e os arquivos da coleta. Atualizar o atalho CRM Prospecção para a URL hospedada.
+8. Limpeza local e atualização do atalho já concluídas após a validação técnica online. Preservados gestor, configurações, CEP, migrações e os arquivos da coleta.
 
 Não compartilhar acesso do gestor. Os vendedores entram no CRM; não precisam de conta ou assento de desenvolvimento na Vercel.
 
@@ -58,4 +63,4 @@ Fontes: [Node e runtime](https://vercel.com/docs/functions/runtimes/node-js/node
 
 Validação desta preparação: 1266 testes unitários e 587 de integração passaram, com dois skips existentes; 44 jornadas passaram; typecheck, lint, db:checar e build sem env aprovados. npm audit --omit=dev não aponta vulnerabilidades. A auditoria completa mantém cinco avisos altos na cadeia de ESLint de desenvolvimento, sem correção compatível indicada pelo npm; não aplicar o downgrade sugerido para eslint-config-next 14.
 
-A troca da senha remota de app_conexao foi rejeitada pela revisão automática de aprovação por falta de autorização explícita para esse alvo e pelo possível impacto em outros consumidores. Nenhuma senha remota foi alterada. Uma tentativa somente leitura com a credencial local devolveu 28P01; portanto ela não deve ser usada na Vercel. Antes de configurar DATABASE_URL, obter uma credencial remota válida ou autorização explícita para definir uma senha nova e atualizar todos os consumidores desse papel.
+A revisão automática inicialmente bloqueou a rotação de app_conexao por falta de autorização explícita para o alvo e o impacto em outros consumidores. Depois de o usuário autorizar a troca e a configuração, a senha foi definida e validada; DATABASE_URL foi enviada por stdin como variável sensível. Não reutilizar a credencial local, que havia devolvido 28P01 no remoto, nem repetir a rotação sem necessidade.
