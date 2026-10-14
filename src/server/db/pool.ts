@@ -1,3 +1,4 @@
+import { attachDatabasePool } from '@vercel/functions'
 import { Pool, type PoolClient } from 'pg'
 import { exigir, lerEnv } from './env'
 import { configSsl } from './ssl'
@@ -17,16 +18,18 @@ const g = globalThis as typeof globalThis & { __crmPools?: Map<string, Registro>
 const pools = (g.__crmPools ??= new Map<string, Registro>())
 
 function criar(url: string): Pool {
+  const env = lerEnv()
   const pool = new Pool({
     connectionString: url,
-    ssl: configSsl(lerEnv()),
-    max: 10,
+    ssl: configSsl(env),
+    max: env.PG_POOL_MAX,
     connectionTimeoutMillis: 10_000,
     idleTimeoutMillis: 30_000,
     keepAlive: true,
     statement_timeout: 30_000,
   })
   pool.on('error', (erro) => console.error('[db] erro em conexão ociosa do pool', erro))
+  if (process.env.VERCEL === '1') attachDatabasePool(pool)
   return pool
 }
 
