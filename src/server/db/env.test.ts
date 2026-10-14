@@ -32,3 +32,22 @@ describe('lerEnv', () => {
     expect(() => exigir(lerEnv({ DATABASE_URL: '' }), 'DATABASE_URL')).toThrow(/DATABASE_URL/)
   })
 })
+
+describe('limite de conexões do pool', () => {
+  test('mantém dez por padrão e trata vazio como não configurado', () => {
+    expect(lerEnv({}).PG_POOL_MAX).toBe(10)
+    expect(lerEnv({ PG_POOL_MAX: '  ' }).PG_POOL_MAX).toBe(10)
+  })
+
+  test('aceita limite menor para instâncias da Vercel', () => {
+    expect(lerEnv({ PG_POOL_MAX: '2' }).PG_POOL_MAX).toBe(2)
+    expect(lerEnv({ PG_POOL_MAX: '1' }).PG_POOL_MAX).toBe(1)
+    expect(lerEnv({ PG_POOL_MAX: '10' }).PG_POOL_MAX).toBe(10)
+  })
+
+  test.each(['0', '-1', '11', '2.5', 'Infinity', 'abc'])(
+    'recusa limite inválido %s antes de abrir conexão', (valor) => {
+      expect(() => lerEnv({ PG_POOL_MAX: valor })).toThrow(/PG_POOL_MAX/)
+    },
+  )
+})

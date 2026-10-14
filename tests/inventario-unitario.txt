@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1252
+# Total: 1267
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -453,6 +453,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\operacao\producao-vercel.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-lateral-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-estrutura-visual.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-etiquetas.md não tem caractere de controle literal
@@ -501,6 +502,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-historico.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-piloto-leitura.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-13-prospeccao-grupos-cnpj-opcional.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-14-producao-vercel.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -532,6 +534,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-21-whatsapp-gestor-evolution.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-22-whatsapp-identificacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-13-prospeccao-cnpj-opcional-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-14-producao-vercel-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
@@ -1132,6 +1135,14 @@ src/server/db/env.test.ts :: lerEnv PG_SSL_NOME_SERVIDOR é opcional e vazio vir
 src/server/db/env.test.ts :: lerEnv recusa qualquer outro valor, inclusive inseguro
 src/server/db/env.test.ts :: lerEnv string vazia conta como ausente
 src/server/db/env.test.ts :: lerEnv URLs são opcionais na leitura e exigidas por quem usa
+src/server/db/env.test.ts :: limite de conexões do pool aceita limite menor para instâncias da Vercel
+src/server/db/env.test.ts :: limite de conexões do pool mantém dez por padrão e trata vazio como não configurado
+src/server/db/env.test.ts :: limite de conexões do pool recusa limite inválido -1 antes de abrir conexão
+src/server/db/env.test.ts :: limite de conexões do pool recusa limite inválido 0 antes de abrir conexão
+src/server/db/env.test.ts :: limite de conexões do pool recusa limite inválido 11 antes de abrir conexão
+src/server/db/env.test.ts :: limite de conexões do pool recusa limite inválido 2.5 antes de abrir conexão
+src/server/db/env.test.ts :: limite de conexões do pool recusa limite inválido abc antes de abrir conexão
+src/server/db/env.test.ts :: limite de conexões do pool recusa limite inválido Infinity antes de abrir conexão
 src/server/db/host-local.test.ts :: exigirHostLocal a mensagem diz o motivo e nomeia o host recusado
 src/server/db/host-local.test.ts :: exigirHostLocal a mensagem não vaza a senha da URL
 src/server/db/host-local.test.ts :: exigirHostLocal aceita ::1
@@ -1196,8 +1207,12 @@ src/server/db/migracoes/invariantes.test.ts :: avaliar tabela sem RLS em qualque
 src/server/db/migracoes/invariantes.test.ts :: políticas de leitura irrestrita a política registrada não é violação
 src/server/db/migracoes/invariantes.test.ts :: políticas de leitura irrestrita política com USING (true) fora da lista é acusada
 src/server/db/migracoes/invariantes.test.ts :: políticas de leitura irrestrita política registrada que sumiu do banco é acusada
+src/server/db/pool.test.ts :: fechar e reabrir uma URL registra o novo pool sem reutilizar o encerrado
+src/server/db/pool.test.ts :: mantém o padrão fora da Vercel sem registrar hook de suspensão
 src/server/db/pool.test.ts :: mesma URL devolve a mesma instância, sobrevivendo a um novo import do módulo
+src/server/db/pool.test.ts :: respeita limite de produção e registra cada pool uma vez na Vercel
 src/server/db/pool.test.ts :: URLs diferentes são pools diferentes
+src/server/db/pool.test.ts :: URLs distintas recebem registro próprio na Vercel
 src/server/db/sem-identidade.test.ts :: aridade errada lança antes de tocar no banco
 src/server/db/sem-identidade.test.ts :: nome fora do mapa lança antes de tocar no banco
 src/server/db/sem-identidade.test.ts :: o mapa tem exatamente as sete funções da spec

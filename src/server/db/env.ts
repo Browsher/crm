@@ -10,6 +10,10 @@ const esquema = z.object({
   DATABASE_URL_ADMIN: vazioViraUndefined,
   DATABASE_URL_CONFERENCIA: vazioViraUndefined,
   PG_SSL: z.enum(['off', 'verify']).default('verify'),
+  PG_POOL_MAX: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.coerce.number().int().min(1).max(10).default(10),
+  ),
   PG_SSL_CA: vazioViraUndefined,
   // Nome esperado no certificado quando o host de conexão não bate com o SAN
   // (proxy da Railway). Só faz sentido junto com PG_SSL_CA pinado.

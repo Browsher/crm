@@ -1,0 +1,12 @@
+node_modules
+.git
+.env*
+.next*
+coverage
+playwright-report
+test-results
+.superpowers
+.artifact-work
+.bases
+outputs
+*.pem
