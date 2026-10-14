@@ -26,10 +26,17 @@ function biblioteca() {
     'src/server/prospeccao-base/entrada']
   const modulos = Object.fromEntries(arquivos.map(p => [p, readFileSync(resolve(p + '.ts'), 'utf8')]))
   modulos.entry = [
-    "export * from './src/lib/prospeccao-base/consolidar'",
-    "export * from './src/lib/prospeccao-base/abas'",
-    "export * from './src/lib/prospeccao-base/whatsapp'",
-    "export * from './src/server/prospeccao-base/entrada'",
+    "import { consolidar as consolidarBase } from './src/lib/prospeccao-base/consolidar'",
+    "import { CABECALHOS_ABAS as cabecalhos, serializarAbas as serializar, desserializarAbas as desserializar } from './src/lib/prospeccao-base/abas'",
+    "import { precisaConsultar as consultar, classificarConsulta as classificar } from './src/lib/prospeccao-base/whatsapp'",
+    "import { lerFontesMaps as lerFontes } from './src/server/prospeccao-base/entrada'",
+    'export const consolidar = consolidarBase',
+    'export const CABECALHOS_ABAS = cabecalhos',
+    'export const serializarAbas = serializar',
+    'export const desserializarAbas = desserializar',
+    'export const precisaConsultar = consultar',
+    'export const classificarConsulta = classificar',
+    'export const lerFontesMaps = lerFontes',
   ].join('\n')
   codigoBiblioteca = compilarCodigoN8n(modulos, 'entry')
   return codigoBiblioteca
@@ -182,8 +189,9 @@ const rows = lib.serializarAbas({empresas:[],telefones:atualizados,coletas:[]}).
 return rows.map(l => ({json:{...l,quantidade_empresas:Number(l.quantidade_empresas)}}))
 `, true)
   sheet('Atualizar validacao', 'Telefones', true)
+  code('Guardar resultado lote', "return $('Classificar consulta').all(0,$runIndex)")
   add('Intervalo lote', 'wait', 1.1, { resume: 'timeInterval', amount: 0.75, unit: 'seconds' })
-  controlar('Controlar conferência final')
+  code('Controlar conferência final', "return [{json:{validacoes:$input.all().filter(i => typeof i.json.numero === 'string').map(i => i.json)}}]")
   sheet('Conferir Empresas', 'Empresas')
   controlar('Controlar conferência Telefones')
   sheet('Conferir Telefones', 'Telefones')
@@ -198,11 +206,34 @@ const r = lib.desserializarAbas({
   Coletas:aba('Conferir Coletas',lib.CABECALHOS_ABAS.Coletas)})
 if (!r.ok) throw new Error(r.motivo)
 const plano = $('Consolidar dados').first().json
-for (const nome of ['empresas','telefones','coletas']) {
-  const key = nome === 'empresas' ? 'id' : nome === 'telefones' ? 'numero' : 'chave'
-  const existentes = new Set(r.base[nome].map(l => l[key]))
-  if (plano.base[nome].some(l => !existentes.has(l[key]))) throw new Error('Gravacao incompleta')
+const atual = lib.serializarAbas(r.base)
+const esperado = lib.serializarAbas(plano.base)
+const validarAba = nome => {
+  const key = nome === 'Empresas' ? 'id' : nome === 'Telefones' ? 'numero' : 'chave'
+  const existentes = new Map(atual[nome].map(l => [l[key],l]))
+  if (atual[nome].length !== esperado[nome].length) throw new Error('Gravacao incompleta: ' + nome)
+  for (const linha of esperado[nome]) {
+    const lida = existentes.get(linha[key])
+    if (!lida || lib.CABECALHOS_ABAS[nome].some(h => lida[h] !== linha[h])) {
+      throw new Error('Gravacao incompleta: ' + nome)
+    }
+  }
 }
+validarAba('Empresas')
+validarAba('Coletas')
+const validacoes = $('Controlar conferência final').first().json.validacoes
+const consultados = plano.lotes.flatMap(l => l.numeros)
+if (!Array.isArray(validacoes) || validacoes.length !== consultados.length ||
+  new Set(validacoes.map(l => l.numero)).size !== consultados.length ||
+  validacoes.some(l => !consultados.includes(l.numero))) throw new Error('Validacao incompleta')
+const porNumero = new Map(validacoes.map(l => [l.numero,l]))
+esperado.Telefones = esperado.Telefones.map(l => {
+  const validacao = porNumero.get(l.numero)
+  if (!validacao) return l
+  return Object.fromEntries(lib.CABECALHOS_ABAS.Telefones.map(h => [h,
+    h === 'quantidade_empresas' ? String(validacao[h]) : validacao[h]]))
+})
+validarAba('Telefones')
 const t = r.base.telefones
 return [{json:{empresas:r.base.empresas.length,telefonesUnicos:t.length,
   empresasSemTelefone:r.base.empresas.filter(e => !e.telefoneNormalizado).length,
@@ -237,7 +268,8 @@ return [{json:{empresas:r.base.empresas.length,telefonesUnicos:t.length,
   ligar('Esperar tentativa', 'Consultar novamente')
   ligar('Consultar novamente', 'Classificar consulta')
   ligar('Classificar consulta', 'Atualizar validacao')
-  ligar('Atualizar validacao', 'Intervalo lote')
+  ligar('Atualizar validacao', 'Guardar resultado lote')
+  ligar('Guardar resultado lote', 'Intervalo lote')
   ligar('Intervalo lote', 'Loop lotes')
   const final = ['Controlar conferência final', 'Conferir Empresas', 'Controlar conferência Telefones',
     'Conferir Telefones', 'Controlar conferência Coletas', 'Conferir Coletas', 'Relatorio final']

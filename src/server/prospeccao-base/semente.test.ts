@@ -79,3 +79,12 @@ test('quantidade de empresas numérica vinda da tabela nativa não altera identi
   abas.Telefones[0].quantidade_empresas = 1
   expect(desserializarAbas(abas)).toMatchObject({ ok: true })
 })
+
+
+test.each(['nome', 'razao_social', 'categoria', 'segmento', 'telefone_publicado', 'endereco_publicado',
+  'bairro', 'cep', 'cidade', 'uf', 'email', 'site', 'link_maps', 'fonte_endereco', 'data_coleta', 'place_id'])(
+  'divergência na coluna publicada %s bloqueia base sem escolher JSON silenciosamente', coluna => {
+    const abas = serializarAbas(seed())
+    abas.Empresas[0][coluna] = coluna === 'cep' ? '3123000' : 'Divergente'
+    expect(desserializarAbas(abas)).toMatchObject({ ok: false, motivo: 'base_invalida' })
+  })

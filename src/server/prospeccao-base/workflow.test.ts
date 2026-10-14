@@ -14,12 +14,12 @@ const fonte = (place_id: string): FonteMaps => ({
   endereco: 'Rua do cenário, 10', link_maps: 'https://maps.google.com/',
 })
 type Item = { json: Record<string, unknown>; binary?: Record<string, unknown> }
-async function code(w: WorkflowExport, name: string, input: Item[], named: Record<string, Item[]> = {}, bytes?: Uint8Array) {
+async function code(w: WorkflowExport, name: string, input: Item[], named: Record<string, Item[]> = {}, bytes?: Uint8Array, seguro = false, runIndex = 0) {
   const node = w.nodes.find(n => n.name === name)
   if (!node) throw new Error('Nó ausente: ' + name)
-  const fn = runInNewContext('(async function(){' + String(node.parameters.jsCode) + '})', {
+  const fn = runInNewContext((seguro ? 'Object.defineProperty = function(o){ return o };' : '') + '(async function(){' + String(node.parameters.jsCode) + '})', {
     $input: { all: () => input, first: () => input[0] }, $json: input[0]?.json,
-    $execution: { id: 'exec-teste' }, Date, TextDecoder,
+    $execution: { id: 'exec-teste' }, $runIndex: runIndex, Date, TextDecoder,
     $: (nome: string) => ({
       all: () => named[nome] ?? [], first: () => named[nome]?.[0], item: named[nome]?.[0],
     }),
@@ -115,4 +115,65 @@ test('validação do upload recusa UTF-8 inválido', async () => {
   const w = gerarWorkflow(config)
   await expect(code(w, 'Validar arquivo', [{ json: {}, binary: { csv: {} } }], {}, new Uint8Array([0xff])))
     .rejects.toThrow()
+})
+
+test('entrypoint funciona com Object.defineProperty neutralizado pelo runner seguro', async () => {
+  const w = gerarWorkflow(config)
+  const named = { 'Receber CSV': [{ json: { fonte: 'Maps', regiao: 'Mooca', termos: 'CFTV' } }] }
+  const resultado = await code(w, 'Preparar coleta', [{ json: fonte('p1') }], named, undefined, true)
+  expect(resultado[0].json.fontes).toEqual([fonte('p1')])
+})
+
+function conferir(base: Base, out: Item[], validacoes: Item[] = []) {
+  const abas = serializarAbas(base)
+  return {
+    'Consolidar dados': out,
+    'Controlar conferência final': [{ json: { validacoes: validacoes.map(i => i.json) } }],
+    'Conferir Empresas': abas.Empresas.map(json => ({ json })),
+    'Conferir Telefones': abas.Telefones.map(json => ({ json })),
+    'Conferir Coletas': abas.Coletas.map(json => ({ json })),
+  }
+}
+
+test('relatório recusa endereço antigo mesmo com chaves e JSON consistentes', async () => {
+  const { w, out } = await plano({ empresas: [], telefones: [], coletas: [] }, [fonte('p1')])
+  const antigo = structuredClone(out[0].json.base as Base)
+  antigo.empresas[0].publicados.endereco = 'Endereço anterior'
+  await expect(code(w, 'Relatorio final', [], conferir(antigo, out)))
+    .rejects.toThrow('Gravacao incompleta')
+})
+
+test('relatório recusa validação antiga após resultado encontrado', async () => {
+  const { w, out } = await plano({ empresas: [], telefones: [], coletas: [] }, [fonte('p1')])
+  const base = out[0].json.base as Base
+  const rows = serializarAbas(base).Telefones.map(l => ({ json: { ...l, whatsapp: 'encontrado' } }))
+  await expect(code(w, 'Relatorio final', [], conferir(base, out, rows)))
+    .rejects.toThrow('Gravacao incompleta')
+})
+
+test('relatório exige o resultado de todos os lotes, mesmo se planilha ainda está pendente', async () => {
+  const { w, out } = await plano({ empresas: [], telefones: [], coletas: [] }, [fonte('p1')])
+  await expect(code(w, 'Relatorio final', [], conferir(out[0].json.base as Base, out)))
+    .rejects.toThrow('Validacao incompleta')
+})
+
+test('resultado esperado de cada lote vem da classificação, não do retorno da escrita', async () => {
+  const w = gerarWorkflow(config)
+  const rows = [{ json: { numero: '551126061244', whatsapp: 'encontrado' } }]
+  expect(await code(w, 'Guardar resultado lote', [{ json: { whatsapp: 'pendente' } }],
+    { 'Classificar consulta': rows })).toEqual(rows)
+  expect((w.connections['Atualizar validacao'] as { main: unknown[][] }).main[0])
+    .toContainEqual({ node: 'Guardar resultado lote', type: 'main', index: 0 })
+  const controle = await code(w, 'Controlar conferência final', rows)
+  expect(controle[0].json.validacoes).toEqual(rows.map(r => r.json))
+})
+
+test('conferência fiel aceita os resultados combinados de dois lotes', async () => {
+  const fontes = Array.from({ length: 11 }, (_, i) => ({ ...fonte('p' + i), telefone: '11' + String(26060000 + i) }))
+  const { w, out } = await plano({ empresas: [], telefones: [], coletas: [] }, fontes)
+  const base = structuredClone(out[0].json.base as Base)
+  for (const t of base.telefones) t.estado = 'encontrado'
+  const rows = serializarAbas(base).Telefones.map(json => ({ json }))
+  const resultado = await code(w, 'Relatorio final', [], conferir(base, out, rows))
+  expect(resultado[0].json.encontrado).toBe(11)
 })

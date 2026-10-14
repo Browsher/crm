@@ -77,8 +77,15 @@ function empresa(l: LinhaAba): EmpresaBase | null {
   if (!publicados || !placeIds || !placeIds.length || !coletas || !l.id ||
     !['pendente', 'revisada', 'telefone_compartilhado'].includes(l.revisao) ||
     (l.telefone_normalizado && !/^55[0-9]{10,11}$/.test(l.telefone_normalizado))) return null
-  if (l.nome !== publicados.nome_empresa || l.telefone_publicado !== publicados.telefone ||
-    l.endereco_publicado !== publicados.endereco || l.link_maps !== publicados.link_maps || l.place_id !== publicados.place_id) return null
+  const espelhados: Record<string, string> = {
+    place_id: publicados.place_id, nome: publicados.nome_empresa, razao_social: STRING(publicados.razao_social),
+    categoria: STRING(publicados.categoria), segmento: STRING(publicados.segmento),
+    telefone_publicado: publicados.telefone, email: STRING(publicados.email), site: STRING(publicados.site),
+    endereco_publicado: publicados.endereco, bairro: STRING(publicados.bairro), cep: STRING(publicados.cep),
+    cidade: STRING(publicados.cidade), uf: STRING(publicados.estado), link_maps: publicados.link_maps,
+    fonte_endereco: STRING(publicados.situacao_endereco), data_coleta: STRING(publicados.data_coleta),
+  }
+  if (Object.entries(espelhados).some(([campo, valor]) => l[campo] !== valor)) return null
   return { id: l.id, placeIds, cnpj: l.cnpj || null, publicados, telefoneNormalizado: l.telefone_normalizado || null,
     coletas, revisao: l.revisao as EmpresaBase['revisao'], observacoes: l.observacoes }
 }

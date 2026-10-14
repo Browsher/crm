@@ -8,7 +8,7 @@ Telefone compartilhado exige revisão comercial. Dois cadastros continuam separa
 
 Revise as colunas revisao e observacoes de Empresas. Em Telefones, marque revalidar como sim para consultar novamente um resultado conclusivo. Não substitua telefone por número sem DDD nem acrescente nove. Corrija dados publicados no CSV do coletor e reimporte; os campos publicados e dados_publicados precisam corresponder para a validação aceitar a base.
 
-Uma importação por vez. Google Sheets não oferece unicidade transacional: não executar duas importações simultâneas nem usar dois operadores para a mesma base. Duplicidade detectada bloqueia o relatório de sucesso.
+Uma importação por vez. Google Sheets não oferece unicidade transacional: não executar duas importações simultâneas nem usar dois operadores para a mesma base. Duplicidade ou divergência no conteúdo relido bloqueia o relatório de sucesso. O resultado esperado de todos os lotes precisa corresponder ao gravado; revisão humana permanece preservada mesmo com telefone compartilhado.
 
 ## Entrada e dados
 
@@ -33,7 +33,7 @@ Antes de declarar instalação, ler workflow e planilha depois da gravação e e
 
 ## Gerar e testar workflow
 
-Gerar com npx tsx scripts/prospeccao-base/gerar-workflow.mts --config <config.json> --saida <arquivo-novo.json>. Config possui planilhaId, evolutionUrl, instancia e abas (Empresas/Telefones/Coletas com sheetId numérico). O export tem 39 nós, sem credenciais e sem dados fixados. A instalação exige conferir a versão dos nós na instância: Form 2.2, Sheets 4.6, Code 2, Extract From File 1.2, Crypto 1, HTTP Request 4.2, If 2.2, Loop 3 e Wait 1.1. Extract acima de 1 rejeita erro de CSV; não rebaixar silenciosamente para 1.
+Gerar com npx tsx scripts/prospeccao-base/gerar-workflow.mts --config <config.json> --saida <arquivo-novo.json>. Config possui planilhaId, evolutionUrl, instancia e abas (Empresas/Telefones/Coletas com sheetId numérico). O export tem 40 nós, sem credenciais e sem dados fixados. A instalação exige conferir a versão dos nós na instância: Form 2.2, Sheets 4.6, Code 2, Extract From File 1.2, Crypto 1, HTTP Request 4.2, If 2.2, Loop 3 e Wait 1.1. Extract acima de 1 rejeita erro de CSV; não rebaixar silenciosamente para 1.
 
 O formulário é manual pelo Test URL e exige Basic Auth configurada. Ler as abas passa por controles de item único para não multiplicar consultas. Escritas são sequenciais, por chave, usando RAW e schema de colunas. Consultas seguem lotes de dez, intervalo de 750 ms e uma tentativa adicional para 429/5xx/timeout. Erro de Sheets interrompe. Redirecionamento HTTP é recusado para não enviar credencial a outro destino. Logs de execução não são persistidos; o relatório e os resultados da planilha são a evidência de operação.
 

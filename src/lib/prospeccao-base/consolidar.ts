@@ -118,7 +118,7 @@ export function consolidar(base: Base, fontes: FonteMaps[], coleta: ColetaEntrad
     if (registro.empresas.length < 2) continue
     for (const id of registro.empresas) {
       const empresa = porId.get(id)
-      if (empresa) empresa.revisao = 'telefone_compartilhado'
+      if (empresa && empresa.revisao !== 'revisada') empresa.revisao = 'telefone_compartilhado'
     }
   }
   registrar({

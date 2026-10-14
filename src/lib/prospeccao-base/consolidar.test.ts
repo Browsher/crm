@@ -100,3 +100,16 @@ test('não aceita base já duplicada', () => {
   inicial.telefones.push({ ...inicial.telefones[0] })
   expect(consolidar(inicial, [fonte('p2')], coleta)).toMatchObject({ ok: false, motivo: 'base_duplicada' })
 })
+
+
+test.each(['identica', 'nao relacionada'])('reimportação %s preserva revisão humana do compartilhamento', caso => {
+  const inicial = aplicar(vazia(), [fonte('p1'), fonte('p2')]).base
+  for (const empresa of inicial.empresas) {
+    empresa.revisao = 'revisada'
+    empresa.observacoes = 'Compartilhamento já conferido'
+  }
+  const fontes = caso === 'identica' ? [fonte('p1'), fonte('p2')] : [fonte('p3', { telefone: '11987654321' })]
+  const r = aplicar(inicial, fontes, 'exec-2')
+  expect(r.base.empresas.slice(0, 2).map(e => [e.revisao, e.observacoes]))
+    .toEqual([['revisada', 'Compartilhamento já conferido'], ['revisada', 'Compartilhamento já conferido']])
+})
