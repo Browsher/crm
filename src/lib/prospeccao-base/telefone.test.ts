@@ -27,3 +27,7 @@ test.each([
 ])('não transforma dados ambíguos em número: %s', bruto => {
   expect(normalizarNumero(bruto)).toEqual({ ok: false, motivo: 'telefone_invalido' })
 })
+
+test('DDI estrangeiro com onze digitos nao e reinterpretado como Brasil', () => {
+  expect(normalizarNumero('+1 415 555 2671')).toEqual({ ok: false, motivo: 'telefone_invalido' })
+})

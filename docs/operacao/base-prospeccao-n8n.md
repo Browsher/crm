@@ -30,3 +30,9 @@ Alvo autorizado: NxCO8HiaJmwqJ8jK, projeto mIsmhrUTAVI1ZPnf, em https://primary-
 Evolution usa credencial Header Auth, header apikey, guardada no n8n. CSV, planilha, logs e export compartilhável não recebem a chave. O workflow recebe arquivo pelo formulário de teste, com autenticação; permanece manual e não envia mensagens.
 
 Antes de declarar instalação, ler workflow e planilha depois da gravação e executar uma coleta no alvo. API sem autenticação não autoriza instalar. Credencial legítima ou importação no editor são os caminhos suportados; não fabricar autenticação de sessão.
+
+## Gerar e testar workflow
+
+Gerar com npx tsx scripts/prospeccao-base/gerar-workflow.mts --config <config.json> --saida <arquivo-novo.json>. Config possui planilhaId, evolutionUrl, instancia e abas (Empresas/Telefones/Coletas com sheetId numérico). O export tem 39 nós, sem credenciais e sem dados fixados. A instalação exige conferir a versão dos nós na instância: Form 2.2, Sheets 4.6, Code 2, Extract From File 1.2, Crypto 1, HTTP Request 4.2, If 2.2, Loop 3 e Wait 1.1. Extract acima de 1 rejeita erro de CSV; não rebaixar silenciosamente para 1.
+
+O formulário é manual pelo Test URL e exige Basic Auth configurada. Ler as abas passa por controles de item único para não multiplicar consultas. Escritas são sequenciais, por chave, usando RAW e schema de colunas. Consultas seguem lotes de dez, intervalo de 750 ms e uma tentativa adicional para 429/5xx/timeout. Erro de Sheets interrompe. Redirecionamento HTTP é recusado para não enviar credencial a outro destino. Logs de execução não são persistidos; o relatório e os resultados da planilha são a evidência de operação.
