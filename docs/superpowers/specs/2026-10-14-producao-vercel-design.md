@@ -25,7 +25,7 @@ Importar as 43 linhas prontas somente pelo fluxo autorizado de gestor, depois de
 
 ## Publicação
 
-A conta Vercel disponível está no plano Hobby. A preparação de código e configuração não altera cobrança. O uso comercial requer uma equipe Pro ou Enterprise; contratação e publicação devem ser resolvidas com o usuário depois de esta preparação ficar revisável. Não publicar como Hobby nem criar cópias do banco em outro provedor.
+Decisão atualizada em 14/10/2026: o usuário recusou ativar Pro agora e autorizou publicar o projeto para testes no Hobby. Essa autorização substitui o bloqueio de publicação do planejamento inicial. Manter a conta no plano existente e o Postgres CRM CH na Railway. Importação real e operação comercial ficam para depois da validação desse ambiente pelo gestor.
 
 Configurar secrets somente em Production. Previews comuns não devem escrever na base operacional. Testar a versão candidata de produção antes de liberar o endereço aos vendedores. O domínio inicial pode ser o endereço vercel.app; domínio próprio não é pré-requisito.
 
@@ -34,3 +34,6 @@ Configurar secrets somente em Production. Previews comuns não devem escrever na
 TDD no ajuste de env/pool, controles de URL diferente e fechamento/recriação do pool, validação de PG_POOL_MAX e do registro exclusivo na Vercel. Testes unitários, integração, CI com Next atualizado, build sem env e jornadas existentes em 390/820/1280. Na hospedagem: HTTPS, cookie Secure/HttpOnly, acesso ao Postgres com app_conexao, troca de senha, grupos e acesso negativo de vendedor à administração.
 
 Fontes: https://github.com/advisories/GHSA-vcvr-r3jv-pc5j ; https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package ; https://vercel.com/docs/limits/fair-use-guidelines ; docs/db/fundacao.md.
+## Execução validada em 14/10/2026
+
+Publicação de testes pronta, conexão restrita validada, limpeza local e atalho online concluídos. O usuário autorizou explicitamente a troca de senha de app_conexao, mantendo a senha do gestor. Login autenticado e jornadas privadas online aguardam o primeiro acesso do gestor, que exige troca da senha provisória. Evidências e próximos passos em docs/operacao/producao-vercel.md.
