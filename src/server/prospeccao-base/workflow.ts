@@ -28,7 +28,7 @@ function biblioteca() {
   modulos.entry = [
     "import { consolidar as consolidarBase } from './src/lib/prospeccao-base/consolidar'",
     "import { CABECALHOS_ABAS as cabecalhos, serializarAbas as serializar, desserializarAbas as desserializar } from './src/lib/prospeccao-base/abas'",
-    "import { precisaConsultar as consultar, classificarConsulta as classificar } from './src/lib/prospeccao-base/whatsapp'",
+    "import { precisaConsultar as consultar, classificarConsulta as classificar, classificarConsultaComunidade as classificarComunidade } from './src/lib/prospeccao-base/whatsapp'",
     "import { lerFontesMaps as lerFontes } from './src/server/prospeccao-base/entrada'",
     'export const consolidar = consolidarBase',
     'export const CABECALHOS_ABAS = cabecalhos',
@@ -36,6 +36,7 @@ function biblioteca() {
     'export const desserializarAbas = desserializar',
     'export const precisaConsultar = consultar',
     'export const classificarConsulta = classificar',
+    'export const classificarConsultaComunidade = classificarComunidade',
     'export const lerFontesMaps = lerFontes',
   ].join('\n')
   codigoBiblioteca = compilarCodigoN8n(modulos, 'entry')
@@ -50,7 +51,7 @@ export function gerarWorkflow(config: WorkflowConfig): WorkflowExport {
   const nodes: WorkflowNode[] = []
   const connections: Record<string, { main: Ligacao[][] }> = {}
   const add = (name: string, type: string, typeVersion: number, parameters: Record<string, unknown>, extra: Record<string, unknown> = {}) => {
-    nodes.push({ id: 'crm-base-' + (nodes.length + 1), name, type: 'n8n-nodes-base.' + type,
+    nodes.push({ id: 'crm-base-' + (nodes.length + 1), name, type: type.includes('.') ? type : 'n8n-nodes-base.' + type,
       typeVersion, position: [(nodes.length % 8) * 280, Math.floor(nodes.length / 8) * 260],
       parameters, ...extra })
   }
@@ -78,13 +79,16 @@ export function gerarWorkflow(config: WorkflowConfig): WorkflowExport {
       options: { cellFormat: 'RAW', handlingExtraData: 'error', useAppend: false },
     } : { options: { returnFirstMatch: false } }),
   }, { alwaysOutputData: true, onError: 'stopWorkflow' })
-  const http = (name: string, path: string, post = false) => add(name, 'httpRequest', 4.2, {
-    method: post ? 'POST' : 'GET',
+  const http = (name: string, path: string) => add(name, 'httpRequest', 4.2, {
+    method: 'GET',
     url: config.evolutionUrl.replace(/\/$/, '') + path + encodeURIComponent(config.instancia),
-    authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
-    ...(post ? { sendBody: true, specifyBody: 'json',
-      jsonBody: '={{ JSON.stringify({ numbers: $("Loop lotes").item.json.numeros }) }}' } : {}),
+    authentication: 'predefinedCredentialType', nodeCredentialType: 'evolutionApi',
     options: { timeout: 15000, redirect: { redirect: { followRedirects: false } }, response: { response: { fullResponse: true, neverError: true, responseFormat: 'json' } } },
+  }, { onError: 'continueRegularOutput' })
+
+  const consultar = (name: string) => add(name, 'n8n-nodes-evolution-api.evolutionApi', 1, {
+    resource: 'chat-api', operation: 'check-number', instanceName: encodeURIComponent(config.instancia),
+    numbers: '={{ $("Loop lotes").item.json.numeros.join(",") }}',
   }, { onError: 'continueRegularOutput' })
 
   add('Receber CSV', 'formTrigger', 2.2, {
@@ -107,7 +111,7 @@ if (!header.length || new Set(header).size !== header.length ||
   header.some(c => !/^[a-z][a-z0-9_]*$/.test(c))) throw new Error('Cabecalho invalido ou repetido')
 return itens
 `)
-  add('Extrair CSV', 'extractFromFile', 1.2, { operation: 'csv', binaryPropertyName: 'csv',
+  add('Extrair CSV', 'extractFromFile', 1.1, { operation: 'csv', binaryPropertyName: 'csv',
     options: { encoding: 'utf8', delimiter: ',', enableBOM: true, headerRow: true, includeEmptyCells: true,
       maxRowCount: -1, relaxQuotes: false } }, { alwaysOutputData: true })
   code('Preparar coleta', String.raw`
@@ -165,18 +169,16 @@ return [{json:{base:r.base,escritas,lotes,pendencias:r.pendencias,coleta}}]
   add('Loop lotes', 'splitInBatches', 3, { batchSize: 1, options: {} })
   http('Verificar conexao', '/instance/connectionState/')
   condicao('Instancia conectada', '={{ $json.statusCode >= 200 && $json.statusCode < 300 && $json.body?.instance?.state === "open" }}')
-  http('Consultar WhatsApp', '/chat/whatsappNumbers/', true)
-  condicao('Repetir consulta', '={{ !!$json.error || $json.statusCode === 429 || $json.statusCode >= 500 }}')
+  consultar('Consultar WhatsApp')
+  condicao('Repetir consulta', '={{ !!$json.error || $json.success !== true }}')
   add('Esperar tentativa', 'wait', 1.1, { resume: 'timeInterval', amount: 2, unit: 'seconds' })
-  http('Consultar novamente', '/chat/whatsappNumbers/', true)
+  consultar('Consultar novamente')
   code('Classificar consulta', String.raw`
 const lote = $('Loop lotes').item.json
 const input = $input.first().json
 const conexao = $('Verificar conexao').item.json
 const conectado = conexao.statusCode >= 200 && conexao.statusCode < 300 && conexao.body?.instance?.state === 'open'
-const resposta = {statusHTTP:typeof input.statusCode === 'number' ? input.statusCode : null,
-  corpo:conectado ? input.body : null, conectado, falha:input.error ? 'erro_transporte' : null}
-const classificados = lib.classificarConsulta(lote.numeros,resposta,new Date().toISOString())
+const classificados = lib.classificarConsultaComunidade(lote.numeros,input,conectado,new Date().toISOString())
 const base = $('Consolidar dados').first().json.base
 const porNumero = new Map(base.telefones.map(t => [t.numero,t]))
 const atualizados = classificados.map(r => {

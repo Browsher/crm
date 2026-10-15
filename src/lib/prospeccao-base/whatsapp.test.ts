@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { classificarConsulta, precisaConsultar } from './whatsapp'
+import { classificarConsulta, classificarConsultaComunidade, precisaConsultar } from './whatsapp'
 import type { TelefoneBase } from './modelo'
 
 const numero = '551126061244'
@@ -57,4 +57,29 @@ test.each(['pendente', 'inconclusivo'] as const)('consulta estado %s', estado =>
 })
 test('revalidar sim permite consultar registro conclusivo', () => {
   expect(precisaConsultar(telefone('encontrado', true))).toBe(true)
+})
+
+test.each([true, false])('nó comunitário aceita exists %s sem inventar status HTTP', exists => {
+  const [r] = classificarConsultaComunidade([numero], { success:true,data:[{ number:numero,exists,jid:numero+'@s.whatsapp.net' }] }, true, quando)
+  expect(r).toMatchObject({ numero,tipo:'fixo',estado:exists?'encontrado':'nao_encontrado',statusHTTP:null,motivo:null })
+})
+
+test.each([
+  { success:false,error:{ message:'apikey=segredo',code:'429' } },
+  { success:true,data:[{ number:numero,exists:false }],error:'contraditorio' },
+  { success:'true',data:[{ number:numero,exists:false }] },
+  { success:true,data:[] },
+  { success:true,data:[{ number:numero,exists:'false' }] },
+  { success:true,data:[{ number:'5511926061244',exists:false }] },
+  null,
+])('falha ou resposta incompleta da comunidade não vira negativo', retorno => {
+  const [r] = classificarConsultaComunidade([numero],retorno,true,quando)
+  expect(r.estado).toBe('inconclusivo')
+  expect(r.statusHTTP).toBeNull()
+  expect(JSON.stringify(r)).not.toContain('segredo')
+})
+
+test('conexão fechada prevalece sobre sucesso do nó comunitário', () => {
+  const [r]=classificarConsultaComunidade([numero],{success:true,data:[{number:numero,exists:false}]},false,quando)
+  expect(r).toMatchObject({estado:'inconclusivo',motivo:'instancia_desconectada'})
 })

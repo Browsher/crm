@@ -177,3 +177,41 @@ test('conferência fiel aceita os resultados combinados de dois lotes', async ()
   const resultado = await code(w, 'Relatorio final', [], conferir(base, out, rows))
   expect(resultado[0].json.encontrado).toBe(11)
 })
+
+
+test('export usa Extract 1.1 suportado pelo n8n 2.36.8', () => {
+  const w=gerarWorkflow(config)
+  expect(w.nodes.find(n=>n.name==='Extrair CSV')).toMatchObject({ type:'n8n-nodes-base.extractFromFile',typeVersion:1.1,parameters:{operation:'csv'} })
+  expect((w.connections['Validar arquivo'] as {main:unknown[][]}).main[0]).toContainEqual({node:'Extrair CSV',type:'main',index:0})
+  expect((w.connections['Extrair CSV'] as {main:unknown[][]}).main[0]).toContainEqual({node:'Preparar coleta',type:'main',index:0})
+})
+
+test('consulta e nova tentativa usam o nó comunitário com números originais', () => {
+  const w=gerarWorkflow(config)
+  for (const nome of ['Consultar WhatsApp','Consultar novamente']) {
+    expect(w.nodes.find(n=>n.name===nome)).toMatchObject({ type:'n8n-nodes-evolution-api.evolutionApi',typeVersion:1,
+      parameters:{resource:'chat-api',operation:'check-number',instanceName:'cenario',numbers:'={{ $("Loop lotes").item.json.numeros.join(",") }}'},
+      onError:'continueRegularOutput' })
+  }
+  expect(w.nodes.find(n=>n.name==='Verificar conexao')).toMatchObject({ type:'n8n-nodes-base.httpRequest',parameters:{
+    authentication:'predefinedCredentialType',nodeCredentialType:'evolutionApi',url:'https://evolution.test/instance/connectionState/cenario' } })
+  expect(w.nodes.filter(n=>n.type==='n8n-nodes-base.httpRequest')).toHaveLength(1)
+  const repetir=w.nodes.find(n=>n.name==='Repetir consulta')!
+  expect(JSON.stringify(repetir.parameters)).toContain('$json.success !== true')
+})
+
+test('retorno success/data é classificado sem perder vínculos de telefone fixo', async () => {
+  const {w,out}=await plano({empresas:[],telefones:[],coletas:[]},[fonte('p1'),fonte('p2')])
+  const named={ 'Consolidar dados':out,'Loop lotes':[{json:{numeros:['551126061244']}}],
+    'Verificar conexao':[{json:{statusCode:200,body:{instance:{state:'open'}}}}] }
+  const [r]=await code(w,'Classificar consulta',[{json:{success:true,data:[{number:'551126061244',exists:true,jid:'551126061244@s.whatsapp.net'}]}}],named)
+  expect(r.json.whatsapp).toBe('encontrado')
+  expect(r.json.numero).toBe('551126061244')
+  expect(r.json.http).toBe('')
+  expect(JSON.parse(String(r.json.empresas_ids))).toEqual(['google:p1','google:p2'])
+})
+
+test('instância com caracteres de URL permanece um único segmento na comunidade', () => {
+  const w=gerarWorkflow({...config,instancia:'nome /&?'})
+  expect(w.nodes.find(n=>n.name==='Consultar WhatsApp')?.parameters.instanceName).toBe('nome%20%2F%26%3F')
+})
