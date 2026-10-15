@@ -13,7 +13,13 @@ async function executar() {
   } catch {
     throw new Error('Não foi possível ler a configuração JSON')
   }
-  const workflow = gerarWorkflowSimples(config)
+  let workflow: ReturnType<typeof gerarWorkflowSimples>
+  try {
+    workflow = gerarWorkflowSimples(config)
+  } catch (erro) {
+    if (erro instanceof Error && erro.message === 'Configuração inválida') throw erro
+    throw new Error('Falha ao gerar workflow')
+  }
   if (workflow.nodes.some(n => 'credentials' in n) || 'pinData' in workflow) throw new Error('Export contém dados de autenticação')
   try {
     await writeFile(resolve(args[3]), JSON.stringify(workflow, null, 2) + '\n', { flag: 'wx' })
