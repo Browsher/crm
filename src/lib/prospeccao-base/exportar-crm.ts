@@ -125,6 +125,19 @@ export function montarSaidas(coleta: ColetaSheets, consultas: TelefoneBase[]): R
   }
   const compartilhados = new Map<string, number[]>()
   for (const grupo of agruparIdentidades(coleta.linhas.map(prepararCadastro))) {
+    // Pendência de cadastro não apaga o vínculo entre telefone e identidade.
+    // Cada componente contribui uma única linha representante por número.
+    if (grupo.some(cadastro => cadastro.identidades.length > 0)) {
+      const representantes = new Map<string, number>()
+      for (const { origem } of grupo) {
+        if (origem.numero !== null && !representantes.has(origem.numero)) representantes.set(origem.numero, origem.linha)
+      }
+      for (const [numero, linha] of representantes) {
+        const linhas = compartilhados.get(numero) ?? []
+        linhas.push(linha)
+        compartilhados.set(numero, linhas)
+      }
+    }
     const primeiro = grupo[0]
     const assinatura = JSON.stringify(primeiro.campos)
     const divergente = grupo.some(cadastro => JSON.stringify(cadastro.campos) !== assinatura || cadastro.motivo !== primeiro.motivo)
@@ -143,9 +156,7 @@ export function montarSaidas(coleta: ColetaSheets, consultas: TelefoneBase[]): R
     saidas.duplicadas.push(...grupo.slice(1).map(cadastro => cadastro.origem.linha))
     const numero = primeiro.origem.numero
     if (numero === null) continue
-    const linhas = compartilhados.get(numero) ?? []
-    linhas.push(primeiro.origem.linha)
-    compartilhados.set(numero, linhas)
+
     if (estados.get(numero) === 'encontrado') saidas.exportacao.push(primeiro.campos)
   }
   saidas.compartilhados = [...compartilhados].flatMap(([numero, linhas]) => linhas.length > 1 ? [{ numero, linhas }] : [])

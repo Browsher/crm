@@ -224,3 +224,46 @@ test('Place ID com controle aparável não cria vínculo com identidade válida'
   expect(saidas.exportacao[0][0]).toBe('11222333000181')
   expect(saidas.pendencias).toEqual([{ linhas: [3], numero, motivo: 'caractere_invalido' }])
 })
+
+test('reporta telefone compartilhado com cadastro pendente e deduplica suas ocorrências idênticas', () => {
+  const saidas = executar([...cabecalho, 'email'], [
+    [telefone, 'Empresa A', 'ChIJ-a', 'contato@empresa.com'],
+    [telefone, 'Empresa B', 'ChIJ-b', 'invalido'],
+    [telefone, 'Empresa B', 'ChIJ-b', 'invalido'],
+  ])
+  expect(saidas.validos).toEqual([numero])
+  expect(saidas.exportacao).toHaveLength(1)
+  expect(saidas.exportacao[0][8]).toBe('ChIJ-a')
+  expect(saidas.pendencias).toEqual([{ linhas: [3, 4], numero, motivo: 'email_forma' }])
+  expect(saidas.compartilhados).toEqual([{ numero, linhas: [2, 3] }])
+})
+
+test('reporta compartilhamento entre empresas identificadas mesmo quando ambas estão pendentes', () => {
+  const saidas = executar([...cabecalho, 'email'], [
+    [telefone, 'Empresa A', 'ChIJ-a', 'invalido'],
+    [telefone, 'Empresa B', 'ChIJ-b', 'invalido'],
+  ])
+  expect(saidas.exportacao).toEqual([])
+  expect(saidas.pendencias).toHaveLength(2)
+  expect(saidas.compartilhados).toEqual([{ numero, linhas: [2, 3] }])
+})
+
+test('reporta cada telefone de componente divergente compartilhado com outra identidade', () => {
+  const saidas = executar(cabecalho, [
+    [telefone, 'Empresa A', 'ChIJ-a'],
+    ['11 2600-0002', 'Empresa A', 'ChIJ-a'],
+    ['11 2600-0002', 'Empresa B', 'ChIJ-b'],
+  ])
+  expect(saidas.exportacao).toHaveLength(1)
+  expect(saidas.pendencias).toEqual([{ linhas: [2, 3], numero: null, motivo: 'identidade_divergente' }])
+  expect(saidas.compartilhados).toEqual([{ numero: '551126000002', linhas: [3, 4] }])
+})
+
+test('não considera cadastro sem identidade como outra empresa no compartilhamento', () => {
+  const saidas = executar(cabecalho, [
+    [telefone, 'Empresa A', 'ChIJ-a'], [telefone, 'Sem identidade', ''],
+  ])
+  expect(saidas.exportacao).toHaveLength(1)
+  expect(saidas.pendencias).toEqual([{ linhas: [3], numero, motivo: 'identidade_ausente' }])
+  expect(saidas.compartilhados).toEqual([])
+})
