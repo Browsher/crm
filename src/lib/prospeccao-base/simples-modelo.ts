@@ -19,3 +19,16 @@ export type ColetaSheets = {
 export type LeituraSheets =
   | { ok: true; coleta: ColetaSheets }
   | { ok: false; motivo: 'estrutura_invalida' | 'excede_limite'; detalhes: string[] }
+
+export type SaidasSimples = {
+  validos: string[]
+  invalidos: string[]
+  exportacao: string[][]
+  pendencias: PendenciaSimples[]
+  compartilhados: { numero: string; linhas: number[] }[]
+  duplicadas: number[]
+}
+
+export type ResultadoSimples =
+  | { ok: true; saidas: SaidasSimples }
+  | { ok: false; motivo: 'consulta_incompleta'; pendencias: PendenciaSimples[] }
