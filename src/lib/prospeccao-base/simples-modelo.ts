@@ -32,3 +32,4 @@ export type SaidasSimples = {
 export type ResultadoSimples =
   | { ok: true; saidas: SaidasSimples }
   | { ok: false; motivo: 'consulta_incompleta'; pendencias: PendenciaSimples[] }
+  | { ok: false; motivo: 'exportacao_excede_tamanho'; bytesEstimados: number; limiteBytes: number; detalhes: string[] }

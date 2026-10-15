@@ -89,7 +89,7 @@ return [{json:{grades,origemRange:lib.rangeA1(titulos.origem,grades.origem.linha
   })
   code('Preparar coleta', String.raw`
 const r = lib.lerColetaSheets($input.first().json.values ?? [])
-if (!r.ok) throw new Error(r.motivo)
+if (!r.ok) throw new Error(JSON.stringify({motivo:r.motivo,detalhes:r.detalhes}))
 return [{json:{coleta:r.coleta,execucao:{id:String($execution.id),data:new Date().toISOString()}},pairedItem:{item:0}}]
 `, true)
   code('Preparar lotes', String.raw`
@@ -146,7 +146,7 @@ return [{json:{resultados:lote.resultados},pairedItem:{item:0}}]
 const coleta = $('Preparar coleta').first().json.coleta
 const consultas = $input.all().flatMap(i => i.json.resultados ?? [])
 const r = lib.montarSaidas(coleta,consultas)
-if (!r.ok) throw new Error(JSON.stringify({motivo:r.motivo,pendencias:r.pendencias}))
+if (!r.ok) throw new Error(JSON.stringify(r))
 return [{json:{saidas:r.saidas}}]
 `, true)
   code('Preparar publicação', 'const destinos = ' + JSON.stringify({ validacao: config.abas.validacao, exportacao: config.abas.exportacao }) + '\n' + String.raw`

@@ -29,10 +29,10 @@ O JSON antigo permanece preservado. Não usar o instalador antigo desta base: se
 Para regenerar em um arquivo novo, executar na raiz do projeto:
 
 ```powershell
-node --import tsx scripts/prospeccao-base/gerar-workflow-simples.mts --config outputs/validacao-whatsapp-sheets-2026-10-15/config-simples.json --saida outputs/validacao-whatsapp-sheets-2026-10-15/workflow-whatsapp-sheets-simples.json
+node --import tsx scripts/prospeccao-base/gerar-workflow-simples.mts --config outputs/validacao-whatsapp-sheets-2026-10-15/config-simples.json --saida outputs/validacao-whatsapp-sheets-2026-10-15/workflow-whatsapp-sheets-simples-regenerado.json
 ```
 
-O CLI recusa sobrescrever um destino existente. O contrato de configuração é `planilhaId`, `evolutionUrl`, `instancia` e `abas` com `origem`, `validacao` e `exportacao` numéricos. Credenciais permanecem no n8n.
+Use um nome de destino livre a cada regeneração. O CLI recusa sobrescrever um destino existente. O contrato de configuração é `planilhaId`, `evolutionUrl`, `instancia` e `abas` com `origem`, `validacao` e `exportacao` numéricos. Credenciais permanecem no n8n.
 
 ## Importar e configurar no editor
 
@@ -49,9 +49,9 @@ Referências do editor: [importação e exportação](https://docs.n8n.io/workfl
 
 ## Colar a coleta e executar
 
-Cole a coleta completa em `planilha original scraping`, com os cabeçalhos na linha 1, `telefone` exatamente em A1 e telefones a partir de A2. Substitua a coleta anterior inteira, removendo sobras de linhas anteriores. Preserve números e identificadores como texto. Não é preciso copiar telefones para a aba de validação. Máximo: 5.000 empresas; o fluxo recusa excedentes em vez de truncar.
+Cole a coleta completa em `planilha original scraping`, com os cabeçalhos na linha 1, `telefone` exatamente em A1 e telefones a partir de A2. Substitua a coleta anterior inteira, removendo sobras de linhas anteriores. Preserve números e identificadores como texto. Não é preciso copiar telefones para a aba de validação. Máximo: 5.000 empresas; o fluxo recusa excedentes em vez de truncar. Antes de publicar, também confere o limite de 1.500.000 bytes do importador, estimando CSV UTF-8 com escapes, todos os campos entre aspas, CRLF e BOM. Se exceder, interrompe as duas saídas e orienta dividir a coleta em partes menores. Essa estimativa conservadora pode pedir divisão mesmo quando um download mais compacto caberia; a origem permanece intacta.
 
-Os demais campos são reconhecidos pelo cabeçalho, independentemente da posição: `nome_empresa`, `place_id`, `cnpj`, `email`, `cep`, `endereco`, `link_maps`, `razao_social`, `nome_fantasia`, `contato_nome`, `cnae_principal` e `google_place_id`. Campos extras, endereço e link do Maps permanecem na origem; o CSV atual de nove colunas não os transporta ao CRM. Cabeçalhos duplicados/ambíguos bloqueiam o fluxo; aliases preenchidos com valores diferentes exigem correção.
+Os demais campos são reconhecidos pelo cabeçalho, independentemente da posição: `nome_empresa`, `place_id`, `cnpj`, `email`, `cep`, `endereco`, `link_maps`, `razao_social`, `nome_fantasia`, `contato_nome`, `cnae_principal` e `google_place_id`. Campos extras, endereço e link do Maps permanecem na origem; o CSV atual de nove colunas não os transporta ao CRM. Cabeçalhos duplicados/ambíguos e células ilegíveis bloqueiam o fluxo; o erro de Preparar coleta informa motivo e detalhes com linha/coluna, sem reproduzir o conteúdo da célula. Corrija as posições indicadas antes de executar novamente; aliases preenchidos com valores diferentes exigem correção.
 
 Só telefone basta para consultar registro no WhatsApp. Para exportar, a empresa também precisa de nome e identidade: Place ID ou CNPJ válido. Não fabricar os dados ausentes. `nome_empresa` pode preencher nome fantasia; não é usado para inventar razão social.
 

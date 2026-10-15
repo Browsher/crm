@@ -295,3 +295,30 @@ test('grade pequena expande antes dos dados e releitura cobre a dimensão expand
     { updateSheetProperties: { properties: { sheetId: 3, gridProperties: { rowCount: 12, columnCount: 9 } }, fields: 'gridProperties.rowCount,gridProperties.columnCount' } },
   ])
 })
+
+test.each([false, true])('bundle bloqueia publicação integral quando CSV excede o orçamento; seguro=%s', async seguro => {
+  const r = await percurso({ seguro, rangesEsperados: ["'Validar numero whatsapp'!A1:AN100", "'Planilha exportar CRM'!A1:AN5001"], fonte: [
+    ['telefone', 'nome_empresa', 'place_id', 'razao_social', 'contato_nome'],
+    ...Array.from({ length: 5000 }, (_, i) => ['1126060000', 'é"'.repeat(75), 'p' + i, 'r'.repeat(129), 'c'.repeat(39)]),
+  ] })
+  expect(r.erro?.message).toContain('exportacao_excede_tamanho')
+  expect(r.erro?.message).toContain('Divida a coleta')
+  expect(r.batches).toEqual([])
+  expect(r.grades).toEqual({ 2: [['antigo'], ['sobra']], 3: [['antigo'], ['sobra']] })
+  expect(r.vistos).not.toContain('Preparar publicação')
+  expect(r.vistos).not.toContain('Relatório final')
+})
+
+test.each([
+  { fonte: [['telefone'], ['1126061244', 'conteudo-privado']], detalhe: 'Valor sem cabeçalho na linha 2, coluna 2.' },
+  { fonte: [['telefone', 'conteudo-privado', 'conteudo-privado']], detalhe: 'Cabeçalho duplicado na linha 1, coluna 3.' },
+  { fonte: [['telefone'], [{ error: 'conteudo-privado' }]], detalhe: 'Célula ilegível na linha 2, coluna 1.' },
+  { fonte: [['telefone', { error: 'conteudo-privado' }]], detalhe: 'Cabeçalho ilegível na linha 1, coluna 2.' },
+])('Code node preserva diagnóstico estrutural sanitizado: %j', async ({ fonte, detalhe }) => {
+  const r = await percurso({ fonte })
+  expect(r.erro?.message).toContain(detalhe)
+  expect(JSON.parse(r.erro!.message)).toEqual({ motivo: 'estrutura_invalida', detalhes: [detalhe] })
+  expect(r.erro?.message).not.toContain('conteudo-privado')
+  expect(r.batches).toEqual([])
+  expect(r.consultas).toEqual([])
+})

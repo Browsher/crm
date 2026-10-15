@@ -1,3 +1,4 @@
+import { LIMITE_BYTES_ARQUIVO } from '../arquivo-empresas'
 import { normalizarCep } from '../cep'
 import { normalizarCnae } from '../cnae'
 import { normalizarCnpj, validarCnpj } from '../cnpj'
@@ -162,6 +163,19 @@ export function montarSaidas(coleta: ColetaSheets, consultas: TelefoneBase[]): R
   saidas.compartilhados = [...compartilhados].flatMap(([numero, linhas]) => linhas.length > 1 ? [{ numero, linhas }] : [])
   saidas.duplicadas.sort((a, b) => a - b)
   saidas.pendencias.sort((a, b) => a.linhas[0] - b.linhas[0])
+  // Orçamento conservador para baixar pelo Sheets: todos os campos entre aspas,
+  // escapes duplicados, UTF-8, CRLF inclusive no fim e BOM de três bytes.
+  // Conta pontos de código sem depender de Buffer/TextEncoder no runner n8n.
+  let bytesEstimados = 3 + saidas.exportacao.length + 1
+  for (const caractere of serializarCsvCrm(saidas.exportacao)) {
+    const ponto = caractere.codePointAt(0)!
+    bytesEstimados += ponto <= 0x7f ? 1 : ponto <= 0x7ff ? 2 : ponto <= 0xffff ? 3 : 4
+  }
+  if (bytesEstimados > LIMITE_BYTES_ARQUIVO) {
+    return { ok: false, motivo: 'exportacao_excede_tamanho', bytesEstimados,
+      limiteBytes: LIMITE_BYTES_ARQUIVO,
+      detalhes: ['Divida a coleta em partes menores e execute cada parte separadamente; as duas saídas anteriores foram preservadas.'] }
+  }
   return { ok: true, saidas }
 }
 

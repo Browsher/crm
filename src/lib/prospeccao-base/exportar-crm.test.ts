@@ -267,3 +267,62 @@ test('não considera cadastro sem identidade como outra empresa no compartilhame
   expect(saidas.pendencias).toEqual([{ linhas: [3], numero, motivo: 'identidade_ausente' }])
   expect(saidas.compartilhados).toEqual([])
 })
+
+
+test.each(['ascii', 'unicode', 'aspas'])('bloqueia CSV acima do orçamento real do importador: %s', async caso => {
+  const { analisarArquivo } = await import('../../features/empresas/arquivo')
+  const nome = caso === 'ascii' ? 'a'.repeat(149) : (caso === 'unicode' ? 'é' : '"').repeat(140)
+  const linhas = Array.from({ length: 5000 }, (_, i) =>
+    [telefone, nome, 'p' + i, caso === 'ascii' ? 'r'.repeat(129) : '', caso === 'ascii' ? 'c'.repeat(39) : '', 'contato@empresa.test'])
+  const leitura = lerColetaSheets([[...cabecalho, 'razao_social', 'contato_nome', 'email'], ...linhas])
+  if (!leitura.ok) throw new Error(leitura.motivo)
+  const consultas = classificarConsultaComunidade([numero], {
+    success: true, data: [{ number: numero, exists: true }],
+  }, true, '2026-10-15T12:00:00.000Z')
+  const csv = serializarCsvCrm(linhas.map(l => ['', l[3], l[1], l[4], '1126000001', l[5], '', '', l[2]]))
+  expect(await analisarArquivo(new TextEncoder().encode(csv))).toMatchObject({ ok: false, falha: { motivo: 'excede_tamanho' } })
+  const r = montarSaidas(leitura.coleta, consultas)
+  expect(r).toMatchObject({ ok: false, motivo: 'exportacao_excede_tamanho', limiteBytes: 1500000 })
+  expect(r).not.toHaveProperty('saidas')
+  expect(JSON.stringify(r)).toContain('Divida a coleta')
+  expect(leitura.coleta.linhas).toHaveLength(5000)
+})
+
+test('CSV aceito com Unicode, aspas e vírgulas passa por analisarArquivo inclusive com BOM e CRLF', async () => {
+  const { analisarArquivo } = await import('../../features/empresas/arquivo')
+  const saidas = executar(cabecalho, Array.from({ length: 1000 }, (_, i) =>
+    [telefone, 'São Paulo, "Café 😀"', 'p' + i]))
+  const csv = '\uFEFF' + serializarCsvCrm(saidas.exportacao).replace(/\n/g, '\r\n')
+  const analise = await analisarArquivo(new TextEncoder().encode(csv))
+  expect(analise).toMatchObject({ ok: true, recusadas: [] })
+  if (!analise.ok) throw new Error(analise.falha.motivo)
+  expect(analise.aceitas).toHaveLength(1000)
+})
+
+
+test.each([1500000, 1500001])('reserva BOM e CRLF no limite de %i bytes sem truncar', async tamanho => {
+  const { analisarArquivo } = await import('../../features/empresas/arquivo')
+  const linhas = Array.from({ length: 5000 }, (_, i) => [telefone, 'a'.repeat(250), 'p' + String(i).padStart(4, '0'), ''])
+  const csvReferencia = () => '\uFEFF"cnpj","razao_social","nome_fantasia","contato_nome","telefone","email","cep","cnae_principal","google_place_id"\r\n'
+    + linhas.map(l => '"","' + l[3] + '","' + l[1] + '","","1126000001","","","","' + l[2] + '"\r\n').join('')
+  const faltam = tamanho - Buffer.byteLength(csvReferencia())
+  linhas.forEach((l, i) => { l[3] = 'r'.repeat(Math.floor(faltam / linhas.length) + (i < faltam % linhas.length ? 1 : 0)) })
+  const bytes = new TextEncoder().encode(csvReferencia())
+  expect(bytes.byteLength).toBe(tamanho)
+  const leitura = lerColetaSheets([[...cabecalho, 'razao_social'], ...linhas])
+  if (!leitura.ok) throw new Error(leitura.motivo)
+  const consultas = classificarConsultaComunidade([numero], { success: true, data: [{ number: numero, exists: true }] }, true, '2026-10-15')
+  const r = montarSaidas(leitura.coleta, consultas)
+  const analise = await analisarArquivo(bytes)
+  if (tamanho === 1500000) {
+    expect(r.ok).toBe(true)
+    if (!r.ok) throw new Error(r.motivo)
+    expect(r.saidas.exportacao).toHaveLength(5000)
+    expect(analise).toMatchObject({ ok: true, recusadas: [] })
+    if (!analise.ok) throw new Error(analise.falha.motivo)
+    expect(analise.aceitas).toHaveLength(5000)
+  } else {
+    expect(r).toMatchObject({ ok: false, motivo: 'exportacao_excede_tamanho', bytesEstimados: tamanho })
+    expect(analise).toMatchObject({ ok: false, falha: { motivo: 'excede_tamanho' } })
+  }
+})

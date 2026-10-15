@@ -14,10 +14,10 @@ export function lerColetaSheets(valores: unknown[][]): LeituraSheets {
     const nome = cabecalho[coluna]
     if (nome === null || nome === undefined || nome === '') continue
     if (typeof nome !== 'string' || !nome.trim() || nome !== nome.trim()) {
-      detalhes.push(`Cabeçalho ilegível na coluna ${coluna + 1}.`)
+      detalhes.push(`Cabeçalho ilegível na linha 1, coluna ${coluna + 1}.`)
       continue
     }
-    if (nomes.has(nome)) detalhes.push(`Cabeçalho duplicado: ${nome}.`)
+    if (nomes.has(nome)) detalhes.push(`Cabeçalho duplicado na linha 1, coluna ${coluna + 1}.`)
     nomes.add(nome)
   }
 

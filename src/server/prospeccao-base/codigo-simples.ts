@@ -6,7 +6,7 @@ let compilado: string | null = null
 
 export function compilarBibliotecaSimples(): string {
   if (compilado !== null) return compilado
-  const arquivos = ['cnpj', 'cep', 'cnae', 'prospeccao-base/modelo', 'prospeccao-base/telefone',
+  const arquivos = ['arquivo-empresas', 'cnpj', 'cep', 'cnae', 'prospeccao-base/modelo', 'prospeccao-base/telefone',
     'prospeccao-base/whatsapp', 'prospeccao-base/simples-modelo', 'prospeccao-base/entrada-sheets',
     'prospeccao-base/exportar-crm', 'prospeccao-base/sheets-simples']
   const modulos = Object.fromEntries(arquivos.map(arquivo => {
