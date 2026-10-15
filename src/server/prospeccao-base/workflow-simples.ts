@@ -55,6 +55,13 @@ export function gerarWorkflowSimples(config: WorkflowSimplesConfig): WorkflowExp
       options: { timeout: 15000, redirect: { redirect: { followRedirects: false } }, response: { response: { responseFormat: 'json' } } },
       ...parametros,
     }, { onError: 'stopWorkflow' })
+  // RAW v2 entrega a matriz incluindo cabeçalho e posições vazias. A leitura
+  // por objetos perderia cabeçalhos duplicados antes da validação estrutural.
+  const ler = (name: string, range: string) => add(name, 'googleSheets', 2, {
+    authentication: 'oAuth2', resource: 'sheet', operation: 'read', sheetId: config.planilhaId,
+    range, rawData: true, dataProperty: 'values',
+    options: { valueRenderMode: 'FORMATTED_VALUE', continue: true },
+  }, { alwaysOutputData: true, onError: 'stopWorkflow' })
   const gravar = (name: string, fase: string) => sheet(name, 'POST', sheetsUrl + ':batchUpdate', {
     sendBody: true, specifyBody: 'json', jsonBody: '={{ { requests: $("Preparar publicação").first().json.plano.' + fase + ' } }}',
   })
@@ -83,10 +90,7 @@ for (const chave of ['origem','validacao','exportacao']) {
 }
 return [{json:{grades,origemRange:lib.rangeA1(titulos.origem,grades.origem.linhas,grades.origem.colunas)},pairedItem:{item:0}}]
 `, true)
-  sheet('Ler scraping', 'GET', '={{ ' + JSON.stringify(sheetsUrl + '/values/')
-    + ' + encodeURIComponent($json.origemRange) }}', {
-    sendQuery: true, queryParameters: { parameters: [{ name: 'valueRenderOption', value: 'FORMATTED_VALUE' }] },
-  })
+  ler('Ler scraping', '={{ $json.origemRange }}')
   code('Preparar coleta', String.raw`
 const r = lib.lerColetaSheets($input.first().json.values ?? [])
 if (!r.ok) throw new Error(JSON.stringify({motivo:r.motivo,detalhes:r.detalhes}))
@@ -163,19 +167,16 @@ return [{json:{plano,ranges},pairedItem:{item:0}}]
 `, true)
   gravar('Marcar processamento', 'inicio')
   gravar('Substituir saídas', 'dados')
-  // A URL preserva os dois parâmetros ranges sem depender da serialização de
-  // nomes repetidos/arrays do editor HTTP Request instalado.
-  sheet('Ler saídas', 'GET', '={{ ' + JSON.stringify(sheetsUrl + '/values:batchGet?ranges=')
-    + ' + encodeURIComponent($("Preparar publicação").first().json.ranges.validacao)'
-    + ' + "&ranges=" + encodeURIComponent($("Preparar publicação").first().json.ranges.exportacao)'
-    + ' + "&valueRenderOption=FORMATTED_VALUE" }}')
+  ler('Ler validação', '={{ $("Preparar publicação").first().json.ranges.validacao }}')
+  ler('Ler exportação', '={{ $("Preparar publicação").first().json.ranges.exportacao }}')
   code('Conferir saídas', String.raw`
-const ranges = $input.first().json.valueRanges
-if (!Array.isArray(ranges) || ranges.length !== 2 || ranges.some(r => !Array.isArray(r.values) || !r.values.every(Array.isArray))) {
+const validacao = $('Ler validação').first().json.values
+const exportacao = $input.first().json.values
+if ([validacao,exportacao].some(values => !Array.isArray(values) || !values.every(Array.isArray))) {
   throw new Error('gravacao_incompleta')
 }
 const esperado = $('Preparar publicação').first().json.plano.esperado
-const r = lib.conferirSaidas(esperado,{validacao:ranges[0].values,exportacao:ranges[1].values})
+const r = lib.conferirSaidas(esperado,{validacao,exportacao})
 if (!r.ok) throw new Error(r.motivo)
 return [{json:{conferido:true},pairedItem:{item:0}}]
 `, true)
@@ -199,7 +200,7 @@ return [{json:{execucao:preparacao.execucao.id,data:preparacao.execucao.data,
   ligar('Há inconclusivos', 'Esperar tentativa', 0)
   ligar('Há inconclusivos', 'Guardar resultado lote', 1)
   sequencia('Esperar tentativa', 'Consultar novamente', 'Classificar segunda tentativa', 'Guardar resultado lote', 'Intervalo lote', 'Loop lotes')
-  sequencia('Montar saídas', 'Preparar publicação', 'Marcar processamento', 'Substituir saídas', 'Ler saídas', 'Conferir saídas', 'Concluir notas', 'Relatório final')
+  sequencia('Montar saídas', 'Preparar publicação', 'Marcar processamento', 'Substituir saídas', 'Ler validação', 'Ler exportação', 'Conferir saídas', 'Concluir notas', 'Relatório final')
   return { name: 'CRM Prospecção Validação WhatsApp Sheets Simples', nodes, connections, settings: {
     executionOrder: 'v1', timezone: 'America/Sao_Paulo', saveDataSuccessExecution: 'none',
     saveDataErrorExecution: 'none', saveManualExecutions: false, saveExecutionProgress: false,

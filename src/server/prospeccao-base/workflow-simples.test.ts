@@ -1,6 +1,5 @@
 import { runInNewContext } from 'node:vm'
 import { expect, test } from 'vitest'
-import type { WorkflowNode } from './workflow'
 import { gerarWorkflowSimples, type WorkflowSimplesConfig } from './workflow-simples'
 
 type Json = Record<string, unknown>
@@ -23,7 +22,8 @@ type Opcoes = {
   conexao?: Json
   resposta?: (numeros: string[], tentativa: number, lote: number) => Json
   metadata?: Json
-  sobra?: boolean
+  sobra?: 'validacao' | 'exportacao'
+  retornoNativo?: Record<string, Json>
   rangesEsperados?: string[]
 }
 // Simula somente transporte e despacho. Executa o JavaScript exportado, incluindo
@@ -49,12 +49,6 @@ async function percurso(op: Opcoes = {}) {
   })
   const avaliar = (v: unknown, input: Item[]) => typeof v === 'string' && v.startsWith('={{')
     ? runInNewContext('(' + v.slice(3, -2) + ')', contexto(input, 0)) : v
-  const queries = (n: WorkflowNode, input: Item[]) => {
-    const p = n.parameters.queryParameters as { parameters?: { name: string; value: unknown }[] } | undefined
-    const url = new URL(String(avaliar(n.parameters.url, input)))
-    return [...url.searchParams].map(([name, value]) => ({ name, value }))
-      .concat((p?.parameters ?? []).map(q => ({ name: q.name, value: avaliar(q.value, input) })))
-  }
   const registrar = (nome: string, output: Item[], input: Item[]) => {
     historico[nome] ??= []
     historico[nome].push(output)
@@ -94,23 +88,32 @@ async function percurso(op: Opcoes = {}) {
       const tentativa = nome === 'Consultar novamente' ? 2 : 1
       consultas.push({ numeros, tentativa, lote })
       output = [{ json: op.resposta?.(numeros, tentativa, lote) ?? resposta(numeros) }]
+    } else if (n.type === 'n8n-nodes-base.googleSheets') {
+      const range = avaliar(n.parameters.range, input)
+      if (nome === 'Ler scraping') {
+        expect(range).toBe("'planilha original scraping'!A1:AN100")
+        const values = op.fonte ?? fonte(11)
+        output = [{ json: values.length ? { values } : {} }]
+      } else {
+        const indice = nome === 'Ler validação' ? 0 : 1
+        expect(range).toBe((op.rangesEsperados ?? [
+          "'Validar numero whatsapp'!A1:AN100", "'Planilha exportar CRM'!A1:AN100",
+        ])[indice])
+        const values = structuredClone(grades[indice + 2])
+        if (op.sobra === (indice === 0 ? 'validacao' : 'exportacao')) {
+          const extra = Array<string>(40).fill('')
+          extra[39] = 'sobra em coluna extra'
+          values.push(extra)
+        }
+        output = [{ json: { values } }]
+      }
+      if (op.retornoNativo && nome in op.retornoNativo) output = [{ json: op.retornoNativo[nome] }]
     } else if (n.type.endsWith('.httpRequest')) {
       if (nome === 'Verificar conexão') output = [{ json: op.conexao ?? { statusCode: 200, body: { instance: { state: 'open' } } } }]
       else if (nome === 'Ler metadados') output = [{ json: op.metadata ?? { sheets: titulos.map((title, i) => ({
         properties: { sheetId: i + 1, title, gridProperties: { rowCount: 100, columnCount: 40 } },
       })) } }]
-      else if (nome === 'Ler scraping') {
-        expect(decodeURIComponent(String(avaliar(n.parameters.url, input)))).toContain("'planilha original scraping'!A1:AN100")
-        expect(queries(n, input)).toContainEqual({ name: 'valueRenderOption', value: 'FORMATTED_VALUE' })
-        output = [{ json: { values: op.fonte ?? fonte(11) } }]
-      } else if (nome === 'Ler saídas') {
-        expect(queries(n, input).filter(q => q.name === 'ranges').map(q => q.value)).toEqual(op.rangesEsperados ?? [
-          "'Validar numero whatsapp'!A1:AN100", "'Planilha exportar CRM'!A1:AN100",
-        ])
-        const validacao = structuredClone(grades[2])
-        if (op.sobra) validacao.push(['', '', 'sobra em coluna extra'])
-        output = [{ json: { valueRanges: [{ values: validacao }, { values: grades[3] }] } }]
-      } else {
+      else {
         const body = avaliar(n.parameters.jsonBody, input) as { requests: Json[] }
         batches.push({ nome, requests: body.requests })
         for (const req of body.requests) {
@@ -250,6 +253,7 @@ test('metadata aponta para histórico ou título inesperado: bloqueia antes de e
     sheetId: i + 1, title: i === 1 ? 'Telefones' : title, gridProperties: { rowCount: 100, columnCount: 40 },
   } })) } })
   expect(r.erro?.message).toContain('metadados_invalidos')
+  expect(r.vistos).not.toContain('Ler scraping')
   expect(r.batches).toEqual([])
   expect(r.consultas).toEqual([])
 })
@@ -260,29 +264,90 @@ test('cabeçalho repetido é preservado pela leitura e bloqueia a coleta', async
   expect(r.batches).toEqual([])
 })
 
-test.each(['Marcar processamento', 'Substituir saídas', 'Ler saídas', 'Concluir notas'])('falha HTTP em %s impede relatório de sucesso', async falha => {
+test.each(['Ler metadados', 'Marcar processamento', 'Substituir saídas', 'Concluir notas'])('falha HTTP em %s impede relatório de sucesso', async falha => {
   const r = await percurso({ falha })
   expect(r.erro?.message).toBe('transporte_indisponivel')
   expect(r.vistos).not.toContain('Relatório final')
   if (falha !== 'Concluir notas') expect(r.vistos).not.toContain('Concluir notas')
 })
 
-test('readback cobre colunas extras e não conclui ao encontrar sobra', async () => {
-  const r = await percurso({ sobra: true })
+test.each(['validacao', 'exportacao'] as const)('readback cobre colunas extras de %s e não conclui ao encontrar sobra', async sobra => {
+  const r = await percurso({ sobra })
   expect(r.erro?.message).toContain('gravacao_incompleta')
   expect(r.vistos).not.toContain('Concluir notas')
   expect(r.vistos).not.toContain('Relatório final')
 })
-test('ranges de readback são codificados separadamente na URL, sem parâmetros de mesmo nome sobrescritos', async () => {
+test('leituras comuns usam Google Sheets RAW v2 e somente operações conjuntas ficam no HTTP', () => {
   const w = gerarWorkflowSimples(config)
-  const n = w.nodes.find(n => n.name === 'Ler saídas')!
-  const ranges = { validacao: "'Validar numero whatsapp'!A1:B12", exportacao: "'Planilha exportar CRM'!A1:I12" }
-  const expressao = String(n.parameters.url)
-  const url = new URL(expressao.startsWith('={{') ? runInNewContext('(' + expressao.slice(3, -2) + ')', {
-    $: () => ({ first: () => ({ json: { ranges } }) }),
-  }) : expressao)
-  expect(url.searchParams.getAll('ranges')).toEqual([ranges.validacao, ranges.exportacao])
-  expect(url.searchParams.get('valueRenderOption')).toBe('FORMATTED_VALUE')
+  expect(w.nodes).toHaveLength(27)
+  const nativos = w.nodes.filter(n => n.type === 'n8n-nodes-base.googleSheets')
+  expect(nativos.map(n => n.name)).toEqual(['Ler scraping', 'Ler validação', 'Ler exportação'])
+  for (const n of nativos) {
+    expect(n.typeVersion).toBe(2)
+    expect(n.parameters).toMatchObject({ authentication: 'oAuth2', resource: 'sheet', operation: 'read',
+      sheetId: 'sheet-cenario', rawData: true, dataProperty: 'values',
+      options: { valueRenderMode: 'FORMATTED_VALUE', continue: true } })
+    expect(n.parameters.options).not.toHaveProperty('timeout')
+    expect(n.onError).toBe('stopWorkflow')
+    expect(n.alwaysOutputData).toBe(true)
+  }
+  const http = w.nodes.filter(n => n.type.endsWith('.httpRequest'))
+  expect(http.map(n => n.name)).toEqual(['Ler metadados', 'Verificar conexão', 'Marcar processamento', 'Substituir saídas', 'Concluir notas'])
+  expect(JSON.stringify(http)).not.toMatch(/\/values\/|values:batchGet/)
+  expect(w.connections['Substituir saídas']).toMatchObject({ main: [[{ node: 'Ler validação' }]] })
+  expect(w.connections['Ler validação']).toMatchObject({ main: [[{ node: 'Ler exportação' }]] })
+  expect(w.connections['Ler exportação']).toMatchObject({ main: [[{ node: 'Conferir saídas' }]] })
+})
+
+test.each(['Ler scraping', 'Ler validação', 'Ler exportação'])('falha nativa em %s bloqueia conclusão e relatório', async falha => {
+  const r = await percurso({ falha })
+  expect(r.erro?.message).toBe('transporte_indisponivel')
+  expect(r.vistos).not.toContain('Concluir notas')
+  expect(r.vistos).not.toContain('Relatório final')
+  if (falha === 'Ler scraping') expect(r.batches).toEqual([])
+})
+
+test.each(['Ler validação', 'Ler exportação'].flatMap(nome => [
+  { nome, retorno: {} }, { nome, retorno: { values: 'invalido' } },
+  { nome, retorno: { values: ['linha invalida'] } }, { nome, retorno: { values: [] } },
+  { nome, retorno: { error: 'segredo-transporte' } },
+]))('retorno nativo inválido de $nome impede concluir notas: $retorno', async ({ nome, retorno }) => {
+  const r = await percurso({ retornoNativo: { [nome]: retorno } })
+  expect(r.erro?.message).toBe('gravacao_incompleta')
+  expect(r.erro?.message).not.toContain('segredo-transporte')
+  expect(r.vistos).not.toContain('Concluir notas')
+  expect(r.vistos).not.toContain('Relatório final')
+})
+
+test.each([{}, { values: 'invalido' }, { values: ['linha invalida'] }, { error: 'segredo-transporte' }])('origem nativa malformada falha com diagnóstico estrutural', async retorno => {
+  const r = await percurso({ retornoNativo: { 'Ler scraping': retorno } })
+  expect(r.erro?.message).toContain('estrutura_invalida')
+  expect(r.erro?.message).not.toContain('segredo-transporte')
+  expect(r.batches).toEqual([])
+  expect(r.consultas).toEqual([])
+})
+
+test('origem totalmente vazia chega ao diagnóstico em vez de interromper silenciosamente', async () => {
+  const r = await percurso({ fonte: [] })
+  expect(r.erro?.message).toContain('A entrada deve ser uma matriz com cabeçalho.')
+  expect(r.vistos).toContain('Preparar coleta')
+  expect(r.batches).toEqual([])
+  expect(r.consultas).toEqual([])
+})
+
+test('leitura RAW preserva zeros e linha vazia intermediária na numeração original', async () => {
+  const r = await percurso({ fonte: [
+    ['telefone', 'nome_empresa', 'place_id', 'cep', 'coluna_extra'],
+    ['1126061244', 'Loja', 'p1', '01234000', '00123'], [], ['abc', 'Outra', 'p2'],
+  ] })
+  expect(r.erro).toBeNull()
+  const coleta = r.historico['Preparar coleta'][0][0].json.coleta as {
+    linhas: { linha: number; dados: Json }[]
+  }
+  expect(coleta.linhas.map(l => l.linha)).toEqual([2, 4])
+  expect(coleta.linhas[0].dados).toMatchObject({ cep: '01234000', coluna_extra: '00123' })
+  expect(r.grades[3][1][6]).toBe('01234000')
+  expect(r.resultado[0].json.pendencias).toMatchObject([{ linhas: [4] }])
 })
 
 test('grade pequena expande antes dos dados e releitura cobre a dimensão expandida', async () => {

@@ -21,15 +21,15 @@ Código e testes locais, preparação da planilha e entrega do JSON são evidên
 Os três arquivos privados ficam em `outputs/validacao-whatsapp-sheets-2026-10-15/`, também copiados para o mesmo subdiretório de `C:/Users/ADM/projetos/crm/outputs/`:
 
 - `config-simples.json`: IDs reais das abas, host e nome da instância, sem chave.
-- `workflow-whatsapp-sheets-simples.json`: novo workflow para importar no editor, sem credenciais ou dados fixados.
-- `aceite-operacional.json`: verificações locais e pendências operacionais; não é comprovante de execução remota.
+- `workflow-whatsapp-sheets-nativo.json`: workflow com três leituras nativas Google Sheets para importar no editor, sem credenciais ou dados fixados.
+- `aceite-sheets-nativo.json`: verificações locais e pendências operacionais; não é comprovante de execução remota.
 
-O JSON antigo permanece preservado. Não usar o instalador antigo desta base: seu alvo é outro workflow/projeto. Não alterar compartilhamento da planilha, outros workflows, concorrência global ou banco do CRM.
+Os JSONs anteriores e o `aceite-operacional.json` permanecem preservados; esta entrega tem nomes distintos. Não usar o instalador antigo desta base: seu alvo é outro workflow/projeto. Não alterar compartilhamento da planilha, outros workflows, concorrência global ou banco do CRM.
 
 Para regenerar em um arquivo novo, executar na raiz do projeto:
 
 ```powershell
-node --import tsx scripts/prospeccao-base/gerar-workflow-simples.mts --config outputs/validacao-whatsapp-sheets-2026-10-15/config-simples.json --saida outputs/validacao-whatsapp-sheets-2026-10-15/workflow-whatsapp-sheets-simples-regenerado.json
+node --import tsx scripts/prospeccao-base/gerar-workflow-simples.mts --config outputs/validacao-whatsapp-sheets-2026-10-15/config-simples.json --saida outputs/validacao-whatsapp-sheets-2026-10-15/workflow-whatsapp-sheets-nativo-regenerado.json
 ```
 
 Use um nome de destino livre a cada regeneração. O CLI recusa sobrescrever um destino existente. O contrato de configuração é `planilhaId`, `evolutionUrl`, `instancia` e `abas` com `origem`, `validacao` e `exportacao` numéricos. Credenciais permanecem no n8n.
@@ -37,13 +37,17 @@ Use um nome de destino livre a cada regeneração. O CLI recusa sobrescrever um 
 ## Importar e configurar no editor
 
 1. Abra o editor autenticado do n8n no projeto em que está a cópia atual escolhida para esta operação. Confira a URL, o projeto e a identidade dessa cópia; preserve o workflow anterior antes de substituir seu conteúdo. Se ainda não existir uma cópia dedicada, crie um workflow vazio nesse projeto para receber esta entrega.
-2. No cabeçalho do canvas, abra o menu de três pontos do workflow, escolha **Import from File** e selecione `workflow-whatsapp-sheets-simples.json`. Confira o nome importado: `CRM Prospecção Validação WhatsApp Sheets Simples`. Confirme que o canvas contém somente o fluxo desta entrega, sem nós antigos misturados.
-3. Confira os tipos de nó disponíveis na instância n8n 2.36.8: Manual Trigger 1, Code 2, HTTP Request 4.2, If 2.2, Loop Over Items 3, Wait 1.1 e Evolution API comunitário 1 (`n8n-nodes-evolution-api.evolutionApi`). Se houver nó desconhecido, interrompa a configuração e revise a disponibilidade do pacote; não substitua uma consulta por envio de mensagem.
-4. Em cada HTTP Request abaixo, mantenha **Authentication → Predefined Credential Type**, tipo **Google Sheets OAuth2 API**, e selecione a credencial Google existente com acesso à planilha: `Ler metadados`, `Ler scraping`, `Marcar processamento`, `Substituir saídas`, `Ler saídas` e `Concluir notas`.
+2. No cabeçalho do canvas, abra o menu de três pontos do workflow, escolha **Import from File** e selecione `workflow-whatsapp-sheets-nativo.json`. Confira o nome importado: `CRM Prospecção Validação WhatsApp Sheets Simples`. Confirme que o canvas contém os 27 nós desta entrega: três Google Sheets, cinco HTTP Request e dois Evolution API, além dos nós de controle e código.
+3. Confira os tipos de nó disponíveis na instância n8n 2.36.8: Manual Trigger 1, Code 2, Google Sheets 2, HTTP Request 4.2, If 2.2, Loop Over Items 3, Wait 1.1 e Evolution API comunitário 1 (`n8n-nodes-evolution-api.evolutionApi`). Se houver nó desconhecido, interrompa a configuração e revise a disponibilidade do pacote; não substitua uma consulta por envio de mensagem.
+4. Nos três nós Google Sheets (`Ler scraping`, `Ler validação` e `Ler exportação`), mantenha **Authentication → OAuth2**, **Resource → Sheet**, **Operation → Read**, **RAW Data** ligado e **Data Property → values**; selecione a credencial Google existente com acesso à planilha em cada nó. Confira **Value Render Mode → Formatted Value**, **Continue If Empty** ligado e **Always Output Data** ligado. Nos quatro HTTP Request Google (`Ler metadados`, `Marcar processamento`, `Substituir saídas` e `Concluir notas`), mantenha **Authentication → Predefined Credential Type → Google Sheets OAuth2 API** e selecione a mesma credencial Google em cada um.
 5. Em `Verificar conexão`, mantenha **Predefined Credential Type → Evolution API** e selecione a credencial Evolution existente. Em `Consultar WhatsApp` e `Consultar novamente`, selecione essa mesma credencial no nó comunitário. Não cole chaves em parâmetros, cabeçalhos, JSON ou planilha.
 6. Confira o servidor da credencial: `https://crm-whatsapp-production-b341.up.railway.app`; a instância é `NTV Box - Suporte`, com espaços exatos. No JSON, `instanceName` e o segmento da URL de conexão estão codificados como `NTV%20Box%20-%20Suporte`.
 7. Confira nos parâmetros que a planilha é `17uQ8KmuboL808cvb9M9piIhZwCfHYDJRJ5uw2bUAxvU`, a fonte é 10151001 e os destinos são 10151002/10151003. Os três títulos precisam coincidir exatamente com a tabela deste manual. A checagem de metadata bloqueia execução com IDs/títulos trocados.
 8. Salve a cópia configurada e registre sua URL/ID e projeto no aceite privado. Mantenha apenas o acionamento `Iniciar manual`, sem gatilho automático. A importação e o salvamento ainda precisam de uma execução real com leitura de retorno para comprovar o funcionamento.
+
+Os nós Google Sheets usam explicitamente `typeVersion: 2`, registrado no n8n 2.36.8. O editor pode mostrar um aviso de versão anterior. Essa versão oferece leitura RAW da matriz inteira em `values`, incluindo cabeçalhos duplicados, zeros iniciais e linhas vazias intermediárias; a leitura por objetos converteria cabeçalhos em chaves antes de validá-los. Preserve essa versão e esse modo ao configurar. Os ranges vêm dos metadados validados e cobrem as grades completas; as duas releituras cobrem também dimensões expandidas e colunas extras. Origem totalmente vazia ou retorno sem matriz gera diagnóstico estrutural; somente cabeçalhos válidos produz zero consultas e saídas só com cabeçalhos. Falha de qualquer leitura interrompe o fluxo; retorno vazio ou malformado no readback impede concluir notas e relatório.
+
+O HTTP permanece para conferir IDs, títulos e dimensões e para três gravações `spreadsheets.batchUpdate`: notas em processamento, limpeza/substituição conjunta das duas saídas e notas de conclusão após a conferência integral. A checagem de conexão Evolution também permanece por HTTP. A entrega não usa HTTP `values.get` ou `values:batchGet` nas leituras comuns. O contrato RAW v2 está no código oficial da versão [Google Sheets V1](https://github.com/n8n-io/n8n/blob/n8n%402.36.8/packages/nodes-base/nodes/Google/Sheet/v1/GoogleSheetsV1.node.ts), com [parâmetros e aviso de versão anterior](https://github.com/n8n-io/n8n/blob/n8n%402.36.8/packages/nodes-base/nodes/Google/Sheet/v1/versionDescription.ts) e [registro de versões](https://github.com/n8n-io/n8n/blob/n8n%402.36.8/packages/nodes-base/nodes/Google/Sheet/GoogleSheets.node.ts).
 
 Referências do editor: [importação e exportação](https://docs.n8n.io/workflows/export-import/) e [credenciais predefinidas no HTTP Request](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/).
 
@@ -85,6 +89,6 @@ A compatibilidade do CSV gerado é testada offline pelo parser real do CRM. O ac
 
 ## Completar o aceite operacional
 
-Atualize o `aceite-operacional.json` privado somente com evidência observada: URL/ID do workflow salvo, projeto, ID/data da execução real, recebidos, únicos consultados, válidos, inválidos, pendências, duplicadas, compartilhados e empresas exportadas. Registre a leitura de retorno das três abas e o resultado do parser/prévia do CSV baixado, sem guardar chaves ou credenciais. Não use telefones sintéticos em produção para testar.
+Atualize o `aceite-sheets-nativo.json` privado somente com evidência observada: URL/ID do workflow salvo, projeto, ID/data da execução real, recebidos, únicos consultados, válidos, inválidos, pendências, duplicadas, compartilhados e empresas exportadas. Registre a leitura de retorno das três abas e o resultado do parser/prévia do CSV baixado, sem guardar chaves ou credenciais. Não use telefones sintéticos em produção para testar.
 
 A origem está só com cabeçalho nesta entrega. Aguarde a coleta autorizada da Mooca para comprovar a execução real. A remoção de sobras em cenário menor está comprovada apenas offline; não substitua a coleta real por um teste destrutivo. Considere instalação operacional concluída somente depois da execução real, leitura de retorno e conferência do CSV, ou comprovação de cabeçalhos/relatório se nenhuma empresa for elegível.

@@ -97,3 +97,13 @@ Credenciais Google e Evolution permanecem no n8n. O JSON de entrega não contém
 ## Próxima etapa do SDD
 
 Revisão desta especificação pelo usuário. Depois da aprovação, preparar o plano de implementação e submetê-lo à escolha de execução antes de iniciar código. Não alterar o workflow externo durante esta etapa de especificação.
+
+## Adendo aprovado em 15/10/2026: leituras nativas
+
+Após a entrega inicial, o usuário aprovou no chat usar Google Sheets nas operações comuns e HTTP nas operações conjuntas. O ajuste substitui a leitura da origem e o readback das duas saídas por três nós Google Sheets, mantendo metadados e as três fases de gravação conjunta por HTTP `spreadsheets.batchUpdate`. A conexão Evolution e as consultas comunitárias permanecem como aprovadas.
+
+Usar Google Sheets `typeVersion: 2`, operação `sheet/read`, OAuth2, `rawData: true`, `dataProperty: values` e `FORMATTED_VALUE`. Essa versão está registrada no código oficial do n8n 2.36.8 e oferece a matriz com cabeçalho; pode exibir aviso de versão anterior no editor. Preservar posições vazias, cabeçalhos duplicados e valores formatados para que as validações existentes recebam a estrutura completa. Não converter a origem em objetos por cabeçalho.
+
+Os ranges são calculados a partir dos metadados validados. Após substituir as saídas, ler validação e exportação sequencialmente, cobrindo as grades completas, inclusive dimensões expandidas e colunas extras. Comparar ambas as matrizes antes de concluir notas; erro de transporte, matriz ausente ou retorno malformado bloqueia o sucesso. Leitura sem dados deve chegar ao diagnóstico, usando Continue If Empty e Always Output Data. Origem sem cabeçalho falha antes de publicar; somente cabeçalhos válidos conserva o comportamento de publicar apenas cabeçalhos, sem consultar números.
+
+O JSON passa a ter 27 nós, três Google Sheets e cinco HTTP Request, sem credenciais ou dados fixados. Entregar `workflow-whatsapp-sheets-nativo.json` e `aceite-sheets-nativo.json`, preservando artefatos anteriores. Instalação, execução real e CSV baixado continuam pendentes. As demais regras desta especificação permanecem vigentes; este adendo não autoriza mudanças de domínio, banco, interface ou workflows externos.
