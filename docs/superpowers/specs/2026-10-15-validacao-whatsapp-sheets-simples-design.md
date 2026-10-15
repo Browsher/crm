@@ -6,7 +6,7 @@ Substituir a entrada por arquivo CSV por uma aba fixa na mesma planilha. O gesto
 
 O usuário escolheu Google Sheets, reutilização da planilha atual, telefone na coluna A e números a partir de A2. A aba original permanece como fonte de conferência. As saídas são substituídas a cada execução concluída, em vez de acumular listas antigas.
 
-Esta especificação altera a experiência operacional descrita em `2026-10-14-base-prospeccao-n8n-design.md`. Está em revisão: não representa um workflow instalado ou executado.
+Esta especificação altera a experiência operacional descrita em `2026-10-14-base-prospeccao-n8n-design.md`. Aprovada pelo usuário em 15/10/2026. O plano será revisado antes da implementação; esta aprovação não representa um workflow instalado ou executado.
 
 ## Estado conferido em 15/10/2026
 
