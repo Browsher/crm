@@ -121,6 +121,10 @@ return [{json:r.resposta,pairedItem:{item:0}}]
   sequencia('Concluir pendência Drive','Conferir retomada automática','Retomada do mesmo lote')
   bifurcar('Retomada do mesmo lote','Resposta recuperada','Ler raiz Drive')
   sequencia('Ler raiz Drive','Validar raiz Drive','Ler metadados')
+  // O Webhook recebe cabeçalho privado. Fixar a política nesta variante evita
+  // herdar persistência de histórico se a base manual mudar futuramente.
+  w.settings = { ...w.settings, saveDataSuccessExecution: 'none', saveDataErrorExecution: 'none',
+    saveManualExecutions: false, saveExecutionProgress: false }
   w.name = 'CRM Prospecção Automática com Backup e CSV Drive'
   return w
 }

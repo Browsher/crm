@@ -1,5 +1,6 @@
 import { runInNewContext } from 'node:vm'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
+import * as driveModule from './workflow-drive'
 import { gerarWorkflowAutomatico } from './workflow-automatico'
 
 
@@ -368,4 +369,19 @@ test('falha na recuperação de outro lote bloqueia novas consultas e limpeza', 
   expect(r.batches).toEqual([])
   expect(r.consultas).toEqual([])
   expect(r.vistos).not.toContain('Limpar saídas')
+})
+
+test('variante automática desliga persistência mesmo se a base vier com histórico habilitado', () => {
+  const gerarBase = driveModule.gerarWorkflowComDrive
+  const espiao = vi.spyOn(driveModule,'gerarWorkflowComDrive').mockImplementationOnce(c => {
+    const base = gerarBase(c)
+    base.settings = { ...base.settings, saveDataSuccessExecution: 'all', saveDataErrorExecution: 'all', saveManualExecutions: true, saveExecutionProgress: true }
+    return base
+  })
+  try {
+    const w = gerarWorkflowAutomatico(config)
+    expect(w.settings).toMatchObject({ executionOrder: 'v1', timezone: 'America/Sao_Paulo', saveDataSuccessExecution: 'none', saveDataErrorExecution: 'none', saveManualExecutions: false, saveExecutionProgress: false })
+  } finally {
+    espiao.mockRestore()
+  }
 })
