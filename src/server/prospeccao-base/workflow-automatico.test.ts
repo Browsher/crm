@@ -4,7 +4,7 @@ import * as driveModule from './workflow-drive'
 import { gerarWorkflowAutomatico } from './workflow-automatico'
 
 
-import { criarCsvDrive, criarExportacaoDrive, escreverManifestoDrive, type ManifestoDrive } from '../../lib/prospeccao-base/arquivos-drive'
+import { criarCsvDrive, criarExportacaoDrive, escreverManifestoDrive, lerManifestoDrive, type ManifestoDrive } from '../../lib/prospeccao-base/arquivos-drive'
 
 
 type Json = Record<string, unknown>
@@ -21,7 +21,7 @@ const titulos: Record<number, string> = { 1: 'planilha original scraping', 2: 'V
   3: 'Planilha exportar CRM', 10151005: 'Backup telefones' }
 type Arquivo = { id: string; name: string; mimeType: string; parents: string[]; trashed: boolean; conteudo?: string }
 type Opcoes = {
-  sinal?: unknown; validacao?: unknown[][]; isolarNos?: boolean; downloadSemJson?: boolean; notaOrigem?: string; notaExportacao?: string; arquivos?: Arquivo[]; uploadIncerto?: boolean; metaRaiz?: Json; execucaoId?: string; fonte?: unknown[][]; backup?: unknown[][]; anterior?: unknown[][]; seguro?: boolean
+  notasCabecalho?: Record<number, string[]>; sinal?: unknown; validacao?: unknown[][]; isolarNos?: boolean; downloadSemJson?: boolean; notaOrigem?: string; notaExportacao?: string; arquivos?: Arquivo[]; uploadIncerto?: boolean; metaRaiz?: Json; execucaoId?: string; fonte?: unknown[][]; backup?: unknown[][]; anterior?: unknown[][]; seguro?: boolean
   falha?: string; corromper?: string; concorrente?: boolean; concorrenteNaGravacao?: boolean; pequena?: boolean
   resposta?: (numeros: string[], tentativa: number, lote: number) => Json
   conexao?: Json; retorno?: Record<string, Json>; tituloBackup?: string
@@ -44,6 +44,8 @@ async function percurso(op: Opcoes = {}) {
       ? { rowCount: grades[Number(k)].length, columnCount: k === '3' ? 9 : k === '2' ? 2 : 1 }
       : { rowCount: 100, columnCount: 40 }]))
   const notas: Record<number, string> = { 1: op.notaOrigem ?? 'Texto humano origem', 3: op.notaExportacao ?? 'Texto humano exportação' }
+  const notasCabecalho: Record<number, string[]> = structuredClone(op.notasCabecalho ?? { 1: [], 2: [], 3: [] })
+  for (const id of [1,3]) notasCabecalho[id][0] = notas[id]
   const arquivos: Arquivo[] = structuredClone(op.arquivos ?? [])
   const uploads: string[] = []
   const pasta = { id: 'pasta-teste', name: '2026-10-16 - Brás - São Paulo', mimeType: 'application/vnd.google-apps.folder', parents: ['raiz-teste'], trashed: false }
@@ -162,9 +164,14 @@ async function percurso(op: Opcoes = {}) {
             if (r.fields === 'userEnteredValue') grades[r.range.sheetId] = []
           }
           if (req.updateCells) {
-            const r = req.updateCells as { fields: string; range: { sheetId: number; startRowIndex?: number; endRowIndex?: number; endColumnIndex: number };
+            const r = req.updateCells as { fields: string; range: { sheetId: number; startRowIndex?: number; endRowIndex?: number; startColumnIndex?: number; endColumnIndex: number };
               rows: { values: { note?: string; userEnteredValue?: { stringValue: string } }[] }[] }
-            if (r.fields === 'note') { notas[r.range.sheetId] = r.rows[0].values[0].note!; continue }
+            if (r.fields === 'note') {
+              notasCabecalho[r.range.sheetId] ??= []
+              r.rows[0].values.forEach((c,i) => { notasCabecalho[r.range.sheetId][(r.range.startColumnIndex ?? 0) + i] = c.note! })
+              notas[r.range.sheetId] = notasCabecalho[r.range.sheetId][0]
+              continue
+            }
             if (r.fields !== 'userEnteredValue') continue
             const start = r.range.startRowIndex ?? 0
             const dim = dimensoes[r.range.sheetId]
@@ -185,8 +192,8 @@ async function percurso(op: Opcoes = {}) {
     for (const d of destinos(nome, saida)) output = await seguir(d.node, output, noLoop)
     return output
   }
-  try { return { resultado: await seguir('Coleta pronta', [{ json: { body: op.sinal === undefined ? sinal() : op.sinal, headers: { 'x-crm-token': 'segredo-teste' } } }]), vistos, consultas, batches, grades, notas, arquivos, uploads, erro: null } }
-  catch (erro) { return { resultado: [] as Item[], vistos, consultas, batches, grades, notas, arquivos, uploads, erro: erro as Error } }
+  try { return { resultado: await seguir('Coleta pronta', [{ json: { body: op.sinal === undefined ? sinal() : op.sinal, headers: { 'x-crm-token': 'segredo-teste' } } }]), vistos, consultas, batches, grades, notas, notasCabecalho, arquivos, uploads, erro: null } }
+  catch (erro) { return { resultado: [] as Item[], vistos, consultas, batches, grades, notas, notasCabecalho, arquivos, uploads, erro: erro as Error } }
 }
 
 
@@ -215,7 +222,7 @@ const semEfeitos = (r: Awaited<ReturnType<typeof percurso>>) => {
   expect(r.consultas).toEqual([])
   expect(r.uploads).toEqual([])
 }
-const retomada = (r: Awaited<ReturnType<typeof percurso>>, extra: Opcoes = {}): Opcoes => ({ ...opPublicada(), anterior: r.grades[3], validacao: r.grades[2], backup: r.grades[10151005], notaExportacao: r.notas[3], arquivos: r.arquivos, execucaoId: 'retomada', ...extra })
+const retomada = (r: Awaited<ReturnType<typeof percurso>>, extra: Opcoes = {}): Opcoes => ({ ...opPublicada(), anterior: r.grades[3], validacao: r.grades[2], backup: r.grades[10151005], notaExportacao: r.notas[3], notasCabecalho: r.notasCabecalho, arquivos: r.arquivos, execucaoId: 'retomada', ...extra })
 
 test('exporta Webhook POST autenticado, resposta final objeto e sem trigger manual/credenciais', () => {
   const w = gerarWorkflowAutomatico(config)
@@ -288,6 +295,8 @@ test('assinatura do mesmo lote com novo hash recusa antes de qualquer efeito', a
 test('mesmo lote pendente arquiva o resultado existente sem limpar/reconsultar', async () => {
   const primeiro = await percurso({ ...opPublicada(), falha: 'Enviar CSV atual' })
   expect(primeiro.erro?.message).toBe('transporte_indisponivel')
+  expect(primeiro.notasCabecalho[2][0]).toContain('Situação: em processamento')
+  expect(primeiro.notasCabecalho[3][1]).toContain('Execução incompleta até conferência final')
   const r = await percurso(retomada(primeiro))
   expect(r.erro).toBeNull()
   expect(r.uploads).toEqual(['Enviar CSV pendente'])
@@ -296,6 +305,34 @@ test('mesmo lote pendente arquiva o resultado existente sem limpar/reconsultar',
   expect(r.vistos).not.toContain('Preservar backup')
   expect(r.grades[3]).toEqual(primeiro.grades[3])
   expect(r.resultado[0]?.json).toMatchObject({ estado: 'ja_concluido', empresasExportadas: 10, execucaoId: 'exec-teste' })
+  expect(r.grades[2]).toEqual(primeiro.grades[2])
+  expect(r.grades[10151005]).toEqual(primeiro.grades[10151005])
+  const pendente = lerManifestoDrive(primeiro.notas[3],'raiz-teste')
+  const salvo = lerManifestoDrive(r.notas[3],'raiz-teste')
+  expect(pendente.ok && pendente.manifesto?.estado).toBe('pendente')
+  expect(salvo.ok && salvo.manifesto).toEqual(pendente.ok && { ...pendente.manifesto, estado: 'salvo', arquivoId: (r.resultado[0].json.arquivoDrive as { id: string }).id })
+  expect(r.notas[3].split('\n').find(l => l.startsWith('CRM_AUTOMATICO_V1:'))).toBe(primeiro.notas[3].split('\n').find(l => l.startsWith('CRM_AUTOMATICO_V1:')))
+  const bloqueio = /Situação: em processamento|Execução incompleta até conferência final|Arquivo CRM pendente de conferência no Drive/
+  for (const id of [2,3]) for (const nota of r.notasCabecalho[id]) {
+    expect(nota).not.toMatch(bloqueio)
+    expect(nota).toContain('Execução: exec-teste')
+    expect(nota).toContain('Situação: concluído')
+    expect(nota).toContain('válidos: 10')
+    expect(nota).toContain('exportadas: 10')
+  }
+  expect(r.notas[3]).toContain('Texto humano exportação')
+  // A mesma conferência de notas que libera o próximo ciclo vem antes da
+  // simulação de uma publicação nova; nenhum dado real é usado.
+  const proximaLiberada = [2,3].every(id => r.notasCabecalho[id].every(n => !bloqueio.test(n)))
+  expect(proximaLiberada).toBe(true)
+  const matriz = fonte(2); matriz[1][0] = '1130000001'; matriz[2][0] = '1130000002'
+  const proximaOrigem = { ...manifestoOrigem(matriz), lote: 'coleta-proxima', arquivoId: 'original-proximo', nome: 'original-proximo.csv' }
+  const proximoOriginal = { ...arquivoOriginal(matriz), id: proximaOrigem.arquivoId, name: proximaOrigem.nome }
+  const proxima = await percurso(retomada(r,{ fonte: matriz, notaOrigem: escreverManifestoDrive('Humano próxima origem',proximaOrigem), sinal: sinal(proximaOrigem), arquivos: [...r.arquivos,proximoOriginal], execucaoId: 'exec-proxima' }))
+  expect(proxima.erro).toBeNull()
+  expect(proxima.resultado[0]?.json).toMatchObject({ estado: 'concluido', lote: 'coleta-proxima', empresasExportadas: 2 })
+  for (const arquivo of r.arquivos) expect(proxima.arquivos.find(a => a.id === arquivo.id)).toEqual(arquivo)
+  for (const numero of r.grades[10151005]) expect(proxima.grades[10151005]).toContainEqual(numero)
 })
 test('upload incerto é reconciliado pelo arquivo já criado, sem segundo CSV nem consultas', async () => {
   const primeiro = await percurso({ ...opPublicada(), uploadIncerto: true })
@@ -383,5 +420,30 @@ test('variante automática desliga persistência mesmo se a base vier com histó
     expect(w.settings).toMatchObject({ executionOrder: 'v1', timezone: 'America/Sao_Paulo', saveDataSuccessExecution: 'none', saveDataErrorExecution: 'none', saveManualExecutions: false, saveExecutionProgress: false })
   } finally {
     espiao.mockRestore()
+  }
+})
+
+test('falha ao concluir notas mantém manifesto pendente e a próxima retomada conclui sem duplicar CSV', async () => {
+  const primeiro = await percurso({ ...opPublicada(), falha: 'Enviar CSV atual' })
+  expect(primeiro.erro?.message).toBe('transporte_indisponivel')
+  const interrompido = await percurso(retomada(primeiro,{ falha: 'Concluir pendência Drive' }))
+  expect(interrompido.erro?.message).toBe('transporte_indisponivel')
+  expect(interrompido.uploads).toEqual(['Enviar CSV pendente'])
+  expect(interrompido.notasCabecalho).toEqual(primeiro.notasCabecalho)
+  expect(interrompido.grades).toEqual(primeiro.grades)
+  const pendente = lerManifestoDrive(interrompido.notas[3],'raiz-teste')
+  expect(pendente.ok && pendente.manifesto?.estado).toBe('pendente')
+  const concluido = await percurso(retomada(interrompido))
+  expect(concluido.erro).toBeNull()
+  expect(concluido.uploads).toEqual([])
+  expect(concluido.consultas).toEqual([])
+  expect(concluido.arquivos).toEqual(interrompido.arquivos)
+  expect(concluido.resultado[0]?.json).toMatchObject({ estado: 'ja_concluido', empresasExportadas: 10, execucaoId: 'exec-teste' })
+  const batch = concluido.batches.find(b => b.nome === 'Concluir pendência Drive')!
+  expect(batch.requests.map(r => (r.updateCells as { range: { sheetId: number } }).range.sheetId)).toEqual([2,3,3])
+  for (const id of [2,3]) for (const nota of concluido.notasCabecalho[id]) {
+    expect(nota).not.toMatch(/Situação: em processamento|Execução incompleta até conferência final|Arquivo CRM pendente de conferência no Drive/)
+    expect(nota).toContain('Execução: exec-teste')
+    expect(nota).toContain('válidos: 10')
   }
 })

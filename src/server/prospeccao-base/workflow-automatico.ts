@@ -90,6 +90,34 @@ const resultado = auto.montarRespostaAutomatica(sinal,manifesto,c.contagens,'ja_
 if (!resultado.ok) throw new Error(resultado.motivo)
 return [{json:resultado.resposta,pairedItem:{item:0}}]
 `)
+  // Notas operacionais e manifesto salvo precisam concluir no mesmo batch:
+  // uma falha intermediária não pode deixar salvo com cabeçalhos incompletos.
+  envolver('Preparar nota recuperada','const destinos = ' + JSON.stringify({ validacao: config.abas.validacao, exportacao: config.abas.exportacao }) + '\n' + String.raw`
+const pendencia = $('Preparar pendência Drive').first().json
+if (!pendencia.mesmoLote) return r
+const m = $('Conferir CSV pendente').first().json.manifesto
+const c = pendencia.contagens
+const resumo = 'Execução: ' + m.execucaoId + '\nData: ' + m.dataExecucao
+  + '\nSituação: concluído' + (c.pendencias ? ' com pendências' : '')
+  + '\nválidos: ' + c.validos + '\ninválidos: ' + c.invalidos
+  + '\nexportadas: ' + c.empresasExportadas + '\npendências: ' + c.pendencias
+const requests = r[0].json.requests
+for (const req of requests) {
+  const cell = req.updateCells.rows[0].values[0]
+  const humano = cell.note.split(/\r?\n/).filter(l => ![
+    'Situação: em processamento','Execução incompleta até conferência final','Arquivo CRM pendente de conferência no Drive',
+  ].includes(l)).join('\n').replace(/\n+$/,'')
+  cell.note = humano + '\n' + resumo
+}
+const concluir = (sheetId,colunas) => ({updateCells:{
+  range:{sheetId,startRowIndex:0,endRowIndex:1,startColumnIndex:0,endColumnIndex:colunas},
+  rows:[{values:Array.from({length:colunas},() => ({note:resumo}))}],fields:'note',
+}})
+// A1 da exportação vem por último para preservar manifesto, assinatura e
+// texto humano além do resumo que também conclui os demais cabeçalhos.
+r[0].json.requests = [concluir(destinos.validacao,2),concluir(destinos.exportacao,9),...requests]
+return r
+`)
   // A releitura feita pelo percurso Drive também deve corresponder ao sinal.
   envolver('Validar coleta',conferirOrigem('$input.first().json.values') + 'return r\n')
   envolver('Preparar publicação','const exportacaoId = ' + config.abas.exportacao + '\n' + String.raw`
