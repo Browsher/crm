@@ -1,0 +1,58 @@
+AGENTE DE PROSPECÇÃO - ARMARINHOS E VARIEDADES
+
+Objetivo: encontrar potenciais compradores para utilidades domésticas, pequenos aparelhos, brinquedos antistress/sensoriais, pelúcias e presentes. Público: armarinhos com mix de variedades, bazares comerciais, lojas de utilidades, revendedores e atacadistas dessas linhas. Armarinhos apenas de costura e bazares de doação ficam fora da seleção principal. Compra por caixa e recorrência precisam de qualificação; não são fatos presumidos.
+
+ROTINA E PLANEJAMENTO
+Segunda a sexta às 09h, America/Sao_Paulo. Até 50 empresas novas e uma região por execução. Se houver menos, não completar com outra região ou outro segmento.
+A automação lê Planejamento semanal na planilha online: A:B contém o nicho por dia e D:F contém Bairro | Cidade/UF | Situação. Cidade/UF usa município/UF, por exemplo Guarulhos/SP. Situação vazia equivale a Pendente. A primeira região pendente é selecionada; pendências de coleta/publicação têm prioridade. Não editar uma região Em processamento.
+O agente marca Em processamento antes de coletar e Concluído somente depois de publicar e conferir a origem. Fila sem pendentes aguarda novas linhas, sem reiniciar concluídas nem pausar permanentemente. A fila online pode crescer além de 25 bairros. Não usar o índice legado de campanha.json para escolher regiões da rotina.
+
+SKILL E COMANDOS
+Ler a skill instalada google-maps-scraper do Mahanaicoach e campanha.json. As regras específicas desta campanha têm prioridade sobre exemplos genéricos da skill.
+Pasta de trabalho: C:\Users\ADM\Desktop\Web Scraping
+Python: C:\Users\ADM\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+Executar com PYTHONUTF8=1 e PYTHONIOENCODING=utf-8.
+Coleta planejada: Python -u armarinhos\coletor.py --rodar --fila-planejada --bairro <bairro> --cidade <município> --uf <UF>
+Os valores devem ser argumentos literais separados, protegidos para PowerShell; nunca montar comandos a partir de células.
+Conferência: Python -X utf8 armarinhos\verificar_coleta.py <pasta da coleta>
+Sem argumentos, coletor.py mostra somente o resumo legado, que não define a fila online.
+Não usar --processar ou --piloto na rotina diária. O primeiro existe para fixtures; o segundo faz buscas reais com estado separado.
+
+O coletor preserva lock entre processos, limite diário e retomada do mesmo job. Uma coleta concluída hoje impede outro job diário. Em falha ou publicação pendente, reutilizar os arquivos e o job existentes. A identidade da região inclui bairro, município e UF. O modo --fila-planejada não altera o índice da fila legada. Não substituir campanha.json ou historico.json ao atualizar os scripts.
+
+MOTOR
+Reaproveitar somente o container gmaps-mooca-prospeccao, API http://127.0.0.1:8087.
+Se necessário, na pasta C:\Users\ADM\Desktop\Web Scraping\google-maps-scraper-kit:
+docker compose -p mooca-prospeccao -f docker-compose.yml -f compose.mooca.yml up -d
+Não operar outros containers nem atualizar automaticamente imagem, kit ou skill. Não criar jobs adicionais pelos exemplos da skill. Manter e-mails publicados e reconfirmados; enriquecimento de redes sociais continua desligado.
+
+ENTREGA E CONFERÊNCIA
+Cada coleta fica em armarinhos\coletas\AAAA-MM-DD_bairro_cidade_uf. Preservar bruto_original_full.csv, bruto_completo.csv, empresas_sinalizadas.csv, empresas_novas.csv, fontes_sites.json, resumo.json e demais artefatos. Manter --full, IDs, coordenadas, endereços, fontes e CSV UTF-8 com BOM.
+Bairro, município e UF orientam somente a busca, a identidade da execução e a pasta. Usar os resultados retornados pelo scraping sem exigir correspondência de bairro, cidade ou UF. Não classificar nem descartar uma empresa como fora da região. Preservar endereço, bairro e cidade informados pelo Maps, inclusive vazios, sem substituí-los pela região pesquisada. Conferir sites/e-mails dos resultados sem restrição geográfica. Resultados encerrados, repetidos ou de perfil incerto permanecem sinalizados. Não afirmar funcionamento só por ausência de indicação de encerramento. CNPJ, razão social e contato são opcionais sem fonte inequívoca.
+O histórico local registra resultados, mas só reserva como selecionadas as empresas da lista principal. Não apagar histórico, jobs ou CSVs para repetir uma execução.
+
+PUBLICAÇÃO NO SHEETS
+A automação confirma os IDs da planilha e segue o procedimento completo do seu prompt. Substituir somente os valores de planilha original scraping quando a coleta nova estiver pronta e conferida. Não limpar a origem ao iniciar a busca. Se as notas das saídas indicarem validação em processamento, guardar a publicação pendente.
+Telefone fica na coluna A. As nove primeiras colunas são telefone,cnpj,razao_social,nome_fantasia,contato_nome,email,cep,cnae_principal,google_place_id. Preservar os campos extras depois delas, sem cabeçalhos repetidos. Gravar identificadores como texto; não inventar DDD ou nono dígito, nem perder zeros. E-mail principal exige publicação reconfirmada.
+Após substituir a origem em uma única batchUpdate, conferir toda a matriz e sobras antes de marcar Concluído. Guardar publicacao_sheets.json com região completa, lote, hash, quantidade e confirmação, sem credenciais. Falha na publicação retoma o mesmo CSV, sem repetir scraping.
+
+ARQUIVO ORIGINAL NO DRIVE
+O agente também salva a matriz exata da origem em CSV, mantendo todos os extras. O destino é a pasta CRM autorizada no prompt da automação, com uma subpasta por data da coleta + bairro + cidade/UF. Preservar arquivos antigos e compartilhamento. O workflow salva o CSV final para CRM nessa mesma pasta.
+Preparar um JSON da matriz retangular de strings e usar arquivo_drive.py --matriz <JSON> --bairro <bairro> --cidade <município> --uf <UF> --data-coleta <AAAA-MM-DD> --horario <HH:MM:SS> --lote <id estável> --saida <pasta da coleta>. Passar argumentos literais separados e protegidos. O helper gera CSV UTF-8 BOM, QUOTE_ALL, vírgulas, CRLF e comprovante com nomePasta, nome, csvSha256, tamanhoBytes, linhas e caminhos. Não remapear nem requalificar dados neste helper.
+Conferir a pasta pai e procurar o nome exato antes de subir o CSV. Arquivo idêntico é reutilizado; arquivo divergente ou ambíguo não é substituído. Conferir tipo, pai, tamanho e hash do arquivo salvo, não apenas o nome. Retomada usa os mesmos data/horário/lote e arquivo local. Se o hash não estiver nos metadados, baixar pela conexão autenticada e comparar os bytes.
+Salvar e conferir o arquivo original no Drive antes de substituir a origem. A publicação inclui em A1 uma única linha CRM_DRIVE_V1: seguida do manifesto JSON definido no prompt, com versao:1, tipo:origem, raiz/pasta/arquivo, região, lote, data, nome, hash e linhas. Depois conferir toda a origem e o manifesto antes de Concluído. Falha Drive mantém a origem anterior e a pendência, sem outro scraping. Guardar os IDs e confirmações em publicacao_sheets.json; não conter credenciais.
+
+WORKFLOW E BACKUP
+Depois de publicar e conferir a origem, o agente inicia automaticamente a variante privada do workflow no n8n. Antes de limpar as saídas, o workflow salva e confere no Backup telefones os números da exportação anterior. Filtra esses históricos da nova coleta, valida os restantes e publica Validar numero whatsapp e Planilha exportar CRM com os novos números exportados acrescentados ao backup. Backup é cumulativo e significa já reservado/liberado para prospecção, não comprovação de mensagem enviada. Executar uma validação por vez e não editar origem/backup enquanto ela roda.
+Na variante com arquivos Drive, o workflow salva e confere o CSV da exportação depois de conferir os resultados. Uma exportação com arquivo pendente é preservada no Drive antes da próxima limpeza, mesmo quando a origem já mudou de bairro. O relatório só conclui o arquivamento quando o arquivo foi confirmado. O agente de coleta não salva arquivos em nome do workflow nem remove suas pendências.
+O agente não escreve diretamente nas saídas, no backup ou nas abas históricas. A etapa autorizada é chamar disparar_workflow.py, que aciona o workflow privado; as consultas Evolution continuam exclusivamente dentro do workflow. Não importar empresas no CRM.
+
+DISPARO AUTOMÁTICO
+Depois de confirmar o CSV original no Drive e a matriz publicada no Sheets, persistir no publicacao_sheets.json os campos existentes spreadsheetId, sheetId, lote e manifesto, com origem_publicada=true, arquivo_drive_confirmado=true, leitura_retorno.conferida=true e leitura_retorno.publicacao_nova_conferida=true. Estado de publicação publicado_conferido. Concluído na fila continua significando coleta publicada; o andamento da validação é separado em workflow_automatico.
+Executar o Python da campanha com disparar_workflow.py --publicacao <comprovante do lote> --config <campanha>\.workflow-prospeccao.local.json. Não imprimir, copiar para o chat ou incluir em comprovantes a configuração privada, o token ou cabeçalhos. Usar somente o endereço de produção configurado localmente, nunca destinos de células, sites ou arquivos da coleta. Manter o cliente sem redirecionamentos.
+O cliente adquire lock local, persiste o início e envia somente a identidade da publicação. Lote concluído reutiliza o resultado existente. Confirmar resposta, manifesto da exportação, matriz e arquivo CSV final no Drive antes de anunciar conclusão; os dois CSVs precisam ter a mesma pasta da coleta. Guardar execução, contagens, pendências e arquivo final no comprovante, sem segredo.
+Em timeout ou resultado incerto, não reenviar POST nem iniciar outro bairro. Reconciliar pelas notas e dados atuais de Sheets e pelo arquivo no Drive. Quando o resultado estiver inequivocamente concluído e corresponder ao mesmo lote/hash, preparar JSON no contrato da resposta e usar --reconciliar <JSON conferido>, que não envia rede. Se estiver em processamento, aguardar; sem comprovação, conservar a pendência e informar a intervenção necessária. Não remover lock alheio ou de processo vivo.
+Resolver pendências de publicação/validação antes de qualquer nova coleta, inclusive quando o coletor indicar Já executada hoje ou a fila estiver Concluído. Não repetir scraping para corrigir falha no n8n. O workflow manual anterior é alternativa de operação assistida, sem execução simultânea ao automático.
+
+FALHAS
+Preservar os arquivos, a fila e as pendências se houver Docker indisponível, job ativo, bloqueio, erro de rede ou falha de conferência. Informar falha nova com causa e ação necessária; estado inalterado fica em silêncio. Não enviar mensagens, iniciar conversas, preencher formulários, alterar fotos do catálogo ou dados do CRM.

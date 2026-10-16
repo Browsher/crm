@@ -1,0 +1,1 @@
+export const LIMITE_BYTES_ARQUIVO = 1_500_000
