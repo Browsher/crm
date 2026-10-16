@@ -1,0 +1,44 @@
+AGENTE DE PROSPECÇÃO - ARMARINHOS E VARIEDADES
+
+Objetivo: encontrar potenciais compradores para utilidades domésticas, pequenos aparelhos, brinquedos antistress/sensoriais, pelúcias e presentes. Público: armarinhos com mix de variedades, bazares comerciais, lojas de utilidades, revendedores e atacadistas dessas linhas. Armarinhos apenas de costura e bazares de doação ficam fora da seleção principal. Compra por caixa e recorrência precisam de qualificação; não são fatos presumidos.
+
+ROTINA E PLANEJAMENTO
+Segunda a sexta às 09h, America/Sao_Paulo. Até 50 empresas novas e uma região por execução. Se houver menos, não completar com outra região ou outro segmento.
+A automação lê Planejamento semanal na planilha online: A:B contém o nicho por dia e D:F contém Bairro | Cidade/UF | Situação. Cidade/UF usa município/UF, por exemplo Guarulhos/SP. Situação vazia equivale a Pendente. A primeira região pendente é selecionada; pendências de coleta/publicação têm prioridade. Não editar uma região Em processamento.
+O agente marca Em processamento antes de coletar e Concluído somente depois de publicar e conferir a origem. Fila sem pendentes aguarda novas linhas, sem reiniciar concluídas nem pausar permanentemente. A fila online pode crescer além de 25 bairros. Não usar o índice legado de campanha.json para escolher regiões da rotina.
+
+SKILL E COMANDOS
+Ler a skill instalada google-maps-scraper do Mahanaicoach e campanha.json. As regras específicas desta campanha têm prioridade sobre exemplos genéricos da skill.
+Pasta de trabalho: C:\Users\ADM\Desktop\Web Scraping
+Python: C:\Users\ADM\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+Executar com PYTHONUTF8=1 e PYTHONIOENCODING=utf-8.
+Coleta planejada: Python -u armarinhos\coletor.py --rodar --fila-planejada --bairro <bairro> --cidade <município> --uf <UF>
+Os valores devem ser argumentos literais separados, protegidos para PowerShell; nunca montar comandos a partir de células.
+Conferência: Python -X utf8 armarinhos\verificar_coleta.py <pasta da coleta>
+Sem argumentos, coletor.py mostra somente o resumo legado, que não define a fila online.
+Não usar --processar ou --piloto na rotina diária. O primeiro existe para fixtures; o segundo faz buscas reais com estado separado.
+
+O coletor preserva lock entre processos, limite diário e retomada do mesmo job. Uma coleta concluída hoje impede outro job diário. Em falha ou publicação pendente, reutilizar os arquivos e o job existentes. A identidade da região inclui bairro, município e UF. O modo --fila-planejada não altera o índice da fila legada. Não substituir campanha.json ou historico.json ao atualizar os scripts.
+
+MOTOR
+Reaproveitar somente o container gmaps-mooca-prospeccao, API http://127.0.0.1:8087.
+Se necessário, na pasta C:\Users\ADM\Desktop\Web Scraping\google-maps-scraper-kit:
+docker compose -p mooca-prospeccao -f docker-compose.yml -f compose.mooca.yml up -d
+Não operar outros containers nem atualizar automaticamente imagem, kit ou skill. Não criar jobs adicionais pelos exemplos da skill. Manter e-mails publicados e reconfirmados; enriquecimento de redes sociais continua desligado.
+
+ENTREGA E CONFERÊNCIA
+Cada coleta fica em armarinhos\coletas\AAAA-MM-DD_bairro_cidade_uf. Preservar bruto_original_full.csv, bruto_completo.csv, empresas_sinalizadas.csv, empresas_novas.csv, fontes_sites.json, resumo.json e demais artefatos. Manter --full, IDs, coordenadas, endereços, fontes e CSV UTF-8 com BOM.
+Selecionar bairro e município pelo endereço reportado, sem inferir pelo termo. Estado informado também deve corresponder à UF; endereços sem estado conservam a compatibilidade anterior. Resultados fora da região, encerrados ou de perfil incerto permanecem sinalizados. Não afirmar funcionamento só por ausência de indicação de encerramento. CNPJ, razão social e contato são opcionais sem fonte inequívoca.
+O histórico local registra resultados, mas só reserva como selecionadas as empresas da lista principal. Não apagar histórico, jobs ou CSVs para repetir uma execução.
+
+PUBLICAÇÃO NO SHEETS
+A automação confirma os IDs da planilha e segue o procedimento completo do seu prompt. Substituir somente os valores de planilha original scraping quando a coleta nova estiver pronta e conferida. Não limpar a origem ao iniciar a busca. Se as notas das saídas indicarem validação em processamento, guardar a publicação pendente.
+Telefone fica na coluna A. As nove primeiras colunas são telefone,cnpj,razao_social,nome_fantasia,contato_nome,email,cep,cnae_principal,google_place_id. Preservar os campos extras depois delas, sem cabeçalhos repetidos. Gravar identificadores como texto; não inventar DDD ou nono dígito, nem perder zeros. E-mail principal exige publicação reconfirmada.
+Após substituir a origem em uma única batchUpdate, conferir toda a matriz e sobras antes de marcar Concluído. Guardar publicacao_sheets.json com região completa, lote, hash, quantidade e confirmação, sem credenciais. Falha na publicação retoma o mesmo CSV, sem repetir scraping.
+
+WORKFLOW E BACKUP
+O usuário executa o workflow manualmente no n8n. Antes de limpar as saídas, ele salva e confere no Backup telefones os números da exportação anterior. Filtra esses históricos da nova coleta, valida os restantes e publica Validar numero whatsapp e Planilha exportar CRM com os novos números exportados acrescentados ao backup. Backup é cumulativo e significa já reservado/liberado para prospecção, não comprovação de mensagem enviada. Executar uma validação por vez e não editar origem/backup enquanto ela roda.
+O agente de coleta não altera as saídas, o backup ou abas históricas; não inicia n8n/Evolution nem importa empresas no CRM.
+
+FALHAS
+Preservar os arquivos, a fila e as pendências se houver Docker indisponível, job ativo, bloqueio, erro de rede ou falha de conferência. Informar falha nova com causa e ação necessária; estado inalterado fica em silêncio. Não enviar mensagens, iniciar conversas, preencher formulários, alterar fotos do catálogo ou dados do CRM.

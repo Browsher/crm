@@ -1,0 +1,5 @@
+__pycache__/
+campanha.json
+historico*.json
+*.lock
+coletas/

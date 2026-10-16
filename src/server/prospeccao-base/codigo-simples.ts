@@ -3,12 +3,15 @@ import { resolve } from 'node:path'
 import { compilarCodigoN8n } from './codigo-n8n'
 
 let compilado: string | null = null
+let compiladoBackup: string | null = null
 
-export function compilarBibliotecaSimples(): string {
-  if (compilado !== null) return compilado
+export function compilarBibliotecaSimples(comBackup = false): string {
+  const cache = comBackup ? compiladoBackup : compilado
+  if (cache !== null) return cache
   const arquivos = ['arquivo-empresas', 'cnpj', 'cep', 'cnae', 'prospeccao-base/modelo', 'prospeccao-base/telefone',
     'prospeccao-base/whatsapp', 'prospeccao-base/simples-modelo', 'prospeccao-base/entrada-sheets',
     'prospeccao-base/exportar-crm', 'prospeccao-base/sheets-simples']
+  if (comBackup) arquivos.push('prospeccao-base/backup-telefones')
   const modulos = Object.fromEntries(arquivos.map(arquivo => {
     const id = 'src/lib/' + arquivo
     return [id, readFileSync(resolve(id + '.ts'), 'utf8')]
@@ -26,6 +29,17 @@ export function compilarBibliotecaSimples(): string {
     'export const rangeA1 = range',
     'export const classificarConsultaComunidade = classificar',
   ].join('\n')
-  compilado = compilarCodigoN8n(modulos, 'entry')
-  return compilado
+  if (comBackup) modulos.entry += '\n' + [
+    "import { consolidarBackupTelefones as consolidar, filtrarColetaPorBackup as filtrar, conferirBackup as conferirHistorico, prepararAcrescimoBackup as acrescentar } from './src/lib/prospeccao-base/backup-telefones'",
+    "import { COLUNAS_CRM as colunas } from './src/lib/prospeccao-base/exportar-crm'",
+    'export const consolidarBackupTelefones = consolidar',
+    'export const filtrarColetaPorBackup = filtrar',
+    'export const conferirBackup = conferirHistorico',
+    'export const prepararAcrescimoBackup = acrescentar',
+    'export const COLUNAS_CRM = colunas',
+  ].join('\n')
+  const resultado = compilarCodigoN8n(modulos, 'entry')
+  if (comBackup) compiladoBackup = resultado
+  else compilado = resultado
+  return resultado
 }
