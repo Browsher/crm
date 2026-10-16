@@ -4,11 +4,7 @@ import hashlib
 import io
 import json
 import sys
-import unicodedata
 from pathlib import Path
-
-def normal(value):
-    return " ".join(unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode().lower().split())
 
 folder=Path(sys.argv[1]).resolve()
 data=json.loads((folder/'dados_preparados.json').read_text(encoding='utf-8'))
@@ -40,14 +36,21 @@ identity=lambda row:row['place_id'] or row['cid'] or row['data_id'] or (row['nom
 assert len({identity(row) for row in all_rows})==len(all_rows)
 assert sum(int(row['ocorrencias_brutas']) for row in all_rows)==len(original)
 assert len(chosen)<=report['meta'] and len(chosen)==report['novas_selecionadas']
+original_by_identity={}
+for row in original:
+    source_identity=row.get('place_id') or row.get('cid') or row.get('data_id') or (row.get('title',''),row.get('address',''))
+    original_by_identity.setdefault(source_identity,row)
 for row in chosen:
-    assert normal(row['bairro'])==normal(report['bairro']) and normal(row['cidade'])==normal(report.get('cidade','São Paulo'))
+    source=original_by_identity.get(identity(row))
+    assert source is not None,'Empresa selecionada sem fonte no download original'
+    address=json.loads(source.get('complete_address') or '{}')
+    assert row['endereco']==source.get('address','') and row['bairro']==address.get('borough','') and row['cidade']==address.get('city',''),'Endereço selecionado divergiu do Maps'
     assert row['perfil'] not in {'A conferir','Fora do perfil'}
     assert row['situacao_empresa']!='Fechamento sinalizado no Maps'
     assert row['termo_pesquisado'] and row['data_coleta']==report['data']
     if row['email']:
         source=next(s for s in sources.values() if s['url']==row['fonte_email'])
         assert all(email in source['emails'] for email in row['email'].split('; '))
-result={'resultado':'Conferência aprovada','bairro':report['bairro'],'empresas_selecionadas':len(chosen),'com_telefone':sum(bool(r['telefone']) for r in chosen),'com_email':sum(bool(r['email']) for r in chosen),'arquivos':counts,'checks':['Download original por SHA-256','Todos os campos brutos reconciliados','CSV UTF-8 com BOM','IDs e coordenadas preservados','Deduplicação e ocorrências reconciliadas','Bairro exato, perfil e limite','Fontes dos e-mails']}
+result={'resultado':'Conferência aprovada','bairro':report['bairro'],'empresas_selecionadas':len(chosen),'com_telefone':sum(bool(r['telefone']) for r in chosen),'com_email':sum(bool(r['email']) for r in chosen),'arquivos':counts,'checks':['Download original por SHA-256','Todos os campos brutos reconciliados','CSV UTF-8 com BOM','IDs e coordenadas preservados','Deduplicação e ocorrências reconciliadas','Endereço original preservado, perfil e limite','Fontes dos e-mails']}
 (folder/'verificacao.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
 print(json.dumps(result,ensure_ascii=False,indent=2))

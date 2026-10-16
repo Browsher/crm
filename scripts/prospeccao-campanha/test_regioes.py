@@ -85,7 +85,7 @@ class SelectedRegion(unittest.TestCase):
         coletor.save_json(self.state,{"proximo_indice":25,"vistos":{},"execucoes":[],"pendente":item})
         return folder
 
-    def test_selected_city_controls_search_geocode_filter_and_summary(self):
+    def test_selected_city_controls_search_geocode_and_summary_without_filtering_results(self):
         rows=fixture_rows()+fixture_rows(cidade="São Paulo")
         rows[1]["place_id"]="outside-city";rows[1]["cid"]="00000000000000002";rows[1]["title"]="Utilidades fora"
         write_raw(self.raw,rows)
@@ -93,16 +93,55 @@ class SelectedRegion(unittest.TestCase):
         self.assertEqual(code,0,text)
         self.assertEqual(self.geocodes,["Centro, Guarulhos, SP, Brasil"])
         self.assertEqual(self.created[0]["keywords"][0],"armarinhos no bairro Centro Guarulhos SP")
-        self.assertEqual([row["place_id"] for row in self.selected()],["id1"])
+        self.assertEqual([row["place_id"] for row in self.selected()],["id1","outside-city"])
+        self.assertEqual([row["cidade"] for row in self.selected()],["Guarulhos","São Paulo"])
         self.assertEqual((self.report()["cidade"],self.report()["uf"]),("Guarulhos","SP"))
         self.assertEqual(self.saved()["proximo_indice"],0)
 
-    def test_address_state_disambiguates_homonymous_cities_when_available(self):
+    def test_returned_companies_from_another_state_remain_eligible(self):
         rows=fixture_rows(cidade="Bom Jesus",uf="RS")+fixture_rows(cidade="Bom Jesus",uf="PI")
         rows[0]["complete_address"]=json.dumps(dict(borough="Centro",city="Bom Jesus",state="Rio Grande do Sul"))
         rows[1]["place_id"]="other-state";rows[1]["cid"]="00000000000000002";rows[1]["title"]="Utilidades fora"
         write_raw(self.raw,rows)
         code,text=self.planned(cidade="Bom Jesus",uf="RS")
+        self.assertEqual(code,0,text)
+        self.assertEqual([row["place_id"] for row in self.selected()],["id1","other-state"])
+
+    def test_returned_companies_with_generic_other_or_missing_neighborhood_keep_address(self):
+        for borough in ("Centro Histórico de São Paulo", "Liberdade", ""):
+            with self.subTest(bairro=borough):
+                self.state.unlink(missing_ok=True)
+                write_raw(self.raw,fixture_rows(bairro=borough,cidade="São Paulo"))
+                code,text=self.planned(bairro="Sé",cidade="São Paulo")
+                self.assertEqual(code,0,text)
+                selected=self.selected()
+                self.assertEqual([row["place_id"] for row in selected],["id1"])
+                self.assertEqual(selected[0]["bairro"],borough)
+                self.assertEqual(selected[0]["cidade"],"São Paulo")
+                self.assertEqual(selected[0]["endereco"],"Rua Teste, 1")
+
+    def test_site_evidence_is_checked_for_a_returned_company_outside_search_neighborhood(self):
+        rows=fixture_rows(bairro="Centro Histórico de São Paulo",cidade="São Paulo")
+        rows[0].update(title="Armarinho Exemplo",category="Armarinho",website="https://example.org")
+        write_raw(self.raw,rows)
+        def inspect(row):
+            self.assertEqual(row["place_id"],"id1")
+            return {"url":"https://example.org","emails":["vendas@example.org"],"texto":"brinquedos","erro":""}
+        with patch.object(coletor,"inspect_site",side_effect=inspect):
+            code,text=self.planned(bairro="Sé",cidade="São Paulo")
+        self.assertEqual(code,0,text)
+        selected=self.selected()
+        self.assertEqual([row["place_id"] for row in selected],["id1"])
+        self.assertEqual(selected[0]["email"],"vendas@example.org")
+        self.assertEqual(selected[0]["perfil"],"Armarinho de variedades")
+
+    def test_companies_outside_search_neighborhood_still_obey_profile_and_closed_filters(self):
+        rows=fixture_rows(bairro="Liberdade",cidade="São Paulo",count=3)
+        rows[1]["category"]="Restaurante"
+        for row in rows:row["status"]=""
+        rows[2]["status"]="permanently closed"
+        write_raw(self.raw,rows)
+        code,text=self.planned(bairro="Sé",cidade="São Paulo")
         self.assertEqual(code,0,text)
         self.assertEqual([row["place_id"] for row in self.selected()],["id1"])
 
@@ -256,10 +295,20 @@ class SummaryVerification(unittest.TestCase):
             with self.subTest(bairro=spelling):
                 self.check_city("São Paulo", "São Paulo", actual_bairro=spelling, requested_bairro="Sé")
 
-    def test_verifier_still_rejects_another_neighborhood(self):
-        self.check_city("São Paulo", "São Paulo", actual_bairro="Liberdade", requested_bairro="Sé", accepted=False)
+    def test_verifier_accepts_generic_other_or_missing_neighborhood(self):
+        for bairro in ("Centro Histórico de São Paulo", "Liberdade", ""):
+            with self.subTest(bairro=bairro):
+                self.check_city("São Paulo", "São Paulo", actual_bairro=bairro, requested_bairro="Sé")
 
-    def check_city(self, actual_city, requested_city, actual_bairro="Centro", requested_bairro="Centro", accepted=True):
+    def test_verifier_accepts_another_or_missing_city_without_relabeling(self):
+        for cidade in ("Guarulhos", ""):
+            with self.subTest(cidade=cidade):
+                self.check_city(cidade, "São Paulo")
+
+    def test_verifier_rejects_relabeling_real_neighborhood_as_search_neighborhood(self):
+        self.check_city("São Paulo", "São Paulo", actual_bairro="Liberdade", requested_bairro="Sé", exported_bairro="Sé", accepted=False)
+
+    def check_city(self, actual_city, requested_city, actual_bairro="Centro", requested_bairro="Centro", accepted=True, exported_bairro=None):
         with tempfile.TemporaryDirectory(dir=STAGE,prefix="verificador_") as temp:
             folder=Path(temp)
             rows=fixture_rows(bairro=actual_bairro,cidade=actual_city)
@@ -267,6 +316,7 @@ class SummaryVerification(unittest.TestCase):
             raw_fields=list(rows[0])+["termo_pesquisado","data_coleta"]
             augmented=[dict(rows[0],termo_pesquisado="utilidades Centro Guarulhos SP",data_coleta="2026-10-16")]
             chosen=dict(nome_empresa="Utilidades 1",endereco="Rua Teste, 1",bairro=actual_bairro,cidade=actual_city,perfil="Utilidades/variedades/bazar",situacao_empresa="Funcionamento individual não confirmado",termo_pesquisado="utilidades Centro Guarulhos SP",data_coleta="2026-10-16",email="",telefone="",fonte_email="",place_id="id1",cid="123456789012345671",data_id="",ocorrencias_brutas="1")
+            if exported_bairro is not None:chosen["bairro"]=exported_bairro
             data=dict(fields=list(chosen),selected=[chosen],all=[chosen],raw_fields=raw_fields,raw_rows=augmented)
             coletor.save_json(folder/"dados_preparados.json",data)
             fixture_export(folder)

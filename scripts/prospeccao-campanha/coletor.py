@@ -58,12 +58,6 @@ def same_pending_region(pending, bairro, cidade, uf):
         and normal(pending.get("cidade", "São Paulo")) == normal(cidade)
         and pending.get("uf", "SP").upper() == uf)
 
-def address_matches(address, bairro, cidade, uf):
-    state = normal(address.get("state") or address.get("uf"))
-    return (normal(address.get("borough")) == normal(bairro)
-        and normal(address.get("city")) == normal(cidade)
-        and (not state or state in {normal(uf), normal(ESTADOS[uf])}))
-
 def read_json(path, default=None):
     return json.loads(path.read_text(encoding="utf-8-sig")) if path.exists() else default
 
@@ -175,8 +169,7 @@ def process(raw_path, query_map, bairro, state_path, output, limit=50, export=Tr
     cached = read_json(output / "fontes_sites.json", {})
     to_visit = []
     for row in uniques:
-        address = json.loads(row.get("complete_address") or "{}")
-        if address_matches(address, bairro, cidade, uf) and row.get("website") and keys(row)[0] not in cached:
+        if row.get("website") and keys(row)[0] not in cached:
             to_visit.append(row)
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         for row, evidence in zip(to_visit, executor.map(inspect_site, to_visit)):
@@ -187,13 +180,12 @@ def process(raw_path, query_map, bairro, state_path, output, limit=50, export=Tr
     prepared = []
     for row in uniques:
         address = json.loads(row.get("complete_address") or "{}")
-        exact = address_matches(address, bairro, cidade, uf)
         row_keys = keys(row)
         known = any(seen.get(key,{}).get("selecionada",False) for key in row_keys)
         evidence = cached.get(row_keys[0], {})
         group, reason, rank = profile(row, evidence)
         closed = any(word in normal(row.get("status")) for word in ["permanently closed", "temporarily closed", "fechado permanentemente", "fechado temporariamente", "encerrado"])
-        prepared.append({"nome_empresa":row.get("title", ""), "categoria":row.get("category", ""), "telefone":row.get("phone", ""), "email":"; ".join(evidence.get("emails", [])), "site":row.get("website", ""), "endereco":row.get("address", ""), "bairro":address.get("borough", ""), "cep":address.get("postal_code", ""), "cidade":address.get("city", ""), "link_maps":row.get("link", ""), "termo_pesquisado":" | ".join(sorted(row["_termos"])), "data_coleta":now[:10], "cnpj":"", "razao_social":"", "perfil":group, "motivo_aderencia":reason, "situacao_regiao":"Bairro solicitado" if exact else "Fora do bairro solicitado / bairro não informado", "situacao_empresa":"Fechamento sinalizado no Maps" if closed else "Funcionamento individual não confirmado", "situacao_historico":"Já coletada anteriormente" if known else "Nova no histórico", "fonte_email":evidence.get("url", "") if evidence.get("emails") else "", "emails_motor_nao_reconfirmados":row.get("emails", ""), "observacoes":evidence.get("erro", "") or "Compra por caixa, volume e recorrência a qualificar.", "place_id":row.get("place_id", ""), "cid":row.get("cid", ""), "data_id":row.get("data_id", ""), "latitude":row.get("latitude", ""), "longitude":row.get("longitude", ""), "ocorrencias_brutas":str(row["_n"]), "_eligible":exact and not known and not closed and rank<8, "_rank":rank, "_keys":row_keys})
+        prepared.append({"nome_empresa":row.get("title", ""), "categoria":row.get("category", ""), "telefone":row.get("phone", ""), "email":"; ".join(evidence.get("emails", [])), "site":row.get("website", ""), "endereco":row.get("address", ""), "bairro":address.get("borough", ""), "cep":address.get("postal_code", ""), "cidade":address.get("city", ""), "link_maps":row.get("link", ""), "termo_pesquisado":" | ".join(sorted(row["_termos"])), "data_coleta":now[:10], "cnpj":"", "razao_social":"", "perfil":group, "motivo_aderencia":reason, "situacao_empresa":"Fechamento sinalizado no Maps" if closed else "Funcionamento individual não confirmado", "situacao_historico":"Já coletada anteriormente" if known else "Nova no histórico", "fonte_email":evidence.get("url", "") if evidence.get("emails") else "", "emails_motor_nao_reconfirmados":row.get("emails", ""), "observacoes":evidence.get("erro", "") or "Compra por caixa, volume e recorrência a qualificar.", "place_id":row.get("place_id", ""), "cid":row.get("cid", ""), "data_id":row.get("data_id", ""), "latitude":row.get("latitude", ""), "longitude":row.get("longitude", ""), "ocorrencias_brutas":str(row["_n"]), "_eligible":not known and not closed and rank<8, "_rank":rank, "_keys":row_keys})
     prepared.sort(key=lambda row: (not row["_eligible"], row["_rank"], normal(row["nome_empresa"])))
     selected = [row for row in prepared if row["_eligible"]][:limit]
     fields = [key for key in prepared[0] if not key.startswith("_")]
@@ -217,7 +209,7 @@ def process(raw_path, query_map, bairro, state_path, output, limit=50, export=Tr
         assert len(actual)==len(expected)
         for got, original in zip(actual,expected):
             assert all(got[field]==str(original.get(field,"")) for field in expected_fields), "CSV changed original values"
-    report={"bairro":bairro,"cidade":cidade,"uf":uf,"data":now[:10],"registros_brutos":len(rows),"empresas_unicas":len(prepared),"novas_selecionadas":len(selected),"meta":limit,"meta_atingida":len(selected)>=limit,"fora_do_bairro":sum(r["situacao_regiao"]!="Bairro solicitado" for r in prepared),"ja_conhecidas":sum(r["situacao_historico"]!="Nova no histórico" for r in prepared),"novas_com_email":sum(bool(r["email"]) for r in selected),"saida":str(output),"verificacao":"CSVs reconciliados com as fontes; IDs e UTF-8 preservados"}
+    report={"bairro":bairro,"cidade":cidade,"uf":uf,"data":now[:10],"registros_brutos":len(rows),"empresas_unicas":len(prepared),"novas_selecionadas":len(selected),"meta":limit,"meta_atingida":len(selected)>=limit,"filtro_geografico":False,"ja_conhecidas":sum(r["situacao_historico"]!="Nova no histórico" for r in prepared),"novas_com_email":sum(bool(r["email"]) for r in selected),"saida":str(output),"verificacao":"CSVs reconciliados com as fontes; IDs e UTF-8 preservados"}
     save_json(output/"resumo.json",report)
     for row in prepared:
         for key in row["_keys"]:

@@ -28,7 +28,7 @@ Não operar outros containers nem atualizar automaticamente imagem, kit ou skill
 
 ENTREGA E CONFERÊNCIA
 Cada coleta fica em armarinhos\coletas\AAAA-MM-DD_bairro_cidade_uf. Preservar bruto_original_full.csv, bruto_completo.csv, empresas_sinalizadas.csv, empresas_novas.csv, fontes_sites.json, resumo.json e demais artefatos. Manter --full, IDs, coordenadas, endereços, fontes e CSV UTF-8 com BOM.
-Selecionar bairro e município pelo endereço reportado, sem inferir pelo termo. Estado informado também deve corresponder à UF; endereços sem estado conservam a compatibilidade anterior. Resultados fora da região, encerrados ou de perfil incerto permanecem sinalizados. Não afirmar funcionamento só por ausência de indicação de encerramento. CNPJ, razão social e contato são opcionais sem fonte inequívoca.
+Bairro, município e UF orientam somente a busca, a identidade da execução e a pasta. Usar os resultados retornados pelo scraping sem exigir correspondência de bairro, cidade ou UF. Não classificar nem descartar uma empresa como fora da região. Preservar endereço, bairro e cidade informados pelo Maps, inclusive vazios, sem substituí-los pela região pesquisada. Conferir sites/e-mails dos resultados sem restrição geográfica. Resultados encerrados, repetidos ou de perfil incerto permanecem sinalizados. Não afirmar funcionamento só por ausência de indicação de encerramento. CNPJ, razão social e contato são opcionais sem fonte inequívoca.
 O histórico local registra resultados, mas só reserva como selecionadas as empresas da lista principal. Não apagar histórico, jobs ou CSVs para repetir uma execução.
 
 PUBLICAÇÃO NO SHEETS

@@ -21,3 +21,17 @@ O [workflow automático](https://primary-production-04eb.up.railway.app/workflow
 O teste real de ativação usou somente o Bom Retiro já concluído: resposta ja_concluido, dez empresas na origem, cinco exportadas, 19 telefones no backup e os mesmos dois CSVs. A chamada sem autenticação foi recusada com HTTP 403. Depois da conferência do armazenamento e renovação da credencial, outra repetição confirmou o resultado sem deixar execução salva. O caminho de um lote novo e as recuperações foram exercitados por testes isolados; nenhuma nova coleta real foi feita para ativar esta etapa.
 
 O teste completo posterior, solicitado pelo usuário em 16/10/2026, coletou a próxima região da fila, Sé, São Paulo/SP: 103 resultados, seis empresas selecionadas e conferidas, três WhatsApps válidos e três inválidos. A execução automática 693 publicou três cadastros, preservou os 19 telefones anteriores e acrescentou três ao backup. Os dois CSVs foram baixados do Drive, conferidos por SHA-256 e comparados às matrizes do Sheets na [pasta da Sé](https://drive.google.com/drive/folders/1XsXVAStV7EYpy94TEcTLNNSqFXtg_kag). A fila marcou Sé como Concluído, seguida por República pendente. Foi uma execução extra autorizada, sem mudar o limite da rotina diária. O verificador recebeu correção testada para comparar bairros ignorando acentos, caixa e espaços, como o coletor, sem alterar a escrita original dos dados.
+
+## Resultados retornados pela busca
+
+Em 16/10/2026, após o teste da Sé, o usuário retirou a exigência de
+correspondência geográfica exata. Bairro e cidade/UF do planejamento orientam
+a busca e a pasta de arquivos. Todas as empresas retornadas podem participar
+da seleção, ainda que o Maps informe bairro genérico, vizinho, outra cidade
+ou endereço incompleto. O endereço original continua preservado.
+
+Continuam os critérios de perfil comercial, encerramento, duplicidade e até
+50 empresas. O workflow mantém sua validação de WhatsApp e o backup de
+telefones. A conferência do coletor verifica o endereço contra o download,
+sem exigir igualdade com a região pesquisada. A alteração vale para as
+próximas coletas; arquivos e publicações anteriores ficam preservados.

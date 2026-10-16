@@ -1,4 +1,4 @@
-"""Checks for persistent deduplication, geographic filtering and safe queue advancement."""
+"""Checks persistent deduplication, selection limits and safe queue advancement."""
 import csv
 import json
 import subprocess
@@ -17,7 +17,7 @@ class CampaignFlow(unittest.TestCase):
         self.assertGreaterEqual(coletor.profile({"title":"Bazar da Igreja","category":"Bazar"},{})[2],8)
         self.assertGreaterEqual(coletor.profile({"title":"Supermercado A","category":"Loja de Brinquedos"},{})[2],8)
 
-    def test_new_companies_only_exact_neighborhood_and_daily_limit(self):
+    def test_new_companies_from_all_returned_neighborhoods_keep_limit_and_history(self):
         with tempfile.TemporaryDirectory(dir=SCRIPT.parent, prefix="_teste_") as temp:
             root = Path(temp)
             self.assertTrue(root.resolve().is_relative_to(SCRIPT.parent.resolve()))
@@ -41,16 +41,18 @@ class CampaignFlow(unittest.TestCase):
             self.assertTrue(all(r["bairro"]=="Brás" for r in first))
             self.assertEqual(first[0]["cid"],"123456789012345671")
             second=run(root/"second")
-            self.assertEqual([row["place_id"] for row in second],["id4"])
+            self.assertEqual([row["place_id"] for row in second],["id3","id4"])
+            self.assertEqual(second[0]["bairro"],"Pari")
+            self.assertEqual(second[0]["endereco"],"Rua Teste, 3")
             self.assertEqual(run(root/"third"),[])
             saved=json.loads(state.read_text(encoding="utf-8"))
             self.assertEqual(len({entry["nome"] for entry in saved["vistos"].values()}),4)
             self.assertEqual(saved["proximo_indice"],3)
-            # A company discovered outside today's neighborhood must remain eligible there.
+            # A company already selected through another neighborhood must not be selected again.
             result=subprocess.run([sys.executable,str(SCRIPT),"--processar",str(fixture),"--mapa",str(mapping),"--bairro","Pari","--estado",str(state),"--saida",str(root/"pari")],capture_output=True,text=True,encoding="utf-8")
             self.assertEqual(result.returncode,0,result.stderr)
             with (root/"pari/empresas_novas.csv").open(encoding="utf-8-sig",newline="") as stream:
-                self.assertEqual([row["place_id"] for row in csv.DictReader(stream)],["id3"])
+                self.assertEqual(list(csv.DictReader(stream)),[])
 
     def test_unknown_source_term_does_not_advance_history(self):
         with tempfile.TemporaryDirectory(dir=SCRIPT.parent, prefix="_teste_") as temp:
