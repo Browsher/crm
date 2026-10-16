@@ -43,3 +43,16 @@ export function compilarBibliotecaSimples(comBackup = false): string {
   else compilado = resultado
   return resultado
 }
+
+let compiladoDrive: string | null = null
+
+export function compilarBibliotecaDrive(): string {
+  if (compiladoDrive !== null) return compiladoDrive
+  const id = 'src/lib/prospeccao-base/arquivos-drive'
+  const nomes = ['criarCsvDrive','matrizSheetsDrive','nomeSeguroDrive','nomePastaDrive','lerManifestoDrive',
+    'escreverManifestoDrive','resolverOrigemDrive','criarExportacaoDrive','conferirPastaDrive','queryArquivoDrive']
+  const modulos = { [id]: readFileSync(resolve(id + '.ts'),'utf8'),
+    entry: "import * as drive from './" + id + "'\n" + nomes.map(n => 'export const ' + n + ' = drive.' + n).join('\n') }
+  compiladoDrive = compilarCodigoN8n(modulos,'entry')
+  return compiladoDrive
+}

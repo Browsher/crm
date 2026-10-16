@@ -35,17 +35,29 @@ Configuração, histórico e dependências podem ser isolados definindo `PROSPEC
 
 Os quatro testes legados e os novos usam campanha sintética em `TemporaryDirectory`, com limpeza restrita ao estágio temporário. Testes diários simulam a API, geocodificação, logs Docker e a fronteira do exportador; todo o processamento/deduplicação/reconciliação é real. Nenhuma busca Maps, leitura de leads/histórico real ou mensagem é realizada. A exportação Node instalada e o motor real não são executados por essa suíte.
 
+## CSV original para arquivar no Drive
+
+`arquivo_drive.py` recebe a matriz de strings já conferida para o Sheets. Não mapeia nem qualifica empresas e não acessa a rede. Exige Python 3.12 ou superior, disponível no runtime local da campanha.
+
+```powershell
+& $python -X utf8 (Join-Path $campanha 'arquivo_drive.py') --matriz 'matriz.json' --bairro 'Brás' --cidade 'São Paulo' --uf SP --data-coleta 2026-10-16 --horario 09:05:07 --lote 'job-001' --saida 'pasta-da-coleta'
+```
+
+A saída JSON indica `ok` e `comprovante`, com pasta/arquivo, CSV SHA-256, tamanho em bytes, quantidade sem cabeçalho, região, lote e caminhos. O CSV usa UTF-8 BOM, todos os campos entre aspas e CRLF. Um arquivo local igual é reutilizado; um diferente não é substituído. A automação salva o CSV no Drive, confere conteúdo e registra seu ID no manifesto A1 e em `publicacao_sheets.json`.
+
 ## Instalação após revisão
 
-Instalar somente `coletor.py` e `verificar_coleta.py`. Não substituir `campanha.json`, `historico.json`, `coletas`, motor, exportador ou credenciais. O controlador executa a instalação; este bloco é a receita revisável e não foi executado pela tarefa do coletor.
+Instalar as fontes revisadas `coletor.py`, `verificar_coleta.py`, `arquivo_drive.py` e as instruções atualizadas. Não substituir `campanha.json`, `historico.json`, `coletas`, motor, exportador ou credenciais. O controlador executa a instalação; este bloco é a receita revisável e não foi executado pela tarefa do coletor.
 
 ```powershell
 $origem = 'C:\Users\ADM\.codex\worktrees\producao-vercel\crm\scripts\prospeccao-campanha'
 $destino = 'C:\Users\ADM\Desktop\Web Scraping\armarinhos'
 $reserva = Join-Path $destino ('fontes-anteriores-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $reserva | Out-Null
-foreach ($arquivo in @('coletor.py', 'verificar_coleta.py')) {
-    Copy-Item -LiteralPath (Join-Path $destino $arquivo) -Destination (Join-Path $reserva $arquivo)
+foreach ($arquivo in @('coletor.py', 'verificar_coleta.py', 'arquivo_drive.py', 'INSTRUCOES.txt')) {
+    if (Test-Path -LiteralPath (Join-Path $destino $arquivo)) {
+        Copy-Item -LiteralPath (Join-Path $destino $arquivo) -Destination (Join-Path $reserva $arquivo)
+    }
     Copy-Item -LiteralPath (Join-Path $origem $arquivo) -Destination (Join-Path $destino $arquivo)
     if ((Get-FileHash -LiteralPath (Join-Path $origem $arquivo)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $destino $arquivo)).Hash) {
         throw ('Cópia divergente: ' + $arquivo)
