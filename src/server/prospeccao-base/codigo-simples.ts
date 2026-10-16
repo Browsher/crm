@@ -56,3 +56,15 @@ export function compilarBibliotecaDrive(): string {
   compiladoDrive = compilarCodigoN8n(modulos,'entry')
   return compiladoDrive
 }
+
+let compiladoAutomatico: string | null = null
+
+export function compilarBibliotecaAutomatica(): string {
+  if (compiladoAutomatico !== null) return compiladoAutomatico
+  const arquivos = ['prospeccao-base/arquivos-drive','prospeccao-base/automatico']
+  const modulos = Object.fromEntries(arquivos.map(a => ['src/lib/' + a, readFileSync(resolve('src/lib/' + a + '.ts'),'utf8')]))
+  const nomes = ['validarSinalColetaPronta','conferirPublicacaoAutomatica','escreverAssinaturaAutomatica','conferirExportacaoAutomatica','montarRespostaAutomatica']
+  modulos.entry = "import * as auto from './src/lib/prospeccao-base/automatico'\n" + nomes.map(n => 'export const ' + n + ' = auto.' + n).join('\n')
+  compiladoAutomatico = compilarCodigoN8n(modulos,'entry')
+  return compiladoAutomatico
+}
