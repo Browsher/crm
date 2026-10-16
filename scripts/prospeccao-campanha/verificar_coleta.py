@@ -41,7 +41,7 @@ assert len({identity(row) for row in all_rows})==len(all_rows)
 assert sum(int(row['ocorrencias_brutas']) for row in all_rows)==len(original)
 assert len(chosen)<=report['meta'] and len(chosen)==report['novas_selecionadas']
 for row in chosen:
-    assert row['bairro']==report['bairro'] and normal(row['cidade'])==normal(report.get('cidade','São Paulo'))
+    assert normal(row['bairro'])==normal(report['bairro']) and normal(row['cidade'])==normal(report.get('cidade','São Paulo'))
     assert row['perfil'] not in {'A conferir','Fora do perfil'}
     assert row['situacao_empresa']!='Fechamento sinalizado no Maps'
     assert row['termo_pesquisado'] and row['data_coleta']==report['data']

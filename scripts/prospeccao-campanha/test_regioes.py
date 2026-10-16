@@ -251,22 +251,36 @@ class SummaryVerification(unittest.TestCase):
     def test_verifier_uses_same_city_normalization_as_eligibility(self):
         self.check_city("Sao Bernardo do Campo", "São Bernardo do Campo")
 
-    def check_city(self, actual_city, requested_city):
+    def test_verifier_preserves_equivalent_neighborhood_spelling(self):
+        for spelling in ("Se", " SÉ ", "sé"):
+            with self.subTest(bairro=spelling):
+                self.check_city("São Paulo", "São Paulo", actual_bairro=spelling, requested_bairro="Sé")
+
+    def test_verifier_still_rejects_another_neighborhood(self):
+        self.check_city("São Paulo", "São Paulo", actual_bairro="Liberdade", requested_bairro="Sé", accepted=False)
+
+    def check_city(self, actual_city, requested_city, actual_bairro="Centro", requested_bairro="Centro", accepted=True):
         with tempfile.TemporaryDirectory(dir=STAGE,prefix="verificador_") as temp:
             folder=Path(temp)
-            rows=fixture_rows(cidade=actual_city)
+            rows=fixture_rows(bairro=actual_bairro,cidade=actual_city)
             write_raw(folder/"bruto_original_full.csv",rows)
             raw_fields=list(rows[0])+["termo_pesquisado","data_coleta"]
             augmented=[dict(rows[0],termo_pesquisado="utilidades Centro Guarulhos SP",data_coleta="2026-10-16")]
-            chosen=dict(nome_empresa="Utilidades 1",endereco="Rua Teste, 1",bairro="Centro",cidade=actual_city,perfil="Utilidades/variedades/bazar",situacao_empresa="Funcionamento individual não confirmado",termo_pesquisado="utilidades Centro Guarulhos SP",data_coleta="2026-10-16",email="",telefone="",fonte_email="",place_id="id1",cid="123456789012345671",data_id="",ocorrencias_brutas="1")
+            chosen=dict(nome_empresa="Utilidades 1",endereco="Rua Teste, 1",bairro=actual_bairro,cidade=actual_city,perfil="Utilidades/variedades/bazar",situacao_empresa="Funcionamento individual não confirmado",termo_pesquisado="utilidades Centro Guarulhos SP",data_coleta="2026-10-16",email="",telefone="",fonte_email="",place_id="id1",cid="123456789012345671",data_id="",ocorrencias_brutas="1")
             data=dict(fields=list(chosen),selected=[chosen],all=[chosen],raw_fields=raw_fields,raw_rows=augmented)
             coletor.save_json(folder/"dados_preparados.json",data)
             fixture_export(folder)
             coletor.save_json(folder/"fontes_sites.json",{})
-            coletor.save_json(folder/"resumo.json",dict(bairro="Centro",cidade=requested_city,uf="SP",data="2026-10-16",meta=50,novas_selecionadas=1,registros_brutos=1))
+            coletor.save_json(folder/"resumo.json",dict(bairro=requested_bairro,cidade=requested_city,uf="SP",data="2026-10-16",meta=50,novas_selecionadas=1,registros_brutos=1))
             coletor.save_json(folder/"job.json",dict(sha256=hashlib.sha256((folder/"bruto_original_full.csv").read_bytes()).hexdigest()))
             result=subprocess.run([sys.executable,str(SOURCE/"verificar_coleta.py"),str(folder)],capture_output=True,text=True,encoding="utf-8")
-            self.assertEqual(result.returncode,0,result.stderr)
-            self.assertEqual(json.loads((folder/"verificacao.json").read_text(encoding="utf-8"))["empresas_selecionadas"],1)
+            if accepted:
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertEqual(json.loads((folder/"verificacao.json").read_text(encoding="utf-8"))["empresas_selecionadas"],1)
+                with (folder/"empresas_novas.csv").open(encoding="utf-8-sig",newline="") as stream:
+                    self.assertEqual(next(csv.DictReader(stream))["bairro"],actual_bairro)
+            else:
+                self.assertNotEqual(result.returncode,0)
+                self.assertFalse((folder/"verificacao.json").exists())
 
 if __name__=="__main__":unittest.main()
