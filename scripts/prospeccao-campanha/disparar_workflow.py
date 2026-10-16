@@ -127,6 +127,18 @@ def _sinal(publicacao, config):
             "pastaId": manifesto["pastaId"], "arquivoOriginalId": manifesto["arquivoId"]}
 
 
+def _contem_segredo(value, token):
+    # Compare decoded strings: JSON escaping changes quotes/backslashes and
+    # must not let a secret through to stdout or the persisted control.
+    if isinstance(value, str):
+        return token in value
+    if isinstance(value, dict):
+        return any(_contem_segredo(item, token) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contem_segredo(item, token) for item in value)
+    return False
+
+
 def _resultado_verificado(value, signal, token):
     """Select typed contract fields; never copy unknown server fields or errors."""
     if not isinstance(value, dict):
@@ -150,7 +162,7 @@ def _resultado_verificado(value, signal, token):
         return None
     result = {key: value[key] for key in ("versao", "estado", "lote", "origemCsvSha256", "execucaoId", *counts)}
     result["arquivoDrive"] = {key: arquivo[key] for key in ("id", "pastaId", "link", "nome", "csvSha256")}
-    if token in json.dumps(result, ensure_ascii=False):
+    if _contem_segredo(result, token):
         return None
     return result
 
@@ -303,7 +315,7 @@ def _executar(publicacao_path, config_path, reconciliar):
     with _lock(config_path):
         publicacao = _ler_json(publicacao_path)
         signal = _sinal(publicacao, config)
-        if signal is None or config["token"] in json.dumps(signal, ensure_ascii=False):
+        if signal is None or _contem_segredo(signal, config["token"]):
             return _falha("publicacao_nao_conferida")
         control = publicacao.get("workflow_automatico")
         if "workflow_automatico" in publicacao:

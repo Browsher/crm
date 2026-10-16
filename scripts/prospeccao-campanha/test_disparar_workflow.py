@@ -245,6 +245,36 @@ class DispatchWorkflow(unittest.TestCase):
         self.assertEqual(response["resultado"], RESULT)
         self.assertNotIn("headers", self.read()["workflow_automatico"]["resultado"])
 
+    def test_tokens_with_json_escaping_in_response_values_are_not_returned_or_saved(self):
+        for token in ['sintetico"teste', "sintetico\\teste"]:
+            with self.subTest(token=token):
+                self.write(self.receipt, publication())
+                self.write(self.config, {**self.cfg, "token": token})
+                result = {**copy.deepcopy(RESULT), "execucaoId": "prefixo-" + token + "-sufixo"}
+                with patch.object(self.client, "_postar", return_value=result):
+                    code, response = self.run_client()
+                self.assertNotEqual(code, 0)
+                self.assertNotIn("resultado", response)
+                control = self.read()["workflow_automatico"]
+                self.assertEqual(control["estado"], "incerto")
+                self.assertNotIn("resultado", control)
+
+    def test_tokens_with_json_escaping_in_signal_block_before_persistence_and_post(self):
+        for token in ['sintetico"teste', "sintetico\\teste"]:
+            with self.subTest(token=token):
+                pub = publication()
+                pub["lote"] = "prefixo-" + token + "-sufixo"
+                pub["manifesto"]["lote"] = pub["lote"]
+                self.write(self.receipt, pub)
+                self.write(self.config, {**self.cfg, "token": token})
+                before = self.receipt.read_bytes()
+                with patch.object(self.client, "_postar", return_value=RESULT) as post:
+                    code, response = self.run_client()
+                    post.assert_not_called()
+                self.assertNotEqual(code, 0)
+                self.assertEqual(response["estado"], "bloqueado")
+                self.assertEqual(self.receipt.read_bytes(), before)
+
     def test_timeout_connection_and_secret_exception_are_uncertain(self):
         for failure in [TimeoutError(TOKEN), OSError(TOKEN), ValueError(TOKEN)]:
             with self.subTest(kind=type(failure).__name__):
