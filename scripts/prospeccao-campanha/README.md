@@ -45,16 +45,32 @@ Os quatro testes legados e os novos usam campanha sintética em `TemporaryDirect
 
 A saída JSON indica `ok` e `comprovante`, com pasta/arquivo, CSV SHA-256, tamanho em bytes, quantidade sem cabeçalho, região, lote e caminhos. O CSV usa UTF-8 BOM, todos os campos entre aspas e CRLF. Um arquivo local igual é reutilizado; um diferente não é substituído. A automação salva o CSV no Drive, confere conteúdo e registra seu ID no manifesto A1 e em `publicacao_sheets.json`.
 
+## Disparo automático da validação
+
+Após publicar e conferir a origem, o agente usa `disparar_workflow.py` para chamar o Webhook privado. A configuração `.workflow-prospeccao.local.json` fica somente na pasta instalada da campanha e contém a autenticação. Não versionar nem imprimir essa configuração, seus cabeçalhos ou token.
+
+```powershell
+& $python -X utf8 (Join-Path $campanha 'disparar_workflow.py') --publicacao 'pasta-da-coleta\publicacao_sheets.json' --config (Join-Path $campanha '.workflow-prospeccao.local.json')
+```
+
+O comprovante mantém `spreadsheetId`, `sheetId`, `lote` e `manifesto` no formato existente. Antes do disparo, `origem_publicada`, `arquivo_drive_confirmado`, `leitura_retorno.conferida` e `leitura_retorno.publicacao_nova_conferida` precisam estar verdadeiros. O controle da chamada é persistido em `workflow_automatico`; Concluído na fila continua significando coleta publicada.
+
+O workflow confere lote, hash e IDs antes de operar. Uma publicação já validada devolve o arquivo existente. O lock é local ao cliente da campanha; não há lock distribuído nem suporte a chamadas diretas concorrentes ou operação manual simultânea.
+
+Se a resposta for incerta, não reenviar. O agente deve conferir as notas/dados da exportação e o arquivo no Drive, gerar um resultado JSON correspondente ao mesmo lote/hash e usar a opção `--reconciliar <resultado.json>`, que não envia rede. Sem evidência de conclusão, preservar pendência e resolver antes de buscar outro bairro. A conferência do arquivo final mantém os dois CSVs na mesma pasta da coleta.
+
 ## Instalação após revisão
 
-Instalar as fontes revisadas `coletor.py`, `verificar_coleta.py`, `arquivo_drive.py` e as instruções atualizadas. Não substituir `campanha.json`, `historico.json`, `coletas`, motor, exportador ou credenciais. O controlador executa a instalação; este bloco é a receita revisável e não foi executado pela tarefa do coletor.
+No n8n, manter desativada a gravação de execuções com sucesso, com erro, manuais e de progresso desta variante privada. Colar os nós no canvas não importa as configurações do JSON: conferir os quatro ajustes em Do not save depois de salvar e reabrir. O comprovante local e os arquivos no Drive conservam o resultado sem o cabeçalho de autenticação.
+
+Instalar as fontes revisadas `coletor.py`, `verificar_coleta.py`, `arquivo_drive.py`, `disparar_workflow.py` e as instruções atualizadas. Não substituir `campanha.json`, `historico.json`, `coletas`, motor, exportador ou credenciais. O controlador executa a instalação; este bloco é a receita revisável e não foi executado pela tarefa do coletor.
 
 ```powershell
 $origem = 'C:\Users\ADM\.codex\worktrees\producao-vercel\crm\scripts\prospeccao-campanha'
 $destino = 'C:\Users\ADM\Desktop\Web Scraping\armarinhos'
 $reserva = Join-Path $destino ('fontes-anteriores-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 New-Item -ItemType Directory -Path $reserva | Out-Null
-foreach ($arquivo in @('coletor.py', 'verificar_coleta.py', 'arquivo_drive.py', 'INSTRUCOES.txt')) {
+foreach ($arquivo in @('coletor.py', 'verificar_coleta.py', 'arquivo_drive.py', 'disparar_workflow.py', 'INSTRUCOES.txt')) {
     if (Test-Path -LiteralPath (Join-Path $destino $arquivo)) {
         Copy-Item -LiteralPath (Join-Path $destino $arquivo) -Destination (Join-Path $reserva $arquivo)
     }

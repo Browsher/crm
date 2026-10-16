@@ -35,6 +35,10 @@ yarn-error.log*
 !.env.test
 !.env.example
 
+# private local workflow authentication and its OS lock
+.workflow-prospeccao.local.json
+.workflow-prospeccao.local.json.lock
+
 # vercel
 .vercel
 
