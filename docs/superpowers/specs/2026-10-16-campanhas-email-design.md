@@ -2,6 +2,8 @@
 
 Data: 16/10/2026.
 
+Status: aprovado pelo usuário nesta conversa. [Plano de implementação](../plans/2026-10-16-campanhas-email.md).
+
 ## Objetivo e decisões aprovadas
 
 Acrescentar ao CRM campanhas de email para os vendedores encontrarem empresas do nicho desejado no CNPJ.biz, prepararem uma mensagem reutilizável com o catálogo e acompanharem os resultados. Contatos que confirmarem a assinatura poderão receber novas edições do catálogo de forma recorrente.
