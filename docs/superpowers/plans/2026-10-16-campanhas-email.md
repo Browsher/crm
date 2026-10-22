@@ -1,5 +1,7 @@
 # Campanhas de email Implementation Plan
 
+> Escopo atual em 2026-10-22: email adiado. Executar primeiro [Buscar empresas com CNPJ.biz](2026-10-22-buscar-empresas.md), independente das fundações de campanhas deste plano.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implementar a feature aprovada no CRM, da escolha do público ao envio rastreável e ao catálogo recorrente.
