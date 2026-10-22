@@ -24,9 +24,7 @@ build de produção; as imagens na pasta superior são a prévia aprovada.
 | `/design` | `design.spec.ts`; galeria identificada, acesso de gestor, vazio, erro, foco, tema e 390 px. |
 | `/`, `/sair` | Redirecionamentos por papel e saída POST exercitados pelas jornadas de autenticação e contínuas. Não apresentam layout próprio. |
 
-As 21 páginas existentes na base estão representadas. A busca CNPJ.biz não
-está na main e não foi copiada do checkout de outro chat. A integração futura
-está em [integracao-cnpj-biz.md](integracao-cnpj-biz.md).
+As 21 páginas da base estão representadas. A branch também incorpora as rotas `/fila/buscar` e `/empresas/busca` e os metadados nas fichas pela integração do PR #56. O checkout do outro chat permaneceu intacto. Detalhes e evidências em [integracao-cnpj-biz.md](integracao-cnpj-biz.md).
 
 ## Revisão Web Design Guidelines
 
@@ -145,3 +143,44 @@ as correções são verificadas pelos testes de regressão e pela suíte complet
 7. Não refazer auditoria integral de produção, RLS e serviços inalterados:
    testes locais existentes e CI passaram. Limite: esta revisão visual não
    certifica condições de produção não exercitadas pelos testes.
+
+## Integração CNPJ.biz — verificação complementar de 22/10/2026
+
+Delta funcional `4b50b43..d6cfdf7`, incorporando `b4ea0a2` do PR #56.
+
+| Verificação local | Resultado |
+|---|---|
+| Suíte unitária completa, `--maxWorkers=1` | 1.357 passaram, 1 ignorado, 0 falhas |
+| Integração, Postgres 18 local descartável, `--maxWorkers=1` | 604 passaram, 1 ignorado, 0 falhas; 433,04 s |
+| Build de produção sanitizado, `build:e2e` | Passou; rotas de busca presentes |
+| Navegador, Chromium, harness local com fornecedor simulado | 58 jornadas passaram; 6,6 min |
+| Typecheck, lint e convenções de migração | Passaram |
+| Revisão independente, contexto novo e somente leitura | Nenhum Critical/Important; 1 Minor adiado |
+
+A documentação atualizada depois da suíte foi conferida separadamente pelo
+mesmo teste de documentos. O inventário combina o relatório completo com
+essa conferência mais recente, sem excluir testes. O gerador padrão executa
+a suíte inteira em paralelo e falhou nesta máquina; foi utilizado o mesmo
+algoritmo de nomes/ordenação sobre os relatórios JSON com um worker.
+
+A regressão de acesso falhou antes da integração pela ausência de Buscar
+empresas. A consulta simulada falhou antes do mock pela ausência de
+configuração. Ambas passaram depois. Foram preservados os cenários do
+PR #56 e do redesign, incluindo UUID, cota, pausa, importação, reserva,
+proteção dos telefones, rascunho, tema e navegação.
+
+Decisões de execução: seguir a autorização expressa de integração e a direção
+visual aprovada sem outra rodada de aprovação; manter o checkout do outro
+chat e atualizar o PR #55; simulação exclusivamente no harness, com produção
+inalterada. A revisão deixa de fora tarifação real, execução remota do coletor
+Google, email/campanhas adiados, migrações/infraestrutura de produção e a
+reabertura da auditoria visual anterior. Portanto esses itens não são
+certificados pela verificação local.
+
+Ajuste menor adiado: palavras/cidades de 100 caracteres sem espaços podem
+ultrapassar o resumo dos filtros em 390 px. Não afeta consulta, importação,
+limites ou autorização. Registrado na documentação da integração e adiado
+conforme executing-plans.
+
+[Capturas da integração](cnpj-biz/README.md). Nenhuma consulta paga, migração
+remota ou liberação de limites em produção foi realizada.

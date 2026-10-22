@@ -1,48 +1,70 @@
-# Compatibilidade com a busca CNPJ.biz
+# CNPJ.biz integrado ao redesign
 
-Conferência em 22/10/2026, após atualizar `origin/main`.
+A branch `codex/redesign-crm` incorpora a implementação do PR #56, commit
+`b4ea0a2d0a7f8c72351e55b090070ea3761ebcaf`, a partir do redesign `4b50b43`.
+O checkout compartilhado do outro chat permaneceu intacto. Cliente da API,
+serviço e migrações do PR #56 não foram alterados.
 
-- Base da migração visual: main `b62cfa6a4b04c2346dbfff8471f54e1421185394`.
-- Busca de empresas: [PR #56](https://github.com/Browsher/crm/pull/56), aberto e
-  ainda não integrado, commit `b4ea0a2d0a7f8c72351e55b090070ea3761ebcaf`.
-- O checkout compartilhado `C:/Users/ADM/projetos/crm` permaneceu intacto.
-- `/fila/buscar` e `/empresas/busca` ainda não pertencem à main. Este PR de
-  redesenho não declara que migrou ou validou essas duas rotas.
+## Acesso e composição
 
-Os componentes públicos `Button`, `Input`, `Textarea`, `NativeSelect`, `Alert`
-e a ponte `--ui-*` foram preservados. As telas da busca poderão consumir a
-mesma base visual sem alterar suas ações, tipos ou serviços.
+- Vendedor: **Prospecção → Buscar empresas** (`/fila/buscar`). **Localizar
+  empresa** permanece no cabeçalho. As fontes Google e banco de dados usam
+  links reais e estado na URL.
+- Gestor: **Empresas → Busca de empresas** (`/empresas/busca`), com conexão,
+  limites por vendedor, pausa, critérios e histórico.
+- Fichas: dados cadastrais no perfil de Localizar e dentro da aba de dados
+  da Carteira e da ficha administrativa, após autorização. A função SQL
+  continua mascarando telefones conforme posse, reserva e papel.
 
-## Integração necessária após o PR #56
+As telas usam CabecalhoPagina, Card, Button e controles do redesign, tema
+por área, foco visível e grade responsiva. UUIDs, FormData, ações e estado
+permanecem sob os mesmos contratos.
 
-A simulação `git merge-tree --write-tree HEAD b4ea0a2d0a7f8c72351e55b090070ea3761ebcaf`
-não altera o checkout. Ela encontrou um conflito de conteúdo em
-`app/fila/page.tsx`, no cabeçalho que ganhou o atalho **Buscar empresas**.
-Preservar esse atalho como mais uma ação de `CabecalhoPagina`, junto de
-**Localizar empresa**. Não resolver o conflito escolhendo a versão inteira
-de uma das branches.
+## Prévia local
 
-As alterações de dados cadastrais em `app/empresas/[id]/page.tsx` foram
-combinadas automaticamente pela simulação, mas exigem revisão semântica:
-`DadosCadastrais` deve permanecer dentro do conteúdo autorizado da ficha,
-na aba de dados. Manter também os dados nas fichas de Carteira e Localizar.
+O harness `scripts/e2e/run.mts` prepara bancos `teste_<12 hex>` no Postgres
+local. O vendedor `redesigne2e@teste.local` recebe limite fictício de 20,
+uma consulta concluída, lista Google e metadados de um cliente da carteira.
+O gestor é `gestore2e@teste.local`. Senha de ambos: `Senha-e2e-2026`, somente
+nesses bancos de demonstração.
 
-Conferir os seguintes pontos depois da integração real:
+O mock HTTP retorna duas empresas sintéticas, uma com telefone e outra
+somente com email. O preload é passado explicitamente apenas ao subprocesso
+Next do harness. Recusa banco remoto ou não descartável, chave diferente
+da fictícia e mock fora do loopback; intercepta apenas as duas operações
+do cliente CNPJ.biz. Não existe configuração de endpoint na aplicação de
+produção. As páginas identificam dados e consultas como simulados.
 
-1. Preservar os novos destinos em `CaminhoCrm` e as ações de acesso à busca.
-2. Aplicar superfícies e cabeçalhos aos arquivos de busca e componentes
-   compartilhados indicados no PR #56. Não mudar campos, UUIDs ou FormData.
-3. Preservar os cenários e a sanitização de `CNPJ_BIZ_API_KEY` no harness E2E,
-   combinando-os com o mock local de WhatsApp deste PR.
-4. Reexecutar as jornadas de busca, pausa/limite, Google, reserva e fichas,
-   usando dados persistidos e fornecedor simulado.
+É possível consultar pelo formulário real, conferir, selecionar, importar
+e navegar para a lista criada. A cota conta empresas solicitadas; atualizar
+o resultado não faz nova chamada. O mock retorna as mesmas duas empresas
+para diferentes filtros; a palavra `falha simulada` simula falta de créditos.
+Isso não representa a base ou o saldo reais do fornecedor.
 
-Consultas pagas continuam exclusivas do servidor. O limite conta empresas
-solicitadas no dia de São Paulo, inclusive falhas. Repetir uma operação não
-pode renovar sua identificação nem cobrar novamente. Importação reaproveita
-CNPJ existente sem sobrescrever dados manuais, posse, reserva ou carteira.
-Empresas sem telefone válido permanecem impedidas de importar; a visibilidade
-dos telefones continua sendo decidida pelo banco.
+## Evidência e revisão
 
-Este trabalho não aplica as migrações 0038/0039, não configura chave e não
-libera limites. Email, campanhas e catálogo recorrente continuam adiados.
+`busca-empresas.spec.ts` e `busca-redesign.spec.ts` cobrem fontes, importação,
+pausa, histórico, dados nas abas, 390/1440 px e dois temas. A jornada de
+consulta também mede chamadas antes/depois de refresh e confere o resultado
+persistido. Importar não transfere posse: a passagem à Carteira nesse teste
+usa fixture explícita; as jornadas de reserva cobrem o atendimento.
+
+[Capturas](cnpj-biz/README.md). [Validação geral](validacao.md).
+
+Revisão independente, contexto novo, somente leitura, por `gpt-6-astra`,
+intervalo `4b50b43..d6cfdf7`: nenhum Critical/Important. Conferiu cliente,
+serviço e migrações contra o PR #56, guardas, máscara SQL, UUID e isolamento.
+Um Minor adiado: palavra/cidade sem espaços, até 100 caracteres, podem
+ultrapassar o resumo dos filtros em 390 px. Não entrou em passe de correção,
+conforme o processo de execução.
+
+A revisão não certifica tarifação/retorno real do fornecedor, nova execução
+do coletor Google, campanhas, infraestrutura remota nem reabre a revisão
+do redesign anterior à base.
+
+## Produção
+
+Nenhuma consulta paga nem ativação remota foi realizada. Migrações 0038/0039,
+chave `CNPJ_BIZ_API_KEY` no servidor e liberação de limites pelo gestor seguem
+necessárias para ativar em produção. O coletor Google e seu agendamento não
+mudaram. Email, campanhas e catálogo recorrente continuam adiados.
