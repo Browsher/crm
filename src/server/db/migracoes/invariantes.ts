@@ -54,6 +54,10 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.busca_empresa_importar',
   'public.busca_empresa_grupos_google',
   'public.empresa_dados_cadastrais_ler',
+  'public.google_planejar',
+  'public.google_agente_proximo',
+  'public.google_agente_etapa',
+  'public.google_agente_entregar',
 ] as const
 
 // Pergunta 3: quais políticas podem liberar a tabela inteira. `USING (true)`
