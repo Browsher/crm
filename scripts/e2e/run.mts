@@ -16,6 +16,9 @@ import { prepararFunil } from '../../tests/e2e/dados-funil'
 import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
 import { iniciarWhatsAppDeTeste } from '../../tests/e2e/whatsapp-mock'
 import { prepararRedesign } from '../../tests/e2e/dados-redesign'
+import { iniciarCnpjBizDeTeste, prepararBuscaDemo } from '../../tests/e2e/cnpj-biz-mock'
+import { pathToFileURL } from 'node:url'
+import { resolve } from 'node:path'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -45,6 +48,7 @@ async function conferirPorta() {
 
 let banco: BancoDeTeste | undefined
 let whatsapp: Awaited<ReturnType<typeof iniciarWhatsAppDeTeste>> | undefined
+let cnpj: Awaited<ReturnType<typeof iniciarCnpjBizDeTeste>> | undefined
 try {
   const padrao = parseEnv(await readFile('.env.test', 'utf8'))
   const urlAdmin = process.env.DATABASE_URL_ADMIN || padrao.DATABASE_URL_ADMIN
@@ -73,10 +77,13 @@ try {
   await prepararMeuDia(banco)
   await prepararFunil(banco)
   await prepararRedesign(banco)
+  await prepararBuscaDemo(banco)
+  cnpj = await iniciarCnpjBizDeTeste()
   whatsapp = await iniciarWhatsAppDeTeste(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
-  const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
+  Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
+  const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, 'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined
   servidor.on('error', (erro) => { erroServidor = erro })
   const prazo = Date.now() + 30_000
@@ -106,6 +113,7 @@ try {
     try { await encerrarProcesso(filho) } catch (erro) { console.error('Falha ao encerrar processo E2E', erro); process.exitCode = 1 }
   }
   await whatsapp?.fechar()
+  await cnpj?.fechar()
   if (banco) {
     await banco.derrubar()
     console.log(`E2E: banco removido ${banco.nome}`)

@@ -11,7 +11,7 @@ export function exigirAdminLocal(url: string) {
 export function ambienteDoBuild(fonte: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return {
     ...fonte, CRM_E2E: '1', NODE_ENV: 'production', ALVO: '',
-    DATABASE_URL: '', DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '', CNPJ_BIZ_API_KEY: '',
+    DATABASE_URL: '', DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '', CNPJ_BIZ_API_KEY: '', CNPJ_BIZ_MOCK_URL: '',
     IMPORTACAO_CONFERENCIA_SEGREDO: '',
     EVOLUTION_API_URL: '', EVOLUTION_API_KEY: '', EVOLUTION_INSTANCE_NAME: '',
     PG_SSL: '', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '',
@@ -26,7 +26,7 @@ export function ambienteDoServidor(fonte: NodeJS.ProcessEnv, urlApp: string): No
   }
   return {
     ...fonte,
-    DATABASE_URL: urlApp, DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '', CNPJ_BIZ_API_KEY: '',
+    DATABASE_URL: urlApp, DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '', CNPJ_BIZ_API_KEY: '', CNPJ_BIZ_MOCK_URL: '',
     ALVO: '', PG_SSL: 'off', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '',
     CRM_E2E: '1', NODE_ENV: 'production',
     EVOLUTION_API_URL: '', EVOLUTION_API_KEY: '', EVOLUTION_INSTANCE_NAME: '',

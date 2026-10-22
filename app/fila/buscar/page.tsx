@@ -25,6 +25,7 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
   const bloqueado = !configurado || Boolean(limite?.pausado) || restante === 0
   return <main className={styles.pagina}>
     <CabecalhoPagina titulo="Buscar empresas" descricao="Escolha a origem e reúna empresas para prospectar." acoes={<Button asChild variant="outline"><Link href="/fila">Voltar para Prospecção</Link></Button>} />
+    {process.env.CRM_E2E === '1' && process.env.CNPJ_BIZ_API_KEY === 'chave-apenas-e2e' && <p className={styles.aviso} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
     <nav className={styles.fontes} aria-label="Origem das empresas">
       <Link href="/fila/buscar?fonte=google" aria-current={google ? 'page' : undefined}>Busca no Google</Link>
       <Link href="/fila/buscar?fonte=banco" aria-current={!google ? 'page' : undefined}>Busca do banco de dados</Link>

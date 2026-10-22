@@ -23,6 +23,7 @@ export default async function PaginaGestaoBusca({ searchParams }: { searchParams
   if (typeof params.busca === 'string' && !busca) notFound()
   return <main className={styles.pagina}>
     <CabecalhoPagina titulo="Busca de empresas" descricao="Defina os limites de aquisição e acompanhe as buscas dos vendedores." acoes={<Button asChild variant="outline"><Link href="/empresas">Voltar para Empresas</Link></Button>} />
+    {process.env.CRM_E2E === '1' && process.env.CNPJ_BIZ_API_KEY === 'chave-apenas-e2e' && <p className={styles.aviso} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
     <Card className={styles.painel}><h2>Conexão CNPJ.biz</h2><p>{process.env.CNPJ_BIZ_API_KEY?.trim() ? 'Chave configurada no servidor.' : 'Configuração pendente. Defina CNPJ_BIZ_API_KEY no ambiente do servidor.'}</p>
       <p className={styles.ajuda}>O limite do CRM conta empresas solicitadas e não representa o saldo de créditos do fornecedor. A busca Google usa o agente já existente.</p></Card>
     <Card className={styles.painel}><h2>Limites por vendedor</h2><p className={styles.ajuda}>Sem limite configurado, novas consultas ficam bloqueadas. Pausar também impede novas importações daquela busca. O dia segue o horário de São Paulo.</p>
