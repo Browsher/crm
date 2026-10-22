@@ -1,0 +1,51 @@
+.pagina { display: grid; gap: 24px; min-width: 0; width: 100%; font-size: 14px; }
+.pagina h2 { margin: 0; font-size: 17px; line-height: 1.5; font-weight: 600; overflow-wrap: anywhere; }
+.pagina p { margin: 6px 0; line-height: 1.6; overflow-wrap: anywhere; }
+.ajuda, .tituloPainel p, .criterios p { color: var(--ui-muted-foreground); font-size: 13px; max-width: 76ch; }
+.orientacao { display: flex; gap: 24px; align-items: center; justify-content: space-between; border-left: 3px solid var(--ui-primary); padding: 8px 0 8px 18px; }
+.orientacao p { color: var(--ui-muted-foreground); max-width: 76ch; }
+.situacao { display: inline-flex; width: fit-content; max-width: 100%; border-radius: 6px; padding: 5px 9px; background: var(--ui-muted); color: var(--ui-muted-foreground); font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.situacao[data-estado='concluido'] { background: var(--ui-success-background); color: var(--ui-success); }
+.situacao[data-estado='falhou'] { background: var(--ui-warning-background); color: var(--ui-warning); }
+.cabecalhoSemana { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+.acoes, .abas { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.acoes a, .abas a { min-height: 44px; }
+.painel { display: grid; gap: 20px; min-width: 0; padding: 24px; }
+.tituloPainel p { margin-bottom: 0; }
+.semana { display: grid; }
+.dia { display: grid; grid-template-columns: minmax(120px, .65fr) minmax(0, 2fr) minmax(100px, 1fr) auto; gap: 20px; padding: 22px 0; align-items: center; border-top: 1px solid var(--ui-border); min-width: 0; }
+.data { display: grid; gap: 5px; text-transform: capitalize; min-width: 0; overflow-wrap: anywhere; }
+.dia button, .dia > a { min-height: 44px; }
+.data time { color: var(--ui-muted-foreground); font-size: 13px; font-variant-numeric: tabular-nums; }
+.criterios { min-width: 0; overflow-wrap: anywhere; }
+.formulario, .formulario fieldset { display: grid; gap: 16px; padding: 0; border: 0; margin: 0; min-width: 0; }
+.formulario label { display: grid; gap: 6px; min-width: 0; }
+.formulario small { color: var(--ui-muted-foreground); }
+.grade { display: grid; grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr); gap: 16px; }
+.entregas { display: grid; gap: 16px; min-width: 0; }
+.entrega { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .8fr) auto; align-items: center; gap: 20px; padding: 22px 24px; min-width: 0; }
+.entrega h2, .empresa h2 { margin-top: 10px; }
+.entrega > *, .empresa > * { min-width: 0; }
+.indicadores { display: grid; gap: 5px; font-variant-numeric: tabular-nums; }
+.indicadores span { font-size: 13px; color: var(--ui-muted-foreground); }
+.empresa { display: grid; gap: 14px; padding: 24px; min-width: 0; }
+.resumo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }
+.resumo div { min-width: 0; }
+.resumo dt { color: var(--ui-muted-foreground); font-size: 12px; margin-bottom: 4px; }
+.resumo dd { margin: 0; overflow-wrap: anywhere; }
+.dadosBrutos { padding: 16px; background: var(--ui-muted); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.botaoResumo { cursor: pointer; border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px 16px; min-height: 44px; width: fit-content; font-weight: 500; font-size: 13px; }
+.botaoResumo:hover { background: var(--ui-muted); }
+.botaoResumo:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 3px; }
+.vazio { padding: 28px; border-style: dashed; min-width: 0; }
+.vazio p { color: var(--ui-muted-foreground); max-width: 76ch; }
+.aviso { padding: 12px 16px; border-radius: 6px; background: var(--ui-warning-background); color: var(--ui-warning); }
+.sucesso { color: var(--ui-success); }
+.filtros { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+.filtros label { display: grid; gap: 6px; min-width: 160px; flex: 1; }
+.totais { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.totais div { padding: 16px; background: var(--ui-muted); border-radius: 6px; }
+.totais dt { color: var(--ui-muted-foreground); font-size: 12px; }
+.totais dd { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin: 4px 0 0; }
+@media(max-width: 1150px) { .dia { grid-template-columns: 120px minmax(0, 1fr) auto; } .dia > .situacao { grid-column: 2; grid-row: 2; } .dia > button { grid-column: 3; grid-row: 1 / span 2; } .entrega { grid-template-columns: minmax(0, 1fr) auto; } .indicadores { grid-column: 1; } .entrega > a { grid-column: 2; grid-row: 1 / span 2; } }
+@media(max-width: 650px) { .painel, .empresa, .entrega { padding: 18px; } .orientacao { align-items: start; flex-direction: column; gap: 8px; } .dia { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; } .data { grid-column: 1; } .criterios { grid-column: 1 / -1; } .dia > .situacao { grid-column: 1; grid-row: 3; } .dia > button { grid-column: 2; grid-row: 3; } .resumo { grid-template-columns: 1fr; } .entrega { grid-template-columns: 1fr; } .entrega > a { grid-column: 1; grid-row: auto; justify-self: start; } .totais { grid-template-columns: repeat(2, minmax(0, 1fr)); } .abas > a { flex: 1 1 100%; } }
