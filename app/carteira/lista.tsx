@@ -3,6 +3,9 @@ import Link from 'next/link'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 import { filtrarCarteira, urlFicha, type FiltrosCarteira } from './filtros'
 import styles from './carteira.module.css'
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell, TableCaption } from '@/src/components/ui/table'
+import { Badge } from '@/src/components/ui/badge'
+import { Button } from '@/src/components/ui/button'
 
 const SEM_FILTROS: FiltrosCarteira = { nome: '', uf: '', retorno: '' }
 const ROTULO_RETORNO: Record<EmpresaComigo['situacaoRetorno'], string> = {
@@ -53,36 +56,26 @@ export function ListaCarteira({ linhas, filtros = SEM_FILTROS }: { linhas: Empre
       {semPasso > 0 ? <p className={styles.aviso}>
         {semPasso} {semPasso === 1 ? 'cliente sem próximo passo' : 'clientes sem próximo passo'}.
       </p> : null}
-      <ul className={styles.grade}>
-        {filtradas.map(empresa => <li key={empresa.id}>
-          <article className={styles.card}>
-            <header className={styles.cardCabecalho}>
-              <div>
-                <h3>{nomeEmpresa(empresa)}</h3>
-                {empresa.razaoSocial && empresa.nomeFantasia ? <p>{empresa.nomeFantasia}</p> : null}
-              </div>
-              <span className={styles.estado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
-            </header>
-            <dl className={styles.dados}>
-              <div><dt>Contato principal</dt><dd>{empresa.contatoNome ?? 'Contato principal não informado'}</dd></div>
-              <div><dt>Localização</dt><dd>{localizacao(empresa)}</dd></div>
-            </dl>
-            <section className={styles.bloco} aria-label="Última conversa">
-              <h4>Última conversa</h4>
+      <div className={styles.registros}><Table className={styles.tabela}>
+        <TableCaption className="sr-only">Clientes da sua carteira</TableCaption>
+        <TableHeader><TableRow>{['Empresa', 'Contato principal', 'Última conversa', 'Próximo passo', 'Retorno', 'Ações'].map(titulo => <TableHead key={titulo} scope="col">{titulo}</TableHead>)}</TableRow></TableHeader>
+        <TableBody>{filtradas.map(empresa => <TableRow key={empresa.id}>
+            <TableCell data-label="Empresa"><h3>{nomeEmpresa(empresa)}</h3>{empresa.razaoSocial && empresa.nomeFantasia ? <p>{empresa.nomeFantasia}</p> : null}<p>{localizacao(empresa)}</p></TableCell>
+            <TableCell data-label="Contato principal">{empresa.contatoNome ?? 'Contato principal não informado'}</TableCell>
+            <TableCell data-label="Última conversa">
               {empresa.ultimoContato ? <>
                 <p>{resumo(empresa.ultimoContato.nota)}</p>
                 <time dateTime={empresa.ultimoContato.criadoEm.toISOString()}>{dataHora(empresa.ultimoContato.criadoEm)}</time>
               </> : <p>Ainda não há uma conversa registrada</p>}
-            </section>
-            <section className={styles.bloco} aria-label="Próximo passo">
-              <h4>Próximo passo</h4>
+            </TableCell>
+            <TableCell data-label="Próximo passo">
               <p>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</p>
               {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
-            </section>
-            <footer className={styles.cardRodape}><Link href={urlFicha(empresa.id, filtros)}>Ver cliente</Link></footer>
-          </article>
-        </li>)}
-      </ul>
+            </TableCell>
+            <TableCell data-label="Retorno"><Badge variant={empresa.situacaoRetorno === 'atrasado' ? 'warning' : empresa.situacaoRetorno === 'hoje' ? 'success' : 'outline'}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</Badge></TableCell>
+            <TableCell><Button asChild variant="outline" size="sm"><Link href={urlFicha(empresa.id, filtros)}>Ver cliente</Link></Button></TableCell>
+        </TableRow>)}</TableBody>
+      </Table></div>
     </>}
   </section>
 }
