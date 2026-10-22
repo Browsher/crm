@@ -44,3 +44,5 @@ next-env.d.ts
 /.next-e2e/
 /playwright-report/
 /test-results/
+/.google-agente/
+__pycache__/
