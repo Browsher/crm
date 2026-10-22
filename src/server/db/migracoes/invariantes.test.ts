@@ -54,6 +54,12 @@ const sao = (): Estado => ({
     'public.carteira_venda_registrar',
     'public.funil_devolver',
     'public.minhas_empresas_clientes',
+    'public.busca_empresa_limite_definir',
+    'public.busca_empresa_reservar',
+    'public.busca_empresa_concluir',
+    'public.busca_empresa_importar',
+    'public.busca_empresa_grupos_google',
+    'public.empresa_dados_cadastrais_ler',
   ],
   funcoesExecutaveisPorPublico: [],
 })

@@ -5,6 +5,7 @@ vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: async () => ({ usua
 vi.mock('@/src/features/prospeccao/recentes', () => ({ lerPerfil: mocks.perfil, registrarRecente: mocks.registrar }))
 vi.mock('@/src/features/fila/consulta', () => ({ lerMinhasEmpresas: async () => ({ ok: true, contexto: null, reserva: null }) }))
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('404') }, useRouter: () => ({ push: () => {} }) }))
+vi.mock('@/src/server/cnpj-biz/dados', () => ({ lerDadosCadastrais: vi.fn().mockResolvedValue(null) }))
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidar }))
 vi.mock('../acoes', () => ({ agirNaFilaAcao: vi.fn() }))
 

@@ -1,3 +1,5 @@
+import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
+import { lerDadosCadastrais } from '@/src/server/cnpj-biz/dados'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
@@ -25,7 +27,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
   const r = await lerPerfil(eu.usuarioId, id)
   if (!r.ok) return <main className={styles.pagina}><p role="alert">Você não tem permissão para consultar empresas.</p></main>
   if (!r.empresa) notFound()
-  const minhas = await lerMinhasEmpresas(eu.usuarioId)
+  const [minhas, cadastrais] = await Promise.all([lerMinhasEmpresas(eu.usuarioId), lerDadosCadastrais(eu.usuarioId, id)])
   const filtros = entrada.filtros
   const grupo = filtros.grupo ? await lerGrupoProspeccao(eu.usuarioId,filtros.grupo) : null
   return <main className={styles.pagina}>
@@ -36,6 +38,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
     </header>
     <ContextoGrupo resultado={grupo} filtros={filtros} escolhendo={consulta.escolher_lista === '1'} />
     <RegistrarVisita empresaId={id} />
+    <DadosCadastrais dados={cadastrais} />
     <Resultados empresas={[r.empresa]} mostrarPerfil={false} filtros={filtros}
       reserva={minhas.ok && (!grupo || grupo.ok) ? { contexto: minhas.contexto, filtros, empresaAtual: minhas.reserva?.id ?? null } : undefined} />
   </main>

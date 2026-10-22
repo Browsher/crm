@@ -1,0 +1,37 @@
+.pagina { display: grid; gap: 24px; max-width: 1280px; margin: 0 auto; }
+.cabecalho { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 16px; }
+.pagina h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 600; }
+.pagina h2 { margin: 0 0 12px; font-size: 18px; line-height: 26px; font-weight: 600; }
+.pagina h3 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+.pagina p { margin: 4px 0; }
+.ajuda { color: var(--ui-muted-foreground); max-width: 76ch; }
+.fontes { display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--ui-border); padding-bottom: 12px; }
+.fontes a { padding: 10px 16px; border: 1px solid var(--ui-border-control); border-radius: 6px; text-decoration: none; }
+.fontes a[aria-current='page'] { background: var(--ui-primary); color: var(--ui-primary-foreground); border-color: var(--ui-primary); }
+.colunas { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 24px; align-items: start; }
+.painel { padding: 24px; border: 1px solid var(--ui-border); border-radius: 8px; min-width: 0; }
+.formulario, .formulario fieldset { display: grid; gap: 16px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.campo { display: grid; gap: 6px; min-width: 0; }
+.campo small { color: var(--ui-muted-foreground); }
+.acoes { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pagina ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pagina li { padding: 16px 0; border-bottom: 1px solid var(--ui-border); overflow-wrap: anywhere; }
+.pagina dl { display: grid; grid-template-columns: minmax(100px, 140px) minmax(0, 1fr); gap: 4px 12px; margin: 12px 0; }
+.pagina dt { color: var(--ui-muted-foreground); }
+.pagina dd { margin: 0; overflow-wrap: anywhere; }
+.pagina details { margin-top: 12px; }
+.pagina summary { cursor: pointer; text-decoration: underline; }
+.pagina a:focus-visible, .pagina summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 4px; }
+.resultado { display: grid; gap: 16px; }
+.resultado fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.selecao { display: flex; align-items: start; gap: 12px; }
+.selecao > input { margin-top: 6px; accent-color: var(--ui-primary); width: 18px; height: 18px; }
+.selecao > div { min-width: 0; flex: 1; }
+.aviso { padding: 12px 16px; background: var(--ui-warning-background); color: var(--ui-warning); border-radius: 6px; }
+.limites { display: grid; gap: 16px; }
+.limite { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(140px, 200px) minmax(180px, 1fr) auto; gap: 16px; align-items: end; padding: 16px 0; border-bottom: 1px solid var(--ui-border); }
+.limite label { display: grid; gap: 6px; }
+.limite .pausa { display: flex; gap: 8px; align-items: center; }
+@media(max-width: 900px) { .colunas { grid-template-columns: 1fr; } .limite { grid-template-columns: 1fr 1fr; } }
+@media(max-width: 540px) { .grade, .limite { grid-template-columns: 1fr; } .painel { padding: 16px; } .pagina h1 { font-size: 24px; } .fontes a { flex: 1; } .pagina dl { grid-template-columns: 1fr; } .pagina dd { margin-bottom: 6px; } }
