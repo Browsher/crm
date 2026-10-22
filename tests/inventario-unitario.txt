@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1289
+# Total: 1346
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -37,6 +37,7 @@ app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou re
 app/carteira/filtros.test.tsx :: filtros da carteira renderiza formulario GET com opcoes derivadas da carteira autorizada
 app/carteira/lista.test.tsx :: ListaCarteira cada empresa linka para a ficha
 app/carteira/lista.test.tsx :: ListaCarteira com empresas, monta tabela com as próximas ações reais e sem compra fictícia
+app/carteira/lista.test.tsx :: ListaCarteira com empresas, monta uma lista
 app/carteira/lista.test.tsx :: ListaCarteira distingue filtro sem resultado de carteira vazia e conta filtradas sobre total
 app/carteira/lista.test.tsx :: ListaCarteira explicita ausencias sem inventar contato ou historico
 app/carteira/lista.test.tsx :: ListaCarteira marca a vencida com palavra, nao so com cor
@@ -63,6 +64,7 @@ app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
 app/empresas/[id]/page.test.tsx :: falha no histórico não se apresenta como histórico vazio
 app/empresas/[id]/page.test.tsx :: ficha de consulta sem ações de vendedor e volta preserva filtros
 app/empresas/[id]/page.test.tsx :: inexistente não consulta histórico
+app/empresas/busca/limite.dom.test.tsx :: confirmação de pausa permanece depois da revalidação dos limites pelo servidor
 app/empresas/formulario.dom.test.tsx :: limpar na própria URL reseta controles sem alterar clique modificado do link
 app/empresas/formulario.dom.test.tsx :: mudar somente a página descarta edições locais ainda não submetidas
 app/empresas/formulario.dom.test.tsx :: nova busca conserva os selects e não carrega a página antiga
@@ -164,6 +166,14 @@ app/empresas/paginacao.test.tsx :: Paginacao no meio, os dois lados são link
 app/empresas/paginacao.test.tsx :: Paginacao o termo viaja com a página, codificado
 app/empresas/paginacao.test.tsx :: Paginacao os quatro selects viajam com a página, codificados
 app/empresas/paginacao.test.tsx :: Paginacao uma página só: não aparece
+app/fila/buscar/acesso.test.tsx :: consulta exige o papel correto antes de processar entradas
+app/fila/buscar/acesso.test.tsx :: importação exige o papel correto antes de processar entradas
+app/fila/buscar/acesso.test.tsx :: limites exige o papel correto antes de processar entradas
+app/fila/buscar/formulario.dom.test.tsx :: nova busca confirmada recebe outro UUID e atualização da mesma tentativa preserva sua identidade
+app/fila/buscar/formulario.test.tsx :: formulário autorizado nasce utilizável com chave emitida pelo servidor e respeita a quota restante
+app/fila/buscar/formulario.test.tsx :: sem liberação do gestor o conjunto de filtros fica desabilitado
+app/fila/buscar/resultados.test.tsx :: empresa sem telefone continua visível e não pode ser selecionada para importação
+app/fila/buscar/resultados.test.tsx :: pausa impede selecionar resultado mesmo quando há telefone válido
 app/fila/cartao.test.tsx :: Cartao cartao sem historico diz que ninguem ligou ainda
 app/fila/cartao.test.tsx :: Cartao CEP fora da base diz que o endereco nao foi encontrado, e nao finge que nao ha CEP
 app/fila/cartao.test.tsx :: Cartao conta os minutos que faltam a partir do instante do banco
@@ -254,6 +264,7 @@ app/funil/quadro.test.tsx :: quadro mostra três etapas e cards essenciais sem b
 app/gestao/estados.test.tsx :: carregamento anuncia espera sem mostrar zeros
 app/gestao/estados.test.tsx :: falha oferece recuperação sem expor detalhes internos
 app/gestao/page.test.tsx :: autoriza gestor, exibe vazio sem atalhos inferiores nem busca de vendedores
+app/gestao/page.test.tsx :: cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução
 app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de erro
 app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado
 app/gestao/page.test.tsx :: tabela da equipe usa rótulos distintos, totais e atividade sem inferir venda ou devolução
@@ -281,6 +292,7 @@ app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador durante o carregame
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador falha de carregamento não vira histórico vazio
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador ida e volta A -> B -> A: nota antiga de A que já tinha chegado não reaparece durante o novo pedido
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador ida e volta A -> B -> A: primeira resposta de A não reaparece quando o novo pedido de A está no ar
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista esvazia por posse negada cai no vazio que já existe
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista esvazia por posse negada mostra vazio e motivo da remoção
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista que esvazia não deixa perfil nem histórico antigos
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador posse negada no último retorno mantém o motivo visível
@@ -308,15 +320,10 @@ app/usuarios/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não i
 app/whatsapp/configuracao/acoes.test.tsx :: falha externa é sanitizada e não salva
 app/whatsapp/configuracao/acoes.test.tsx :: instância não configurada não é persistida
 app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
-app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
 app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco erro segredo é recuperável e segura
 app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco instancia_em_uso é recuperável e segura
 app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco sem_permissao é recuperável e segura
 app/whatsapp/configuracao/acoes.test.tsx :: recusa do banco vendedor_invalido é recuperável e segura
-app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
-app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
-app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
-app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
 app/whatsapp/configuracao/acoes.test.tsx :: recusa entrada inválida antes da Evolution
 app/whatsapp/configuracao/acoes.test.tsx :: remoção inválida e falha de infraestrutura não vazam dados
 app/whatsapp/configuracao/acoes.test.tsx :: remove somente vínculo identificado sem consultar Evolution
@@ -388,6 +395,8 @@ app/whatsapp/painel.dom.test.tsx :: remover outra fonte na atualização preserv
 app/whatsapp/painel.dom.test.tsx :: resposta pendente de escopo antigo não reintroduz fonte removida
 app/whatsapp/painel.dom.test.tsx :: rolar ao fim da lista carrega uma página e não repete automaticamente após erro
 app/whatsapp/painel.dom.test.tsx :: voltar à lista preserva conversa e rolagem sem buscar mensagens novamente
+com quebra vira "Rua
+com quebra"
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
@@ -463,6 +472,8 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0034.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0035.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0036.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0037.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0038.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0039.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\aplicacao\README.md não tem caractere de controle literal
@@ -471,6 +482,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-
 src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\validacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\operacao\busca-empresas.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\producao-vercel.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-lateral-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\plans\2026-09-22-whatsapp-estrutura-visual.md não tem caractere de controle literal
@@ -521,6 +533,13 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-piloto-leitura.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-13-prospeccao-grupos-cnpj-opcional.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-14-producao-vercel.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-16-campanhas-email-01-fundacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-16-campanhas-email-02-captura.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-16-campanhas-email-03-envio.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-16-campanhas-email-04-recorrencia.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-16-campanhas-email-05-gestao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-16-campanhas-email.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-22-buscar-empresas.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-22-redesign-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
@@ -554,6 +573,8 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-22-whatsapp-identificacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-13-prospeccao-cnpj-opcional-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-14-producao-vercel-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-16-campanhas-email-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-22-buscar-empresas-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-22-redesign-crm-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-componentes-ui.md não tem caractere de controle literal
@@ -562,6 +583,7 @@ src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não te
 src/docs.test.ts :: documentos sem caractere de controle README.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle REGRAS.md não tem caractere de controle literal
 src/e2e-ambiente.test.ts :: build não herda segredo de conferência e servidor usa somente chave de teste
+src/e2e-ambiente.test.ts :: E2E não herda chave CNPJ.biz real nem no build nem no servidor
 src/e2e-ambiente.test.ts :: isola credenciais e SSL herdados sem alterar o ambiente pai
 src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@localhost/crm
 src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: postgres://app_teste:teste@railway.internal/teste_0123456789ab
@@ -569,6 +591,27 @@ src/e2e-ambiente.test.ts :: recusa URL fora do banco descartável restrito: post
 src/e2e-ambiente.test.ts :: URL admin recusa host sobrescrito por parâmetro antes de criar banco
 src/e2e-processos.test.ts :: encerra grupo mesmo quando líder já saiu
 src/e2e-processos.test.ts :: encerra processo próprio e descendente que ignora SIGTERM
+src/features/busca-empresas/filtros.test.ts :: CNAE com máscara permite buscar sem palavra
+src/features/busca-empresas/filtros.test.ts :: normaliza filtros e mantém a primeira página sem ampliar a consulta
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"cidade":"","bairro":"Centro"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"cnae":"abcdefg"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"contato":"qualquer"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"offset":"-1"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"palavra":""}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"palavra":"a\u0000b"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"porte":"gigante"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"quantidade":"0"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"quantidade":"1.5"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"quantidade":"101"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"tipo":"matriz"}
+src/features/busca-empresas/filtros.test.ts :: recusa filtro que ampliaria ou adulteraria a consulta: {"uf":"XX"}
+src/features/busca-empresas/servico.test.ts :: bloqueio limite não chega ao fornecedor
+src/features/busca-empresas/servico.test.ts :: bloqueio pausada não chega ao fornecedor
+src/features/busca-empresas/servico.test.ts :: bloqueio sem_permissao não chega ao fornecedor
+src/features/busca-empresas/servico.test.ts :: falha do fornecedor fica persistida e abre histórico com motivo estável
+src/features/busca-empresas/servico.test.ts :: mesma chave retorna histórico sem emitir uma segunda requisição
+src/features/busca-empresas/servico.test.ts :: reserva cota antes do HTTP e persiste antes de devolver o identificador
+src/features/busca-empresas/servico.test.ts :: sem configuração ou filtros inválidos não consome quota
 src/features/contato/acao.test.ts :: contato bem sucedido atualiza lista de empresas recentes
 src/features/contato/acao.test.ts :: devolver com destino externo nao sai do site
 src/features/contato/acao.test.ts :: devolver pela ficha volta para o destino previsto, com os filtros
@@ -836,7 +879,6 @@ src/features/empresas/grupos.test.ts :: paginação malformada 1.5 recupera prim
 src/features/empresas/grupos.test.ts :: paginação malformada 1000001 recupera primeira página
 src/features/empresas/grupos.test.ts :: paginação malformada Infinity recupera primeira página
 src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
-src/features/empresas/grupos.test.ts :: paginação malformada undefined recupera primeira página
 src/features/empresas/identidade.test.ts :: dois identificadores que apontam para UUIDs diferentes exigem revisão
 src/features/empresas/identidade.test.ts :: Google conhecido com CNPJ diferente exige revisão
 src/features/empresas/identidade.test.ts :: identificadores iguais ou complemento vazio preservam UUID
@@ -903,8 +945,6 @@ src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnp
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_forma
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_notacao_cientifica
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa cnpj_vazio
-src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
-src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa colunas_erradas
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa email_forma
 src/features/empresas/planilha.test.ts :: fase 1: as recusas de campo recusa nome_ausente
@@ -1121,8 +1161,6 @@ src/server/backup/windows.test.ts :: preparo do backup Windows recusa estado for
 src/server/cep/linha.test.ts :: campoCsv null vira 
 src/server/cep/linha.test.ts :: campoCsv null vira campo vazio SEM aspas, que é como o COPY CSV lê NULL
 src/server/cep/linha.test.ts :: campoCsv Rua
-com quebra vira "Rua
-com quebra"
 src/server/cep/linha.test.ts :: campoCsv Rua "Aspas" vira "Rua ""Aspas"""
 src/server/cep/linha.test.ts :: campoCsv Rua A, 100 vira "Rua A, 100"
 src/server/cep/linha.test.ts :: campoCsv Rua Simples vira Rua Simples
@@ -1150,6 +1188,21 @@ src/server/cep/resolver.test.ts :: normalizarCep 013101000 (nove dígitos) vira 
 src/server/cep/resolver.test.ts :: normalizarCep 0131010a (letra no meio) vira null
 src/server/cep/resolver.test.ts :: normalizarCep consultar (texto) vira null
 src/server/cep/resolver.test.ts :: normalizarCep não confunde separador com dígito: 12-34-56-78 tem oito dígitos
+src/server/cnpj-biz/cliente.test.ts :: chama o endpoint de listagem com Bearer, filtros e telefones no formato documentado
+src/server/cnpj-biz/cliente.test.ts :: CNAE não encontrado não é removido silenciosamente dos filtros
+src/server/cnpj-biz/cliente.test.ts :: consulta o CNAE na máscara publicada pelo fornecedor, preservando zeros à esquerda
+src/server/cnpj-biz/cliente.test.ts :: erro 401 não repete requisição nem expõe corpo do fornecedor
+src/server/cnpj-biz/cliente.test.ts :: erro 402 não repete requisição nem expõe corpo do fornecedor
+src/server/cnpj-biz/cliente.test.ts :: erro 429 não repete requisição nem expõe corpo do fornecedor
+src/server/cnpj-biz/cliente.test.ts :: erro 500 não repete requisição nem expõe corpo do fornecedor
+src/server/cnpj-biz/cliente.test.ts :: falha de rede fica explícita sem retry automático
+src/server/cnpj-biz/cliente.test.ts :: limita o tamanho da resposta antes de normalizar e impede consulta sem chave
+src/server/cnpj-biz/cliente.test.ts :: preserva empresa sem telefone na conferência sem inventar contato
+src/server/cnpj-biz/cliente.test.ts :: resolve o código CNAE para atividade_id antes da chamada paga
+src/server/cnpj-biz/cliente.test.ts :: resposta inválida falha fechada: [{"cnpj":"invalido"}]
+src/server/cnpj-biz/cliente.test.ts :: resposta inválida falha fechada: {}
+src/server/cnpj-biz/cliente.test.ts :: resposta inválida falha fechada: não é JSON
+src/server/cnpj-biz/cliente.test.ts :: timeout não vira retry e não devolve detalhes de rede
 src/server/db/como-usuario.test.ts :: id que não é UUID lança antes de tocar no banco
 src/server/db/env.test.ts :: lerEnv aceita off e verify
 src/server/db/env.test.ts :: lerEnv PG_SSL ausente vira verify
@@ -1246,9 +1299,11 @@ src/server/db/ssl.test.ts :: configSsl verify com nome de servidor valida o cert
 src/server/db/ssl.test.ts :: configSsl verify sem CA valida contra as CAs do sistema
 src/server/diretivas.test.ts :: arquivos 'use server' a varredura enxerga a action que mora em src/
 src/server/diretivas.test.ts :: arquivos 'use server' app\carteira\venda-acao.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\busca\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\grupos\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\importar\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\fila\buscar\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\localizar\registrar-visita-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\funil\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\login\acao.ts só exporta função

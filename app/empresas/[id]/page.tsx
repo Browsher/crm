@@ -1,4 +1,6 @@
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
+import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
+import { lerDadosCadastrais } from '@/src/server/cnpj-biz/dados'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
@@ -33,7 +35,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
   const query = await searchParams ?? {}
   const filtros = lerFiltrosEmpresas(query)
   const voltar = filtros.ok ? enderecoEmpresas(aplicarFiltrosEmpresas(lerConsulta(query), filtros.filtros)) : '/empresas'
-  const historico = await lerHistorico(eu.usuarioId, id)
+  const [historico, cadastrais] = await Promise.all([lerHistorico(eu.usuarioId, id), lerDadosCadastrais(eu.usuarioId, id)])
   const endereco = empresa.cidade ? [empresa.logradouro, empresa.bairro, `${empresa.cidade}/${empresa.uf}`].filter(Boolean).join(', ')
     : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
   return <main className={styles.pagina}>
@@ -52,6 +54,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
           <dt>CEP</dt><dd>{empresa.cep ?? 'Não informado'}</dd>
         </dl>
       </CardContent></Card>
+      <DadosCadastrais dados={cadastrais} />
       <Card><CardHeader><CardTitle>Acompanhamento</CardTitle></CardHeader><CardContent>
         <dl className={styles.dados}>
           <dt>Vendedor responsável</dt><dd>{empresa.responsavel ?? 'Sem vendedor responsável'}{empresa.responsavel && !empresa.responsavelAtivo ? <Badge variant="warning">Desativado</Badge> : null}</dd>

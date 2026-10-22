@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 
 import { useEffect, useRef, useState } from 'react'
@@ -41,7 +43,7 @@ function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   </li>)}</ol>
 }
 
-export function Ficha({ empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira' }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string }) {
+export function Ficha({ empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira', dadosCadastrais }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {
   const router = useRouter()
   const tema = useTemaCrm()
   const [editando, setEditando] = useState(false)
@@ -142,6 +144,7 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   return <article className={styles.ficha}>
     <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente} /> : null}</div></header>
     <div className={styles.colunas}><AbasFicha dados={<div className={styles.esquerda}>
+      {dadosCadastrais}
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>
         <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Contato não cadastrado'}</dd><dt>Telefone</dt><dd>{empresa.telefone || 'Telefone não cadastrado'}</dd><dt>E-mail</dt><dd>{empresa.email ?? 'E-mail não cadastrado'}</dd><dt>Localização</dt><dd>{endereco(empresa)}</dd><dt>CNPJ</dt><dd>{empresa.cnpj ?? 'Não informado'}</dd><dt>CNAE</dt><dd>{empresa.cnaePrincipal ?? 'CNAE não cadastrado'}</dd>
       </dl></CardContent></Card>

@@ -31,7 +31,7 @@ export default async function PaginaFila({ searchParams }: { searchParams: Promi
   const contatos = historico?.ok ? historico.contatos : []
   return (
     <main className="flex w-full flex-col gap-6">
-      <CabecalhoPagina titulo={r.ok && r.reserva ? 'Atendimento' : 'Prospecção'} descricao="Encontre empresas e dê o próximo passo na conversa." acoes={<Button asChild variant="outline"><Link href={urlConsulta(filtros,1)}>Localizar empresa</Link></Button>} />
+      <CabecalhoPagina titulo={r.ok && r.reserva ? 'Atendimento' : 'Prospecção'} descricao="Encontre empresas e dê o próximo passo na conversa." acoes={<><Button asChild><Link href="/fila/buscar">Buscar empresas</Link></Button><Button asChild variant="outline"><Link href={urlConsulta(filtros,1)}>Localizar empresa</Link></Button></>} />
       <div>
         {entrada.ok ? <ContextoGrupo resultado={grupo} filtros={filtros} atendimento escolhendo={params.escolher_lista === '1'} /> : <p role="alert">Filtros inválidos. A busca não foi executada. <Link href="/fila?escolher_lista=1">Todas as listas ativas</Link></p>}
       </div>
@@ -53,3 +53,4 @@ export default async function PaginaFila({ searchParams }: { searchParams: Promi
     </main>
   )
 }
+

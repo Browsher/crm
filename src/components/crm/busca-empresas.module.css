@@ -1,0 +1,44 @@
+.pagina { display: grid; gap: 24px; width: 100%; min-width: 0; font-size: 14px; }
+.pagina h2 { margin: 0 0 12px; font-size: 16px; line-height: 24px; font-weight: 600; text-wrap: pretty; overflow-wrap: anywhere; }
+.pagina h3 { margin: 0; font-size: 14px; line-height: 22px; font-weight: 600; }
+.pagina p { margin: 4px 0; }
+.ajuda { color: var(--ui-muted-foreground); max-width: 76ch; font-size: 13px; line-height: 1.6; }
+.fontes { display: flex; gap: 4px; flex-wrap: wrap; width: fit-content; max-width: 100%; background: var(--ui-muted); border-radius: 8px; padding: 4px; }
+.fontes a { display: flex; align-items: center; min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 6px; text-decoration: none; color: var(--ui-muted-foreground); font-weight: 500; }
+.fontes a:hover { color: var(--ui-foreground); }
+.fontes a[aria-current='page'] { background: var(--ui-background); color: var(--ui-foreground); border-color: var(--ui-border); }
+.colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 24px; align-items: start; }
+.colunas > aside { min-width: 0; }
+.painel { display: block; padding: 24px; min-width: 0; }
+.formulario, .formulario fieldset { display: grid; gap: 16px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.campo { display: grid; gap: 6px; min-width: 0; }
+.campo small { color: var(--ui-muted-foreground); }
+.acoes { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.pagina ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pagina li { padding: 16px 0; border-bottom: 1px solid var(--ui-border); overflow-wrap: anywhere; }
+.pagina dl { display: grid; grid-template-columns: minmax(100px, 140px) minmax(0, 1fr); gap: 6px 16px; margin: 12px 0; }
+.pagina dl.criterios { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px; border-radius: 6px; background: var(--ui-muted); }
+.criterios > div { min-width: 0; }
+.pagina dt { color: var(--ui-muted-foreground); }
+.pagina dd { margin: 0; overflow-wrap: anywhere; }
+.pagina details { margin-top: 12px; }
+.pagina summary { cursor: pointer; text-decoration: underline; min-height: 44px; padding: 12px 0; width: fit-content; }
+.pagina a:focus-visible, .pagina summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 4px; }
+.resultado { display: grid; gap: 16px; }
+.resultado fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.selecao { display: flex; align-items: start; gap: 12px; }
+.marcar { display: grid; place-items: center; flex: 0 0 44px; min-height: 44px; cursor: pointer; }
+.marcar input { accent-color: var(--ui-primary); width: 18px; height: 18px; }
+.marcar input:focus-visible, .pausa input:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 4px; }
+.selecao > div { min-width: 0; flex: 1; }
+.aviso { padding: 12px 16px; background: var(--ui-warning-background); color: var(--ui-warning); border-radius: 6px; }
+.limites { display: grid; }
+.limite { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 180px) minmax(0, 1fr) auto; gap: 16px; align-items: end; padding: 20px 0; border-bottom: 1px solid var(--ui-border); }
+.limite > div, .limite label { min-width: 0; overflow-wrap: anywhere; }
+.limite p { color: var(--ui-muted-foreground); font-size: 13px; font-variant-numeric: tabular-nums; }
+.limite label { display: grid; gap: 6px; }
+.limite .pausa { display: flex; gap: 10px; align-items: center; min-height: 44px; cursor: pointer; }
+.pausa input { flex: 0 0 18px; width: 18px; height: 18px; accent-color: var(--ui-primary); }
+@media(max-width: 1100px) { .colunas { grid-template-columns: 1fr; } .limite { grid-template-columns: 1fr 1fr; } }
+@media(max-width: 600px) { .grade, .limite, .pagina dl.criterios { grid-template-columns: 1fr; } .painel { padding: 16px; } .fontes { width: 100%; } .fontes a { flex: 1 1 100%; } .pagina dl { grid-template-columns: 1fr; } .pagina dd { margin-bottom: 6px; } }

@@ -29,3 +29,10 @@ test('build não herda segredo de conferência e servidor usa somente chave de t
   expect(ambienteDoServidor(fonte, 'postgres://app_teste:teste@localhost:5432/teste_0123456789ab').IMPORTACAO_CONFERENCIA_SEGREDO).toBe('e2'.repeat(32))
   expect(fonte.IMPORTACAO_CONFERENCIA_SEGREDO).toBe('chave real que não deve entrar em E2E')
 })
+
+test('E2E não herda chave CNPJ.biz real nem no build nem no servidor', () => {
+  const fonte: NodeJS.ProcessEnv = { NODE_ENV: 'test', CNPJ_BIZ_API_KEY: 'chave-ficticia-real-do-pai' }
+  expect(ambienteDoBuild(fonte).CNPJ_BIZ_API_KEY).toBe('')
+  expect(ambienteDoServidor(fonte, 'postgres://app_teste:teste@localhost:5432/teste_0123456789ab').CNPJ_BIZ_API_KEY).toBe('')
+  expect(fonte.CNPJ_BIZ_API_KEY).toBe('chave-ficticia-real-do-pai')
+})
