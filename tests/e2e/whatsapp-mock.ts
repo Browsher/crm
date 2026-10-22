@@ -24,6 +24,7 @@ export async function iniciarWhatsAppDeTeste(banco: BancoDeTeste) {
       { key: { id: 'imagem-aurora', remoteJid: '5511988889991@s.whatsapp.net', fromMe: true }, messageTimestamp: agora - 120, message: { imageMessage: { mimetype: 'image/png', caption: 'Imagem local de teste' } } },
       { key: { id: 'documento-indisponivel', remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, messageTimestamp: agora - 180, message: { documentMessage: { mimetype: 'application/pdf', fileName: 'pedido.pdf' } } },
       { key: { id: 'texto-boreal', remoteJid: '5511988889992@s.whatsapp.net', fromMe: false }, pushName: 'Contato Boreal', messageTimestamp: agora - 240, message: { conversation: 'Mensagem da segunda conversa.' } },
+      ...Array.from({ length: 40 }, (_, indice) => ({ key: { id: `historico-aurora-${indice}`, remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, pushName: 'Contato Aurora', messageTimestamp: agora - 300 - indice * 60, message: { conversation: `Mensagem antiga ${indice + 1} do histórico local de teste.` } })),
     ]
     const servidor = createServer({ key: await readFile(chave), cert: await readFile(certificado) }, async (pedido, resposta) => {
       if (pedido.headers.apikey !== 'chave-apenas-e2e') { resposta.writeHead(403).end(); return }

@@ -1,5 +1,28 @@
 import { expect, test } from '@playwright/test'
 
+test('primeira abertura móvel mostra mensagens recentes e reabertura conserva leitura', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('gestore2e@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/gestao')
+  await page.goto('/whatsapp')
+  const conversas = page.getByLabel('Lista de conversas', { exact: true })
+  const primeira = conversas.locator('button[aria-current=true]')
+  await expect(primeira).toContainText('Contato Aurora')
+  await primeira.click()
+  const mensagens = page.getByLabel('Mensagens da conversa', { exact: true })
+  const tamanho = await mensagens.evaluate(el => ({ altura: el.scrollHeight, visivel: el.clientHeight }))
+  expect(tamanho.altura).toBeGreaterThan(tamanho.visivel + 500)
+  await expect.poll(() => mensagens.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(2)
+  const topo = await mensagens.evaluate(el => { el.scrollTop = Math.floor((el.scrollHeight - el.clientHeight) / 2); return el.scrollTop })
+  await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+  await expect(primeira).toBeFocused()
+  await primeira.click()
+  await expect.poll(() => mensagens.evaluate(el => el.scrollTop)).toBe(topo)
+})
+
 for (const [largura, tema] of [[1440, 'light'], [390, 'dark']] as const) {
   test(`WhatsApp real com serviço local em ${largura}px e tema ${tema}`, async ({ page }) => {
     await page.setViewportSize({ width: largura, height: 900 })

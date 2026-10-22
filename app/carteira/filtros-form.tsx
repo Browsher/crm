@@ -9,7 +9,7 @@ import styles from './carteira.module.css'
 
 export function FiltrosForm({ filtros, ufs }: { filtros: FiltrosCarteira; ufs: string[] }) {
   const estados = [...new Set(ufs)].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  return <Form action="/carteira" className={styles.filtros}>
+  return <Form key={JSON.stringify(filtros)} action="/carteira" className={styles.filtros}>
     <div><Label htmlFor="carteira-nome">Nome</Label><Input id="carteira-nome" name="nome" type="search"
       maxLength={120} defaultValue={filtros.nome} placeholder="Razão social ou nome fantasia" /></div>
     <div><Label htmlFor="carteira-uf">UF</Label><NativeSelect id="carteira-uf" name="uf" defaultValue={filtros.uf}>

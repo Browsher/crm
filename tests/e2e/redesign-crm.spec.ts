@@ -124,9 +124,22 @@ for (const [rota, tema] of [['/carteira', 'Tema da Carteira'], ['/meu-dia', 'Tem
     await page.goto(rota)
     await page.getByLabel(tema).selectOption('dark')
     await page.getByLabel('Nome', { exact: true }).fill('Redesign')
+    await page.getByLabel('Retorno', { exact: true }).selectOption('hoje')
     await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
     await expect(page).toHaveURL(/nome=Redesign/)
     await expect(page.getByLabel(tema)).toHaveValue('dark')
+    await page.getByRole('link', { name: 'Limpar filtros', exact: true }).click()
+    await expect(page).toHaveURL(rota)
+    await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('')
+    await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('')
+    await page.goBack()
+    await expect(page).toHaveURL(/nome=Redesign/)
+    await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Redesign')
+    await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('hoje')
+    await expect(page.getByLabel(tema)).toHaveValue('dark')
+    await page.goForward()
+    await expect(page).toHaveURL(rota)
+    await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('')
   })
 }
 
@@ -147,5 +160,41 @@ test('filtros móveis têm alvos de toque de 44px', async ({ page }) => {
   for (const nome of ['UF', 'Retorno']) {
     const alvo = (await page.getByLabel(nome, { exact: true }).boundingBox())!
     expect(alvo.height).toBeGreaterThanOrEqual(44)
+  }
+})
+
+test('botão destrutivo mantém contraste de texto nos dois temas e hover', async ({ page }) => {
+  await entrar(page, 'gestore2e', '/gestao')
+  await page.goto('/design')
+  const excluir = page.getByRole('button', { name: 'Excluir exemplo', exact: true })
+  async function contraste() {
+    return excluir.evaluate(elemento => {
+      const tela = document.createElement('canvas')
+      tela.width = tela.height = 1
+      const contexto = tela.getContext('2d')!
+      contexto.fillStyle = '#fff'
+      contexto.fillRect(0, 0, 1, 1)
+      const ancestrais: Element[] = []
+      for (let atual: Element | null = elemento; atual; atual = atual.parentElement) ancestrais.unshift(atual)
+      for (const atual of ancestrais) {
+        contexto.fillStyle = getComputedStyle(atual).backgroundColor
+        contexto.fillRect(0, 0, 1, 1)
+      }
+      const fundo = contexto.getImageData(0, 0, 1, 1).data.slice(0, 3)
+      contexto.clearRect(0, 0, 1, 1)
+      contexto.fillStyle = getComputedStyle(elemento).color
+      contexto.fillRect(0, 0, 1, 1)
+      const texto = contexto.getImageData(0, 0, 1, 1).data.slice(0, 3)
+      const luminancia = (cor: Uint8ClampedArray) => [...cor].map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((soma, v, i) => soma + v * [0.2126, 0.7152, 0.0722][i], 0)
+      const a = luminancia(fundo), b = luminancia(texto)
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+    })
+  }
+  for (const tema of ['light', 'dark']) {
+    await page.mouse.move(0, 0)
+    await page.getByLabel('Tema da galeria').selectOption(tema)
+    await expect.poll(contraste).toBeGreaterThanOrEqual(4.5)
+    await excluir.hover()
+    await expect.poll(contraste).toBeGreaterThanOrEqual(4.5)
   }
 })

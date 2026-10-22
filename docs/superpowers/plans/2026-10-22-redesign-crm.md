@@ -272,11 +272,11 @@ Atualizar este plano com evidências e limitar a limpeza ao CSS que perdeu consu
   `npm run test:e2e --% -- --sem-build` e `git diff --check`.
 - [x] Executar a revisão atualizada Web Design Guidelines e registrar achados
   por arquivo/linha. Rever contraste e capturas após o build de produção.
-- [ ] Solicitar revisão independente da branch inteira, corrigir achados
+- [x] Solicitar revisão independente da branch inteira, corrigir achados
   acionáveis com RED/GREEN e repetir somente os checks afetados, além dos
   exigidos pelo CI. Registrar comandos e resultados, sem afirmar aprovação
   funcional por capturas do protótipo.
-- [ ] Atualizar o PR rascunho contra main com o resultado final, validação e
+- [x] Atualizar o PR rascunho contra main com o resultado final, validação e
   limitações. Anexar o PR ao chat. Aguardar CI no SHA enviado; sem merge automático.
 
 ## Revisão do plano e execução

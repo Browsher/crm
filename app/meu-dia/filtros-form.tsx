@@ -8,7 +8,7 @@ import type { FiltrosMeuDia } from './agenda'
 import styles from './meu-dia.module.css'
 
 export function FiltrosForm({ filtros }: { filtros: FiltrosMeuDia }) {
-  return <Form action="/meu-dia" className={styles.filtros}>
+  return <Form key={JSON.stringify(filtros)} action="/meu-dia" className={styles.filtros}>
     <div><Label htmlFor="meu-dia-nome">Nome</Label><Input id="meu-dia-nome" name="nome" type="search"
       maxLength={120} defaultValue={filtros.nome} placeholder="Razão social ou nome fantasia" /></div>
     <div><Label htmlFor="meu-dia-retorno">Retorno</Label><NativeSelect id="meu-dia-retorno" name="retorno" defaultValue={filtros.retorno}>

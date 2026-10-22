@@ -179,6 +179,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   useLayoutEffect(() => {
     const lista = rolagem.current
     if (!lista || !conversaId) return
+    if (painelMovel === 'lista' && lista.clientHeight === 0) return
     if (posicao.current.id !== conversaId) {
       lista.scrollTop = lista.scrollHeight
       posicao.current = { id: conversaId, topo: lista.scrollTop, noFim: true }
@@ -190,7 +191,9 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       posicao.current.topo = lista.scrollTop
     }
     ancora.current = null
-  }, [dados.acumuladas, conversaId])
+  // A primeira conversa já está selecionada enquanto o chat móvel está oculto.
+  // Recalcular ao abri-lo usa a altura real; noFim=false preserva a leitura.
+  }, [dados.acumuladas, conversaId, painelMovel])
 
   const valores = useMemo(() => {
     if (!opcoes || mais || erro || consultaParcial || avisos.length || !limiteHistorico) return undefined
