@@ -1,3 +1,4 @@
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/src/components/ui/table'
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -34,19 +35,19 @@ export default async function DetalheGrupo({ params, searchParams }: Props) {
     </dl>
     {!g.ativo && <p className={styles.aviso}>Grupo desativado. Carteiras e reservas atuais são preservadas. Empresas com outro grupo ativo podem continuar disponíveis.</p>}
     {r.empresas.length === 0 ? <div className={styles.vazio}><h2>Nenhuma empresa nesta página</h2><Link href={`/empresas/grupos/${id}?gruposPagina=${gruposPagina}`}>Voltar à primeira página</Link></div> :
-      <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Empresas do grupo"><table className={styles.tabela}>
-        <thead><tr><th scope="col">Empresa</th><th scope="col">Atendimento</th><th scope="col">Outros grupos</th></tr></thead>
-        <tbody>{r.empresas.map(e => <tr key={e.id}>
-          <td><strong>{nomeEmpresa(e)}</strong><span className={styles.secundario}>{e.cnpj ?? 'Não informado'}</span></td>
-          <td><strong>{SITUACOES[e.situacao]}</strong>
+      <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Empresas do grupo"><Table className={`${styles.tabela} crm-registros`}>
+        <TableHeader><TableRow><TableHead scope="col">Empresa</TableHead><TableHead scope="col">Atendimento</TableHead><TableHead scope="col">Outros grupos</TableHead></TableRow></TableHeader>
+        <TableBody>{r.empresas.map(e => <TableRow key={e.id}>
+          <TableCell data-label="Empresa"><strong>{nomeEmpresa(e)}</strong><span className={styles.secundario}>{e.cnpj ?? 'Não informado'}</span></TableCell>
+          <TableCell data-label="Atendimento"><strong>{SITUACOES[e.situacao]}</strong>
             {e.responsavel && <span className={styles.secundario}>{e.responsavel}{e.responsavelAtivo === false ? ' (inativo)' : ''}</span>}
             {e.situacao === 'reservada' && <span className={styles.secundario}>{e.reservadoPor}{e.reservadoAte ? ` até ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(e.reservadoAte))}` : ''}</span>}
             {e.situacao === 'em_descanso' && e.elegivelEm && <span className={styles.secundario}>Até {dataGrupo(e.elegivelEm)}</span>}
             {e.situacao === 'origem_bloqueada' && <span className={styles.secundario}>Sem grupo ativo</span>}
-          </td>
-          <td>{e.outrosGrupos.length ? <ul className={styles.outros}>{e.outrosGrupos.map(outro => <li key={outro.id}><Link href={`/empresas/grupos/${outro.id}?gruposPagina=${gruposPagina}`}>{outro.nome}</Link> <span className={styles.secundario}>({outro.ativo ? 'ativo' : 'desativado'})</span></li>)}</ul> : <span className={styles.secundario}>Nenhum outro grupo</span>}</td>
-        </tr>)}</tbody>
-      </table></div>}
+          </TableCell>
+          <TableCell data-label="Outros grupos">{e.outrosGrupos.length ? <ul className={styles.outros}>{e.outrosGrupos.map(outro => <li key={outro.id}><Link href={`/empresas/grupos/${outro.id}?gruposPagina=${gruposPagina}`}>{outro.nome}</Link> <span className={styles.secundario}>({outro.ativo ? 'ativo' : 'desativado'})</span></li>)}</ul> : <span className={styles.secundario}>Nenhum outro grupo</span>}</TableCell>
+        </TableRow>)}</TableBody>
+      </Table></div>}
     <PaginacaoGrupos pagina={pagina} total={c.total} caminho={`/empresas/grupos/${id}`} gruposPagina={gruposPagina} />
   </main>
 }

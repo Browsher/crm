@@ -20,6 +20,7 @@ test('ficha de consulta sem ações de vendedor e volta preserva filtros', async
   expect(html).toContain('Aurora')
   expect(html).toContain('href="/empresas?q=Aurora&amp;uf=SP&amp;pagina=2"')
   expect(html).toContain('Nenhum atendimento registrado')
+  expect([...html.matchAll(/role="tab"/g)]).toHaveLength(2)
   expect(html).not.toContain('<form')
   expect(html).not.toContain('Registrar atendimento')
 })

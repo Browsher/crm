@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { Button } from '@/src/components/ui/button'
 import { atualizarMetadadosGrupoAcao, type EstadoGrupo } from './acoes'
+import { Textarea } from '@/src/components/ui/textarea'
 import styles from './grupos.module.css'
 
 type Props = { id: string; descricao: string | null; origem: string | null; criterios: string | null }
@@ -26,7 +27,7 @@ export function MetadadosGrupo({ id, descricao, origem, criterios }: Props) {
             ['descricao', 'Resumo da lista', 500], ['origem', 'Origem dos dados', 500], ['criterios', 'Critérios usados', 2000],
           ] as const).map(([campo, rotulo, limite]) => <label key={campo} className={styles.campo}>
             {rotulo}
-            <textarea name={campo} aria-label={rotulo} value={valores[campo]} required={campo !== 'criterios'} rows={3}
+            <Textarea name={campo} aria-label={rotulo} value={valores[campo]} required={campo !== 'criterios'} rows={3}
               aria-describedby={`correcao-${campo}`} onChange={e => setValores(anterior => ({ ...anterior, [campo]: e.target.value }))} />
             <span id={`correcao-${campo}`}>Até {limite} caracteres. {campo === 'criterios' ? 'Opcional.' : 'Obrigatório.'}</span>
           </label>)}

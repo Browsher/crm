@@ -2,11 +2,15 @@
 .cabecalho { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .cabecalho p { color: var(--ui-muted-foreground); margin-top: 6px; }
 .formulario { display: grid; gap: 24px; }
-.painel { width: 100%; max-width: 760px; margin: 0 auto; padding: 24px; border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface); }
+.painel { width:100%; max-width:980px; margin:0 auto; padding:32px; border:1px solid var(--border); border-radius:8px; background:var(--background); }
 .painel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .titulo { font-size: 20px; font-weight: 600; margin-bottom: 16px; outline: none; }
 .campo, .arquivo { display: grid; gap: 8px; margin: 20px 0; }
-.campo input, .campo textarea, .arquivo input { max-width: 100%; width: 100%; border: 1px solid var(--ui-border); background: var(--ui-background); border-radius: 6px; padding: 12px; }
+.arquivo { padding:24px; border:1px dashed var(--input); border-radius:8px; background:var(--surface-muted); }
+.arquivo:focus-within { outline:2px solid var(--ring); outline-offset:2px; }
+.arquivo input { min-height:44px; height:auto; }
+.campo span { font-size:12px; color:var(--muted-foreground); }
+.campo input, .campo textarea, .arquivo input { max-width:100%; width:100%; background:var(--background); border-radius:6px; }
 .grupo { margin-bottom: 16px; }
 .acoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 .orientacoes { margin: 20px 0; color: var(--ui-muted-foreground); }

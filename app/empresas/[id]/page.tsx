@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/ca
 import { Badge } from '@/src/components/ui/badge'
 import { Alert } from '@/src/components/ui/alert'
 import styles from './perfil.module.css'
+import { AbasFicha } from '@/src/components/crm/abas-ficha'
 
 const situacoes: Record<PerfilEmpresa['situacao'], string> = {
   carteira: 'Em carteira', reservada: 'Reservada', inativa: 'Sem grupo ativo',
@@ -40,7 +41,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
     <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{nomeEmpresa(empresa)}</h1>
       {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
       <Badge variant="outline">{situacoes[empresa.situacao]}</Badge></header>
-    <div className={styles.colunas}><div className={styles.detalhes}>
+    <div className={styles.colunas}><AbasFicha dados={<div className={styles.detalhes}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent>
         <dl className={styles.dados}>
           <dt>CNPJ</dt><dd>{formatarCnpj(empresa.cnpj)}</dd>
@@ -62,7 +63,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
       <Card><CardHeader><CardTitle>Grupos de origem</CardTitle></CardHeader><CardContent>
         {empresa.grupos.length ? <ul className={styles.grupos}>{empresa.grupos.map(g => <li key={g.id}><span>{g.nome}</span><Badge variant={g.ativo ? 'success' : 'outline'}>{g.ativo ? 'Ativo' : 'Desativado'}</Badge></li>)}</ul> : <p>Nenhum grupo vinculado.</p>}
       </CardContent></Card>
-    </div><Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
+    </div>} historico={<Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
       {!historico.ok ? <Alert variant="danger">Não foi possível carregar o histórico. Atualize a página para tentar novamente.</Alert> : !historico.contatos.length ? <p>Nenhum atendimento registrado.</p> :
         <ol className={styles.historico}>{historico.contatos.map(c => <li key={c.id}>
           <div><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</strong><time dateTime={c.criadoEm.toISOString()}>{horario.format(c.criadoEm)}</time></div>
@@ -71,6 +72,6 @@ export default async function PaginaPerfil({ params, searchParams }: {
           {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
           <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>
         </li>)}</ol>}
-    </CardContent></Card></div>
+    </CardContent></Card>} /></div>
   </main>
 }
