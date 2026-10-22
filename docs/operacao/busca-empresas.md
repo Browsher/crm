@@ -40,3 +40,9 @@ Cliente HTTP com timeout de 25 segundos para a operação, limite de resposta de
 Testes unitários cobrem contrato HTTP, filtros e idempotência do serviço; integração cobre RLS, concorrência, pausas e importação; jornada no navegador cobre as duas fontes, conferência, ficha e pausa do gestor. Harness E2E zera CNPJ_BIZ_API_KEY herdada. Email, disparos, campanhas e assinaturas de catálogo permanecem adiados.
 
 Na ficha pública, telefones ficam ocultos até haver posse ou reserva vigente. O gestor tem leitura administrativa. O histórico de uma busca própria preserva os dados obtidos naquela consulta.
+
+## Validação da entrega
+
+Em 2026-10-22, no checkout limpo do commit 2e2f155: 1.326 testes unitários passaram, um ignorado; 604 de integração passaram, um ignorado. Lint, typecheck e checagem de migrações passaram. No checkout de trabalho, build E2E e 11 jornadas afetadas passaram, incluindo Google, importação CNPJ.biz, pausa do gestor, Prospecção, reserva e Carteira. Nenhum crédito externo usado. As falhas prévias de prosa em CONTINUIDADE-CODEX.md e lint em .artifact-work são de arquivos locais fora da branch e foram preservadas.
+
+Jornada da feature: npm run test:e2e -- --sem-build tests/e2e/busca-empresas.spec.ts, após npm run build:e2e.
