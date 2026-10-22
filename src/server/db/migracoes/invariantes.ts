@@ -58,6 +58,10 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.google_agente_proximo',
   'public.google_agente_etapa',
   'public.google_agente_entregar',
+  'public.google_agente_definir',
+  'public.google_planilha_preparar',
+  'public.google_planilha_confirmar',
+  'public.google_planilha_intencao',
 ] as const
 
 // Pergunta 3: quais políticas podem liberar a tabela inteira. `USING (true)`

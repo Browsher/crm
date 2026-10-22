@@ -64,6 +64,10 @@ const sao = (): Estado => ({
     'public.google_agente_proximo',
     'public.google_agente_etapa',
     'public.google_agente_entregar',
+    'public.google_agente_definir',
+    'public.google_planilha_preparar',
+    'public.google_planilha_confirmar',
+    'public.google_planilha_intencao',
   ],
   funcoesExecutaveisPorPublico: [],
 })

@@ -9,6 +9,7 @@ let gestor: string
 let vendedor: string
 let outro: string
 let dia: string
+const executor = randomUUID()
 const empresa = { cnpj: '11222333000181', google_place_id: 'ChIJ-fixture-google', nome_fantasia: 'Loja de brinquedos',
   razao_social: 'Loja teste LTDA', telefone: '11988887777', email: 'loja@exemplo.test', endereco: 'Endereço real recebido', validado: true }
 const recibo = (id: string) => ({ pedido_id: id, origem_sha256: 'a'.repeat(64), final_sha256: 'b'.repeat(64),
@@ -22,8 +23,21 @@ async function iniciado(usuario = vendedor) {
   await banco.sql("UPDATE google_planejamento SET estado='coletando',iniciado_em=now(),snapshot=jsonb_build_object('nicho',nicho,'bairro',bairro,'cidade',cidade,'uf',uf) WHERE id=$1", [id])
   return id
 }
-const entregar = (id: string, empresas: unknown[] = [empresa], comprovante = recibo(id), usuario = gestor) =>
-  chamar(usuario, 'SELECT google_agente_entregar($1,$2,$3) AS resultado', [id, JSON.stringify(empresas), JSON.stringify(comprovante)])
+async function entregar(id: string, empresas: unknown[] = [empresa], comprovante = recibo(id), usuario = gestor) {
+  const cliente = new Client({ connectionString: banco.urlAdmin })
+  await cliente.connect()
+  try {
+    await cliente.query('BEGIN')
+    await cliente.query('SELECT pg_advisory_xact_lock(27,1)')
+    await cliente.query(`INSERT INTO google_execucao(executor_id,gestor_id,pedido_id)
+      SELECT $1,$2,id FROM google_planejamento WHERE id=$3 ON CONFLICT (pedido_id) DO NOTHING`, [executor, gestor, id])
+    await cliente.query("SELECT set_config('app.usuario_id',$1,true),set_config('role','app_usuario',true)", [usuario])
+    const r = await cliente.query<{ resultado: string }>('SELECT google_agente_entregar($1,$2,$3,$4) AS resultado', [id, JSON.stringify(empresas), JSON.stringify(comprovante), executor])
+    await cliente.query('COMMIT')
+    return r.rows
+  } catch (erro) { await cliente.query('ROLLBACK'); throw erro }
+  finally { await cliente.end() }
+}
 
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
@@ -35,9 +49,12 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
+  await banco.sql('DELETE FROM google_execucao')
   await banco.sql('DELETE FROM google_exclusividade')
   await banco.sql('DELETE FROM google_resultado')
   await banco.sql('DELETE FROM google_publicacao')
+  await banco.sql('DELETE FROM google_planilha_tentativa')
+  await banco.sql('DELETE FROM google_sincronizacao')
   await banco.sql('DELETE FROM google_planejamento')
   await banco.sql('DELETE FROM google_rotina')
   await banco.sql('DELETE FROM contato')
@@ -77,7 +94,7 @@ test('agente só é acessível ao gestor e não publica lote desconhecido ou rec
   await expect(chamar(vendedor, 'SELECT google_agente_proximo()')).rejects.toMatchObject({ code: '42501' })
   await expect(chamar(gestor, 'SELECT google_agente_proximo_em(now())')).rejects.toMatchObject({ code: '42501' })
   await expect(entregar(id, [empresa], recibo(id), vendedor)).rejects.toMatchObject({ code: '42501' })
-  await expect(entregar(randomUUID())).rejects.toMatchObject({ code: '22023' })
+  await expect(entregar(randomUUID())).rejects.toMatchObject({ code: '55000' })
   await expect(entregar(id, [empresa], recibo(randomUUID()))).rejects.toMatchObject({ code: '22023' })
   await expect(entregar(id, [empresa], { ...recibo(id), validacao_conferida: false })).rejects.toMatchObject({ code: '22023' })
 })
@@ -183,8 +200,12 @@ test('exclusividade impede reserva por alvo direto e fonte compartilhada', async
 test('rotina congela todos os pedidos do dia às 9h e retoma o mesmo lote antes de avançar', async () => {
   const a = await planejar()
   const b = await planejar(outro)
+  for (const id of [a,b]) {
+    const [{ p }] = await chamar<{ p: { versao: number } }>(gestor, 'SELECT google_planilha_preparar($1,$2) AS p', [id, 'planilha-fixture:123'])
+    await chamar(gestor, 'SELECT google_planilha_confirmar($1,$2,NULL)', [id, p.versao])
+  }
   const proximo = (hora: string) => banco.sql<{ pedido: { id: string } | null }>(
-    "SELECT google_agente_proximo_em($2::timestamptz) AS pedido FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade", [gestor, `${dia}T${hora}-03:00`])
+    "SELECT google_coordenar_em($3,$2::timestamptz)->'pedido' AS pedido FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade", [gestor, `${dia}T${hora}-03:00`, executor])
   expect(await proximo('08:59:00')).toEqual([{ pedido: null }])
   expect((await proximo('09:00:00'))[0].pedido?.id).toBe(a)
   expect((await proximo('09:01:00'))[0].pedido?.id).toBe(a)
