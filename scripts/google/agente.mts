@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { clienteAgente } from '../../src/server/google/cliente'
@@ -24,32 +24,42 @@ try {
   const token = process.env.GOOGLE_AGENTE_TOKEN
   if (!url || !token) throw new Error('Configure GOOGLE_CRM_URL e GOOGLE_AGENTE_TOKEN no ambiente privado.')
   const enviar = clienteAgente({ url, token })
+  let executor: string
+  try { executor = JSON.parse(await readFile(resolve(pasta, 'executor.json'), 'utf8')).id }
+  catch (erro) {
+    if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro
+    executor = randomUUID()
+    await salvar('executor.json', { id: executor })
+  }
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(executor)) throw new Error('Identidade do executor inválida. Preserve a pasta para reconciliação.')
   if (acao === 'proximo') {
     try { await readFile(resolve(pasta, 'publicacao-pendente.json')); throw new Error('Há publicação sem confirmação local. Reconcilie o mesmo arquivo antes de pedir outro lote.') }
     catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
-    const resposta = await enviar({ acao: 'proximo' })
+    const resposta = await enviar({ acao: 'proximo', executor })
     if (resposta.pedido) {
       const pedido = resposta.pedido as { id: string }
       if (!/^[0-9a-f-]{36}$/i.test(pedido.id)) throw new Error('Pedido inválido recebido.')
-      await salvar(pedido.id + '.json', resposta.pedido)
+      await salvar(pedido.id + '.json', { ...pedido, executor })
     }
     console.log(JSON.stringify(resposta))
   } else if (acao === 'etapa') {
-    const r = await lerComando(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ acao, pedido: opcoes.get('pedido'), estado: opcoes.get('estado'), motivo: opcoes.get('motivo') ?? null }) }))
+    const r = await lerComando(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ acao, executor, pedido: opcoes.get('pedido'), estado: opcoes.get('estado'), motivo: opcoes.get('motivo') ?? null }) }))
     if (!r.ok) throw new Error('Pedido ou etapa inválidos.')
     console.log(JSON.stringify(await enviar(r.comando)))
   } else if (acao === 'entregar') {
     if (!opcoes.get('publicacao') || !opcoes.get('original') || !opcoes.get('final')) throw new Error('Informe --publicacao, --original e --final.')
     const texto = await readFile(resolve(opcoes.get('publicacao')!), 'utf8')
-    const r = await lerComando(new Request('http://localhost', { method: 'POST', body: texto }))
+    const valor = JSON.parse(texto)
+    if (valor.executor && valor.executor !== executor) throw new Error('Publicação de outro executor. Preserve a identidade original.')
+    const r = await lerComando(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ ...valor, executor }) }))
     if (!r.ok || r.comando.acao !== 'entregar') throw new Error('Publicação inválida.')
     const { comando } = r
     if (hash(await readFile(resolve(opcoes.get('original')!))) !== comando.recibo.origem_sha256
       || hash(await readFile(resolve(opcoes.get('final')!))) !== comando.recibo.final_sha256) throw new Error('Arquivos não conferem com os hashes do recibo.')
-    const pendente = { pedido: comando.pedido, publicacao_sha256: hash(Buffer.from(texto)) }
+    const pendente = { pedido: comando.pedido, executor, publicacao_sha256: hash(Buffer.from(texto)) }
     try {
       const anterior = JSON.parse(await readFile(resolve(pasta, 'publicacao-pendente.json'), 'utf8'))
-      if (anterior.pedido !== pendente.pedido || anterior.publicacao_sha256 !== pendente.publicacao_sha256) throw new Error('Há outra publicação pendente. Preserve-a e reconcilie antes de continuar.')
+      if (anterior.pedido !== pendente.pedido || (anterior.executor && anterior.executor !== executor) || anterior.publicacao_sha256 !== pendente.publicacao_sha256) throw new Error('Há outra publicação pendente. Preserve-a e reconcilie antes de continuar.')
     } catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
     await salvar('publicacao-pendente.json', pendente)
     const resposta = await enviar(comando)

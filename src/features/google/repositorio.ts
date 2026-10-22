@@ -65,15 +65,15 @@ export function repositorioGoogle(usuarioId: string) {
     async vendedores() {
       return comoUsuario(usuarioId, async e => (await e<{ id: string; nome: string }>("SELECT id,nome FROM usuario u WHERE eh_gestor() AND (papel='vendedor' OR EXISTS(SELECT 1 FROM google_planejamento p WHERE p.vendedor_id=u.id)) ORDER BY nome,id")).linhas)
     },
-    async proximo(): Promise<PlanoGoogle | null> {
-      return comoUsuario(usuarioId, async e => (await e<{ pedido: PlanoGoogle | null }>('SELECT google_agente_proximo() AS pedido')).linhas[0].pedido)
+    async proximo(executor: string): Promise<{ pedido: Record<string, unknown> | null; agente?: string; ocupado?: boolean; sincronizar?: string }> {
+      return comoUsuario(usuarioId, async e => (await e<{ r: { pedido: Record<string, unknown> | null; agente?: string; ocupado?: boolean; sincronizar?: string } }>('SELECT google_agente_proximo($1) AS r', [executor])).linhas[0].r)
     },
-    async etapa(id: string, estado: string, motivo: string | null) {
-      await comoUsuario(usuarioId, e => e('SELECT google_agente_etapa($1,$2,$3)', [id, estado, motivo]))
+    async etapa(id: string, estado: string, motivo: string | null, executor: string) {
+      await comoUsuario(usuarioId, e => e('SELECT google_agente_etapa($1,$2,$3,$4)', [id, estado, motivo, executor]))
     },
-    async entregar(id: string, empresas: Record<string, unknown>[], recibo: Record<string, unknown>) {
-      return comoUsuario(usuarioId, async e => (await e<{ resultado: string }>('SELECT google_agente_entregar($1,$2,$3) AS resultado',
-        [id, JSON.stringify(empresas), JSON.stringify(recibo)])).linhas[0].resultado)
+    async entregar(id: string, empresas: Record<string, unknown>[], recibo: Record<string, unknown>, executor: string) {
+      return comoUsuario(usuarioId, async e => (await e<{ resultado: string }>('SELECT google_agente_entregar($1,$2,$3,$4) AS resultado',
+        [id, JSON.stringify(empresas), JSON.stringify(recibo), executor])).linhas[0].resultado)
     },
   }
 }

@@ -36,6 +36,14 @@ def verificar_inicio(pasta, pedido):
             raise RuntimeError('A pasta contém outro pedido ou critérios divergentes.')
 
 
+def pasta_do_pedido(raiz, pedido):
+    formato = r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
+    if not all(re.fullmatch(formato, str(pedido.get(k, '')), re.I) for k in ('id', 'vendedor_id')):
+        raise ValueError('Identidade do vendedor ou pedido inválida.')
+    antiga = raiz/'coletas'/'crm'/pedido['id']
+    return antiga if antiga.exists() else raiz/'coletas'/'agentes'/pedido['vendedor_id']/pedido['id']
+
+
 def telefone(valor):
     limpo = re.sub(r'[\s().+\-]', '', str(valor or ''))
     if len(limpo) in (12, 13) and limpo.startswith('55'):
@@ -116,7 +124,7 @@ def coletar(pedido, campanha):
     if pedido.get('estado') != 'coletando':
         raise ValueError('Pedido não está em coleta. Reconcilie a etapa atual antes de continuar.')
     modulo = carregar_coletor(campanha)
-    pasta = modulo.HERE/'coletas'/'crm'/pedido['id']
+    pasta = pasta_do_pedido(modulo.HERE, pedido)
     pasta.mkdir(parents=True, exist_ok=True)
     with modulo.campaign_lock(modulo.HISTORY):
         verificar_inicio(pasta, pedido)

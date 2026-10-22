@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache'
 import { repositorioGoogle } from '@/src/features/google/repositorio'
 import { autorizarAgente } from '@/src/server/google/autenticacao'
 import { lerComando } from '@/src/server/google/protocolo'
+import { sincronizarPedido } from '@/src/server/google/planilha/sincronizar'
 
 export async function POST(request: Request) {
   const acesso = autorizarAgente(request.headers.get('authorization'), { token: process.env.GOOGLE_AGENTE_TOKEN, usuarioId: process.env.GOOGLE_AGENTE_USUARIO_ID })
@@ -12,9 +13,18 @@ export async function POST(request: Request) {
   const repo = repositorioGoogle(acesso.usuarioId)
   const comando = entrada.comando
   try {
-    if (comando.acao === 'proximo') return responder({ pedido: await repo.proximo() })
-    if (comando.acao === 'etapa') await repo.etapa(comando.pedido, comando.estado, comando.motivo)
-    const resultado = comando.acao === 'entregar' ? await repo.entregar(comando.pedido, comando.empresas, comando.recibo) : 'ok'
+    if (comando.acao === 'proximo') {
+      let r = await repo.proximo(comando.executor)
+      if (r.sincronizar) {
+        const sync = await sincronizarPedido(r.sincronizar)
+        if (sync.estado === 'sincronizado') r = await repo.proximo(comando.executor)
+        else return responder({...r,aviso:sync.motivo})
+      }
+      return responder(r)
+    }
+    if (comando.acao === 'etapa') await repo.etapa(comando.pedido, comando.estado, comando.motivo, comando.executor)
+    const resultado = comando.acao === 'entregar' ? await repo.entregar(comando.pedido, comando.empresas, comando.recibo, comando.executor) : 'ok'
+    await sincronizarPedido(comando.pedido)
     revalidatePath('/fila/google')
     revalidatePath('/fila/buscar')
     revalidatePath('/empresas/google')

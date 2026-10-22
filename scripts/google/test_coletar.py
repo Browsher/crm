@@ -15,6 +15,18 @@ SPEC.loader.exec_module(ponte)
 PEDIDO = {'id': '00000000-0000-4000-8000-000000000001', 'nicho': 'Pet shop $()', 'bairro': 'Brás', 'cidade': 'São Paulo', 'uf': 'SP', 'estado': 'coletando'}
 
 class PonteTest(unittest.TestCase):
+    def test_pasta_do_agente_isola_vendedor_e_preserva_execucao_legada(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            raiz = Path(pasta)
+            pedido = dict(PEDIDO, vendedor_id='00000000-0000-4000-8000-000000000002')
+            nova = ponte.pasta_do_pedido(raiz, pedido)
+            self.assertEqual(nova, raiz/'coletas'/'agentes'/pedido['vendedor_id']/pedido['id'])
+            antiga = raiz/'coletas'/'crm'/pedido['id']
+            antiga.mkdir(parents=True)
+            self.assertEqual(ponte.pasta_do_pedido(raiz, pedido), antiga)
+            with self.assertRaises(ValueError):
+                ponte.pasta_do_pedido(raiz, dict(pedido, vendedor_id='../../outro'))
+
     def test_contexto_operacional_cidade_inteira_preserva_criterios_e_enderecos(self):
         pedido = dict(PEDIDO, bairro='')
         contexto = ponte.contexto_operacional(pedido)
