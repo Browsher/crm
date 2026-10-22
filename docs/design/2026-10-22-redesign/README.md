@@ -7,6 +7,9 @@ novos campos, consultas ou regras de negócio.
 Especificação: [Redesenho completo do CRM](../../superpowers/specs/2026-10-22-redesign-crm-design.md).
 Plano: [Etapas de implementação](../../superpowers/plans/2026-10-22-redesign-crm.md).
 
+Aplicação real: [validação, cobertura e capturas](validacao.md).
+Dependência em outra branch: [integração CNPJ.biz](integracao-cnpj-biz.md).
+
 ## Meu dia
 
 ![Meu dia em tema claro](meu-dia-claro.png)

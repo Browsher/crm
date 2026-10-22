@@ -36,7 +36,7 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
       <Link href="/meu-dia">Limpar filtros</Link>
     </div> : <>
       <FiltrosForm filtros={leitura.filtros} />
-      <PainelMeuDia linhas={linhasDoDia} agenda={agendaDoDiaEstreita} filtros={leitura.filtros} />
+      <PainelMeuDia key={JSON.stringify(leitura.filtros)} linhas={linhasDoDia} agenda={agendaDoDiaEstreita} filtros={leitura.filtros} />
     </>}
   </main>
 }

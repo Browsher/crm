@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 1267
+# Total: 1289
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -36,7 +36,7 @@ app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou re
 app/carteira/filtros.test.tsx :: filtros da carteira recusa valor invalido ou repetido: { uf: [ 'SP', 'PR' ] }
 app/carteira/filtros.test.tsx :: filtros da carteira renderiza formulario GET com opcoes derivadas da carteira autorizada
 app/carteira/lista.test.tsx :: ListaCarteira cada empresa linka para a ficha
-app/carteira/lista.test.tsx :: ListaCarteira com empresas, monta uma lista
+app/carteira/lista.test.tsx :: ListaCarteira com empresas, monta tabela com as próximas ações reais e sem compra fictícia
 app/carteira/lista.test.tsx :: ListaCarteira distingue filtro sem resultado de carteira vazia e conta filtradas sobre total
 app/carteira/lista.test.tsx :: ListaCarteira explicita ausencias sem inventar contato ou historico
 app/carteira/lista.test.tsx :: ListaCarteira marca a vencida com palavra, nao so com cor
@@ -48,6 +48,7 @@ app/carteira/lista.test.tsx :: ListaCarteira vazia, diz o que fazer em vez de so
 app/carteira/registrar-venda.dom.test.tsx :: venda pede confirmação, preserva rascunho e repete a mesma chave após falha de rede
 app/carteira/venda-acao.test.tsx :: não grava sem confirmação, valor válido ou permissão
 app/carteira/venda-acao.test.tsx :: venda usa identidade da sessão, valor em centavos e atualiza histórico e agenda
+app/design/galeria.test.tsx :: abas da ficha mostram dados e histórico sem misturar o conteúdo
 app/design/galeria.test.tsx :: abre o exemplo no próprio card sem o rótulo Ausente
 app/design/galeria.test.tsx :: aplica os filtros aos dados fictícios e limpar restaura a lista
 app/design/galeria.test.tsx :: avança apenas pelas ações e preserva anotações ao voltar
@@ -242,6 +243,7 @@ app/fila/shell.test.tsx :: menu do vendedor não oferece administração e mant�
 app/funil/acoes.test.tsx :: action recusa salto e retrocesso antes do repositório
 app/funil/acoes.test.tsx :: todas ações exigem vendedor antes de acessar dados
 app/funil/acoes.test.tsx :: venda exige confirmação, usa ator da sessão e revalida consumidores
+app/funil/modal.dom.test.tsx :: abas mostram histórico autorizado e mantêm a alternativa de avanço por botão
 app/funil/modal.dom.test.tsx :: modal oferece apenas próximo avanço e última etapa não tem select nem avanço
 app/funil/modal.dom.test.tsx :: perda de posse bloqueia escrita mas preserva rascunho para copiar
 app/funil/modal.dom.test.tsx :: rascunho sobrevive ao Escape e erro de venda; envio bloqueia fechamento
@@ -252,9 +254,12 @@ app/funil/quadro.test.tsx :: quadro mostra três etapas e cards essenciais sem b
 app/gestao/estados.test.tsx :: carregamento anuncia espera sem mostrar zeros
 app/gestao/estados.test.tsx :: falha oferece recuperação sem expor detalhes internos
 app/gestao/page.test.tsx :: autoriza gestor, exibe vazio sem atalhos inferiores nem busca de vendedores
-app/gestao/page.test.tsx :: cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução
 app/gestao/page.test.tsx :: falha de infraestrutura sobe para o tratamento de erro
 app/gestao/page.test.tsx :: recusa no banco não é apresentada como dashboard zerado
+app/gestao/page.test.tsx :: tabela da equipe usa rótulos distintos, totais e atividade sem inferir venda ou devolução
+app/login/formulario.dom.test.tsx :: envio pendente impede duplicata na autenticação (troca=false)
+app/login/formulario.dom.test.tsx :: envio pendente impede duplicata na autenticação (troca=true)
+app/login/formulario.dom.test.tsx :: erro no login mantém e-mail preenchido e editável
 app/meu-dia/agenda.test.tsx :: agenda traz só atrasado e hoje, atrasados primeiro
 app/meu-dia/agenda.test.tsx :: busca por nome ignora acento e caixa, e o filtro de retorno recorta
 app/meu-dia/agenda.test.tsx :: cadastro parcial usa fantasia na busca e no desempate sem mudar precedência de data
@@ -276,15 +281,18 @@ app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador durante o carregame
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador falha de carregamento não vira histórico vazio
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador ida e volta A -> B -> A: nota antiga de A que já tinha chegado não reaparece durante o novo pedido
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador ida e volta A -> B -> A: primeira resposta de A não reaparece quando o novo pedido de A está no ar
-app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista esvazia por posse negada cai no vazio que já existe
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista esvazia por posse negada mostra vazio e motivo da remoção
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador lista que esvazia não deixa perfil nem histórico antigos
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador posse negada no último retorno mantém o motivo visível
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador posse negada remove a empresa da lista e do perfil, sem selecionar outra
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador reabrir o retorno já selecionado preserva seu histórico carregado
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador recarregar depois de posse negada não desconta a remoção duas vezes, e o aviso some
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador rejeição de pedido antigo é descartada quando a seleção muda
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador remover empresa por posse negada manda o foco para o aviso, não para o body
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador remover empresa por posse negada preserva a rolagem dos itens restantes
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador resposta antiga é descartada quando a seleção muda
 app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador revalidação que devolve a mesma lista não traz o item removido de volta
+app/meu-dia/painel.dom.test.tsx :: PainelMeuDia no navegador voltar para a lista mantém a seleção e não recarrega o histórico
 app/meu-dia/painel.test.tsx :: agenda vazia e busca sem resultado dizem coisas diferentes
 app/meu-dia/painel.test.tsx :: primeira empresa já aparece selecionada e o link leva a ficha com os filtros
 app/page.test.tsx :: entrada autenticada encaminha para Meu dia
@@ -379,6 +387,7 @@ app/whatsapp/painel.dom.test.tsx :: pausa oculta ou offline e consulta ao retorn
 app/whatsapp/painel.dom.test.tsx :: remover outra fonte na atualização preserva seleção e histórico da fonte restante
 app/whatsapp/painel.dom.test.tsx :: resposta pendente de escopo antigo não reintroduz fonte removida
 app/whatsapp/painel.dom.test.tsx :: rolar ao fim da lista carrega uma página e não repete automaticamente após erro
+app/whatsapp/painel.dom.test.tsx :: voltar à lista preserva conversa e rolagem sem buscar mensagens novamente
 src/ci-conferencia.test.ts :: URL=false fork=false autor=Browsher: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot: falhar
 src/ci-conferencia.test.ts :: URL=false fork=false autor=dependabot[bot]: pular
@@ -398,18 +407,23 @@ src/components/crm/caminho.test.tsx :: mapeia /whatsapp/configuracao com retorno
 src/components/crm/etapas.test.tsx :: identifica a navegação e somente a etapa atual
 src/components/crm/etapas.test.tsx :: renderiza a ação de retorno fornecida pela tela
 src/components/crm/etapas.test.tsx :: sem ações fornecidas, os indicadores são texto sem navegação
+src/components/crm/shell.dom.test.tsx :: menu móvel usa diálogo, fecha com Escape e devolve o foco ao acionador
 src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do gestor mantendo nomes e saída POST
 src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do vendedor mantendo nomes e saída POST
 src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
 src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: gestor tem início e administração sem links de atendimento
+src/components/crm/shell.test.tsx :: grupos tem somente um item ativo na navegação do gestor
 src/components/crm/shell.test.tsx :: meu dia ativa seu próprio menu e aparece para o vendedor
 src/components/crm/shell.test.tsx :: usuários ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: WhatsApp é exclusivo do menu do gestor
+src/components/crm/tema.dom.test.tsx :: tema explícito prevalece e Sistema volta a acompanhar a preferência do dispositivo
 src/components/ui/controles.test.tsx :: componentes de formulario botao asChild compoe um link sem criar botao aninhado
 src/components/ui/controles.test.tsx :: componentes de formulario botao desabilitado preserva a semantica nativa
 src/components/ui/controles.test.tsx :: componentes de formulario campos preservam aria-invalid e atributos nativos
 src/components/ui/controles.test.tsx :: componentes de formulario label mantem a associacao explicita com o campo
+src/components/ui/tabs.dom.test.tsx :: ficha alterna o conteúdo e associa cada aba ao seu painel
+src/components/ui/tabs.dom.test.tsx :: teclado navega entre abas sem criar paradas extras no Tab
 src/docs.test.ts :: documentos sem caractere de controle CLAUDE.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0000.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0001.md não tem caractere de controle literal
@@ -451,6 +465,10 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0036.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0037.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\aplicacao\README.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\integracao-cnpj-biz.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\README.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\validacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\producao-vercel.md não tem caractere de controle literal
@@ -503,6 +521,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-09-21-whatsapp-piloto-leitura.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-13-prospeccao-grupos-cnpj-opcional.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-14-producao-vercel.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-22-redesign-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -535,7 +554,9 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-22-whatsapp-identificacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-13-prospeccao-cnpj-opcional-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-14-producao-vercel-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-22-redesign-crm-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
+src/docs.test.ts :: documentos sem caractere de controle NOTICE-componentes-ui.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle PREFERENCIAS.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle README.md não tem caractere de controle literal
@@ -597,6 +618,7 @@ src/features/contato/formulario.test.tsx :: FormularioContato sem comDevolver, o
 src/features/contato/formulario.test.tsx :: FormularioContato sem posse oferece os cinco tipos de reserva, e nao o de posse
 src/features/contato/formulario.test.tsx :: FormularioContato sem posse, NAO pede proximo passo obrigatorio
 src/features/contato/formulario.test.tsx :: FormularioContato sucesso notifica empresa submetida antes de encerrar envio
+src/features/contato/formulario.test.tsx :: FormularioContato todos os atendimentos usam controles temáticos e erro anunciado sem perder o rascunho
 src/features/contato/formulario.test.tsx :: FormularioContato troca pendente congela rascunho sem confundir com bloqueio por expiração
 src/features/contato/formulario.test.tsx :: FormularioContato visual da fila usa os componentes de campo sem mudar o padrao legado
 src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado diz que a empresa vai para o seu Funil

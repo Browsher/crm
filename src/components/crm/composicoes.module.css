@@ -1,4 +1,4 @@
-.cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+.cabecalho { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
 .cabecalho h1 { margin: 0; }
 .cabecalho p { margin: 6px 0 0; color: var(--muted-foreground); font-size: 13px; }
 .acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

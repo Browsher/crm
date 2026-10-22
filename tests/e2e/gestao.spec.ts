@@ -41,7 +41,7 @@ test('gestor só acessa administração, inclusive por URL direta, e início fun
     await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible()
   }
   await expect(page.getByRole('navigation', { name: 'Atalhos administrativos' })).toHaveCount(0)
-  await expect(menu.getByRole('link', { name: 'Grupos', exact: true })).toHaveCount(0)
+  await expect(menu.getByRole('link', { name: 'Grupos', exact: true })).toHaveAttribute('href', '/empresas/grupos')
   for (const [acao, rota] of [['Empresas', '/empresas'], ['Usuários', '/usuarios']]) {
     await menu.getByRole('link', { name: acao, exact: true }).click()
     await expect(page).toHaveURL(rota)
@@ -49,19 +49,18 @@ test('gestor só acessa administração, inclusive por URL direta, e início fun
     await expect(page).toHaveURL('/gestao')
   }
   const equipe = page.getByRole('region', { name: 'Vendedores ativos', exact: true })
-  const ana = equipe.getByRole('article', { name: 'Ana Lima', exact: true })
-  await expect(ana.locator('dd')).toHaveText(['1', '1', '0'])
-  await expect(ana.locator('p strong')).toHaveText('1')
-  await expect(equipe.getByRole('article', { name: 'Vendedor desativado', exact: true })).toHaveCount(0)
+  const ana = equipe.getByRole('row').filter({ has: page.getByRole('heading', { name: 'Ana Lima', exact: true }) })
+  await expect(ana.getByRole('cell')).toHaveText([/Ana Lima/, '1', '1', '0', '1'])
+  await expect(equipe.getByRole('row').filter({ hasText: 'Vendedor desativado' })).toHaveCount(0)
   const atividade = page.getByRole('region', { name: 'Atividade recente', exact: true })
   await expect(atividade).toContainText('Aurora Comércio')
   await expect(atividade).not.toContainText('Cadastro Inativo')
-  await expect(equipe.getByRole('article', { name: 'meudiae2e', exact: true })).toBeVisible()
+  await expect(equipe.getByRole('row').filter({ hasText: 'meudiae2e' })).toBeVisible()
   await expect(page.getByRole('textbox')).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Resumo da equipe' }).getByRole('heading', { name: 'Retornos hoje', exact: true })).toBeVisible()
-  await expect(equipe.getByRole('article', { name: 'meudiae2e', exact: true })).toContainText('Contatos registrados hoje')
+  await expect(equipe.getByRole('columnheader', { name: 'Contatos registrados hoje', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Atualizar', exact: true }).click()
-  await expect(equipe.getByRole('article', { name: 'meudiae2e', exact: true })).toBeVisible()
+  await expect(equipe.getByRole('row').filter({ hasText: 'meudiae2e' })).toBeVisible()
   for (const largura of [1280, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light', 'dark']) {

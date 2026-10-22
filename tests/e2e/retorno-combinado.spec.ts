@@ -18,7 +18,7 @@ test('retorno combinado na Prospecção entra no Funil e Meu dia de hoje, sem vi
   await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
   await expect(page.getByText('11977779001',{exact:true})).not.toBeVisible()
   await expect(page.getByRole('textbox',{name:'Nota',exact:true})).toHaveCount(0)
-  await page.getByRole('main').locator('header nav').getByRole('link',{name:'Localizar empresa',exact:true}).click()
+  await page.getByRole('main').locator('header').filter({has:page.getByRole('heading',{level:1})}).getByRole('link',{name:'Localizar empresa',exact:true}).click()
   await expect(page).toHaveURL(/\/fila\/localizar\?/)
   await expect(page.getByRole('main')).toContainText('Com você')
   await page.goto('/funil');await expect(page.getByRole('button',{name:/Retorno Combinado/})).toBeVisible()

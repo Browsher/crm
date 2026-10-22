@@ -15,6 +15,7 @@ import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
 import { prepararFunil } from '../../tests/e2e/dados-funil'
 import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
 import { iniciarWhatsAppDeTeste } from '../../tests/e2e/whatsapp-mock'
+import { prepararRedesign } from '../../tests/e2e/dados-redesign'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -71,6 +72,7 @@ try {
   await prepararCarteiraVisual(banco)
   await prepararMeuDia(banco)
   await prepararFunil(banco)
+  await prepararRedesign(banco)
   whatsapp = await iniciarWhatsAppDeTeste(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })

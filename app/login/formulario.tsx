@@ -15,7 +15,7 @@ export function Formulario() {
     <form action={acao} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
         E-mail
-        <Input name="email" type="email" autoComplete="username" required value={email} onChange={event => setEmail(event.target.value)} />
+        <Input name="email" type="email" autoComplete="username" spellCheck={false} required value={email} onChange={event => setEmail(event.target.value)} />
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Senha

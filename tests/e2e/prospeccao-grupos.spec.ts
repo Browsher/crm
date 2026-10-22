@@ -170,7 +170,7 @@ test('CSV sem CNPJ cria lista pública e inicia a prospecção pelo cartão esco
   await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
   await expect(page.getByText('11999990601',{exact:true})).not.toBeVisible()
   await expect(page.getByRole('textbox',{name:'Nota',exact:true})).toHaveCount(0)
-  await page.getByRole('main').locator('header nav').getByRole('link',{name:'Localizar empresa',exact:true}).click()
+  await page.getByRole('main').locator('header').filter({has:page.getByRole('heading',{level:1})}).getByRole('link',{name:'Localizar empresa',exact:true}).click()
   await expect(page).toHaveURL(/\/fila\/localizar/)
   const empresaAtual=reservaAnterior[0].empresa_id as string
   expect(await comBancoGrupos(async c=>(await c.query('SELECT vendedor_id FROM empresa_fila WHERE empresa_id=$1',[empresaAtual])).rows[0].vendedor_id)).toBeTruthy()

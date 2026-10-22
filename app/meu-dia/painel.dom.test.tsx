@@ -68,6 +68,16 @@ function clicar(tela: HTMLDivElement, nome: string) {
 }
 
 describe('PainelMeuDia no navegador', () => {
+  test('reabrir o retorno já selecionado preserva seu histórico carregado', async () => {
+    acaoMock.mockResolvedValue({ ok: true, contatos: [{ id: 'reabrir', tipo: 'acompanhamento', nota: 'Histórico preservado ao reabrir', proximoPasso: null, proximoPassoData: null, criadoEm: new Date('2026-10-22T12:00:00Z'), autor: 'Ana' }] })
+    const tela = await montar([aurora])
+    expect(tela.textContent).toContain('Histórico preservado ao reabrir')
+    await clicar(tela, 'Aurora')
+    await clicar(tela, 'Voltar para retornos')
+    await clicar(tela, 'Aurora')
+    expect(tela.textContent).toContain('Histórico preservado ao reabrir')
+    expect(acaoMock).toHaveBeenCalledTimes(1)
+  })
   test('voltar para a lista mantém a seleção e não recarrega o histórico', async () => {
     acaoMock.mockResolvedValue({ ok: true, contatos: [] })
     const tela = await montar([aurora, boreal])

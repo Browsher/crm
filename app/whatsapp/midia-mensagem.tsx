@@ -62,12 +62,12 @@ export function MidiaMensagem({ id, conversa, midia, fonte }: { id: string; conv
       <DialogTrigger asChild><button type="button" className={styles.miniatura} aria-label="Ampliar imagem">
         {/* Arquivo privado carregado como blob, sem passar pelo otimizador público. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={midia.legenda || 'Imagem da conversa'} onError={falhouReproducao} />
+        <img src={url} alt={midia.legenda || 'Imagem da conversa'} width={260} height={240} onError={falhouReproducao} />
       </button></DialogTrigger>
       <DialogContent theme={tema} className={styles.imagemDialogo} aria-describedby={undefined}>
         <DialogTitle>Imagem da conversa</DialogTitle>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={midia.legenda || 'Imagem ampliada'} />
+        <img src={url} alt={midia.legenda || 'Imagem ampliada'} width={900} height={675} />
       </DialogContent>
     </Dialog>}
     {url && midia.tipo === 'audio' && <audio aria-label="Áudio da conversa" controls preload="metadata" src={url} onError={falhouReproducao} />}

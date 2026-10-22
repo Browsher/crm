@@ -2,7 +2,7 @@
 .workspace { min-width: 0; }
 .sidebar, .menuMovel { display: flex; flex-direction: column; background: var(--background); color: var(--foreground); padding: 20px 12px 12px; }
 .sidebar { position: sticky; top: 0; height: 100dvh; overflow-y: auto; border-right: 1px solid var(--border); }
-.menuMovel { width: min(300px, 88vw); gap: 0; }
+.menuMovel { width:min(300px,88vw); gap:0; padding-top:max(20px,env(safe-area-inset-top)); padding-bottom:max(12px,env(safe-area-inset-bottom)); }
 .topoLateral { display: flex; align-items: center; gap: 6px; margin-bottom: 32px; min-height: 40px; }
 .marca { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 0 4px; text-decoration: none; }
 .marca > span { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; background: var(--primary); color: var(--primary-foreground); border-radius: 8px; }
@@ -35,7 +35,7 @@
 .shell .topbar .menu { display: none; }
 .conteudo { width: 100%; min-width: 0; }
 .conteudo main { width: 100%; max-width: 1600px; margin: 0 auto; padding: 30px 32px; }
-.conteudo h1 { font-size: 26px; line-height: 34px; font-weight: 650; letter-spacing: -.025em; }
+.conteudo h1 { font-size: 28px; line-height: 36px; font-weight: 650; letter-spacing: -.025em; }
 .conteudo :global(.text-neutral-600) { color: var(--muted-foreground); }
 .conteudo :global(.text-amber-700) { color: var(--warning); }
 .shell a:focus-visible, .skip:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }

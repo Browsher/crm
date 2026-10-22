@@ -209,7 +209,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
                 // reexibir um `historico` velho enquanto o novo pedido está no
                 // ar. `historicoAtual` já filtra por id para empresas
                 // diferentes; isto cobre o caso em que o id bate de novo.
-                setHistorico(null)
+                if (empresa.id !== atualId) setHistorico(null)
               }}>
               <strong>{nomeEmpresa(empresa)}</strong>
               <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
