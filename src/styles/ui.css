@@ -38,6 +38,20 @@
   transition: background-color 150ms, border-color 150ms, color 150ms, opacity 150ms;
   white-space: nowrap;
 }
+
+/* Tabelas reais viram registros empilhados sem duplicar conteúdo ou ações. */
+.crm-ui .crm-registros { width:100%; table-layout:fixed; background:var(--background); }
+.crm-ui .crm-registros th { padding:16px; color:var(--muted-foreground); background:var(--surface-muted); white-space:normal; font-size:12px; }
+.crm-ui .crm-registros td { padding:16px; white-space:normal; overflow-wrap:anywhere; }
+@media (max-width:760px) {
+ .crm-ui .crm-registros, .crm-ui .crm-registros tbody { display:block; width:100%; }
+ .crm-ui .crm-registros thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+ .crm-ui .crm-registros tbody { display:grid; gap:16px; }
+ .crm-ui .crm-registros tr { display:grid; padding:16px; border:1px solid var(--border); border-radius:8px; }
+ .crm-ui .crm-registros td { display:grid; gap:6px; padding:8px 0; border:0; min-width:0; max-width:none; }
+ .crm-ui .crm-registros td[data-label]::before { content:attr(data-label); color:var(--muted-foreground); font-size:12px; font-weight:500; }
+ .crm-ui .crm-registros td:first-child::before { display:none; }
+}
 .crm-ui .ui-button--default { background: var(--ui-primary); color: var(--ui-primary-foreground); }
 .crm-ui .ui-button--default:hover { opacity: .9; }
 .crm-ui .ui-button--outline { background: var(--ui-background); border-color: var(--ui-border-control); color: var(--ui-foreground); }
