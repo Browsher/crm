@@ -1,6 +1,6 @@
 # Agentes individuais e planilha compartilhada Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans inline. Steps use checkbox (`- [ ]`) syntax.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans inline. Steps use checkbox (`- [x]`) syntax.
 
 **Goal:** Entregar agentes por vendedor, sincronização verificável e próximos cinco dias úteis, com prévia e revisão independente.
 
@@ -35,11 +35,11 @@
 
 **Interfaces:** google_agente(vendedor_id,pausado); google_sincronizacao(pedido_id,linha,versao,revisao,revisao_confirmada,versao_confirmada,destino,erro); google_execucao(executor_id,gestor_id,pedido_id,iniciado_em,concluido_em). `google_agente_definir(uuid,boolean)`, `google_planilha_preparar(uuid,text):jsonb`, `google_planilha_confirmar(uuid,integer,text):boolean`. Protocolo do executor passa UUID `executor`: `google_agente_proximo(uuid):jsonb`, `google_agente_etapa(uuid,text,text,uuid)`, `google_agente_entregar(uuid,jsonb,jsonb,uuid):text`. Versões internas antigas ficam privadas; chamadas antigas sem executor falham fechadas.
 
-- [ ] Escrever integração RED para perfil privado/gestores compartilhados, revisão transacional, destino durável, confirmação antiga recusada, agentes pausados, ocupado entre executores, repetição e retomada, dias vencidos e desativação.
-- [ ] Rodar o arquivo novo; esperado ausência dos objetos/assinaturas.
-- [ ] Implementar migração, triggers de perfil/revisão, exclusão global sem retomada automática por prazo, funções com permissões mínimas e bloqueios coerentes. Retomar iniciado antes de novo pedido; exigir revisão confirmada para início novo.
-- [ ] Adaptar testes antigos ao contrato autenticado novo, mantendo as asserções de negócio. Atualizar listas explícitas de migrações e grants.
-- [ ] Rodar integrações Google, invariantes e db:checar; esperado verde. Commitar fatia.
+- [x] Escrever integração RED para perfil privado/gestores compartilhados, revisão transacional, destino durável, confirmação antiga recusada, agentes pausados, ocupado entre executores, repetição e retomada, dias vencidos e desativação.
+- [x] Rodar o arquivo novo; esperado ausência dos objetos/assinaturas.
+- [x] Implementar migração, triggers de perfil/revisão, exclusão global sem retomada automática por prazo, funções com permissões mínimas e bloqueios coerentes. Retomar iniciado antes de novo pedido; exigir revisão confirmada para início novo.
+- [x] Adaptar testes antigos ao contrato autenticado novo, mantendo as asserções de negócio. Atualizar listas explícitas de migrações e grants.
+- [x] Rodar integrações Google, invariantes e db:checar; esperado verde. Commitar fatia.
 
 ## Task 2: Cliente Sheets e sincronização durável
 
@@ -47,10 +47,10 @@
 
 **Interfaces:** configuração privada GOOGLE_PLANILHA_ID, GOOGLE_PLANILHA_ABA_ID, GOOGLE_PLANILHA_CLIENT_EMAIL, GOOGLE_PLANILHA_PRIVATE_KEY. `criarClientePlanilha(config,fetcher?)` obtém OAuth e `gravar(payload)` valida metadados/cabeçalho/identidade, escreve RAW e confere valores. `sincronizarPedido(pedidoId)` devolve `{estado:'sincronizado'|'pendente',motivo?}`. Vincular destino em transação anterior à chamada externa; lock durável durante gravação/confirmar, prazo global inferior a 30 s. Linha fixa alocada no banco evita append após timeout.
 
-- [ ] Escrever testes RED com RSA fictícia/HTTP fake: JWT, endpoints fixos sem redirect, RAW literal, aba/cabeçalho divergente, linha de outro pedido, escrita incerta, retorno divergente e segredo não exposto.
-- [ ] Implementar cliente sem dependência adicional, leituras limitadas e prazo global. Não criar aba real; ativação provisiona aba/cabeçalho explícitos. Crescer somente a grade da aba autorizada quando necessário.
-- [ ] Testar integração serviço/DB com fornecedor controlado: erro mantém destino/pendência; retomada mesma linha; revisões concorrentes serializam; vendedor não confirma por conta própria.
-- [ ] Rodar unidade/integração afetadas e typecheck; esperado verde. Commitar.
+- [x] Escrever testes RED com RSA fictícia/HTTP fake: JWT, endpoints fixos sem redirect, RAW literal, aba/cabeçalho divergente, linha de outro pedido, escrita incerta, retorno divergente e segredo não exposto.
+- [x] Implementar cliente sem dependência adicional, leituras limitadas e prazo global. Não criar aba real; ativação provisiona aba/cabeçalho explícitos. Crescer somente a grade da aba autorizada quando necessário.
+- [x] Testar integração serviço/DB com fornecedor controlado: erro mantém destino/pendência; retomada mesma linha; revisões concorrentes serializam; vendedor não confirma por conta própria.
+- [x] Rodar unidade/integração afetadas e typecheck; esperado verde. Commitar.
 
 ## Task 3: Executor por vendedor e retomada
 
@@ -58,9 +58,9 @@
 
 **Interfaces:** todos os comandos de agente carregam `executor` UUID persistido em pasta privada; `proximo` devolve pedido com agente/vendedor ou `ocupado`/`sincronizar`. API reconcilia sincronização antes de iniciar. Coordenador conserva propriedade até resultado conferido; devoluções repetidas usam execução original. Arquivos por pedido e vínculo ao vendedor permanecem no coletor.
 
-- [ ] Testar RED protocolo sem executor, outro executor em etapa/entrega e retorno incerto conservando identificação local.
-- [ ] Implementar nova API/CLI; preservar UUID antes do POST e adicionar executor na publicação sem editar recibos. Não criar outro agendamento nem executar coleta externa.
-- [ ] Rodar testes de protocolo/cliente/ponte, integração de disputa e typecheck; esperado verde. Commitar.
+- [x] Testar RED protocolo sem executor, outro executor em etapa/entrega e retorno incerto conservando identificação local.
+- [x] Implementar nova API/CLI; preservar UUID antes do POST e adicionar executor na publicação sem editar recibos. Não criar outro agendamento nem executar coleta externa.
+- [x] Rodar testes de protocolo/cliente/ponte, integração de disputa e typecheck; esperado verde. Commitar.
 
 ## Task 4: Agenda móvel, estado de sincronização e gestão dos agentes
 
@@ -68,17 +68,17 @@
 
 **Interfaces:** `proximosDiasUteis(data:string):string[]|null` devolve cinco datas incluindo hoje útil, senão próxima segunda. Sem query de semana o planejamento usa essas datas; entregas/histórico mantêm semana. Repo expõe agentes com última execução e estado da sincronização; ações de pausa somente gestor. Salvar tenta sincronizar e informa salvo/pending/sincronizado com honestidade.
 
-- [ ] Testar RED quinta 22/10, sexta 23/10, sábado 24/10 e 31/12, sem cópia de critérios; formulário com falha de Sheets conserva plano; gestor pausa e outro vendedor não controla agente.
-- [ ] Implementar componentes existentes, datas explícitas, resumo próximos cinco dias, botão de semanas históricas, mensagens e configuração ausente.
-- [ ] Rodar testes afetados, lint e typecheck; esperado verde. Commitar.
+- [x] Testar RED quinta 22/10, sexta 23/10, sábado 24/10 e 31/12, sem cópia de critérios; formulário com falha de Sheets conserva plano; gestor pausa e outro vendedor não controla agente.
+- [x] Implementar componentes existentes, datas explícitas, resumo próximos cinco dias, botão de semanas históricas, mensagens e configuração ausente.
+- [x] Rodar testes afetados, lint e typecheck; esperado verde. Commitar.
 
 ## Task 5: Jornada completa, operação e entrega
 
 **Files:** criar fake local Sheets/OAuth no harness e tests/e2e/google-agentes.spec.ts; atualizar fixtures, ambiente isolado, docs/operacao/agente-google-crm.md, docs/design/2026-10-22-redesign/google-agentes/ e inventário real.
 
-- [ ] Escrever jornada RED: dois agentes/gestores compartilhados, salvar e ler confirmação no fake, falha e recuperação, pausa e nova agenda, API ocupada e entrega protegida.
-- [ ] Implementar fake isolado por preload do subprocesso E2E (sem URL remota configurável em produção), contas sintéticas e capturas nos dois temas/390 px.
-- [ ] Rodar unidade completa, integração completa, build:e2e, E2E, lint/typecheck/db:checar/diff-check; esperado verde.
+- [x] Escrever jornada RED: dois agentes/gestores compartilhados, salvar e ler confirmação no fake, falha e recuperação, pausa e nova agenda, API ocupada e entrega protegida.
+- [x] Implementar fake isolado por preload do subprocesso E2E (sem URL remota configurável em produção), contas sintéticas e capturas nos dois temas/390 px.
+- [x] Rodar unidade completa, integração completa, build:e2e, E2E, lint/typecheck/db:checar/diff-check; esperado verde.
 - [ ] Atualizar prévia 3100 com build e banco fictícios, conferir no navegador; documentar configuração/ativação e limitações.
 - [ ] Revisão independente fresca de BASE até HEAD; uma passagem RED→GREEN para Critical/Important, suite inteira; registrar decisões e minores, sem re-review.
 - [ ] Commitar, atualizar PR #55 e conferir CI da revisão final; preservar worktree e prévia, remover apenas scratch deste plano após preservar resultados.

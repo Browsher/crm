@@ -20,6 +20,7 @@ import { prepararGoogle, GOOGLE_TOKEN_E2E } from '../../tests/e2e/dados-google'
 import { iniciarCnpjBizDeTeste, prepararBuscaDemo } from '../../tests/e2e/cnpj-biz-mock'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
+import { iniciarSheetsDeTeste } from '../../tests/e2e/google-planilha-mock'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -50,6 +51,7 @@ async function conferirPorta() {
 let banco: BancoDeTeste | undefined
 let whatsapp: Awaited<ReturnType<typeof iniciarWhatsAppDeTeste>> | undefined
 let cnpj: Awaited<ReturnType<typeof iniciarCnpjBizDeTeste>> | undefined
+let sheets: Awaited<ReturnType<typeof iniciarSheetsDeTeste>> | undefined
 try {
   const padrao = parseEnv(await readFile('.env.test', 'utf8'))
   const urlAdmin = process.env.DATABASE_URL_ADMIN || padrao.DATABASE_URL_ADMIN
@@ -81,12 +83,14 @@ try {
   const google = await prepararGoogle(banco)
   await prepararBuscaDemo(banco)
   cnpj = await iniciarCnpjBizDeTeste()
+  sheets = await iniciarSheetsDeTeste()
   whatsapp = await iniciarWhatsAppDeTeste(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
   Object.assign(ambiente, { GOOGLE_AGENTE_TOKEN: GOOGLE_TOKEN_E2E, GOOGLE_AGENTE_USUARIO_ID: google.gestorId })
+  Object.assign(ambiente, { GOOGLE_PLANILHA_ID:'planilha-somente-e2e',GOOGLE_PLANILHA_ABA_ID:'123',GOOGLE_PLANILHA_CLIENT_EMAIL:sheets.email,GOOGLE_PLANILHA_PRIVATE_KEY:sheets.chave,GOOGLE_PLANILHA_MOCK_URL:sheets.url })
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
   Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
-  const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, 'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
+  const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, '--import',pathToFileURL(resolve('scripts/e2e/google-planilha-preload.mjs')).href,'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined
   servidor.on('error', (erro) => { erroServidor = erro })
   const prazo = Date.now() + 30_000
@@ -117,6 +121,7 @@ try {
   }
   await whatsapp?.fechar()
   await cnpj?.fechar()
+  await sheets?.fechar()
   if (banco) {
     await banco.derrubar()
     console.log(`E2E: banco removido ${banco.nome}`)

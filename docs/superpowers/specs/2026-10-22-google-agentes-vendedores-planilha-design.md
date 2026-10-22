@@ -1,6 +1,6 @@
 # Agente de scraping por vendedor, planilha compartilhada e dias seguintes
 
-Status: proposta derivada dos esclarecimentos do usuário; ainda não implementada.
+Status: aprovado pelo usuário para implementação inline, prévia e revisão independente.
 
 ## O que o usuário confirmou
 

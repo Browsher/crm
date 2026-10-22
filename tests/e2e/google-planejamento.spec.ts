@@ -70,16 +70,19 @@ test('gestor vê solicitações, resultados pendentes e as duas ocorrências na 
 })
 test('API do agente publica um lote validado e reutiliza o retorno sem nova entrega', async ({ request, page }) => {
   const id = randomUUID()
+  const executor = randomUUID()
   const usuario = await criarUsuarioComSenha(bancoGruposDoHarness(), 'vendedor', 'googleapie2e', 'Senha-e2e-2026')
   const dias = semanaDe(hojeEmSaoPaulo())!
   await comBancoGrupos(c => c.query(`INSERT INTO google_planejamento(id,vendedor_id,dia,nicho,bairro,cidade,uf,estado,iniciado_em,snapshot)
     VALUES ($1,$2,$3,'Papelarias API','Centro','São Paulo','SP','coletando',now(),'{}')`, [id, usuario.id, dias[0]]))
   const headers = { Authorization: 'Bearer ' + GOOGLE_TOKEN_E2E }
   expect((await request.post('/api/agente/google', { data: { acao: 'proximo' } })).status()).toBe(401)
-  const proximo = await request.post('/api/agente/google', { headers, data: { acao: 'proximo' } })
+  const proximo = await request.post('/api/agente/google', { headers, data: { acao: 'proximo', executor } })
   expect((await proximo.json()).pedido.id).toBe(id)
-  expect((await request.post('/api/agente/google', { headers, data: { acao: 'etapa', pedido: id, estado: 'validando' } })).status()).toBe(200)
-  const publicacao = { acao: 'entregar', pedido: id, recibo: reciboGoogleFixture(id), empresas: [{ google_place_id: 'api-google-' + id,
+  expect(await (await request.post('/api/agente/google',{headers,data:{acao:'proximo',executor:randomUUID()}})).json()).toMatchObject({pedido:null,ocupado:true})
+  expect((await request.post('/api/agente/google',{headers,data:{acao:'etapa',executor:randomUUID(),pedido:id,estado:'validando'}})).status()).toBe(409)
+  expect((await request.post('/api/agente/google', { headers, data: { acao: 'etapa', executor, pedido: id, estado: 'validando' } })).status()).toBe(200)
+  const publicacao = { acao: 'entregar', executor, pedido: id, recibo: reciboGoogleFixture(id), empresas: [{ google_place_id: 'api-google-' + id,
     nome_fantasia: 'Papelaria validada API (fictícia)', telefone: '11999990605', validado: true }] }
   const entrega = await request.post('/api/agente/google', { headers, data: publicacao })
   expect(await entrega.json()).toEqual({ resultado: 'ok' })

@@ -1,5 +1,6 @@
 import { hojeEmSaoPaulo, semanaDe } from '../../src/features/google/regras'
 import { criarUsuarioComSenha, type BancoDeTeste } from '../integracao/ajuda'
+import { randomUUID } from 'node:crypto'
 
 export const GOOGLE_PEDIDO_DEMO = '00000000-0000-4000-8000-000000009e01'
 export const GOOGLE_PEDIDO_OUTRO = '00000000-0000-4000-8000-000000009e02'
@@ -25,8 +26,10 @@ export async function prepararGoogle(banco: BancoDeTeste) {
     { google_place_id: 'google-demo-pendente', nome_fantasia: 'Telefone pendente (fictícia)', telefone: '', endereco: 'Endereço informado pela coleta fictícia', validado: false },
   ]
   for (const [id, resultados] of [[GOOGLE_PEDIDO_DEMO, empresas], [GOOGLE_PEDIDO_OUTRO, [empresas[0]]]] as const) {
-    await banco.sql(`SELECT google_agente_entregar($2,$3,$4) FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade`,
-      [gestorId, id, JSON.stringify(resultados), JSON.stringify(reciboGoogleFixture(id))])
+    const executor=randomUUID()
+    await banco.sql('INSERT INTO google_execucao(executor_id,gestor_id,pedido_id) VALUES ($1,$2,$3)',[executor,gestorId,id])
+    await banco.sql(`SELECT google_agente_entregar($2,$3,$4,$5) FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade`,
+      [gestorId, id, JSON.stringify(resultados), JSON.stringify(reciboGoogleFixture(id)), executor])
   }
   await banco.sql(`INSERT INTO contato(empresa_id,tipo,nota) SELECT o.empresa_id,'nao_atendeu','Atendimento fictício após a entrega.'
     FROM empresa_origem_google o CROSS JOIN (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade WHERE o.google_place_id='google-demo-brinquedos'`, [vendedorId])
