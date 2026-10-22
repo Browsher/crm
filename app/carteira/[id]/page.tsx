@@ -1,3 +1,5 @@
+import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
+import { lerDadosCadastrais } from '@/src/server/cnpj-biz/dados'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { lerHistorico } from '@/src/features/contato/historico'
@@ -56,14 +58,16 @@ export default async function PaginaFicha({ params, searchParams }: {
     voltarPara = entradaCarteira?.ok ? urlCarteira(entradaCarteira.filtros) : '/carteira'
   }
   const rotuloVoltar = doMeuDia ? 'Voltar para o Meu dia' : 'Voltar para a carteira'
-  const historico = await lerHistorico(eu.usuarioId, id)
-  const cliente = await clienteDaCarteira(eu.usuarioId,id)
+  const [historico, cliente, cadastrais] = await Promise.all([
+    lerHistorico(eu.usuarioId, id), clienteDaCarteira(eu.usuarioId,id), lerDadosCadastrais(eu.usuarioId, id),
+  ])
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
       <nav aria-label="Navegação da ficha"><Link href={voltarPara} className="text-sm underline">{rotuloVoltar}</Link></nav>
       <Ficha empresa={empresa} cliente={cliente} contatos={historico.ok ? historico.contatos : []}
         erroHistorico={!historico.ok} voltarPara={voltarPara} />
+      <DadosCadastrais dados={cadastrais} />
       <RegistrarVisita empresaId={empresa.id} />
     </main>
   )

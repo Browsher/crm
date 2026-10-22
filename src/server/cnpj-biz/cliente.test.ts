@@ -66,3 +66,9 @@ test('limita o tamanho da resposta antes de normalizar e impede consulta sem cha
   expect(await criarClienteCnpjBiz('', fetcher).buscar(filtros())).toEqual({ ok: false, motivo: 'nao_configurado' })
   expect(fetcher).not.toHaveBeenCalled()
 })
+
+test('timeout não vira retry e não devolve detalhes de rede', async () => {
+  const fetcher = vi.fn().mockRejectedValue(new DOMException('chave-teste', 'TimeoutError'))
+  expect(await criarClienteCnpjBiz('chave-teste', fetcher).buscar(filtros())).toEqual({ ok: false, motivo: 'tempo_esgotado' })
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})

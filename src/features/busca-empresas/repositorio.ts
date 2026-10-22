@@ -1,3 +1,4 @@
+import type { QueryResultRow } from 'pg'
 import { comoUsuario } from '@/src/server/db/como-usuario'
 import type { BuscaSalva, FiltrosBusca, LimiteBusca, ResultadoFornecedor } from './tipos'
 
@@ -19,7 +20,7 @@ const LIMITES = `SELECT u.id AS usuario_id,u.nome AS vendedor,coalesce(l.limite_
   coalesce(l.pausado,false) AS pausado,${USADO} AS usado FROM usuario u LEFT JOIN busca_empresa_limite l ON l.usuario_id=u.id`
 
 export function repositorioBusca(usuarioId: string) {
-  const executar = <T,>(sql: string, params: unknown[] = []) => comoUsuario(usuarioId, e => e<T>(sql, params)).then(r => r.linhas)
+  const executar = <T extends QueryResultRow,>(sql: string, params: unknown[] = []) => comoUsuario(usuarioId, e => e<T>(sql, params)).then(r => r.linhas)
   return {
     async reservar(chave: string, nome: string, filtros: FiltrosBusca): Promise<{ ok: true; repetida: boolean } | { ok: false; motivo: FalhaBanco | 'limite' | 'pausada' }> {
       try {

@@ -1,3 +1,5 @@
+import type { QueryResultRow } from 'pg'
+import type { FiltrosBusca } from '@/src/features/busca-empresas/tipos'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
@@ -6,11 +8,11 @@ let banco: BancoDeTeste
 let gestor: string
 let vendedor: string
 let outro: string
-const filtros = { palavra: 'iluminação', cnae: '', uf: 'SP', cidade: '', bairro: '', porte: '', tipo: '', contato: 'telefoneoucelular', quantidade: 2, offset: 0 }
+const filtros: FiltrosBusca = { palavra: 'iluminação', cnae: '', uf: 'SP', cidade: '', bairro: '', porte: '', tipo: '', contato: 'telefoneoucelular', quantidade: 2, offset: 0 }
 const empresa = { cnpj: '11222333000181', razao_social: 'Loja teste LTDA', nome_fantasia: 'Loja teste', email: 'loja@exemplo.test',
   telefone: '11988887777', cep: '01001000', cnae_principal: '4742300', situacao: 'ATIVA', porte: 'ME', data_abertura: '2020-01-15',
   logradouro: 'Praça teste', numero: '10', complemento: 'Sala 2', bairro: 'Centro', cidade: 'São Paulo', uf: 'SP', telefones: ['11988887777'] }
-const chamar = <T = { resultado: string }>(usuario: string, sql: string, params: unknown[]) => banco.comoUsuario(usuario, e => e<T>(sql, params)).then(r => r.linhas)
+const chamar = <T extends QueryResultRow = { resultado: string }>(usuario: string, sql: string, params: unknown[]) => banco.comoUsuario(usuario, e => e<T>(sql, params)).then(r => r.linhas)
 const configurar = (limite = 4, pausado = false) => chamar(gestor, 'SELECT busca_empresa_limite_definir($1,$2,$3)', [vendedor, limite, pausado])
 const reservar = (id = randomUUID(), usuario = vendedor, f = filtros) => chamar(usuario, 'SELECT busca_empresa_reservar($1,$2,$3) AS resultado', [id, 'Lojas SP', JSON.stringify(f)])
 const concluir = (id: string, empresas: unknown[] = [empresa], usuario = vendedor) => chamar(usuario, 'SELECT busca_empresa_concluir($1,$2,NULL)', [id, JSON.stringify(empresas)])

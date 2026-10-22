@@ -32,6 +32,7 @@ export default async function PaginaFila({ searchParams }: { searchParams: Promi
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{r.ok && r.reserva ? 'Atendimento' : 'Prospecção'}</h1>
         <nav className="flex items-center gap-3">
+          <Link href="/fila/buscar" className="text-sm underline">Buscar empresas</Link>
           <Link href={urlConsulta(filtros,1)} className="text-sm underline">
             Localizar empresa
           </Link>

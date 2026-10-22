@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import styles from './shell.module.css'
 
 const subpaginas: { rota: RegExp; niveis: { nome: string; href?: string }[] }[] = [
+  { rota: /^\/fila\/buscar$/, niveis: [{ nome: 'Buscar empresas' }] },
+  { rota: /^\/empresas\/busca$/, niveis: [{ nome: 'Busca de empresas' }] },
   { rota: /^\/whatsapp\/configuracao$/, niveis: [{ nome: 'Configurar vendedores' }] },
   { rota: /^\/empresas\/importar$/, niveis: [{ nome: 'Importar empresas' }] },
   { rota: /^\/empresas\/grupos$/, niveis: [{ nome: 'Grupos' }] },
