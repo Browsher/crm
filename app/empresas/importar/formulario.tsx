@@ -132,7 +132,7 @@ export function FormularioImportar() {
           <p>{estado.inseridas} {estado.inseridas === 1 ? 'empresa nova' : 'empresas novas'}.</p>
           <p>{totalAceitas} {totalAceitas === 1 ? 'empresa no grupo' : 'empresas no grupo'}.</p>
           <div className={styles.acoes}>
-            {estado.grupoId && <Button asChild><Link href={`/empresas/grupos/${estado.grupoId}`}>Ver grupo</Link></Button>}
+            {estado.grupoId && <Button asChild><Link href={`/empresas/grupos/${estado.grupoId}`}>Ver lista</Link></Button>}
             <Button asChild><Link href="/empresas">Ver empresas</Link></Button>
             <Button type="button" variant="outline" onClick={reiniciar}>Importar outro arquivo</Button>
           </div>

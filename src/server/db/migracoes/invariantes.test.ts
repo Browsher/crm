@@ -60,6 +60,10 @@ const sao = (): Estado => ({
     'public.busca_empresa_importar',
     'public.busca_empresa_grupos_google',
     'public.empresa_dados_cadastrais_ler',
+    'public.google_planejar',
+    'public.google_agente_proximo',
+    'public.google_agente_etapa',
+    'public.google_agente_entregar',
   ],
   funcoesExecutaveisPorPublico: [],
 })

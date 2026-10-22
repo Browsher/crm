@@ -20,11 +20,14 @@ export function GruposProspeccao({grupos,pagina,temProxima,escolha}: {
       <p>Confira como cada lista foi obtida e quantas empresas estão disponíveis para uma nova reserva.</p>
       {escolha && <Button asChild variant="outline"><Link href={urlConsulta(selecionarGrupo(null),1).replace('/fila/localizar',escolha.atendimento?'/fila':'/fila/localizar')}>Todas as listas ativas</Link></Button>}
     </header>
+    <p className={styles.ajuda}>Estas listas são compartilhadas. Seus leads exclusivos do agente ficam em Leads recebidos.</p>
+    <Button asChild variant="outline"><Link href="/fila/google?aba=entregas">Meus leads do Google</Link></Button>
     {grupos.length ? <div className={styles.listas}>{grupos.map(grupo=> {
       const destino=urlConsulta(selecionarGrupo(grupo.id),1)
       return <article key={grupo.id} className={styles.cartao}>
         <header><h3>{grupo.nome}</h3>{grupo.descricao && <p className={styles.texto}>{grupo.descricao}</p>}</header>
         <div><h4>Origem</h4><p className={styles.texto}>{grupo.origem ?? 'Origem não informada'}</p></div>
+        {grupo.googleLegado && <p className={styles.ajuda}>Lista compartilhada com empresas de origem Google. As novas entregas pessoais ficam em Leads recebidos.</p>}
         <dl className={styles.dados}>
           <div><dt>Importada em</dt><dd><time dateTime={grupo.criadoEm}>{dataImportacao.format(new Date(grupo.criadoEm))}</time></dd></div>
           <div><dt>Empresas</dt><dd>{grupo.total}</dd></div>
@@ -34,12 +37,12 @@ export function GruposProspeccao({grupos,pagina,temProxima,escolha}: {
         {grupo.disponiveis===0 && <p className={styles.ajuda}>Nenhuma empresa disponível para nova reserva nesta lista agora. Empresas podem estar em atendimento, em carteira, em descanso ou ser clientes.</p>}
         <Button asChild variant="outline" className={styles.acao}><Link href={escolha?.atendimento?destino.replace('/fila/localizar','/fila'):destino}>Prospectar esta lista</Link></Button>
       </article>
-    })}</div> : <div role="status"><h3>Nenhuma lista nesta página</h3><p>{pagina>1?'Volte à primeira página para consultar as listas ativas.':'Nenhuma lista ativa está disponível agora.'}</p>{pagina>1&&<Link href={urlPagina(1,escolha)}>Voltar à primeira página de listas</Link>}</div>}
+    })}</div> : <div role="status"><h3>Nenhuma lista nesta página</h3><p>{pagina>1?'Volte à primeira página para consultar as listas ativas.':'Nenhuma lista ativa está disponível agora.'}</p>{pagina>1&&<Button asChild variant="outline"><Link href={urlPagina(1,escolha)}>Voltar à primeira página de listas</Link></Button>}</div>}
     <p className={styles.ajuda}>As contagens são por lista. A mesma empresa pode aparecer em mais de uma.</p>
     <nav aria-label="Páginas de listas" className={styles.paginacao}>
-      {pagina>1&&<Link href={urlPagina(pagina-1,escolha)}>Página anterior de listas</Link>}
+      {pagina>1&&<Button asChild variant="outline"><Link href={urlPagina(pagina-1,escolha)}>Página anterior de listas</Link></Button>}
       <span>Página de listas {pagina}</span>
-      {temProxima&&pagina<10000&&<Link href={urlPagina(pagina+1,escolha)}>Próxima página de listas</Link>}
+      {temProxima&&pagina<10000&&<Button asChild variant="outline"><Link href={urlPagina(pagina+1,escolha)}>Próxima página de listas</Link></Button>}
     </nav>
   </section>
 }

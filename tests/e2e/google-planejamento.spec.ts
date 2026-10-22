@@ -1,0 +1,93 @@
+import { randomUUID } from 'node:crypto'
+import { expect, test, type Page } from '@playwright/test'
+import { criarUsuarioComSenha } from '../integracao/ajuda'
+import { bancoGruposDoHarness, comBancoGrupos } from './dados-grupos'
+import { GOOGLE_EMPRESA_DEMO, GOOGLE_PEDIDO_DEMO, GOOGLE_PEDIDO_OUTRO, GOOGLE_TOKEN_E2E, reciboGoogleFixture } from './dados-google'
+import { hojeEmSaoPaulo, semanaDe } from '../../src/features/google/regras'
+
+test.describe.configure({ timeout: 90_000 })
+
+async function entrar(page: Page, apelido: string, gestor = false) {
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill(apelido + '@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL(gestor ? '/gestao' : '/meu-dia')
+}
+test('vendedor salva um novo planejamento semanal e outra semana começa vazia', async ({ page }, info) => {
+  await entrar(page, 'redesigne2e')
+  await page.goto('/fila')
+  await page.getByRole('link', { name: 'Buscar empresas', exact: true }).click()
+  await page.getByRole('link', { name: 'Busca no Google', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Busca no Google', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
+  await page.getByRole('button', { name: /^Planejar segunda-feira/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Nicho', { exact: true }).fill('Pet shops de teste')
+  await dialog.getByLabel('Cidade', { exact: true }).fill('São Paulo')
+  await dialog.getByLabel('UF', { exact: true }).selectOption('SP')
+  await dialog.getByLabel('Bairro', { exact: true }).fill('Mooca')
+  await dialog.getByRole('button', { name: 'Salvar dia', exact: true }).click()
+  await expect(dialog.getByRole('status')).toHaveText('Dia salvo no planejamento.')
+  await dialog.getByRole('button', { name: 'Concluir', exact: true }).click()
+  await page.reload()
+  await expect(page.getByText('Pet shops de teste', { exact: true })).toBeVisible()
+  await page.screenshot({ path: info.outputPath('google-planejamento-desktop.png'), fullPage: true })
+  await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
+  await expect(page.getByText('0 de 5 dias planejados', { exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('combobox', { name: /Tema/ }).selectOption('dark')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await page.getByRole('button', { name: /^Planejar segunda-feira/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await page.screenshot({ path: info.outputPath('google-planejamento-mobile-escuro.png'), fullPage: true })
+})
+test('entregas pessoais não mostram o telefone da empresa repetida ao segundo vendedor', async ({ page }) => {
+  await entrar(page, 'googleoutroe2e')
+  await page.goto('/fila/google/' + GOOGLE_PEDIDO_OUTRO)
+  await expect(page.getByText('Nenhuma empresa liberada nesta entrega', { exact: true })).toBeVisible()
+  await expect(page.getByText('11999990601', { exact: true })).toHaveCount(0)
+  await page.goto('/fila/google/' + GOOGLE_PEDIDO_DEMO)
+  await expect(page.getByText(GOOGLE_EMPRESA_DEMO, { exact: true })).toHaveCount(0)
+})
+test('gestor vê solicitações, resultados pendentes e as duas ocorrências na ficha', async ({ page }, info) => {
+  await entrar(page, 'gestore2e', true)
+  await page.getByRole('link', { name: 'Coletas do Google', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Planejamentos e coletas', exact: true })).toBeVisible()
+  await page.screenshot({ path: info.outputPath('google-gestor-desktop.png'), fullPage: true })
+  await page.goto('/empresas/google/' + GOOGLE_PEDIDO_DEMO)
+  await expect(page.getByRole('heading', { name: 'Telefone pendente (fictícia)', exact: true })).toBeVisible()
+  const empresa = page.getByRole('heading', { name: GOOGLE_EMPRESA_DEMO, exact: true }).locator('xpath=ancestor::div[@data-slot="card"]')
+  await empresa.getByRole('link', { name: 'Ver ficha e histórico', exact: true }).click()
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Histórico de coletas do Google', exact: true })).toBeVisible()
+  await expect(page.getByText('Outro vendedor da coleta', { exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/empresas/google/' + GOOGLE_PEDIDO_DEMO)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  await page.screenshot({ path: info.outputPath('google-gestor-mobile.png'), fullPage: true })
+})
+test('API do agente publica um lote validado e reutiliza o retorno sem nova entrega', async ({ request, page }) => {
+  const id = randomUUID()
+  const usuario = await criarUsuarioComSenha(bancoGruposDoHarness(), 'vendedor', 'googleapie2e', 'Senha-e2e-2026')
+  const dias = semanaDe(hojeEmSaoPaulo())!
+  await comBancoGrupos(c => c.query(`INSERT INTO google_planejamento(id,vendedor_id,dia,nicho,bairro,cidade,uf,estado,iniciado_em,snapshot)
+    VALUES ($1,$2,$3,'Papelarias API','Centro','São Paulo','SP','coletando',now(),'{}')`, [id, usuario.id, dias[0]]))
+  const headers = { Authorization: 'Bearer ' + GOOGLE_TOKEN_E2E }
+  expect((await request.post('/api/agente/google', { data: { acao: 'proximo' } })).status()).toBe(401)
+  const proximo = await request.post('/api/agente/google', { headers, data: { acao: 'proximo' } })
+  expect((await proximo.json()).pedido.id).toBe(id)
+  expect((await request.post('/api/agente/google', { headers, data: { acao: 'etapa', pedido: id, estado: 'validando' } })).status()).toBe(200)
+  const publicacao = { acao: 'entregar', pedido: id, recibo: reciboGoogleFixture(id), empresas: [{ google_place_id: 'api-google-' + id,
+    nome_fantasia: 'Papelaria validada API (fictícia)', telefone: '11999990605', validado: true }] }
+  const entrega = await request.post('/api/agente/google', { headers, data: publicacao })
+  expect(await entrega.json()).toEqual({ resultado: 'ok' })
+  expect(await (await request.post('/api/agente/google', { headers, data: publicacao })).json()).toEqual({ resultado: 'repetida' })
+  await entrar(page, 'googleapie2e')
+  await page.goto('/fila/google/' + id)
+  await expect(page.getByRole('heading', { name: 'Papelaria validada API (fictícia)', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Prospectar', exact: true }).click()
+  await expect(page).toHaveURL('/fila')
+  await expect(page.getByText('Papelaria validada API (fictícia)', { exact: true }).first()).toBeVisible()
+})

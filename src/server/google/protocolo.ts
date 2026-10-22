@@ -5,7 +5,7 @@ const objeto = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeo
 const uuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v)
 
 export async function lerComando(request: Request): Promise<{ ok: true; comando: ComandoGoogle } | { ok: false; status: number }> {
-  const limite = 1_050_000
+  const limite = 9_000_000
   if (Number(request.headers.get('content-length')) > limite) return { ok: false, status: 413 }
   const leitor = request.body?.getReader()
   if (!leitor) return { ok: false, status: 400 }
@@ -29,7 +29,7 @@ export async function lerComando(request: Request): Promise<{ ok: true; comando:
       return { ok: true, comando: { acao: 'etapa', pedido: valor.pedido, estado: valor.estado as 'coletando' | 'validando' | 'falhou', motivo: typeof valor.motivo === 'string' ? valor.motivo : null } }
     }
     if (valor.acao !== 'entregar' || Object.keys(valor).some(k => !['acao', 'pedido', 'empresas', 'recibo'].includes(k))
-      || !Array.isArray(valor.empresas) || valor.empresas.length > 50 || !valor.empresas.every(objeto) || !objeto(valor.recibo)) return { ok: false, status: 400 }
+      || !Array.isArray(valor.empresas) || valor.empresas.length > 5000 || !valor.empresas.every(objeto) || !objeto(valor.recibo)) return { ok: false, status: 400 }
     const recibo = valor.recibo
     if (recibo.pedido_id !== valor.pedido || recibo.validacao_conferida !== true
       || !['origem_sha256', 'final_sha256'].every(k => typeof recibo[k] === 'string' && /^[0-9a-f]{64}$/.test(recibo[k] as string))

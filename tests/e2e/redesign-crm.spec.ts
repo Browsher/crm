@@ -87,7 +87,7 @@ test('jornada do gestor mantém navegação, grupos ativos e portal escuro', asy
   await navegar(page, 'Empresas')
   await expect(page.getByLabel('Tema de Empresas')).toHaveValue('dark')
   await capturar(page, 'empresas-desktop-dark')
-  await navegar(page, 'Grupos')
+  await navegar(page, 'Listas')
   const nav = page.getByRole('navigation', { name: 'Navegação do CRM' })
   await expect(nav.locator('[aria-current=page]')).toHaveCount(1)
   await expect(nav.locator('[aria-current=page]')).toHaveAttribute('href', '/empresas/grupos')

@@ -32,7 +32,7 @@ export default async function PaginaGestaoBusca({ searchParams }: { searchParams
       <dl className={styles.criterios}>{Object.entries(busca.filtros).filter(([, v]) => v !== '').map(([k, v]) => <div key={k}><dt>{rotulos[k as keyof FiltrosBusca]}</dt><dd>{k === 'tipo' ? v === '2' ? 'Matriz' : 'Filial' : valores[String(v)] ?? String(v)}</dd></div>)}</dl>
       {busca.estado === 'falhou' && busca.motivo ? <p role="alert">{mensagemBusca(busca.motivo)}</p> : busca.estado === 'reservada' ? <p>Consulta sem confirmação de conclusão.</p> : null}
       <ul>{busca.empresas.map(e => <li key={e.cnpj}><EmpresaEncontradaDetalhes empresa={e} /></li>)}</ul>
-      {busca.grupo_id && <Link href={`/empresas/grupos/${busca.grupo_id}`}>Ver grupo importado</Link>}
+      {busca.grupo_id && <Button asChild variant="outline"><Link href={`/empresas/grupos/${busca.grupo_id}`}>Ver lista importada</Link></Button>}
     </Card>}
     <Card className={styles.painel}><HistoricoBuscas buscas={historico} gestor /></Card>
   </main>

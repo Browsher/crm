@@ -16,6 +16,7 @@ import { prepararFunil } from '../../tests/e2e/dados-funil'
 import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
 import { iniciarWhatsAppDeTeste } from '../../tests/e2e/whatsapp-mock'
 import { prepararRedesign } from '../../tests/e2e/dados-redesign'
+import { prepararGoogle, GOOGLE_TOKEN_E2E } from '../../tests/e2e/dados-google'
 import { iniciarCnpjBizDeTeste, prepararBuscaDemo } from '../../tests/e2e/cnpj-biz-mock'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
@@ -77,10 +78,12 @@ try {
   await prepararMeuDia(banco)
   await prepararFunil(banco)
   await prepararRedesign(banco)
+  const google = await prepararGoogle(banco)
   await prepararBuscaDemo(banco)
   cnpj = await iniciarCnpjBizDeTeste()
   whatsapp = await iniciarWhatsAppDeTeste(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
+  Object.assign(ambiente, { GOOGLE_AGENTE_TOKEN: GOOGLE_TOKEN_E2E, GOOGLE_AGENTE_USUARIO_ID: google.gestorId })
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
   Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
   const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, 'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)

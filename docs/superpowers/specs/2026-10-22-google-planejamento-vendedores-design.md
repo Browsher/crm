@@ -1,6 +1,6 @@
 # Planejamento semanal do Google e entregas por vendedor
 
-Status: desenho para validação do usuário, antes de código de produto.
+Status: aprovado pelo usuário em 22/10/2026 para implementação inline, prévia e revisão independente.
 
 ## Pedido e decisões confirmadas
 

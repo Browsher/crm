@@ -5,7 +5,7 @@ import { ESTADOS_GOOGLE, type PlanoGoogle, type ResultadoGoogle } from '@/src/fe
 import { ProspectarGoogle } from './prospectar'
 import styles from './google.module.css'
 
-export function DetalheEntrega({ plano, resultados, recibo, gestor = false, contexto = null }: { plano: PlanoGoogle; resultados: ResultadoGoogle[]; recibo: Record<string, unknown> | null; gestor?: boolean; contexto?: string | null }) {
+export function DetalheEntrega({ plano, resultados, recibo, gestor = false, contexto = null, pagina = 1, temProxima = false }: { plano: PlanoGoogle; resultados: ResultadoGoogle[]; recibo: Record<string, unknown> | null; gestor?: boolean; contexto?: string | null; pagina?: number; temProxima?: boolean }) {
   const texto = (v: unknown) => typeof v === 'string' ? v : ''
   const estados = { entregue: 'Entregue', repetida: 'Já entregue', indisponivel: 'Com outro responsável', pendente: 'A conferir', conflito: 'Identidade em conflito' }
   return <>
@@ -31,5 +31,10 @@ export function DetalheEntrega({ plano, resultados, recibo, gestor = false, cont
         {gestor && <details><summary className={styles.botaoResumo}>Conferir dados da origem</summary><pre className={styles.dadosBrutos}>{JSON.stringify(r.dados, null, 2)}</pre></details>}
       </Card>)}
     </section>
+    {(pagina > 1 || temProxima) && <nav className={styles.acoes} aria-label="Páginas das empresas da coleta">
+      {pagina > 1 && <Button asChild variant="outline"><Link href={`${gestor ? '/empresas' : '/fila'}/google/${plano.id}?pagina=${pagina - 1}`}>Página anterior</Link></Button>}
+      <span>Página {pagina}</span>
+      {temProxima && <Button asChild variant="outline"><Link href={`${gestor ? '/empresas' : '/fila'}/google/${plano.id}?pagina=${pagina + 1}`}>Próxima página</Link></Button>}
+    </nav>}
   </>
 }

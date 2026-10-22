@@ -160,10 +160,11 @@ DECLARE
   v_situacao text;
   v_motivo text;
   v_inativo boolean;
+  v_entregues integer := 0;
 BEGIN
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
-  IF p_id IS NULL OR p_empresas IS NULL OR jsonb_typeof(p_empresas)<>'array' OR jsonb_array_length(p_empresas)>50
-    OR pg_column_size(p_empresas)>1000000 OR p_recibo IS NULL OR jsonb_typeof(p_recibo)<>'object'
+  IF p_id IS NULL OR p_empresas IS NULL OR jsonb_typeof(p_empresas)<>'array' OR jsonb_array_length(p_empresas)>5000
+    OR pg_column_size(p_empresas)>8000000 OR p_recibo IS NULL OR jsonb_typeof(p_recibo)<>'object'
     OR p_recibo->>'pedido_id' IS DISTINCT FROM p_id::text OR p_recibo->'validacao_conferida' IS DISTINCT FROM 'true'::jsonb
     OR coalesce(p_recibo->>'origem_sha256','') !~ '^[0-9a-f]{64}$' OR coalesce(p_recibo->>'final_sha256','') !~ '^[0-9a-f]{64}$'
     OR length(coalesce(p_recibo->>'arquivo_original_id','')) NOT BETWEEN 1 AND 255 OR length(coalesce(p_recibo->>'arquivo_final_id','')) NOT BETWEEN 1 AND 255 THEN
@@ -196,10 +197,12 @@ BEGIN
     v_motivo := 'Confira identidade, funcionamento e telefone validado.';
     v_cnpj := nullif(v_linha->>'cnpj','');
     v_google := nullif(v_linha->>'google_place_id','');
-    IF NOT v_inativo AND v_linha->'validado'='true'::jsonb AND coalesce(v_linha->'fechada','false'::jsonb)='false'::jsonb
+    IF v_entregues>=50 THEN v_motivo := 'Limite de 50 leads atingido. Ocorrência preservada para conferência.'; END IF;
+    IF NOT v_inativo AND v_entregues<50 AND v_linha->'validado'='true'::jsonb AND coalesce(v_linha->'fechada','false'::jsonb)='false'::jsonb
       AND coalesce(v_linha->>'telefone','') ~ '^[0-9]{10,11}$'
       AND (public.empresa_cnpj_valido(v_cnpj) OR (length(v_google) BETWEEN 1 AND 255 AND v_google !~ '[[:cntrl:]]' AND v_google !~ U&'[\0080-\009F]'))
       AND (v_cnpj IS NULL OR public.empresa_cnpj_valido(v_cnpj))
+      AND (v_google IS NULL OR (length(v_google) BETWEEN 1 AND 255 AND v_google !~ '[[:cntrl:]]' AND v_google !~ U&'[\0080-\009F]'))
       AND coalesce(nullif(btrim(v_linha->>'razao_social'),''),nullif(btrim(v_linha->>'nome_fantasia'),'')) IS NOT NULL THEN
       SELECT id INTO v_cnpj_id FROM public.empresa WHERE cnpj=v_cnpj FOR UPDATE;
       SELECT e.id INTO v_google_id FROM public.empresa_origem_google o JOIN public.empresa e ON e.id=o.empresa_id WHERE o.google_place_id=v_google FOR UPDATE OF e;
@@ -229,6 +232,7 @@ BEGIN
           v_situacao := 'repetida'; v_motivo := 'Empresa já entregue a este vendedor.';
         ELSE
           INSERT INTO public.google_exclusividade(empresa_id,vendedor_id,planejamento_id) VALUES (v_id,v_pedido.vendedor_id,p_id);
+          v_entregues := v_entregues+1;
           v_situacao := 'entregue'; v_motivo := NULL;
         END IF;
       END IF;

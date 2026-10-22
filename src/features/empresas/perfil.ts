@@ -23,7 +23,7 @@ export async function lerPerfilEmpresa(gestorId: string, empresaId: string): Pro
         CASE WHEN f.reservado_ate>now() THEN f.reservado_ate END AS "reservadoAte",
         CASE WHEN dono.ativo THEN 'carteira'
           WHEN f.reservado_ate>now() THEN 'reservada'
-          WHEN NOT coalesce(origem.ativa,false) THEN 'inativa'
+          WHEN NOT (coalesce(origem.ativa,false) OR EXISTS(SELECT 1 FROM google_exclusividade gx WHERE gx.empresa_id=e.id)) THEN 'inativa'
           WHEN f.elegivel_em>now() THEN 'descanso' ELSE 'disponivel' END AS situacao,
         ultimo.proximo_passo AS "proximoPasso",to_char(ultimo.proximo_passo_data,'YYYY-MM-DD') AS retorno,
         coalesce(origem.grupos,'[]'::jsonb) AS grupos

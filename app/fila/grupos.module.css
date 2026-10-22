@@ -10,10 +10,10 @@
 .dados { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 0; }
 .dados dt { color: var(--ui-muted-foreground); }
 .dados dd { margin: 0; font-weight: 600; }
-.criterios summary { cursor: pointer; font-weight: 500; width: fit-content; }
+.criterios summary { cursor: pointer; font-weight: 500; width: fit-content; border: 1px solid var(--ui-border); border-radius: 6px; padding: 12px 16px; min-height: 44px; }
 .criterios p { margin-top: 8px; }
 .acao { justify-self: start; align-self: start; margin-top: auto; white-space: normal; }
 .paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-.paginacao a { text-decoration: underline; text-underline-offset: 3px; }
+.paginacao a { text-decoration: none; min-height: 44px; }
 .catalogo a:focus-visible, .criterios summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 3px; border-radius: 3px; }
 @media (max-width: 640px) { .cartao { padding: 16px; } .acao { justify-self: stretch; } }

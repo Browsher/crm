@@ -41,7 +41,7 @@ test('gestor só acessa administração, inclusive por URL direta, e início fun
     await expect(page.getByRole('heading', { name: 'Gestão', exact: true })).toBeVisible()
   }
   await expect(page.getByRole('navigation', { name: 'Atalhos administrativos' })).toHaveCount(0)
-  await expect(menu.getByRole('link', { name: 'Grupos', exact: true })).toHaveAttribute('href', '/empresas/grupos')
+  await expect(menu.getByRole('link', { name: 'Listas', exact: true })).toHaveAttribute('href', '/empresas/grupos')
   for (const [acao, rota] of [['Empresas', '/empresas'], ['Usuários', '/usuarios']]) {
     await menu.getByRole('link', { name: acao, exact: true }).click()
     await expect(page).toHaveURL(rota)
@@ -81,6 +81,6 @@ test('vendedor continua na agenda e não entra na gestão', async ({ page }) => 
   await page.goto('/gestao')
   await expect(page).toHaveURL('/meu-dia')
   const menu = page.getByRole('navigation')
-  for (const nome of ['Empresas', 'Grupos', 'Usuários']) await expect(menu.getByRole('link', { name: nome, exact: true })).toHaveCount(0)
+  for (const nome of ['Empresas', 'Listas', 'Coletas do Google', 'Usuários']) await expect(menu.getByRole('link', { name: nome, exact: true })).toHaveCount(0)
   for (const nome of ['Prospecção', 'Carteira', 'Meu dia']) await expect(menu.getByRole('link', { name: nome, exact: true })).toBeVisible()
 })

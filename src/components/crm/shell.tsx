@@ -14,7 +14,7 @@ import styles from './shell.module.css'
 const TITULO = { funil: 'Funil', fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas', usuarios: 'Usuários', gestao: 'Gestão', whatsapp: 'WhatsApp' } as const
 const TEMA = { funil: 'Tema do Funil', fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia', empresas: 'Tema de Empresas', usuarios: 'Tema de Usuários', gestao: 'Tema da Gestão', whatsapp: 'Tema do WhatsApp' } as const
 const vendedor: [string, string, LucideIcon][] = [['/meu-dia', 'Meu dia', CalendarDays], ['/fila', 'Prospecção', Search], ['/funil', 'Funil', Columns3], ['/carteira', 'Carteira', Wallet]]
-const gestor: [string, string, LucideIcon][] = [['/gestao', 'Início', LayoutDashboard], ['/empresas', 'Empresas', Building2], ['/empresas/grupos', 'Grupos', FolderOpen], ['/usuarios', 'Usuários', Users], ['/whatsapp', 'WhatsApp', MessageCircle]]
+const gestor: [string, string, LucideIcon][] = [['/gestao', 'Início', LayoutDashboard], ['/empresas', 'Empresas', Building2], ['/empresas/google', 'Coletas do Google', CalendarDays], ['/empresas/grupos', 'Listas', FolderOpen], ['/usuarios', 'Usuários', Users], ['/whatsapp', 'WhatsApp', MessageCircle]]
 
 export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: keyof typeof TITULO }) {
   const { tema, definirTema } = useControleTemaCrm()
@@ -22,12 +22,13 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
   const [recolhido, setRecolhido] = useState(false)
   const pathname = usePathname()
   const grupos = area === 'empresas' && pathname?.startsWith('/empresas/grupos')
+  const google = area === 'empresas' && pathname?.startsWith('/empresas/google')
   const marca = <Link href="/" className={styles.marca} aria-label="CRM"><span aria-hidden="true"><Columns3 size={21} /></span><div className={styles.nomeMarca}><strong>CRM</strong><small>Gestão comercial</small></div></Link>
   const navegacao = <>
     <p className={styles.legendaMenu}>{papel === 'gestor' ? 'Gestão' : 'Área comercial'}</p>
     <nav aria-label="Navegação do CRM" onClick={() => setAberto(false)}>
       {(papel === 'gestor' ? gestor : vendedor).map(([href, rotulo, Icone]) => {
-        const atual = grupos ? href === '/empresas/grupos' : href === `/${area}`
+        const atual = google ? href === '/empresas/google' : grupos ? href === '/empresas/grupos' : href === `/${area}`
         return <Link key={href} href={href} aria-current={atual ? 'page' : undefined} title={rotulo}><Icone size={18} aria-hidden="true" /><span className={styles.rotuloMenu}>{rotulo}</span></Link>
       })}
     </nav>

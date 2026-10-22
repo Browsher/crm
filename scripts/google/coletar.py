@@ -79,6 +79,32 @@ def carregar_coletor(campanha):
     return modulo
 
 
+def processar_resultados(modulo, raw, mapa, pedido, pasta):
+    with raw.open(encoding='utf-8-sig', newline='') as stream:
+        reader = csv.DictReader(stream)
+        campos_brutos = reader.fieldnames or []
+        vazia = next(reader, None) is None
+    if not vazia:
+        return modulo.process(raw, mapa, pedido['bairro'], pasta/'historico.json', pasta, 50,
+            cidade=pedido['cidade'], uf=pedido['uf'], fila_planejada=True)
+    campos = ['nome_empresa', 'categoria', 'telefone', 'email', 'site', 'endereco', 'bairro', 'cep', 'cidade',
+        'link_maps', 'termo_pesquisado', 'data_coleta', 'cnpj', 'razao_social', 'perfil', 'motivo_aderencia',
+        'situacao_empresa', 'situacao_historico', 'fonte_email', 'emails_motor_nao_reconfirmados', 'observacoes',
+        'place_id', 'cid', 'data_id', 'latitude', 'longitude', 'ocorrencias_brutas']
+    for nome, cabecalho in [('empresas_novas.csv', campos), ('empresas_sinalizadas.csv', campos), ('bruto_completo.csv', campos_brutos)]:
+        with (pasta/nome).open('w', encoding='utf-8-sig', newline='') as stream:
+            csv.DictWriter(stream, fieldnames=cabecalho, quoting=csv.QUOTE_ALL, lineterminator='\r\n').writeheader()
+    dados = {'fields': campos, 'selected': [], 'all': [], 'raw_fields': campos_brutos, 'raw_rows': [],
+        'output_files': {'selected': 'empresas_novas.csv', 'all': 'empresas_sinalizadas.csv', 'raw': 'bruto_completo.csv'}}
+    resumo = {'registros_brutos': 0, 'empresas_unicas': 0, 'novas_selecionadas': 0, 'meta': 50,
+        'verificacao': 'Coleta vazia preservada. Nenhuma pesquisa adicional foi iniciada.'}
+    for nome, valor in [('dados_preparados.json', dados), ('resumo.json', resumo)]:
+        temporario = pasta/(nome+'.tmp')
+        temporario.write_text(json.dumps(valor, ensure_ascii=False, indent=2), encoding='utf-8')
+        temporario.replace(pasta/nome)
+    return resumo
+
+
 def coletar(pedido, campanha):
     if not re.fullmatch(r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}', pedido.get('id', ''), re.I):
         raise ValueError('Identidade do pedido inválida.')
@@ -141,8 +167,7 @@ def coletar(pedido, campanha):
             modulo.save_json(pasta/'termos_por_input_id.json', mapa)
         modulo.CONFIG['termos'] = [pedido['nicho']]
         modulo.profile = lambda row, evidence: ('Nicho solicitado', 'Aderência comercial a conferir pelo vendedor.', 0)
-        modulo.process(raw, mapa, pedido['bairro'], pasta/'historico.json', pasta, 50,
-            cidade=pedido['cidade'], uf=pedido['uf'], fila_planejada=True)
+        processar_resultados(modulo, raw, mapa, pedido, pasta)
         return pasta
 
 
@@ -171,8 +196,8 @@ def main():
     with Path(args.final).open(encoding='utf-8-sig', newline='') as stream:
         validadas = list(csv.DictReader(stream))
     origem = dados['all']
-    if len(origem) > 50:
-        raise ValueError('O motor retornou mais de 50 empresas. Preserve o arquivo completo e confira o lote antes de publicar.')
+    if len(origem) > 5000:
+        raise ValueError('Lote excede a capacidade de auditoria. Preserve os arquivos e confira antes de publicar.')
     publicacao = {'acao': 'entregar', 'pedido': pedido['id'], 'empresas': normalizar(origem, validadas), 'recibo': recibo}
     saida = Path(args.saida)
     conteudo = json.dumps(publicacao, ensure_ascii=False, indent=2)

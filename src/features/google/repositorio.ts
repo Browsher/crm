@@ -14,6 +14,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function repositorioGoogle(usuarioId: string) {
   return {
+    async historicoEmpresa(empresaId: string) {
+      if (!UUID.test(empresaId)) return []
+      return comoUsuario(usuarioId, async e => (await e<{ pedidoId: string; dia: string; vendedor: string; nicho: string; situacao: string }>(`
+        SELECT p.id AS "pedidoId",to_char(p.dia,'YYYY-MM-DD') AS dia,u.nome AS vendedor,p.nicho,r.situacao
+        FROM google_resultado r JOIN google_planejamento p ON p.id=r.planejamento_id JOIN usuario u ON u.id=p.vendedor_id
+        WHERE r.empresa_id=$1 AND eh_gestor() ORDER BY p.dia DESC,p.criado_em DESC,p.id`, [empresaId])).linhas)
+    },
     async planejar(plano: PlanoEntrada): Promise<{ ok: true } | { ok: false; motivo: string }> {
       try {
         await comoUsuario(usuarioId, e => e('SELECT google_planejar($1,$2,$3,$4,$5)', [plano.dia, plano.nicho, plano.bairro, plano.cidade, plano.uf]))
@@ -34,20 +41,21 @@ export function repositorioGoogle(usuarioId: string) {
     async rotina(dia: string): Promise<boolean> {
       return comoUsuario(usuarioId, async e => (await e<{ iniciada: boolean }>('SELECT EXISTS(SELECT 1 FROM google_rotina WHERE dia=$1::date) AS iniciada', [dia])).linhas[0].iniciada)
     },
-    async detalhe(id: string) {
+    async detalhe(id: string, pagina = 1) {
       if (!UUID.test(id)) return null
+      if (!Number.isInteger(pagina) || pagina < 1 || pagina > 100) throw new RangeError('Página de resultados inválida')
       return comoUsuario(usuarioId, async e => {
         const plano = (await e<PlanoGoogle>(`${PLANOS} WHERE p.id=$1 GROUP BY p.id,u.nome`, [id])).linhas[0]
         if (!plano) return null
         const resultados = (await e<ResultadoGoogle>(`SELECT r.id,r.empresa_id,r.situacao,r.dados,r.motivo,r.entregue_em::text,
           EXISTS (SELECT 1 FROM contato c WHERE c.empresa_id=r.empresa_id AND c.criado_por=$2 AND c.criado_em>=r.entregue_em) AS trabalhada
-          FROM google_resultado r WHERE r.planejamento_id=$1 ORDER BY r.indice`, [id, plano.vendedor_id])).linhas
+          FROM google_resultado r WHERE r.planejamento_id=$1 ORDER BY r.indice LIMIT 51 OFFSET $3`, [id, plano.vendedor_id, (pagina - 1) * 50])).linhas
         const recibo = (await e<{ recibo: Record<string, unknown> }>('SELECT recibo FROM google_publicacao WHERE planejamento_id=$1', [id])).linhas[0]?.recibo ?? null
-        return { plano, resultados, recibo }
+        return { plano, resultados: resultados.slice(0, 50), recibo, pagina, temProxima: resultados.length > 50 }
       })
     },
     async vendedores() {
-      return comoUsuario(usuarioId, async e => (await e<{ id: string; nome: string }>("SELECT id,nome FROM usuario WHERE papel='vendedor' AND eh_gestor() ORDER BY nome,id")).linhas)
+      return comoUsuario(usuarioId, async e => (await e<{ id: string; nome: string }>("SELECT id,nome FROM usuario u WHERE eh_gestor() AND (papel='vendedor' OR EXISTS(SELECT 1 FROM google_planejamento p WHERE p.vendedor_id=u.id)) ORDER BY nome,id")).linhas)
     },
     async proximo(): Promise<PlanoGoogle | null> {
       return comoUsuario(usuarioId, async e => (await e<{ pedido: PlanoGoogle | null }>('SELECT google_agente_proximo() AS pedido')).linhas[0].pedido)

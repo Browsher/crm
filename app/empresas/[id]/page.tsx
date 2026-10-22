@@ -16,6 +16,9 @@ import { Badge } from '@/src/components/ui/badge'
 import { Alert } from '@/src/components/ui/alert'
 import styles from './perfil.module.css'
 import { AbasFicha } from '@/src/components/crm/abas-ficha'
+import { repositorioGoogle } from '@/src/features/google/repositorio'
+import { HistoricoGoogleEmpresa } from '@/src/components/crm/historico-google'
+import { Button } from '@/src/components/ui/button'
 
 const situacoes: Record<PerfilEmpresa['situacao'], string> = {
   carteira: 'Em carteira', reservada: 'Reservada', inativa: 'Sem grupo ativo',
@@ -35,11 +38,11 @@ export default async function PaginaPerfil({ params, searchParams }: {
   const query = await searchParams ?? {}
   const filtros = lerFiltrosEmpresas(query)
   const voltar = filtros.ok ? enderecoEmpresas(aplicarFiltrosEmpresas(lerConsulta(query), filtros.filtros)) : '/empresas'
-  const [historico, cadastrais] = await Promise.all([lerHistorico(eu.usuarioId, id), lerDadosCadastrais(eu.usuarioId, id)])
+  const [historico, cadastrais, coletas] = await Promise.all([lerHistorico(eu.usuarioId, id), lerDadosCadastrais(eu.usuarioId, id), repositorioGoogle(eu.usuarioId).historicoEmpresa(id)])
   const endereco = empresa.cidade ? [empresa.logradouro, empresa.bairro, `${empresa.cidade}/${empresa.uf}`].filter(Boolean).join(', ')
     : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
   return <main className={styles.pagina}>
-    <Link href={voltar} className={styles.voltar}>Voltar para empresas</Link>
+    <Button asChild variant="outline"><Link href={voltar} className={styles.voltar}>Voltar para empresas</Link></Button>
     <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{nomeEmpresa(empresa)}</h1>
       {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
       <Badge variant="outline">{situacoes[empresa.situacao]}</Badge></header>
@@ -66,7 +69,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
       <Card><CardHeader><CardTitle>Grupos de origem</CardTitle></CardHeader><CardContent>
         {empresa.grupos.length ? <ul className={styles.grupos}>{empresa.grupos.map(g => <li key={g.id}><span>{g.nome}</span><Badge variant={g.ativo ? 'success' : 'outline'}>{g.ativo ? 'Ativo' : 'Desativado'}</Badge></li>)}</ul> : <p>Nenhum grupo vinculado.</p>}
       </CardContent></Card>
-    </div>} historico={<Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
+    </div>} historico={<><HistoricoGoogleEmpresa coletas={coletas} /><Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
       {!historico.ok ? <Alert variant="danger">Não foi possível carregar o histórico. Atualize a página para tentar novamente.</Alert> : !historico.contatos.length ? <p>Nenhum atendimento registrado.</p> :
         <ol className={styles.historico}>{historico.contatos.map(c => <li key={c.id}>
           <div><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</strong><time dateTime={c.criadoEm.toISOString()}>{horario.format(c.criadoEm)}</time></div>
@@ -75,6 +78,6 @@ export default async function PaginaPerfil({ params, searchParams }: {
           {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
           <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>
         </li>)}</ol>}
-    </CardContent></Card>} /></div>
+    </CardContent></Card></>} /></div>
   </main>
 }

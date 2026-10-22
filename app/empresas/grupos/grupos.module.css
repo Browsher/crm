@@ -42,3 +42,5 @@
 .pagina section[aria-label="Contexto da lista"] dd { margin:0 0 .75rem; white-space:pre-wrap; overflow-wrap:anywhere; }
 .pagina section[aria-label="Contexto da lista"] fieldset { display:grid; gap:1rem; min-width:0; border:0; padding:0; margin:1rem 0; }
 @media(max-width:620px) { .pagina section[aria-label="Contexto da lista"] dl { grid-template-columns:minmax(0,1fr); gap:4px; } }
+
+.pagina a[data-slot='button'] { text-decoration: none; min-height: 44px; }

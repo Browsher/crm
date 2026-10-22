@@ -23,7 +23,7 @@
 .pagina dt { color: var(--ui-muted-foreground); }
 .pagina dd { margin: 0; overflow-wrap: anywhere; }
 .pagina details { margin-top: 12px; }
-.pagina summary { cursor: pointer; text-decoration: underline; min-height: 44px; padding: 12px 0; width: fit-content; }
+.pagina summary { cursor: pointer; border: 1px solid var(--ui-border); border-radius: 6px; min-height: 44px; padding: 12px 16px; width: fit-content; font-weight: 500; }
 .pagina a:focus-visible, .pagina summary:focus-visible { outline: 2px solid var(--ui-focus); outline-offset: 4px; }
 .resultado { display: grid; gap: 16px; }
 .resultado fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

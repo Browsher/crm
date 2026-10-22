@@ -52,8 +52,8 @@ function FormularioDia({ dia, plano, informarPendencia, fechar }: { dia: string;
     <fieldset disabled={pendente}>
       <label>Nicho<Input name="nicho" required maxLength={100} defaultValue={plano?.nicho ?? ''} placeholder="Ex.: loja de brinquedos" /></label>
       <div className={styles.grade}><label>Cidade<Input name="cidade" required maxLength={100} defaultValue={plano?.cidade ?? ''} autoComplete="address-level2" /></label>
-        <label>UF<NativeSelect name="uf" required defaultValue={plano?.uf ?? ''} autoComplete="address-level1"><option value="">Selecione</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></label></div>
-      <label>Bairro<Input name="bairro" maxLength={100} defaultValue={plano?.bairro ?? ''} /><small>Opcional. Deixe vazio para buscar na cidade inteira.</small></label>
+        <label>UF<NativeSelect name="uf" aria-label="UF" required defaultValue={plano?.uf ?? ''} autoComplete="address-level1"><option value="">Selecione</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></label></div>
+      <label>Bairro<Input name="bairro" aria-label="Bairro" maxLength={100} defaultValue={plano?.bairro ?? ''} /><small>Opcional. Deixe vazio para buscar na cidade inteira.</small></label>
     </fieldset>
     <p className={styles.ajuda}>Até 50 leads por pedido. Os critérios ficam fechados quando o agente inicia a rotina do dia.</p>
     {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
