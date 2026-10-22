@@ -69,6 +69,23 @@ consulta e histórico próprios. Nicho, bairro, cidade e UF são valores
 literais de uma consulta; não viram comandos nem recebem o filtro comercial
 fixo de armarinhos. Bairro vazio significa cidade inteira.
 
+A ponte grava `contexto-operacional.json` na pasta do pedido. Para um pedido
+antigo que ainda não tenha esse arquivo, gerá-lo sem iniciar coleta:
+
+```powershell
+python scripts/google/coletar.py contexto --pedido .google-agente/<pedido-uuid>.json --saida <pasta-do-pedido>/contexto-operacional.json
+```
+
+Usar o campo `bairro` desse contexto no argumento de `arquivo_drive.py`, no
+manifesto `CRM_DRIVE_V1` e no campo `bairro` da publicação conferida entregue a
+`disparar_workflow.py`. Ele contém o bairro solicitado ou a indicação literal
+`Cidade inteira`, aceita pelos helpers existentes. Cidade e UF também vêm
+desse contexto. `criterios.bairro` conserva o valor original vazio; essa
+indicação operacional nunca entra na consulta do motor, nos endereços das
+empresas ou como preenchimento das células de bairro dos leads. O mesmo
+contexto acompanha arquivo original e final e permite conferir o pedido por
+UUID. Não fabricar um nome de bairro para passar pela validação.
+
 Não descartar um endereço real por cair fora do bairro pesquisado, não
 inferir endereço/DDD e não repetir a pesquisa para atingir 50. Reutilizar o
 job e os arquivos existentes em uma retomada. Se houver `intencao.json` sem

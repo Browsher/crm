@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { Client } from 'pg'
 import type { QueryResultRow } from 'pg'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
@@ -126,6 +127,34 @@ test('desativação após coleta preserva resultados para gestor sem entregar', 
   expect(await banco.sql('SELECT * FROM google_exclusividade')).toEqual([])
   expect(await chamar(gestor, 'SELECT situacao FROM google_resultado')).toEqual([{ situacao: 'pendente' }])
 })
+test('publicação serializa desativação enquanto espera por uma empresa bloqueada', async () => {
+  const [{ id: e }] = await banco.sql<{ id: string }>("INSERT INTO empresa(cnpj,nome_fantasia,telefone) VALUES ($1,'Loja','11988887777') RETURNING id", [empresa.cnpj])
+  const id = await iniciado()
+  const bloqueio = new Client({ connectionString: banco.urlAdmin })
+  const alteracao = new Client({ connectionString: banco.urlAdmin })
+  await bloqueio.connect()
+  await alteracao.connect()
+  const { rows: [{ pid: alteracaoPid }] } = await alteracao.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+  let terminou = false
+  let publicacao: ReturnType<typeof entregar> | undefined
+  let desativacao: Promise<unknown> | undefined
+  try {
+    await bloqueio.query('BEGIN')
+    await bloqueio.query('SELECT id FROM empresa WHERE id=$1 FOR UPDATE', [e])
+    publicacao = entregar(id)
+    await expect.poll(async () => (await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND query LIKE 'SELECT google_agente_entregar(%' AND wait_event_type='Lock'"))[0].n).toBe(1)
+    desativacao = alteracao.query('UPDATE usuario SET ativo=false WHERE id=$1', [vendedor]).then(() => { terminou = true })
+    await expect.poll(async () => terminou || (await banco.sql<{ n: number }>("SELECT count(*)::int AS n FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock'", [alteracaoPid]))[0].n === 1).toBe(true)
+    expect(terminou).toBe(false)
+  } finally {
+    await bloqueio.query('ROLLBACK')
+    await publicacao
+    await desativacao
+    await bloqueio.end()
+    await alteracao.end()
+  }
+  expect(await banco.sql('SELECT ativo FROM usuario WHERE id=$1', [vendedor])).toEqual([{ ativo: false }])
+})
 test('cadastro manual e posse anterior são conservados', async () => {
   const [{ id: empresaId }] = await banco.sql<{ id: string }>("INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ($1,'Nome manual','1133332222') RETURNING id", [empresa.cnpj])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES ($1,$2)', [empresaId, outro])
@@ -189,6 +218,19 @@ test('ficha central reúne quem solicitou a mesma empresa em pedidos diferentes'
   const [{ empresa_id: e }] = await banco.sql<{ empresa_id: string }>('SELECT empresa_id FROM google_exclusividade')
   const historico = await repositorioGoogle(gestor).historicoEmpresa(e)
   expect(historico.map(r => r.vendedor).sort()).toEqual(['GoogleOutro', 'GoogleVendedor'])
+})
+test('ficha central encontra pendências anteriores por identidade sem associar conflitos', async () => {
+  const { repositorioGoogle } = await import('@/src/features/google/repositorio')
+  const [{ id: outraEmpresa }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Outra empresa','11988887777') RETURNING id")
+  await banco.sql('INSERT INTO empresa_origem_google(google_place_id,empresa_id) VALUES ($1,$2)', ['place-outra', outraEmpresa])
+  const a = await iniciado()
+  const b = await iniciado(outro)
+  await entregar(a, [{ ...empresa, cnpj: null, telefone: '' }, { ...empresa, google_place_id: null, telefone: '' },
+    { ...empresa, google_place_id: 'place-outra', telefone: '' }])
+  await entregar(b)
+  const [{ empresa_id: e }] = await banco.sql<{ empresa_id: string }>('SELECT empresa_id FROM google_exclusividade')
+  expect((await repositorioGoogle(gestor).historicoEmpresa(e)).map(r => r.situacao).sort()).toEqual(['entregue', 'pendente', 'pendente'])
+  expect(await repositorioGoogle(vendedor).historicoEmpresa(e)).toEqual([])
 })
 
 test('preserva ocorrências excedentes na auditoria e entrega no máximo 50 leads', async () => {

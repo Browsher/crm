@@ -186,6 +186,8 @@ BEGIN
     RETURN 'repetida';
   END IF;
   IF v_pedido.estado NOT IN ('coletando','validando','falhou') THEN RAISE EXCEPTION 'pedido nao iniciado' USING ERRCODE='22023'; END IF;
+  PERFORM id FROM public.usuario WHERE id IN (public.usuario_atual(),v_pedido.vendedor_id) ORDER BY id FOR SHARE;
+  IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   SELECT NOT EXISTS (SELECT 1 FROM public.usuario WHERE id=v_pedido.vendedor_id AND ativo AND papel='vendedor' AND NOT senha_provisoria_pendente) INTO v_inativo;
   INSERT INTO public.google_publicacao(planejamento_id,empresas,recibo) VALUES (p_id,p_empresas,p_recibo);
   FOR v_linha IN SELECT value FROM jsonb_array_elements(p_empresas) LOOP

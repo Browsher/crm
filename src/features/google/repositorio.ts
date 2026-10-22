@@ -19,7 +19,15 @@ export function repositorioGoogle(usuarioId: string) {
       return comoUsuario(usuarioId, async e => (await e<{ pedidoId: string; dia: string; vendedor: string; nicho: string; situacao: string }>(`
         SELECT p.id AS "pedidoId",to_char(p.dia,'YYYY-MM-DD') AS dia,u.nome AS vendedor,p.nicho,r.situacao
         FROM google_resultado r JOIN google_planejamento p ON p.id=r.planejamento_id JOIN usuario u ON u.id=p.vendedor_id
-        WHERE r.empresa_id=$1 AND eh_gestor() ORDER BY p.dia DESC,p.criado_em DESC,p.id`, [empresaId])).linhas)
+        JOIN empresa alvo ON alvo.id=$1
+        LEFT JOIN empresa por_cnpj ON por_cnpj.cnpj=nullif(r.dados->>'cnpj','')
+        LEFT JOIN empresa_origem_google por_google ON por_google.google_place_id=nullif(r.dados->>'google_place_id','')
+        WHERE eh_gestor() AND (r.empresa_id=alvo.id OR (r.empresa_id IS NULL AND r.situacao='pendente'
+          AND (por_cnpj.id=alvo.id OR por_google.empresa_id=alvo.id)
+          AND (por_cnpj.id IS NULL OR por_cnpj.id=alvo.id)
+          AND (por_google.empresa_id IS NULL OR por_google.empresa_id=alvo.id)
+          AND (por_google.empresa_id IS NULL OR nullif(r.dados->>'cnpj','') IS NULL OR alvo.cnpj=r.dados->>'cnpj')))
+        ORDER BY p.dia DESC,p.criado_em DESC,p.id,r.indice`, [empresaId])).linhas)
     },
     async planejar(plano: PlanoEntrada): Promise<{ ok: true } | { ok: false; motivo: string }> {
       try {

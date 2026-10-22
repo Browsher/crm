@@ -15,6 +15,16 @@ SPEC.loader.exec_module(ponte)
 PEDIDO = {'id': '00000000-0000-4000-8000-000000000001', 'nicho': 'Pet shop $()', 'bairro': 'Brás', 'cidade': 'São Paulo', 'uf': 'SP', 'estado': 'coletando'}
 
 class PonteTest(unittest.TestCase):
+    def test_contexto_operacional_cidade_inteira_preserva_criterios_e_enderecos(self):
+        pedido = dict(PEDIDO, bairro='')
+        contexto = ponte.contexto_operacional(pedido)
+        self.assertEqual(contexto['bairro'], 'Cidade inteira')
+        self.assertEqual(contexto['criterios']['bairro'], '')
+        self.assertEqual(contexto['pedido_id'], pedido['id'])
+        self.assertEqual(ponte.contexto_operacional(PEDIDO)['bairro'], 'Brás')
+        self.assertEqual(pedido['bairro'], '')
+        self.assertNotIn('Cidade inteira', ponte.consulta(pedido))
+
     def test_criterios_sao_uma_consulta_literal_sem_filtro_de_armarinhos(self):
         self.assertEqual(ponte.consulta(PEDIDO), 'Pet shop $() Brás São Paulo SP')
         self.assertEqual(ponte.consulta(dict(PEDIDO, bairro='')), 'Pet shop $() São Paulo SP')

@@ -1,6 +1,6 @@
 # Planejamento Google por vendedor Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Entregar planejamento semanal, coleta identificada por pedido, leads exclusivos e auditoria do gestor, com prévia integrada.
 
@@ -35,11 +35,11 @@
 
 **Interfaces:** tabelas `google_planejamento`, `google_rotina`, `google_resultado`, `google_exclusividade`; funções `google_planejar(date,text,text,text,text)`, `google_agente_proximo()`, `google_agente_etapa(uuid,text,text)`, `google_agente_entregar(uuid,jsonb,jsonb)`. Retorno de próximo inclui id, vendedor, dia, critérios e estado. Exclusividade participa dos auxiliares de disponibilidade e de um gatilho em empresa_fila.
 
-- [ ] Escrever testes reais de RLS, alteração antes/depois do snapshot, semanas distintas, primeira entrega, concorrência, repetição divergente, conflito CNPJ/Place ID, sem telefone, desativação e reserva por outra fonte.
-- [ ] Rodar `npm run test:integracao -- tests/integracao/google-planejamento.test.ts --maxWorkers=1`, observar ausência das funções.
-- [ ] Implementar migração com grants mínimos, revogação PUBLIC, dados brutos separados e publicação atômica serializada com importações existentes.
-- [ ] Rodar o arquivo de integração e `npm run db:checar`; resultado esperado verde.
-- [ ] Commitar a fatia.
+- [x] Escrever testes reais de RLS, alteração antes/depois do snapshot, semanas distintas, primeira entrega, concorrência, repetição divergente, conflito CNPJ/Place ID, sem telefone, desativação e reserva por outra fonte.
+- [x] Rodar `npm run test:integracao -- tests/integracao/google-planejamento.test.ts --maxWorkers=1`, observar ausência das funções.
+- [x] Implementar migração com grants mínimos, revogação PUBLIC, dados brutos separados e publicação atômica serializada com importações existentes.
+- [x] Rodar o arquivo de integração e `npm run db:checar`; resultado esperado verde.
+- [x] Commitar a fatia.
 
 ## Task 2: Domínio, API restrita e ponte do agente
 
@@ -47,11 +47,11 @@
 
 **Interfaces:** `semanaDe(data:string):string[]`, `validarPlano(entrada:unknown)`; `repositorioGoogle(usuarioId)` expõe planejar, semana, entregas, detalhe e operações de agente. API POST aceita apenas próximo, etapa e entregar; destinatário é obtido do pedido no servidor. CLI lê token do ambiente e mantém pedido/recibo em disco, sem token em argumentos. Ponte Python usa configuração de nicho e estado por pedido, conserva motor e exportadores externos.
 
-- [ ] Testar primeiro data/UF/textos inválidos, semana civil, segredo ausente/incorreto, corpo excessivo, recibo incompleto, HTTP incerto e critérios tratados como dados.
-- [ ] Rodar testes unitários novos e Python, observar RED.
-- [ ] Implementar autenticação constante, limite real de bytes, schema de protocolo, persistência do lote e entrada isolada no coletor; não executar rede real nos testes.
-- [ ] Ler docs locais `route.md`, `use-server.md`, guias de formulários e consulta Context7 antes das APIs novas.
-- [ ] Rodar testes novos e typecheck; resultado esperado verde; commit.
+- [x] Testar primeiro data/UF/textos inválidos, semana civil, segredo ausente/incorreto, corpo excessivo, recibo incompleto, HTTP incerto e critérios tratados como dados.
+- [x] Rodar testes unitários novos e Python, observar RED.
+- [x] Implementar autenticação constante, limite real de bytes, schema de protocolo, persistência do lote e entrada isolada no coletor; não executar rede real nos testes.
+- [x] Ler docs locais `route.md`, `use-server.md`, guias de formulários e consulta Context7 antes das APIs novas.
+- [x] Rodar testes novos e typecheck; resultado esperado verde; commit.
 
 ## Task 3: Planejamento e leads do vendedor
 
@@ -59,10 +59,10 @@
 
 **Interfaces:** `/fila/buscar?fonte=google` apresenta a nova área; `/fila/google?semana=YYYY-MM-DD&aba=...` e `/fila/google/[id]` são destinos estáveis. Formulário por dia usa `useActionState`, ação autenticada e revalidação. Prospectar reserva explicitamente a empresa usando a função existente e redireciona para atendimento somente em sucesso.
 
-- [ ] Usar como molde `app/usuarios/acoes.ts`, `formulario-criar.tsx` e `app/fila/acoes.ts`, já lidos.
-- [ ] Testar dias não planejados, sucesso/erro/pendência, bloqueio após snapshot, navegação de semanas, destinatário e botão de reserva antes do código.
-- [ ] Implementar cinco registros editáveis, duas abas com aparência de botão, listas por entrega, histórico seguro e estados vazios úteis.
-- [ ] Rodar testes da área e lint/typecheck; resultado esperado verde; commit.
+- [x] Usar como molde `app/usuarios/acoes.ts`, `formulario-criar.tsx` e `app/fila/acoes.ts`, já lidos.
+- [x] Testar dias não planejados, sucesso/erro/pendência, bloqueio após snapshot, navegação de semanas, destinatário e botão de reserva antes do código.
+- [x] Implementar cinco registros editáveis, duas abas com aparência de botão, listas por entrega, histórico seguro e estados vazios úteis.
+- [x] Rodar testes da área e lint/typecheck; resultado esperado verde; commit.
 
 ## Task 4: Gestor, listas e ações explícitas
 
@@ -70,21 +70,21 @@
 
 **Interfaces:** `/empresas/google?semana=...&vendedor=...&estado=...` mostra planos, resultados e utilização real. A métrica usa contato.criado_por do destinatário, posterior à entrega, sem contar abertura ou contato alheio. Detalhe por lote conserva cada ocorrência e acesso à ficha central.
 
-- [ ] Testar visão completa do gestor e métrica com contato anterior/alheio; testar navegação por botões.
-- [ ] Implementar filtros, contagens, histórico e nomes visíveis “Listas”; conservar URLs antigas.
-- [ ] Rodar testes afetados e lint/typecheck; resultado esperado verde; commit.
+- [x] Testar visão completa do gestor e métrica com contato anterior/alheio; testar navegação por botões.
+- [x] Implementar filtros, contagens, histórico e nomes visíveis “Listas”; conservar URLs antigas.
+- [x] Rodar testes afetados e lint/typecheck; resultado esperado verde; commit.
 
 ## Task 5: Jornada integrada, operação e prévia
 
 **Files:** criar `tests/e2e/dados-google.ts`, `google-planejamento.spec.ts`, `docs/operacao/agente-google-crm.md`, evidências em `docs/design/2026-10-22-redesign/google/`; alterar harness e inventário conforme resultados reais.
 
-- [ ] Adicionar jornada RED com planejamento, entrega simulada, isolamento e acompanhamento do gestor.
-- [ ] Preparar fixtures por chamadas reais do banco e fake de agente; nenhum crédito ou coleta externos.
-- [ ] Rodar unidade inteira, integração inteira, build, E2E, lint, typecheck e db:checar. Corrigir falhas com causa identificada.
-- [ ] Atualizar a prévia local 3100 com dados sintéticos, conferir desktop/390 px e temas; guardar capturas.
-- [ ] Documentar contrato operacional, comandos e reconciliação, critérios genéricos, arquivo/recibo, ativação posterior e limites observáveis; regenerar inventário de relatório real.
-- [ ] Fazer revisão independente com contexto novo, corrigir Critical/Important por RED/GREEN; registrar minores e decisões.
-- [ ] Commitar, atualizar PR existente e conferir CI pelo tool code_review; não fazer merge.
+- [x] Adicionar jornada RED com planejamento, entrega simulada, isolamento e acompanhamento do gestor.
+- [x] Preparar fixtures por chamadas reais do banco e fake de agente; nenhum crédito ou coleta externos.
+- [x] Rodar unidade inteira, integração inteira, build, E2E, lint, typecheck e db:checar. Corrigir falhas com causa identificada.
+- [x] Atualizar a prévia local 3100 com dados sintéticos, conferir desktop/390 px e temas; guardar capturas.
+- [x] Documentar contrato operacional, comandos e reconciliação, critérios genéricos, arquivo/recibo, ativação posterior e limites observáveis; regenerar inventário de relatório real.
+- [x] Fazer revisão independente com contexto novo, corrigir Critical/Important por RED/GREEN; registrar minores e decisões.
+- [x] Commitar, atualizar PR existente e conferir CI pelo tool code_review; não fazer merge.
 
 ## Execução
 

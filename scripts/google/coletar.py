@@ -21,6 +21,11 @@ def consulta(pedido):
     return ' '.join(str(pedido[k]).strip() for k in ('nicho', 'bairro', 'cidade', 'uf') if str(pedido[k]).strip())
 
 
+def contexto_operacional(pedido):
+    return {'pedido_id': pedido['id'], 'criterios': {k: pedido[k] for k in ('nicho', 'bairro', 'cidade', 'uf')},
+        'bairro': pedido['bairro'] or 'Cidade inteira', 'cidade': pedido['cidade'], 'uf': pedido['uf']}
+
+
 def verificar_inicio(pasta, pedido):
     intencao = pasta/'intencao.json'
     if intencao.exists() and not (pasta/'job.json').exists():
@@ -116,6 +121,7 @@ def coletar(pedido, campanha):
     with modulo.campaign_lock(modulo.HISTORY):
         verificar_inicio(pasta, pedido)
         modulo.save_json(pasta/'pedido.json', pedido)
+        modulo.save_json(pasta/'contexto-operacional.json', contexto_operacional(pedido))
         if (pasta/'dados_preparados.json').exists() and (pasta/'resumo.json').exists():
             return pasta
         kit = modulo.load_kit()
@@ -173,7 +179,7 @@ def coletar(pedido, campanha):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('acao', choices=('coletar', 'preparar'))
+    parser.add_argument('acao', choices=('coletar', 'preparar', 'contexto'))
     parser.add_argument('--pedido', required=True)
     parser.add_argument('--campanha')
     parser.add_argument('--coletadas')
@@ -183,6 +189,16 @@ def main():
     parser.add_argument('--saida')
     args = parser.parse_args()
     pedido = json.loads(Path(args.pedido).read_text(encoding='utf-8-sig'))
+    if args.acao == 'contexto':
+        if not args.saida:
+            parser.error('contexto exige --saida')
+        saida = Path(args.saida)
+        conteudo = json.dumps(contexto_operacional(pedido), ensure_ascii=False, indent=2)
+        if saida.exists() and json.loads(saida.read_text(encoding='utf-8-sig')) != contexto_operacional(pedido):
+            raise ValueError('Contexto operacional existente diverge. Preserve-o para reconciliação.')
+        saida.write_text(conteudo, encoding='utf-8')
+        print(str(saida))
+        return
     if args.acao == 'coletar':
         if not args.campanha:
             parser.error('--campanha é obrigatório')
