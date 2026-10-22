@@ -72,3 +72,10 @@ test('timeout não vira retry e não devolve detalhes de rede', async () => {
   expect(await criarClienteCnpjBiz('chave-teste', fetcher).buscar(filtros())).toEqual({ ok: false, motivo: 'tempo_esgotado' })
   expect(fetcher).toHaveBeenCalledTimes(1)
 })
+
+test('consulta o CNAE na máscara publicada pelo fornecedor, preservando zeros à esquerda', async () => {
+  const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([{ atividade_id: 123, codigo: '01.11-3-01', nome: 'Atividade fictícia' }])))
+    .mockResolvedValueOnce(new Response('[]'))
+  await criarClienteCnpjBiz('chave-teste', fetcher).buscar({ ...filtros(), cnae: '0111301' })
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).busca).toBe('01.11-3-01')
+})

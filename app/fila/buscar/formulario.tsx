@@ -10,7 +10,11 @@ import { buscarEmpresasAcao, type EstadoBusca } from './acoes'
 import styles from '@/src/components/crm/busca-empresas.module.css'
 
 const inicial: EstadoBusca = { erro: null }
-export function FormularioBusca({ bloqueado, restante, chaveInicial }: { bloqueado: boolean; restante: number; chaveInicial: string }) {
+type Props = { bloqueado: boolean; restante: number; chaveInicial: string; buscaConcluidaId?: string }
+export function FormularioBusca(props: Props) {
+  return <OperacaoBusca key={props.buscaConcluidaId ?? 'nova'} {...props} />
+}
+function OperacaoBusca({ bloqueado, restante, chaveInicial }: Props) {
   const [estado, acao, pendente] = useActionState(buscarEmpresasAcao, inicial)
   const [chave] = useState(chaveInicial)
   const [valores, setValores] = useState({ nome: '', palavra: '', cnae: '', uf: '', cidade: '', bairro: '',

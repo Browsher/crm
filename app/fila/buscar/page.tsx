@@ -34,7 +34,7 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
       </li>)}</ul>}<Link href="/fila?escolher_lista=1">Ver todas as listas de prospecção</Link>
     </section> : <>
       <div className={styles.colunas}><section className={styles.painel}><h2>Buscar no CNPJ.biz</h2>
-        <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} />
+        <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} buscaConcluidaId={busca?.id} />
       </section><aside className={styles.painel}><h2>Seu limite de hoje</h2>
         <p><strong>{limite?.usado ?? 0} de {limite?.limite_diario ?? 0}</strong> empresas solicitadas</p><p>{restante} disponíveis para consultar hoje.</p>
         <p className={styles.ajuda}>Horário de São Paulo. Consultas com falha também entram no limite porque o fornecedor pode ter cobrado.</p>

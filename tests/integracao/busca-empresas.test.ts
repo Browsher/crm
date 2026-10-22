@@ -34,7 +34,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
-  await banco.sql('UPDATE usuario SET ativo=true,senha_provisoria_pendente=false WHERE id=$1', [vendedor])
+  await banco.sql("UPDATE usuario SET ativo=true,senha_provisoria_pendente=false,papel='vendedor' WHERE id=$1", [vendedor])
 })
 test('sem limite configurado não permite consulta', async () => {
   expect(await reservar()).toEqual([{ resultado: 'limite' }])
@@ -133,4 +133,72 @@ test('repositório real lê somente a busca própria e informa o consumo de São
   expect(await repo.ler(id)).toMatchObject({ id, estado: 'concluida', empresas: [empresa] })
   expect(await repositorioBusca(outro).ler(id)).toBeNull()
   expect(await repo.meuLimite()).toMatchObject({ limite_diario: 4, usado: 2 })
+})
+
+test('trocar papel para gestor revoga importação da antiga busca de vendedor', async () => {
+  await configurar()
+  const id = randomUUID()
+  await reservar(id)
+  await concluir(id)
+  await banco.sql("UPDATE usuario SET papel='gestor' WHERE id=$1", [vendedor])
+  await expect(importar(id)).rejects.toMatchObject({ code: '42501' })
+})
+test('serviço e cliente HTTP com banco real emitem uma chamada para duas submissões da mesma chave', async () => {
+  const { repositorioBusca } = await import('@/src/features/busca-empresas/repositorio')
+  const { iniciarBusca } = await import('@/src/features/busca-empresas/servico')
+  const { criarClienteCnpjBiz } = await import('@/src/server/cnpj-biz/cliente')
+  await configurar(2)
+  let chamadas = 0
+  const fetcher: typeof fetch = async () => {
+    chamadas++
+    return new Response(JSON.stringify([{ cnpj: empresa.cnpj, razao_social: empresa.razao_social, email: empresa.email,
+      telefones: ['(11) 98888-7777'], atividades_principal: ['47.42-3-00 - Material elétrico'],
+      situacao: 'ATIVA', porte_empresa: 'ME', data_abertura: '2020-01-15', endereco: { numero: '10' } }]))
+  }
+  const repo = repositorioBusca(vendedor)
+  const deps = { repo, cliente: criarClienteCnpjBiz('somente-fixture', fetcher), configurado: true }
+  const id = randomUUID()
+  const resultados = await Promise.all([iniciarBusca(deps, id, 'Lojas SP', filtros), iniciarBusca(deps, id, 'Lojas SP', filtros)])
+  expect(resultados).toEqual([{ ok: true, id }, { ok: true, id }])
+  expect(chamadas).toBe(1)
+  expect(await repo.ler(id)).toMatchObject({ estado: 'concluida', empresas: [{ cnpj: empresa.cnpj, telefone: empresa.telefone }] })
+  expect(await repo.importar(id, [empresa.cnpj])).toMatchObject({ ok: true, inseridas: 1, vinculadas: 1 })
+})
+test('quota anterior à meia-noite de São Paulo não reduz o limite do novo dia', async () => {
+  const { repositorioBusca } = await import('@/src/features/busca-empresas/repositorio')
+  await configurar(2)
+  const id = randomUUID()
+  await reservar(id)
+  await banco.sql("UPDATE busca_empresa SET criado_em=(date_trunc('day',clock_timestamp() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo')-interval '1 microsecond' WHERE id=$1", [id])
+  expect(await repositorioBusca(vendedor).meuLimite()).toMatchObject({ usado: 0, limite_diario: 2 })
+  expect(await reservar()).toEqual([{ resultado: 'ok' }])
+})
+test('Google oferece somente grupos ativos com vínculo de origem real', async () => {
+  const { repositorioBusca } = await import('@/src/features/busca-empresas/repositorio')
+  const [{ id: empresaId }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Google fictício','11988887777') RETURNING id")
+  const [{ id: grupoId }] = await banco.sql<{ id: string }>("INSERT INTO grupo_importacao(nome) VALUES ('Lista Google fictícia') RETURNING id")
+  await banco.sql('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES ($1,$2)', [grupoId, empresaId])
+  const repo = repositorioBusca(vendedor)
+  expect(await repo.gruposGoogle()).toEqual([])
+  await banco.sql("INSERT INTO empresa_origem_google(google_place_id,empresa_id) VALUES ('place-fixture',$1)", [empresaId])
+  expect(await repo.gruposGoogle()).toMatchObject([{ id: grupoId, total: 1 }])
+  await banco.sql('UPDATE grupo_importacao SET ativo=false WHERE id=$1', [grupoId])
+  expect(await repo.gruposGoogle()).toEqual([])
+})
+
+test('perfil público conserva dados cadastrais mas oculta telefone sem posse ou reserva vigente', async () => {
+  const { lerDadosCadastrais } = await import('@/src/server/cnpj-biz/dados')
+  await configurar()
+  const id = randomUUID()
+  await reservar(id)
+  await concluir(id)
+  await importar(id)
+  const [{ id: empresaId }] = await banco.sql<{ id: string }>('SELECT id FROM empresa WHERE cnpj=$1', [empresa.cnpj])
+  expect(await lerDadosCadastrais(gestor, empresaId)).toMatchObject({ telefones: [empresa.telefone] })
+  expect(await lerDadosCadastrais(outro, empresaId)).toMatchObject({ porte: 'ME', telefones: [] })
+  await banco.sql('INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES ($1,$2,now()+interval \'10 minutes\')', [empresaId, vendedor])
+  expect(await lerDadosCadastrais(vendedor, empresaId)).toMatchObject({ telefones: [empresa.telefone] })
+  expect(await lerDadosCadastrais(outro, empresaId)).toMatchObject({ telefones: [] })
+  await banco.sql('UPDATE empresa_fila SET reservado_ate=now()-interval \'1 second\' WHERE empresa_id=$1', [empresaId])
+  expect(await lerDadosCadastrais(vendedor, empresaId)).toMatchObject({ telefones: [] })
 })

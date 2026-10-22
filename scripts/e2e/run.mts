@@ -91,7 +91,7 @@ try {
   // banco temporário como admin, fora do app. `DATABASE_URL_ADMIN` some do
   // ambiente do servidor (`ambienteDoServidor`) de propósito; aqui ela volta
   // só para o processo do Playwright, que roda local e nunca é o app servido.
-  await executar(['node_modules/@playwright/test/cli.js', 'test'], { ...ambiente, DATABASE_URL_ADMIN: banco.urlAdmin })
+  await executar(['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2).filter(arg => arg !== '--sem-build')], { ...ambiente, DATABASE_URL_ADMIN: banco.urlAdmin })
 } catch (erro) {
   console.error(erro instanceof Error ? erro.message : erro)
   process.exitCode = 1

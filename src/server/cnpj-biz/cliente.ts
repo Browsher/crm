@@ -85,7 +85,8 @@ export function criarClienteCnpjBiz(chave: string | undefined, fetcher: typeof f
       const signal = AbortSignal.timeout(25_000)
       let atividadeId: number | undefined
       if (f.cnae) {
-        const atividade = await post('/atividades/buscar', { busca: f.cnae, limit: 100, offset: 0 }, signal)
+        const codigo = `${f.cnae.slice(0, 2)}.${f.cnae.slice(2, 4)}-${f.cnae.slice(4, 5)}-${f.cnae.slice(5)}`
+        const atividade = await post('/atividades/buscar', { busca: codigo, limit: 100, offset: 0 }, signal)
         if (!atividade.ok) return atividade
         const schema = z.array(z.object({ atividade_id: z.number().int().positive(), codigo: z.string() })).max(100)
         const dados = schema.safeParse(atividade.valor)

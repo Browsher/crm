@@ -23,7 +23,7 @@ export default async function PaginaGestaoBusca({ searchParams }: { searchParams
     <section className={styles.painel}><h2>Conexão CNPJ.biz</h2><p>{process.env.CNPJ_BIZ_API_KEY?.trim() ? 'Chave configurada no servidor.' : 'Configuração pendente. Defina CNPJ_BIZ_API_KEY no ambiente do servidor.'}</p>
       <p className={styles.ajuda}>O limite do CRM conta empresas solicitadas e não representa o saldo de créditos do fornecedor. A busca Google usa o agente já existente.</p></section>
     <section className={styles.painel}><h2>Limites por vendedor</h2><p className={styles.ajuda}>Sem limite configurado, novas consultas ficam bloqueadas. Pausar também impede novas importações daquela busca. O dia segue o horário de São Paulo.</p>
-      <div className={styles.limites}>{limites.length ? limites.map(l => <FormularioLimite key={l.usuario_id + '-' + l.limite_diario + '-' + l.pausado} limite={l} />) : <p>Nenhum vendedor cadastrado.</p>}</div></section>
+      <div className={styles.limites}>{limites.length ? limites.map(l => <FormularioLimite key={l.usuario_id} limite={l} />) : <p>Nenhum vendedor cadastrado.</p>}</div></section>
     {busca && <section className={styles.painel}><h2>{busca.nome}</h2><p>{busca.vendedor} · {busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas</p>
       <dl>{Object.entries(busca.filtros).filter(([, v]) => v !== '').map(([k, v]) => <div key={k}><dt>{rotulos[k as keyof FiltrosBusca]}</dt><dd>{k === 'tipo' ? v === '2' ? 'Matriz' : 'Filial' : valores[String(v)] ?? String(v)}</dd></div>)}</dl>
       {busca.estado === 'falhou' && busca.motivo ? <p role="alert">{mensagemBusca(busca.motivo)}</p> : busca.estado === 'reservada' ? <p>Consulta sem confirmação de conclusão.</p> : null}
