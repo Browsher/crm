@@ -7,6 +7,8 @@
   padding: 24px;
   container-type: inline-size;
 }
+.cartao h2, .cartao dd, .cartao p { overflow-wrap: anywhere; }
+.cartao dd { min-width: 0; }
 
 .conteudo {
   display: grid;
@@ -27,6 +29,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 24px;
+  background: var(--surface-muted);
 }
 
 .campo {

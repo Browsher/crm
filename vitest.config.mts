@@ -11,6 +11,7 @@ export default defineConfig({
         test: {
           name: 'unitario',
           environment: 'node',
+          setupFiles: ['tests/setup-browser.ts'],
           // app/**/*.test.tsx entrou com o bug do estado inicial de
           // /empresas/importar: um componente cliente decidiu sozinho qual
           // ramo renderizar e errou, que era exatamente a condição do gatilho
