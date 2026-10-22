@@ -73,7 +73,7 @@ shadcn/Radix, SmoothUI/Base UI/Motion, Vitest e Playwright, npm.
   modelo de dados único que reduza as diferenças de autorização entre telas.
 - `NOTICE-componentes-ui.md`: fontes externas, licença MIT e adaptações.
 
-## Tarefa 1: primitivas, tokens e galeria
+## Task 1: primitivas, tokens e galeria
 
 **Arquivos:** modificar `components.json`, `package.json`, `package-lock.json`,
 `app/globals.css`, `app/layout.tsx`, `src/styles/ui.css`, componentes existentes
@@ -100,7 +100,7 @@ testes vizinhos. Criar primitivas usadas de Sheet/Sidebar/Breadcrumb/Table,
   Quando o harness E2E estiver preparado, executar `npm run test:e2e` e conferir
   a galeria no build de produção. Commit só com a verificação adequada verde.
 
-## Tarefa 2: shell, tema e composições compartilhadas
+## Task 2: shell, tema e composições compartilhadas
 
 **Arquivos:** `src/components/crm/shell.tsx`, `shell.module.css`, `tema.tsx`,
 `caminho.tsx`, testes `shell*`/`caminho*`; criar `cabecalho-pagina.tsx`,
@@ -123,7 +123,7 @@ precisar ficar na raiz. Usar como moldes os arquivos atuais do mesmo diretório.
 - [ ] GREEN: suíte do diretório e E2E de navegação/tema em 390 e 1440 px, incluindo
   rota de gestor acessada por vendedor; conferir capturas antes do commit.
 
-## Tarefa 3: login e senha provisória
+## Task 3: login e senha provisória
 
 **Arquivos:** criar `src/components/crm/acesso.tsx`, `acesso.module.css` e teste;
 modificar `app/login/page.tsx`, `formulario.tsx`, `app/trocar-senha/page.tsx`,
@@ -141,7 +141,7 @@ Ler esses quatro arquivos e os testes de autenticação antes de editar.
 - [ ] GREEN: testes dos formulários, E2E de autenticação, typecheck e capturas
   de login/troca em claro/escuro e celular. Commit da tarefa.
 
-## Tarefa 4: prospecção, Meu dia, Carteira e Funil
+## Task 4: prospecção, Meu dia, Carteira e Funil
 
 Esta tarefa tem quatro entregas revisáveis, na ordem abaixo, cada uma com RED,
 GREEN e commit próprio. Todas compartilham o formulário real de contato.
@@ -182,7 +182,7 @@ e testes; nenhuma alteração nos serviços, regras ou funções SQL.
   `funil.module.css`; preservar as três etapas e meios alternativos ao drag.
   Testes da área e E2E `funil.spec.ts`, capturas e commit.
 
-## Tarefa 5: gestão e usuários
+## Task 5: gestão e usuários
 
 **Arquivos:** `app/gestao/page.tsx`, `loading.tsx`, `error.tsx`, `gestao.module.css`;
 `app/usuarios/tabela.tsx`, `linha.tsx`, `formulario-criar.tsx`, `senha.tsx`,
@@ -200,7 +200,7 @@ Ler o formulário atual de criar usuário e senha antes de substituir marcação
 - [ ] GREEN: testes das duas áreas, E2E `gestao.spec.ts`, `usuarios-visual.spec.ts`
   e `perfil-vendedor.spec.ts`; claro/escuro/celular. Commit da tarefa.
 
-## Tarefa 6: empresas, grupos, importação e fichas
+## Task 6: empresas, grupos, importação e fichas
 
 **Arquivos:** páginas/composições e CSS de `app/empresas/`, `[id]/`, `grupos/`,
 `grupos/[id]/`, `importar/`, com seus testes. Em particular `lista.tsx`, `linha.tsx`,
@@ -220,7 +220,7 @@ Ler esses formulários e seus testes DOM antes de editar.
 - [ ] GREEN: unidades de `app/empresas` e E2E de empresas, filtros, Excel,
   grupos/importação e ficha do gestor. Capturas e commit.
 
-## Tarefa 7: WhatsApp e configuração
+## Task 7: WhatsApp e configuração
 
 **Arquivos:** `app/whatsapp/page.tsx`, `painel.tsx`, `visao-geral.tsx`,
 `midia-mensagem.tsx`, `error.tsx`, `whatsapp.module.css`,
@@ -239,7 +239,7 @@ Ler os testes DOM existentes de painel, mídia e configuração inteiros.
 - [ ] GREEN: testes de `app/whatsapp`, novo E2E com serviços controlados no padrão
   do harness local, capturas claro/escuro/celular e commit da tarefa.
 
-## Tarefa 8: integração das rotas novas e revisão de cobertura
+## Task 8: integração das rotas novas e revisão de cobertura
 
 **Arquivos:** inventário da spec; se já na main, páginas de `/empresas/busca`,
 `/fila/buscar`, suas composições compartilhadas e testes vizinhos. Não copiar
@@ -255,7 +255,7 @@ arquivos do checkout ativo de outra branch.
   composição já coberta; incluir erro, vazio, nomes extensos e ausência de dados.
   Commit apenas dos arquivos desta tarefa quando houver alteração.
 
-## Tarefa 9: verificação da aplicação real e PR
+## Task 9: verificação da aplicação real e PR
 
 **Arquivos:** criar `tests/e2e/redesign-crm.spec.ts`; ajustar somente seletores e
 expectativas de apresentação deliberadamente alteradas nas jornadas existentes.

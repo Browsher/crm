@@ -1,67 +1,23 @@
-/*
- * O escopo .crm-ui impede que esta base altere as telas operacionais atuais.
- * --ui-border-control é deliberadamente mais forte que --ui-border: campos
- * precisam parecer interativos; cards usam a borda decorativa mais discreta.
- */
-.crm-ui,
-.crm-ui[data-theme='light'] {
-  --ui-background: #fff;
-  --ui-surface: #fafafa;
-  --ui-foreground: #18181b;
-  --ui-muted-foreground: #63636e;
-  --ui-border: #e4e4e7;
-  --ui-border-control: #71717a;
-  --ui-primary: #18181b;
-  --ui-primary-foreground: #fff;
-  --ui-focus: #2563eb;
-  --ui-success: #166534;
-  --ui-success-background: #f0fdf4;
-  --ui-warning: #92400e;
-  --ui-warning-background: #fffbeb;
-  --ui-danger: #b91c1c;
-  --ui-danger-background: #fef2f2;
-  color: var(--ui-foreground);
+.crm-ui {
+  --ui-background: var(--background);
+  --ui-surface: var(--surface-muted);
+  --ui-foreground: var(--foreground);
+  --ui-muted-foreground: var(--muted-foreground);
+  --ui-border: var(--border);
+  --ui-border-control: var(--input);
+  --ui-primary: var(--primary);
+  --ui-primary-foreground: var(--primary-foreground);
+  --ui-focus: var(--ring);
+  --ui-success: var(--success);
+  --ui-success-background: var(--success-background);
+  --ui-warning: var(--warning);
+  --ui-warning-background: var(--warning-background);
+  --ui-danger: var(--destructive);
+  --ui-danger-background: var(--danger-background);
+  color: var(--foreground);
   font-family: 'Segoe UI', system-ui, sans-serif;
   font-size: 14px;
   line-height: 21px;
-}
-
-.crm-ui[data-theme='dark'] {
-  --ui-background: #09090b;
-  --ui-surface: #141416;
-  --ui-foreground: #fafafa;
-  --ui-muted-foreground: #a1a1aa;
-  --ui-border: #3f3f46;
-  --ui-border-control: #71717a;
-  --ui-primary: #fafafa;
-  --ui-primary-foreground: #18181b;
-  --ui-focus: #60a5fa;
-  --ui-success: #86efac;
-  --ui-success-background: #052e16;
-  --ui-warning: #fcd34d;
-  --ui-warning-background: #451a03;
-  --ui-danger: #fca5a5;
-  --ui-danger-background: #450a0a;
-}
-
-@media (prefers-color-scheme: dark) {
-  .crm-ui[data-theme='system'] {
-    --ui-background: #09090b;
-    --ui-surface: #141416;
-    --ui-foreground: #fafafa;
-    --ui-muted-foreground: #a1a1aa;
-    --ui-border: #3f3f46;
-    --ui-border-control: #71717a;
-    --ui-primary: #fafafa;
-    --ui-primary-foreground: #18181b;
-    --ui-focus: #60a5fa;
-    --ui-success: #86efac;
-    --ui-success-background: #052e16;
-    --ui-warning: #fcd34d;
-    --ui-warning-background: #451a03;
-    --ui-danger: #fca5a5;
-    --ui-danger-background: #450a0a;
-  }
 }
 
 .crm-ui .ui-button {

@@ -1,0 +1,80 @@
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --background: #fff;
+  --foreground: #202a35;
+  --canvas: #f5f6f8;
+  --surface-muted: #fafbfc;
+  --muted: #f0f3f5;
+  --muted-foreground: #65707d;
+  --border: #e1e5e9;
+  --input: #8793a0;
+  --primary: #17634d;
+  --primary-foreground: #fff;
+  --ring: #17634d;
+  --success: #17634d;
+  --success-background: #edf6f1;
+  --warning: #8a5216;
+  --warning-background: #fff7e8;
+  --destructive: #a44537;
+  --destructive-foreground: #fff;
+  --danger-background: #fff1ef;
+  --secondary: var(--muted);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--muted);
+  --accent-foreground: var(--foreground);
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+  --sidebar: var(--surface-muted);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--success-background);
+  --sidebar-accent-foreground: var(--primary);
+  --radius: 0.5rem;
+}
+[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #1c242d;
+  --foreground: #e6ebef;
+  --canvas: #151b22;
+  --surface-muted: #182029;
+  --muted: #27323e;
+  --muted-foreground: #a3aeb9;
+  --border: #34404d;
+  --input: #657787;
+  --primary: #8fd0b9;
+  --primary-foreground: #163c30;
+  --ring: #8fd0b9;
+  --success: #a0d9bd;
+  --success-background: #203d33;
+  --warning: #edc38b;
+  --warning-background: #403322;
+  --destructive: #edb0a7;
+  --destructive-foreground: #442c2a;
+  --danger-background: #442c2a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']),
+  [data-theme='system'] {
+    color-scheme: dark;
+    --background: #1c242d;
+    --foreground: #e6ebef;
+    --canvas: #151b22;
+    --surface-muted: #182029;
+    --muted: #27323e;
+    --muted-foreground: #a3aeb9;
+    --border: #34404d;
+    --input: #657787;
+    --primary: #8fd0b9;
+    --primary-foreground: #163c30;
+    --ring: #8fd0b9;
+    --success: #a0d9bd;
+    --success-background: #203d33;
+    --warning: #edc38b;
+    --warning-background: #403322;
+    --destructive: #edb0a7;
+    --destructive-foreground: #442c2a;
+    --danger-background: #442c2a;
+  }
+}
