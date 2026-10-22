@@ -67,7 +67,6 @@ export const useActiveTabIndicatorBox = (): {
 
   useLayoutEffect(() => {
     if (!node) {
-      setBox((prev) => (prev === null ? prev : null))
       return
     }
 

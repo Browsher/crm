@@ -1,0 +1,35 @@
+import { expect, test } from '@playwright/test'
+
+for (const [largura, tema] of [[1440, 'light'], [390, 'dark']] as const) {
+  test(`WhatsApp real com serviço local em ${largura}px e tema ${tema}`, async ({ page }) => {
+    await page.setViewportSize({ width: largura, height: 900 })
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill('gestore2e@teste.local')
+    await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+    await expect(page).toHaveURL('/gestao')
+    await page.goto('/whatsapp')
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    const lista = page.getByLabel('Lista de conversas', { exact: true })
+    await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
+    await expect(page.getByLabel('Mensagens da conversa')).toContainText('próximo pedido')
+    await expect(page.locator('textarea')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Carregar imagem', exact: true }).click()
+    const ampliar = page.getByRole('button', { name: 'Ampliar imagem', exact: true })
+    await ampliar.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.locator('.ui-dialog-portal')).toHaveAttribute('data-theme', tema)
+    await page.keyboard.press('Escape')
+    await expect(ampliar).toBeFocused()
+    await page.getByRole('button', { name: 'Carregar documento: pedido.pdf', exact: true }).click()
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('indisponível')
+    if (largura === 390) {
+      await page.getByRole('button', { name: 'Voltar para conversas' }).click()
+      await expect(lista).toBeVisible()
+      await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
+      await expect(ampliar).toBeVisible()
+    } else await expect(page.getByLabel('Contexto da empresa')).toContainText('Cliente WhatsApp Aurora')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: `test-results/whatsapp-redesign-${largura}-${tema}.png`, fullPage: true })
+  })
+}

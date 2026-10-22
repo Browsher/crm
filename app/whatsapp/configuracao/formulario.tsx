@@ -6,6 +6,7 @@ import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { removerVinculoAcao, salvarVinculoAcao, type EstadoVinculo } from './acoes'
 import styles from './configuracao.module.css'
+import { NativeSelect } from '@/src/components/ui/native-select'
 
 const inicial: EstadoVinculo = { erro: null, sucesso: null }
 
@@ -23,10 +24,10 @@ export function FormularioVinculo({ vendedores }: { vendedores: { id: string; no
     startTransition(() => acao(dados))
   }}>
     <label htmlFor="vinculo-vendedor">Vendedor ativo</label>
-    <select id="vinculo-vendedor" name="vendedorId" required disabled={desabilitado} defaultValue="">
+    <NativeSelect id="vinculo-vendedor" name="vendedorId" required disabled={desabilitado} defaultValue="">
       <option value="">Selecione um vendedor</option>
       {vendedores.map(vendedor => <option key={vendedor.id} value={vendedor.id}>{vendedor.nome}</option>)}
-    </select>
+    </NativeSelect>
     {vendedores.length === 0 && <p>Nenhum vendedor ativo. Cadastre ou reative um vendedor em Usuários.</p>}
     <label htmlFor="vinculo-instancia">Nome exato da instância existente</label>
     <Input id="vinculo-instancia" name="instancia" required maxLength={100} disabled={desabilitado} autoComplete="off" aria-describedby="vinculo-ajuda" />

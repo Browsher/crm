@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { Midia } from '@/src/lib/whatsapp-midia'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/src/components/ui/dialog'
 import styles from './whatsapp.module.css'
+import { useTemaCrm } from '@/src/components/crm/tema'
+import { Button } from '@/src/components/ui/button'
 
 export function MidiaMensagem({ id, conversa, midia, fonte }: { id: string; conversa: string; midia: Midia; fonte?: string }) {
+  const tema = useTemaCrm()
   const [url, mudarUrl] = useState<string | null>(null)
   const [carregando, mudarCarregando] = useState(false)
   const [erro, mudarErro] = useState('')
@@ -52,16 +55,16 @@ export function MidiaMensagem({ id, conversa, midia, fonte }: { id: string; conv
 
   const nome = midia.nome?.replace(/[\x00-\x1f\x7f/\\]/g, '_') || 'documento'
   return <div className={styles.midia}>
-    {!url && <button className={styles.midiaBotao} type="button" onClick={carregar} disabled={carregando}>
+    {!url && <Button variant="outline" className={styles.midiaBotao} type="button" onClick={carregar} disabled={carregando}>
       {carregando ? 'Carregando arquivo…' : erro ? 'Tentar novamente' : midia.tipo === 'imagem' ? 'Carregar imagem' : midia.tipo === 'audio' ? 'Carregar áudio' : `Carregar documento: ${nome}`}
-    </button>}
+    </Button>}
     {url && midia.tipo === 'imagem' && <Dialog>
       <DialogTrigger asChild><button type="button" className={styles.miniatura} aria-label="Ampliar imagem">
         {/* Arquivo privado carregado como blob, sem passar pelo otimizador público. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={midia.legenda || 'Imagem da conversa'} onError={falhouReproducao} />
       </button></DialogTrigger>
-      <DialogContent className={styles.imagemDialogo} aria-describedby={undefined}>
+      <DialogContent theme={tema} className={styles.imagemDialogo} aria-describedby={undefined}>
         <DialogTitle>Imagem da conversa</DialogTitle>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={midia.legenda || 'Imagem ampliada'} />

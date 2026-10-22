@@ -14,6 +14,7 @@ import { prepararFilaVisual } from '../../tests/e2e/dados-fila-visual'
 import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
 import { prepararFunil } from '../../tests/e2e/dados-funil'
 import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
+import { iniciarWhatsAppDeTeste } from '../../tests/e2e/whatsapp-mock'
 
 const filhos = new Set<ChildProcess>()
 const interrupcao = new AbortController()
@@ -42,6 +43,7 @@ async function conferirPorta() {
 }
 
 let banco: BancoDeTeste | undefined
+let whatsapp: Awaited<ReturnType<typeof iniciarWhatsAppDeTeste>> | undefined
 try {
   const padrao = parseEnv(await readFile('.env.test', 'utf8'))
   const urlAdmin = process.env.DATABASE_URL_ADMIN || padrao.DATABASE_URL_ADMIN
@@ -69,7 +71,9 @@ try {
   await prepararCarteiraVisual(banco)
   await prepararMeuDia(banco)
   await prepararFunil(banco)
+  whatsapp = await iniciarWhatsAppDeTeste(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
+  Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
   const servidor = iniciar(['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined
   servidor.on('error', (erro) => { erroServidor = erro })
@@ -91,7 +95,7 @@ try {
   // banco temporário como admin, fora do app. `DATABASE_URL_ADMIN` some do
   // ambiente do servidor (`ambienteDoServidor`) de propósito; aqui ela volta
   // só para o processo do Playwright, que roda local e nunca é o app servido.
-  await executar(['node_modules/@playwright/test/cli.js', 'test'], { ...ambiente, DATABASE_URL_ADMIN: banco.urlAdmin })
+  await executar(['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2).filter(arg => arg !== '--sem-build')], { ...ambiente, DATABASE_URL_ADMIN: banco.urlAdmin })
 } catch (erro) {
   console.error(erro instanceof Error ? erro.message : erro)
   process.exitCode = 1
@@ -99,6 +103,7 @@ try {
   for (const filho of [...filhos].reverse()) {
     try { await encerrarProcesso(filho) } catch (erro) { console.error('Falha ao encerrar processo E2E', erro); process.exitCode = 1 }
   }
+  await whatsapp?.fechar()
   if (banco) {
     await banco.derrubar()
     console.log(`E2E: banco removido ${banco.nome}`)
