@@ -16,7 +16,7 @@ export function ListaEntregas({ planos, gestor = false }: { planos: PlanoGoogle[
     <Button asChild variant="outline"><Link href={`${gestor ? '/empresas' : '/fila'}/google/${p.id}`}>Ver empresas e histórico</Link></Button>
   </Card>)}</div>
 }
-export function NavegacaoSemana({ inicio, fim, caminho, parametros = {} }: { inicio: string; fim: string; caminho: string; parametros?: Record<string, string> }) {
+export function NavegacaoSemana({ inicio, fim, caminho, parametros = {}, proximos = false }: { inicio: string; fim: string; caminho: string; parametros?: Record<string, string>; proximos?: boolean }) {
   const mover = (dias: number) => {
     const data = new Date(inicio + 'T12:00:00Z')
     data.setUTCDate(data.getUTCDate() + dias)
@@ -24,7 +24,7 @@ export function NavegacaoSemana({ inicio, fim, caminho, parametros = {} }: { ini
     return `${caminho}?${params}`
   }
   return <div className={styles.cabecalhoSemana}>
-    <div><h2>Semana de {inicio.split('-').reverse().join('/')} a {fim.split('-').reverse().join('/')}</h2><p className={styles.ajuda}>Segunda a sexta. Cada semana tem seu próprio planejamento.</p></div>
+    <div><h2>{proximos?'Próximos cinco dias úteis':`Semana de ${inicio.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}`}</h2><p className={styles.ajuda}>{proximos?`De ${inicio.split('-').reverse().join('/')} a ${fim.split('-').reverse().join('/')}. Dias passados ficam no histórico; novas datas começam vazias.`:'Segunda a sexta. Cada semana tem seu próprio planejamento.'}</p></div>
     <nav aria-label="Semanas" className={styles.acoes}><Button asChild variant="outline"><Link href={mover(-7)}>Semana anterior</Link></Button><Button asChild variant="outline"><Link href={mover(7)}>Próxima semana</Link></Button></nav>
   </div>
 }

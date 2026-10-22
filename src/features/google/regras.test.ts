@@ -1,5 +1,14 @@
 import { expect, test } from 'vitest'
-import { hojeEmSaoPaulo, semanaDe, validarPlano } from './regras'
+import { hojeEmSaoPaulo, semanaDe, validarPlano, proximosDiasUteis } from './regras'
+
+test.each([
+  ['2026-10-22',['2026-10-22','2026-10-23','2026-10-26','2026-10-27','2026-10-28']],
+  ['2026-10-23',['2026-10-23','2026-10-26','2026-10-27','2026-10-28','2026-10-29']],
+  ['2026-10-24',['2026-10-26','2026-10-27','2026-10-28','2026-10-29','2026-10-30']],
+  ['2026-12-31',['2026-12-31','2027-01-01','2027-01-04','2027-01-05','2027-01-06']],
+])('próximos dias avançam sem repetir o passado a partir de %s',(hoje,esperado)=>{
+  expect(proximosDiasUteis(hoje)).toEqual(esperado)
+})
 
 test('semana civil tem cinco dias e domingo pertence à semana anterior', () => {
   expect(semanaDe('2026-10-25')).toEqual(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'])

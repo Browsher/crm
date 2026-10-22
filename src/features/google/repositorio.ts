@@ -1,8 +1,10 @@
 import { comoUsuario } from '@/src/server/db/como-usuario'
-import type { PlanoEntrada, PlanoGoogle, ResultadoGoogle } from './tipos'
+import type { AgenteGoogle, PlanoEntrada, PlanoGoogle, ResultadoGoogle } from './tipos'
 
 const PLANOS = `SELECT p.id,p.vendedor_id,u.nome AS vendedor,to_char(p.dia,'YYYY-MM-DD') AS dia,p.nicho,p.bairro,p.cidade,p.uf,p.estado,
   p.snapshot,p.motivo,p.iniciado_em::text,p.concluido_em::text,
+  EXISTS (SELECT 1 FROM google_sincronizacao s WHERE s.pedido_id=p.id AND s.versao_confirmada=s.versao) AS sincronizado,
+  (SELECT s.erro FROM google_sincronizacao s WHERE s.pedido_id=p.id) AS sincronizacao_erro,
   count(r.id)::int AS encontradas,
   count(r.id) FILTER (WHERE r.situacao='entregue')::int AS entregues,
   count(r.id) FILTER (WHERE r.situacao='entregue' AND EXISTS (SELECT 1 FROM contato c
@@ -29,10 +31,10 @@ export function repositorioGoogle(usuarioId: string) {
           AND (por_google.empresa_id IS NULL OR nullif(r.dados->>'cnpj','') IS NULL OR alvo.cnpj=r.dados->>'cnpj')))
         ORDER BY p.dia DESC,p.criado_em DESC,p.id,r.indice`, [empresaId])).linhas)
     },
-    async planejar(plano: PlanoEntrada): Promise<{ ok: true } | { ok: false; motivo: string }> {
+    async planejar(plano: PlanoEntrada): Promise<{ ok: true; id: string } | { ok: false; motivo: string }> {
       try {
-        await comoUsuario(usuarioId, e => e('SELECT google_planejar($1,$2,$3,$4,$5)', [plano.dia, plano.nicho, plano.bairro, plano.cidade, plano.uf]))
-        return { ok: true }
+        const id = await comoUsuario(usuarioId, async e => (await e<{id:string}>('SELECT google_planejar($1,$2,$3,$4,$5) AS id', [plano.dia, plano.nicho, plano.bairro, plano.cidade, plano.uf])).linhas[0].id)
+        return { ok: true, id }
       } catch (erro) {
         const codigo = (erro as { code?: string }).code
         if (codigo === '55000') return { ok: false, motivo: 'O agente já iniciou os pedidos deste dia. Planeje os próximos dias.' }
@@ -64,6 +66,27 @@ export function repositorioGoogle(usuarioId: string) {
     },
     async vendedores() {
       return comoUsuario(usuarioId, async e => (await e<{ id: string; nome: string }>("SELECT id,nome FROM usuario u WHERE eh_gestor() AND (papel='vendedor' OR EXISTS(SELECT 1 FROM google_planejamento p WHERE p.vendedor_id=u.id)) ORDER BY nome,id")).linhas)
+    },
+    async agentes(): Promise<AgenteGoogle[]> {
+      return comoUsuario(usuarioId,async e=>(await e<AgenteGoogle>(`SELECT a.vendedor_id,u.nome,a.pausado,
+        (u.ativo AND u.papel='vendedor' AND NOT u.senha_provisoria_pendente) AS disponivel,
+        ultimo.estado,ultimo.iniciado_em::text AS ultimo_inicio FROM google_agente a JOIN usuario u ON u.id=a.vendedor_id
+        LEFT JOIN LATERAL (SELECT p.estado,p.iniciado_em FROM google_planejamento p WHERE p.vendedor_id=a.vendedor_id
+          AND p.iniciado_em IS NOT NULL ORDER BY p.iniciado_em DESC,p.id LIMIT 1) ultimo ON true ORDER BY u.nome,u.id`)).linhas)
+    },
+    async definirAgente(id: string, pausado: boolean): Promise<{ok:true}|{ok:false;motivo:string}> {
+      if (!UUID.test(id)) return {ok:false,motivo:'Vendedor inválido.'}
+      try {
+        await comoUsuario(usuarioId,e=>e('SELECT google_agente_definir($1,$2)',[id,pausado]))
+        return {ok:true}
+      } catch (erro) {
+        if (['42501','22023'].includes((erro as {code:string}).code)) return {ok:false,motivo:'Seu acesso não permite alterar este agente.'}
+        throw erro
+      }
+    },
+    async podeSincronizar(id: string): Promise<boolean> {
+      if (!UUID.test(id)) return false
+      return comoUsuario(usuarioId,async e=>(await e<{id:string}>('SELECT id FROM google_planejamento WHERE id=$1',[id])).linhas.length===1)
     },
     async proximo(executor: string): Promise<{ pedido: Record<string, unknown> | null; agente?: string; ocupado?: boolean; sincronizar?: string }> {
       return comoUsuario(usuarioId, async e => (await e<{ r: { pedido: Record<string, unknown> | null; agente?: string; ocupado?: boolean; sincronizar?: string } }>('SELECT google_agente_proximo($1) AS r', [executor])).linhas[0].r)

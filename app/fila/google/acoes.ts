@@ -6,8 +6,9 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { validarPlano } from '@/src/features/google/regras'
 import { repositorioGoogle } from '@/src/features/google/repositorio'
 import { reservarEmpresa } from '@/src/features/fila/repositorio'
+import { sincronizarPedido } from '@/src/server/google/planilha/sincronizar'
 
-export type EstadoPlano = { erro: string | null; salvo: boolean }
+export type EstadoPlano = { erro: string | null; salvo: boolean; sincronizacao?: 'sincronizado' | 'pendente'; aviso?: string }
 export async function salvarPlanoAcao(_anterior: EstadoPlano, form: FormData): Promise<EstadoPlano> {
   const eu = await exigir('vendedor')
   const entrada = validarPlano(Object.fromEntries(form.entries()))
@@ -15,11 +16,22 @@ export async function salvarPlanoAcao(_anterior: EstadoPlano, form: FormData): P
   try {
     const r = await repositorioGoogle(eu.usuarioId).planejar(entrada.plano)
     if (!r.ok) return { erro: r.motivo, salvo: false }
+    const sync = await sincronizarPedido(r.id)
     revalidatePath('/fila/google')
     revalidatePath('/fila/buscar')
     revalidatePath('/empresas/google')
-    return { erro: null, salvo: true }
+    return { erro: null, salvo: true, sincronizacao: sync.estado, aviso: sync.estado==='pendente'?sync.motivo:undefined }
   } catch { return { erro: 'Não foi possível salvar. Confira o planejamento antes de tentar novamente.', salvo: false } }
+}
+export async function sincronizarPlanoAcao(_anterior: {erro:string|null},form: FormData): Promise<{erro:string|null;sucesso?:boolean}> {
+  const eu = await exigir('usuario')
+  const id = String(form.get('pedido')??'')
+  if (!await repositorioGoogle(eu.usuarioId).podeSincronizar(id)) return {erro:'Este pedido não está disponível para seu acesso.'}
+  const r = await sincronizarPedido(id)
+  revalidatePath('/fila/google')
+  revalidatePath('/fila/buscar')
+  revalidatePath('/empresas/google')
+  return r.estado==='sincronizado'?{erro:null,sucesso:true}:{erro:r.motivo}
 }
 export async function prospectarGoogleAcao(_anterior: { erro: string | null }, form: FormData): Promise<{ erro: string | null }> {
   const eu = await exigir('vendedor')

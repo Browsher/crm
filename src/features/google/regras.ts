@@ -14,6 +14,16 @@ export function semanaDe(data: string): string[] | null {
     return dia.toISOString().slice(0, 10)
   })
 }
+export function proximosDiasUteis(data: string): string[] | null {
+  if (!semanaDe(data)) return null
+  const dia = new Date(data+'T12:00:00Z')
+  const dias: string[] = []
+  while (dias.length<5) {
+    if (dia.getUTCDay()>0 && dia.getUTCDay()<6) dias.push(dia.toISOString().slice(0,10))
+    dia.setUTCDate(dia.getUTCDate()+1)
+  }
+  return dias
+}
 export function validarPlano(entrada: Record<string, unknown>): { ok: true; plano: PlanoEntrada } | { ok: false; motivo: string } {
   const { dia, nicho, bairro, cidade, uf } = entrada
   if (typeof dia !== 'string' || !semanaDe(dia)?.includes(dia)) return { ok: false, motivo: 'Escolha uma data válida de segunda a sexta.' }

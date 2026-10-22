@@ -10,6 +10,7 @@ import { useTemaCrm } from '@/src/components/crm/tema'
 import { ESTADOS_GOOGLE, type PlanoGoogle } from '@/src/features/google/tipos'
 import { salvarPlanoAcao, type EstadoPlano } from './acoes'
 import styles from './google.module.css'
+import { SincronizarPlanejamento } from './sincronizar'
 
 const ufs = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ')
 const diaDaSemana = (dia: string) => new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(dia + 'T12:00:00Z'))
@@ -23,7 +24,10 @@ export function PlanejamentoSemanal({ dias, planos, hoje, rotinaIniciada }: { di
     return <article key={dia} className={styles.dia} aria-label={diaDaSemana(dia)}>
       <div className={styles.data}><strong>{diaDaSemana(dia)}</strong><time dateTime={dia}>{dataCurta(dia)}</time></div>
       <div className={styles.criterios}><strong>{plano?.nicho ?? 'Defina o nicho deste dia'}</strong>
-        <p>{plano ? [plano.bairro || 'Cidade inteira', plano.cidade, plano.uf].join(', ') : 'O agente só busca quando você salva um pedido.'}</p></div>
+        <p>{plano ? [plano.bairro || 'Cidade inteira', plano.cidade, plano.uf].join(', ') : 'O agente só busca quando você salva um pedido.'}</p>
+        {plano && <><small>{plano.sincronizado?'Sincronizado com a planilha':'Salvo no CRM. Sincronização pendente.'}</small>
+          {!plano.sincronizado && <SincronizarPlanejamento pedido={plano.id} />}</>}
+      </div>
       <span className={styles.situacao} data-estado={plano?.estado ?? 'vazio'}>{situacao}</span>
       <EditarDia dia={dia} plano={plano} bloqueado={bloqueado} />
     </article>
@@ -58,6 +62,8 @@ function FormularioDia({ dia, plano, informarPendencia, fechar }: { dia: string;
     <p className={styles.ajuda}>Até 50 leads por pedido. Os critérios ficam fechados quando o agente inicia a rotina do dia.</p>
     {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
     {estado.salvo && <p role="status" className={styles.sucesso}>Dia salvo no planejamento.</p>}
+    {estado.salvo && estado.sincronizacao==='sincronizado' && <p className={styles.sucesso}>Sincronizado com a planilha.</p>}
+    {estado.salvo && estado.sincronizacao==='pendente' && <p role="alert" className={styles.aviso}>{estado.aviso ?? 'Salvo no CRM. Sincronização pendente.'}</p>}
     <DialogFooter><Button variant="outline" type="button" onClick={fechar} disabled={pendente}>{estado.salvo ? 'Concluir' : 'Cancelar'}</Button>
       <Button type="submit" disabled={pendente}>{pendente ? 'Salvando…' : 'Salvar dia'}</Button></DialogFooter>
   </form>
