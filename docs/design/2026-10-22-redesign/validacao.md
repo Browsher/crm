@@ -80,7 +80,15 @@ Navegador: 53 jornadas passaram na rodada completa; após o ajuste da área de
 toque dos papéis, dez jornadas afetadas passaram novamente no build atualizado
 (redesenho, Usuários e WhatsApp). Vinte capturas estão versionadas em
 [aplicacao/](aplicacao/README.md).
-Integração e revisão independente serão registradas após concluir a rodada.
+Integração: 587 testes passaram, um ignorado (57 arquivos), contra bancos locais
+descartáveis. Nenhuma migração foi aplicada à produção.
+
+Comandos: `npm run typecheck`, `npm run lint`, `npm run db:checar`,
+`npm run test:unit -- --maxWorkers=2 --reporter=default --reporter=json --outputFile=...`,
+`npm run test:integracao`, `npm run build:e2e`,
+`npm run test:e2e -- --sem-build` e `git diff --check`.
+
+A revisão independente da branch será registrada abaixo antes de atualizar o PR.
 
 ## Decisões da execução
 
