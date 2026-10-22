@@ -9,13 +9,21 @@
 .vazio { display:grid; gap:.5rem; justify-items:start; padding:1rem; border:1px dashed var(--ui-border); border-radius:.75rem; }
 .vazio p { margin:.25rem 0 0; color:var(--ui-muted-foreground); }
 .vazio a { font-weight:600; text-decoration:underline; text-underline-offset:3px; }
-.corpo { display:grid; grid-template-columns:minmax(280px,380px) 1fr; align-items:start; gap:1.5rem; }
-.colunaLista { display:grid; gap:.75rem; max-height:calc(100dvh - 13rem); margin:0; padding:0; overflow-y:auto; list-style:none; }
-.colunaPerfil { position:sticky; top:1rem; max-height:calc(100dvh - 13rem); overflow-y:auto; }
-.item { display:grid; width:100%; box-sizing:border-box; gap:.25rem; padding:.85rem 1rem; border:1px solid var(--ui-border); border-radius:.75rem; background:var(--ui-background); text-align:left; cursor:pointer; font:inherit; color:inherit; }
-.item[aria-current='true'] { border-color:var(--ui-primary,currentColor); background:var(--ui-surface); }
+.corpo { display:grid; grid-template-columns:minmax(280px,360px) minmax(0,1fr); align-items:start; gap:24px; }
+.colunaLista { display:grid; gap:0; max-height:calc(100dvh - 15rem); margin:0; padding:0; overflow-y:auto; list-style:none; background:var(--background); border:1px solid var(--border); border-radius:8px; }
+.colunaLista li { min-width:0; }
+.colunaPerfil { position:sticky; top:84px; max-height:calc(100dvh - 7rem); overflow-y:auto; min-width:0; }
+.item { display:grid; width:100%; box-sizing:border-box; gap:8px; padding:20px; border:0; border-bottom:1px solid var(--border); border-left:3px solid transparent; border-radius:0; background:var(--background); text-align:left; cursor:pointer; font:inherit; color:inherit; overflow-wrap:anywhere; }
+.item[aria-current='true'] { border-left-color:var(--primary); background:var(--success-background); }
+.item:hover { background:var(--muted); }
+.item[data-retorno='atrasado'] .itemEstado { color:var(--warning); }
+.item strong { font-size:14px; font-weight:600; }
+.item time { font-size:12px; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.voltarMovel { display:none; align-self:start; }
 .itemEstado { color:var(--ui-muted-foreground); font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
-.perfil { display:flex; flex-direction:column; gap:1rem; padding:1.25rem; border:1px solid var(--ui-border); border-radius:.75rem; background:var(--ui-background); box-shadow:0 1px 2px rgb(0 0 0/.04); }
+.perfil { display:flex; flex-direction:column; gap:24px; padding:24px; border:1px solid var(--border); border-radius:8px; background:var(--background); overflow-wrap:anywhere; }
+.perfil h2 { font-size:20px; font-weight:600; }
+.perfil header p { color:var(--muted-foreground); }
 .dados { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; margin:0; }
 .dados div { min-width:0; }
 .dados dt,.bloco h3 { color:var(--ui-muted-foreground); font-size:.75rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
@@ -28,7 +36,7 @@
 .historico li:last-child { border-bottom:0; padding-bottom:0; }
 .historico time { color:var(--ui-muted-foreground); font-size:.75rem; }
 .perfil>a { align-self:flex-start; font-weight:600; text-decoration:underline; text-underline-offset:3px; }
-@media (max-width:860px) { .corpo { grid-template-columns:1fr; } .colunaLista,.colunaPerfil { max-height:none; position:static; overflow-y:visible; } }
+@media (max-width:860px) { .corpo { grid-template-columns:minmax(0,1fr); } .colunaLista,.colunaPerfil { max-height:none; position:static; overflow-y:visible; } .corpo[data-painel-movel='ficha'] .colunaLista { display:none; } .corpo[data-painel-movel='lista'] .colunaPerfil { display:none; } .voltarMovel { display:inline-flex; } }
 @media (max-width:1050px) { .filtros { grid-template-columns:minmax(0,2fr) minmax(9rem,1fr); } .acoesFiltros { grid-column:1/-1; } }
 @media (max-width:760px) { .pagina { padding:1.25rem; } }
 @media (max-width:620px) { .filtros { grid-template-columns:minmax(0,1fr); } .acoesFiltros { grid-column:auto; flex-wrap:wrap; } }

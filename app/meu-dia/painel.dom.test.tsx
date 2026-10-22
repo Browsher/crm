@@ -68,6 +68,24 @@ function clicar(tela: HTMLDivElement, nome: string) {
 }
 
 describe('PainelMeuDia no navegador', () => {
+  test('voltar para a lista mantém a seleção e não recarrega o histórico', async () => {
+    acaoMock.mockResolvedValue({ ok: true, contatos: [] })
+    const tela = await montar([aurora, boreal])
+    await clicar(tela, 'Boreal')
+    const voltar = [...tela.querySelectorAll('button')].find(b => b.textContent === 'Voltar para retornos')
+    expect(voltar).toBeTruthy()
+    await act(async () => voltar!.click())
+    expect(tela.querySelector('[data-testid=lista-meu-dia] [aria-current]')?.textContent).toContain('Boreal')
+    expect(acaoMock).toHaveBeenCalledTimes(2)
+  })
+
+  test('posse negada no último retorno mantém o motivo visível', async () => {
+    acaoMock.mockResolvedValue({ ok: false, motivo: 'fora_da_carteira' })
+    const tela = await montar([aurora])
+    expect(tela.querySelector('[role=alert]')?.textContent).toContain('A posse mudou')
+    expect(tela.querySelector('[data-testid=lista-meu-dia]')).toBeNull()
+    expect(tela.textContent).not.toContain('11999999999')
+  })
   test('durante o carregamento nenhum histórico de outro cliente fica na tela', async () => {
     const p1 = pendente()
     acaoMock.mockReturnValueOnce(p1.promessa)
@@ -170,14 +188,14 @@ describe('PainelMeuDia no navegador', () => {
     expect(acaoMock).toHaveBeenCalledTimes(1)
   })
 
-  test('lista esvazia por posse negada cai no vazio que já existe', async () => {
+  test('lista esvazia por posse negada mostra vazio e motivo da remoção', async () => {
     const p1 = pendente()
     acaoMock.mockReturnValueOnce(p1.promessa)
     const tela = await montar([aurora])
     await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
     expect(tela.textContent).toContain('Nenhum retorno pendente para hoje')
     expect(tela.textContent).not.toContain('Aurora')
-    expect(tela.querySelector('[role="alert"]')).toBeNull()
+    expect(tela.querySelector('[role="alert"]')?.textContent).toContain('A posse mudou')
   })
 
   test('remover empresa por posse negada preserva a rolagem dos itens restantes', async () => {
