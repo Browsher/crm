@@ -1,4 +1,5 @@
 import type { DadosCadastrais as Dados } from '@/src/server/cnpj-biz/dados'
+import { DetalhesBancoEmpresa } from './detalhes-banco'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 
 export function DadosCadastrais({ dados }: { dados: Dados | null }) {
@@ -9,6 +10,7 @@ export function DadosCadastrais({ dados }: { dados: Dados | null }) {
     <dl className="mt-4 grid gap-x-4 gap-y-2 text-sm [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere] [&_dt]:text-muted-foreground sm:grid-cols-[160px_1fr]">
       <dt>Situação cadastral</dt><dd>{dados.situacao ?? 'Não informada'}</dd>
       <dt>Porte</dt><dd>{dados.porte ?? 'Não informado'}</dd>
+      <DetalhesBancoEmpresa dados={dados.detalhes}/>
       <dt>Data de abertura</dt><dd>{dados.data_abertura?.split('-').reverse().join('/') ?? 'Não informada'}</dd>
       <dt>Endereço cadastral</dt><dd>{endereco || 'Não informado'}</dd>
       {dados.telefones.length > 0 && <><dt>Telefones na origem</dt><dd>{dados.telefones.join(', ')}</dd></>}

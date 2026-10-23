@@ -7,9 +7,21 @@ import { criarClienteCnpjBiz } from '@/src/server/cnpj-biz/cliente'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { iniciarBusca } from '@/src/features/busca-empresas/servico'
 import { mensagemBusca } from '@/src/features/busca-empresas/mensagens'
+import { validarFiltros } from '@/src/features/busca-empresas/filtros'
 
 export type EstadoBusca = { erro: string | null }
 export type EstadoImportarBusca = { erro: string | null; grupoId: string | null; inseridas: number; vinculadas: number }
+
+export async function contarEmpresasAcao(form:FormData):Promise<{erro:string|null;quantidade?:number}> {
+  const eu=await exigir('vendedor')
+  const validacao=validarFiltros(Object.fromEntries(form.entries()))
+  if(!validacao.ok)return {erro:mensagemBusca('filtros_invalidos')}
+  const limite=await repositorioBusca(eu.usuarioId).meuLimite()
+  if(limite?.pausado)return {erro:mensagemBusca('pausada')}
+  if(!limite||limite.limite_diario<=limite.usado)return {erro:mensagemBusca('limite')}
+  const r=await criarClienteCnpjBiz(process.env.CNPJ_BIZ_API_KEY).contar(validacao.filtros)
+  return r.ok?{erro:null,quantidade:r.quantidade}:{erro:mensagemBusca(r.motivo)}
+}
 
 export async function buscarEmpresasAcao(_anterior: EstadoBusca, form: FormData): Promise<EstadoBusca> {
   const eu = await exigir('vendedor')

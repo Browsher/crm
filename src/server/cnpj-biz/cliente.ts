@@ -6,6 +6,7 @@ import type { ClienteBusca, EmpresaEncontrada, FalhaFornecedor, FiltrosBusca, Re
 const BASE = 'https://cnpj.biz/api/v2'
 const MAX_BYTES = 2_000_000
 const texto = z.string().max(1000).nullable().optional()
+const socio=z.union([z.string().max(1000),z.object({nome:texto,cnpj_cpf_socio:texto,funcao:z.object({codigo:texto,descricao:texto}).nullable().optional(),data_entrada_sociedade:texto,pais:z.object({codigo:z.number().nullable().optional(),descricao:texto}).nullable().optional(),representante_legal:z.object({cpf:texto,nome:texto}).nullable().optional(),faixa_etariia:texto})])
 const endereco = z.object({ cep: texto, tipo_logradouro: texto, logradouro: texto, numero: texto,
   complemento: texto, bairro: texto, cidade: z.object({ nome: texto }).nullable().optional(),
   estado: z.object({ sigla: texto }).nullable().optional() })
@@ -14,6 +15,7 @@ const schemaEmpresa = z.object({
   email: texto, data_abertura: texto, situacao: texto, porte_empresa: texto, endereco: endereco.nullable().optional(),
   telefones: z.array(z.string().max(100)).max(30).nullable().optional(),
   atividades_principal: z.array(z.string().max(1000)).max(10).nullable().optional(),
+  capital_social:texto,natureza_juridica:texto,regime_tributario:z.array(z.string().max(1000)).max(20).optional(),atividades_secundarias:z.array(z.string().max(1000)).max(100).optional(),socios:z.array(socio).max(100).optional(),
 })
 const limpar = (valor?: string | null) => {
   const limpo = valor?.trim()
@@ -35,7 +37,9 @@ function normalizar(bruto: z.infer<typeof schemaEmpresa>): EmpresaEncontrada | n
   const abertura = limpar(bruto.data_abertura)
   const dataValida = abertura && /^\d{4}-\d{2}-\d{2}$/.test(abertura) &&
     !Number.isNaN(Date.parse(abertura)) && new Date(abertura).toISOString().slice(0, 10) === abertura
-  return { cnpj, razao_social: razao, nome_fantasia: limpar(bruto.nome_fantasia),
+  const detalhes=Object.fromEntries((['capital_social','natureza_juridica','regime_tributario','atividades_secundarias','socios'] as const).filter(k=>bruto[k]!==undefined).map(k=>[k,bruto[k]]))
+  if(Buffer.byteLength(JSON.stringify(detalhes))>64000)return null
+  return { cnpj, razao_social: razao, nome_fantasia: limpar(bruto.nome_fantasia),...(Object.keys(detalhes).length?{detalhes}:{}),
     email: email && /^[^\s@]+@[^\s@]+$/.test(email) ? email : null, telefone: telefones[0] ?? null,
     cep: /^[0-9]{8}$/.test(cep) ? cep : null, cnae_principal: /^[0-9]{7}$/.test(cnae) ? cnae : null,
     situacao: limpar(bruto.situacao), porte: limpar(bruto.porte_empresa), data_abertura: dataValida ? abertura : null,
@@ -44,7 +48,7 @@ function normalizar(bruto: z.infer<typeof schemaEmpresa>): EmpresaEncontrada | n
     uf: e?.estado?.sigla && /^[A-Z]{2}$/.test(e.estado.sigla) ? e.estado.sigla : null, telefones }
 }
 type JsonResultado = { ok: true; valor: unknown } | { ok: false; motivo: FalhaFornecedor }
-export function criarClienteCnpjBiz(chave: string | undefined, fetcher: typeof fetch = fetch): ClienteBusca {
+export function criarClienteCnpjBiz(chave: string | undefined, fetcher: typeof fetch = fetch): ClienteBusca & {contar:(f:FiltrosBusca)=>Promise<{ok:true;quantidade:number}|{ok:false;motivo:FalhaFornecedor}>} {
   async function post(caminho: string, body: unknown, signal: AbortSignal): Promise<JsonResultado> {
     if (!chave?.trim() || /[\r\n]/.test(chave)) return { ok: false, motivo: 'nao_configurado' }
     try {
@@ -80,29 +84,68 @@ export function criarClienteCnpjBiz(chave: string | undefined, fetcher: typeof f
       return { ok: false, motivo: signal.aborted || nome === 'AbortError' || nome === 'TimeoutError' ? 'tempo_esgotado' : 'fornecedor_indisponivel' }
     }
   }
-  return {
-    async buscar(f: FiltrosBusca): Promise<ResultadoFornecedor> {
-      const signal = AbortSignal.timeout(25_000)
-      let atividadeId: number | undefined
-      if (f.cnae) {
-        const codigo = `${f.cnae.slice(0, 2)}.${f.cnae.slice(2, 4)}-${f.cnae.slice(4, 5)}-${f.cnae.slice(5)}`
+  async function preparar(f:FiltrosBusca,signal:AbortSignal) {
+      const a=f.avancados
+      const atividades:number[]=[]
+      for(const cnae of a?.cnaes??(f.cnae?[f.cnae]:[])) {
+        const codigo = `${cnae.slice(0, 2)}.${cnae.slice(2, 4)}-${cnae.slice(4, 5)}-${cnae.slice(5)}`
         const atividade = await post('/atividades/buscar', { busca: codigo, limit: 100, offset: 0 }, signal)
         if (!atividade.ok) return atividade
         const schema = z.array(z.object({ atividade_id: z.number().int().positive(), codigo: z.string() })).max(100)
         const dados = schema.safeParse(atividade.valor)
-        if (!dados.success) return { ok: false, motivo: 'resposta_invalida' }
-        atividadeId = dados.data.find(a => a.codigo.replace(/[.\s/-]/g, '') === f.cnae)?.atividade_id
-        if (!atividadeId) return { ok: false, motivo: 'cnae_nao_encontrado' }
+        if (!dados.success) return { ok: false as const, motivo: 'resposta_invalida' as const }
+        const atividadeId = dados.data.find(a => a.codigo.replace(/[.\s/-]/g, '') === cnae)?.atividade_id
+        if (!atividadeId) return { ok: false as const, motivo: 'cnae_nao_encontrado' as const }
+        atividades.push(atividadeId)
       }
-      const pedido = {
+      const naturezas:number[]=[]
+      for(const codigo of a?.naturezas??[]) {
+        const r=await post('/naturezas-juridicas/buscar',{busca:codigo.slice(0,3)+'-'+codigo.slice(3),limit:100,offset:0},signal)
+        if(!r.ok)return r
+        const dados=z.array(z.object({natureza_juridica_id:z.number().int().positive(),codigo:z.string()})).max(100).safeParse(r.valor)
+        const encontrada=dados.success?dados.data.find(n=>n.codigo.replace(/\D/g,'')===codigo):null
+        if(!encontrada)return {ok:false as const,motivo:'resposta_invalida' as const}
+        naturezas.push(encontrada.natureza_juridica_id)
+      }
+      const moeda=(s:string)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:true}).format(Number(s))
+      const data=(s:string)=>s.split('-').reverse().join('/')
+      const pedido = a ? {
+        limit:f.quantidade,offset:f.offset,socios:a.socios,
+        ...(a.palavras.length?{razao_fantasia:a.palavras}:{}),...(atividades.length?{atividades,atividade_tipo:a.atividadeTipo}:{}),
+        ...(naturezas.length?{natureza_juridica:naturezas}:{}),...(a.portes.length?{porte_empresa:a.portes}:{}),...(a.tipos.length?{tipo:a.tipos}:{}),
+        ...(a.situacoes.length?{situacao:a.situacoes}:{}),...(a.regimes.length?{regime_tributario:a.regimes}:{}),
+        localidades:a.regioes.length?a.regioes.map(r=>({tipo:r.cidade?'cidade':'estado',estado:r.estado,pais:'BR',...(r.cidade?{cidade:r.cidade}:{})})):[{tipo:'pais',pais:'BR'}],
+        ...(a.regioes.some(r=>r.bairros.length)?{bairros:a.regioes.flatMap(r=>r.bairros.map(bairro=>({bairro,cidade:r.cidade,estado:r.estado,pais:'BR'})))}:{}),
+        ...(a.ddds.length?{ddd:a.ddds}:{}),...(a.capitalMinimo?{capital_minimo:moeda(a.capitalMinimo)}:{}),...(a.capitalMaximo?{capital_maximo:moeda(a.capitalMaximo)}:{}),
+        ...(a.aberturaDe?{data_abertura_inicio:data(a.aberturaDe)}:{}),...(a.aberturaAte?{data_abertura_fim:data(a.aberturaAte)}:{}),...(a.contato?{contato:a.contato}:{}),
+        avancado:['numero','email','exportei',...(a.semEmailContabil?['sememailcontab']:[])],
+      } : {
         limit: f.quantidade, offset: f.offset, situacao: ['ativa'], contato: f.contato, socios: false,
         localidades: [{ tipo: f.cidade ? 'cidade' : 'estado', estado: f.uf, pais: 'BR', ...(f.cidade ? { cidade: f.cidade } : {}) }],
         ...(f.palavra ? { razao_fantasia: [f.palavra] } : {}),
-        ...(atividadeId ? { atividades: [atividadeId], atividade_tipo: ['principal'] } : {}),
+        ...(atividades.length ? { atividades, atividade_tipo: ['principal'] } : {}),
         ...(f.bairro ? { bairros: [{ bairro: f.bairro, cidade: f.cidade, estado: f.uf, pais: 'BR' }] } : {}),
         ...(f.porte ? { porte_empresa: [f.porte] } : {}), ...(f.tipo ? { tipo: [f.tipo] } : {}),
+        avancado:['numero','email','exportei'],
       }
-      const resposta = await post('/empresas/listar-com-dados', pedido, signal)
+      return {ok:true as const,pedido}
+  }
+  return {
+    async contar(f) {
+      const signal=AbortSignal.timeout(25_000)
+      const r=await preparar(f,signal)
+      if(!r.ok)return r
+      const resposta=await post('/empresas/contar',r.pedido,signal)
+      if(!resposta.ok)return resposta
+      const dados=z.object({result:z.literal(true),count:z.string().regex(/^[0-9]+$/)}).safeParse(resposta.valor)
+      if(!dados.success||!Number.isSafeInteger(Number(dados.data.count)))return {ok:false,motivo:'resposta_invalida'}
+      return {ok:true,quantidade:Number(dados.data.count)}
+    },
+    async buscar(f: FiltrosBusca): Promise<ResultadoFornecedor> {
+      const signal=AbortSignal.timeout(25_000)
+      const r=await preparar(f,signal)
+      if(!r.ok)return r
+      const resposta = await post('/empresas/listar-com-dados', r.pedido, signal)
       if (!resposta.ok) return resposta
       const dados = z.array(schemaEmpresa).max(f.quantidade).safeParse(resposta.valor)
       if (!dados.success) return { ok: false, motivo: 'resposta_invalida' }

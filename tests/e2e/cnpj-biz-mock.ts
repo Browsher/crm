@@ -40,6 +40,8 @@ export async function iniciarCnpjBizDeTeste() {
     if (pedido.method === 'GET' && pedido.url === '/estatisticas') { resposta.end(JSON.stringify({ consultas })); return }
     if (pedido.method !== 'POST' || pedido.headers.authorization !== 'Bearer chave-apenas-e2e') { resposta.writeHead(403).end('{}'); return }
     if (pedido.url === '/api/v2/atividades/buscar') { resposta.end(JSON.stringify([{ atividade_id: 1, codigo: '47.42-3-00' }])); return }
+    if (pedido.url === '/api/v2/naturezas-juridicas/buscar') { resposta.end(JSON.stringify([{natureza_juridica_id:10,codigo:'206-2',nome:'Sociedade Empresária Limitada'}])); return }
+    if (pedido.url === '/api/v2/empresas/contar') {resposta.end(JSON.stringify({result:true,count:'2'}));return}
     if (pedido.url !== '/api/v2/empresas/listar-com-dados') { resposta.writeHead(404).end('{}'); return }
     let corpo = ''
     for await (const parte of pedido) {

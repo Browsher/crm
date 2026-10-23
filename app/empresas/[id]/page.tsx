@@ -19,6 +19,7 @@ import { AbasFicha } from '@/src/components/crm/abas-ficha'
 import { repositorioGoogle } from '@/src/features/google/repositorio'
 import { HistoricoGoogleEmpresa } from '@/src/components/crm/historico-google'
 import { Button } from '@/src/components/ui/button'
+import { SociosGestor } from '../socios-gestor'
 
 const situacoes: Record<PerfilEmpresa['situacao'], string> = {
   carteira: 'Em carteira', reservada: 'Reservada', inativa: 'Sem grupo ativo',
@@ -58,6 +59,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
         </dl>
       </CardContent></Card>
       <DadosCadastrais dados={cadastrais} />
+      <SociosGestor empresaId={id}/>
       <Card><CardHeader><CardTitle>Acompanhamento</CardTitle></CardHeader><CardContent>
         <dl className={styles.dados}>
           <dt>Vendedor responsável</dt><dd>{empresa.responsavel ?? 'Sem vendedor responsável'}{empresa.responsavel && !empresa.responsavelAtivo ? <Badge variant="warning">Desativado</Badge> : null}</dd>

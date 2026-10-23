@@ -16,6 +16,31 @@ const empresa = {
     cidade: { nome: 'São Paulo' }, estado: { sigla: 'SP' } },
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
+test('deduplicação de telefone, email e exportadas é fixa em qualquer consulta',async()=>{
+  const fetcher=vi.fn().mockResolvedValue(new Response('[]'))
+  await criarClienteCnpjBiz('chave-teste',fetcher).buscar(filtros())
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).avancado).toEqual(['numero','email','exportei'])
+})
+
+test('contagem chama somente o endpoint de contar e não lista empresas',async()=>{
+  const fetcher=vi.fn().mockResolvedValue(Response.json({result:true,count:'28'}))
+  expect(await criarClienteCnpjBiz('chave-teste',fetcher).contar(filtros())).toEqual({ok:true,quantidade:28})
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  expect(fetcher.mock.calls[0][0]).toBe('https://cnpj.biz/api/v2/empresas/contar')
+})
+
+test('mapeia filtros completos incluindo naturezas, faixas e múltiplas regiões',async()=>{
+  const r=validarFiltros({palavra:'teste',uf:'SP',quantidade:'2',avancados:JSON.stringify({versao:1,palavras:['brinquedos'],cnaes:[],naturezas:['2062'],atividadeTipo:['principal','secundaria'],regioes:[{estado:'SP',cidade:'São Paulo',bairros:['Brás','Sé']},{estado:'RJ',cidade:'Rio de Janeiro',bairros:[]}],portes:['ME'],tipos:['2'],situacoes:['ativa','suspensa'],regimes:['Lucro Real'],capitalMinimo:'1000.00',capitalMaximo:'',aberturaDe:'2020-01-01',aberturaAte:'',contato:'celular',ddds:['11','21'],semEmailContabil:true,socios:true})})
+  expect(r.ok).toBe(true)
+  if(!r.ok) return
+  const fetcher=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([{natureza_juridica_id:10,codigo:'206-2',nome:'Ltda'}]))).mockResolvedValueOnce(new Response('[]'))
+  await criarClienteCnpjBiz('chave-teste',fetcher).buscar(r.filtros)
+  expect(fetcher).toHaveBeenCalledTimes(2)
+  const pedido=JSON.parse(fetcher.mock.calls[1][1].body)
+  expect(pedido).toMatchObject({natureza_juridica:[10],capital_minimo:'1.000,00',data_abertura_inicio:'01/01/2020',contato:'celular',socios:true,ddd:['11','21'],avancado:['numero','email','exportei','sememailcontab'],situacao:['ativa','suspensa']})
+  expect(pedido.localidades).toHaveLength(2)
+  expect(pedido.bairros).toHaveLength(2)
+})
 test('chama o endpoint de listagem com Bearer, filtros e telefones no formato documentado', async () => {
   const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify([empresa])))
   const r = await criarClienteCnpjBiz('chave-teste', fetcher).buscar(filtros())
@@ -44,6 +69,13 @@ test('preserva empresa sem telefone na conferência sem inventar contato', async
   const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify([{ ...empresa, telefones: [] }])))
   const r = await criarClienteCnpjBiz('chave-teste', fetcher).buscar(filtros())
   expect(r.ok && r.empresas[0].telefone).toBeNull()
+})
+
+test('preserva detalhes empresariais e sócios para persistência protegida no servidor',async()=>{
+  const fetcher=vi.fn().mockResolvedValue(new Response(JSON.stringify([{...empresa,capital_social:'20000.00',natureza_juridica:'Sociedade Empresária Limitada',regime_tributario:['Simples Nacional'],socios:[{nome:'Sócio fictício',cnpj_cpf_socio:'***000***',funcao:{codigo:'49',descricao:'Sócio-Administrador'}}]}])))
+  const r=await criarClienteCnpjBiz('chave-teste',fetcher).buscar(filtros())
+  expect(r.ok&&r.empresas[0]).toHaveProperty('detalhes.capital_social','20000.00')
+  expect(r.ok&&r.empresas[0]).toHaveProperty('detalhes.socios.0.nome','Sócio fictício')
 })
 test.each([[401, 'credencial_invalida'], [402, 'sem_creditos'], [429, 'fornecedor_ocupado'], [500, 'fornecedor_indisponivel']])('erro %s não repete requisição nem expõe corpo do fornecedor', async (status, motivo) => {
   const fetcher = vi.fn().mockResolvedValue(new Response('segredo-do-fornecedor', { status }))

@@ -1,10 +1,13 @@
+import type { FiltrosBanco, DetalhesBanco } from '@/src/lib/banco-empresas'
 export type FiltrosBusca = {
+  avancados?: FiltrosBanco
   palavra: string; cnae: string; uf: string; cidade: string; bairro: string
   porte: '' | 'MEI' | 'ME' | 'EPP' | 'DEMAIS'; tipo: '' | '1' | '2'
   contato: 'telefoneoucelular' | 'telefoneoucelulareemail' | 'email' | 'telefoneoucelularouemail'
   quantidade: number; offset: number
 }
 export type EmpresaEncontrada = {
+  detalhes?: DetalhesBanco
   cnpj: string; razao_social: string; nome_fantasia: string | null; email: string | null
   telefone: string | null; cep: string | null; cnae_principal: string | null
   situacao: string | null; porte: string | null; data_abertura: string | null

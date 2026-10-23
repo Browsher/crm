@@ -11,7 +11,7 @@ const MENSAGENS: Record<MotivoBusca, string> = {
   sem_permissao: 'Você não tem permissão para esta operação ou as buscas foram pausadas pelo gestor.',
   operacao_invalida: 'A operação não pôde ser confirmada. Confira a seleção e atualize a página.',
   nome_invalido: 'Informe um nome de lista com até 100 caracteres.',
-  filtros_invalidos: 'Confira UF, CNAE, cidade, bairro e quantidade. Informe uma palavra no nome ou um CNAE válido.',
+  filtros_invalidos: 'Confira os códigos, as regiões, as faixas e a quantidade. Cidades precisam de estado e bairros precisam de cidade.',
   limite: 'O limite diário de empresas consultadas foi atingido. Reduza a quantidade ou solicite ajuste ao gestor.',
   pausada: 'O gestor pausou suas buscas de empresas.',
 }

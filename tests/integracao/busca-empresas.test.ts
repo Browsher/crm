@@ -3,6 +3,7 @@ import type { FiltrosBusca } from '@/src/features/busca-empresas/tipos'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { bancoInicial } from '@/src/lib/banco-empresas'
 
 let banco: BancoDeTeste
 let gestor: string
@@ -38,6 +39,48 @@ beforeEach(async () => {
 })
 test('sem limite configurado não permite consulta', async () => {
   expect(await reservar()).toEqual([{ resultado: 'limite' }])
+})
+
+test('filtros completos persistem com UUID idempotente e validação autoritária no banco',async()=>{
+  await configurar(10)
+  const avancados={...bancoInicial(),palavras:['iluminação'],regioes:[{estado:'SP' as const,cidade:'São Paulo',bairros:['Brás','Sé']}]}
+  const f={...filtros,avancados}
+  const id=randomUUID()
+  expect(await reservar(id,vendedor,f)).toEqual([{resultado:'ok'}])
+  expect(await reservar(id,vendedor,f)).toEqual([{resultado:'repetida'}])
+  expect(await banco.sql('SELECT filtros->\'avancados\' AS f FROM busca_empresa WHERE id=$1',[id])).toEqual([{f:avancados}])
+  await expect(reservar(randomUUID(),vendedor,{...f,avancados:{...avancados,...{pais:'US'}}})).rejects.toMatchObject({code:'22023'})
+  await expect(reservar(randomUUID(),vendedor,{...f,avancados:{...avancados,capitalMinimo:'1000',capitalMaximo:'1'}})).rejects.toMatchObject({code:'22023'})
+})
+
+test('detalhes empresariais são persistidos na conferência e na ficha sem campos de sócios',async()=>{
+  await configurar()
+  const id=randomUUID(),detalhes={capital_social:'20000.00',natureza_juridica:'Sociedade Empresária Limitada',regime_tributario:['Simples Nacional']}
+  await reservar(id)
+  await concluir(id,[{...empresa,detalhes}])
+  await importar(id)
+  expect(await banco.sql('SELECT detalhes FROM empresa_dados_cadastrais')).toEqual([{detalhes}])
+  const outroId=randomUUID()
+  await reservar(outroId)
+  await expect(concluir(outroId,[{...empresa,detalhes:{...detalhes,campoDesconhecido:'Não expor'}}])).rejects.toMatchObject({code:'22023'})
+})
+
+test('vendedor recebe só nome e função dos sócios; gestor acessa os demais dados protegidos por RLS',async()=>{
+  await configurar()
+  const id=randomUUID(),socio={nome:'Sócio fictício',cnpj_cpf_socio:'***111222**',funcao:{codigo:'49',descricao:'Sócio-Administrador'},representante_legal:{nome:'Representante fictício',cpf:'***333444**'}}
+  await reservar(id)
+  await concluir(id,[{...empresa,detalhes:{socios:[socio]}}])
+  const [resumo]=await chamar<{empresas:unknown}>(vendedor,'SELECT empresas FROM busca_empresa WHERE id=$1',[id])
+  expect(JSON.stringify(resumo)).toContain('Sócio fictício')
+  expect(JSON.stringify(resumo)).not.toContain('111222')
+  expect(JSON.stringify(resumo)).not.toContain('Representante fictício')
+  expect(await chamar(vendedor,'SELECT dados FROM busca_empresa_socios WHERE busca_id=$1',[id])).toEqual([])
+  expect(await chamar(gestor,'SELECT dados FROM busca_empresa_socios WHERE busca_id=$1',[id])).toEqual([{dados:[socio]}])
+  await importar(id)
+  const [{id:empresaId}]=await banco.sql<{id:string}>('SELECT id FROM empresa WHERE cnpj=$1',[empresa.cnpj])
+  const ver=(u:string)=>chamar<{detalhes:unknown}>(u,'SELECT detalhes FROM empresa_dados_cadastrais_ler($1)',[empresaId])
+  expect(JSON.stringify(await ver(vendedor))).not.toContain('111222')
+  expect(JSON.stringify(await ver(gestor))).not.toContain('111222')
 })
 test('apenas gestor configura limite e senha provisória impede escrita', async () => {
   await expect(chamar(vendedor, 'SELECT busca_empresa_limite_definir($1,10,false)', [vendedor])).rejects.toMatchObject({ code: '42501' })
