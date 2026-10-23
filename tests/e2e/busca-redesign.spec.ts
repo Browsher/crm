@@ -20,8 +20,10 @@ test('acesso à busca e localização convivem no redesign da Prospecção', asy
   await expect(page.getByRole('navigation', { name: 'Localização atual' })).toContainText('Buscar empresas')
   await page.getByRole('link', { name: 'Busca no Google', exact: true }).click()
   await expect(page).toHaveURL('/fila/buscar?fonte=google')
-  await expect(page.getByRole('heading', { name: 'Busca no Google', exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Planejamento semanal', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Buscas no Google', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Editar planejamento', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Voltar para Prospecção', exact: true }).click()
+  await page.getByRole('link', { name: 'Buscar empresas', exact: true }).click()
   await page.getByRole('link', { name: 'Busca do banco de dados', exact: true }).click()
   await expect(page).toHaveURL('/fila/buscar?fonte=banco')
   for (const width of [1440, 390]) {

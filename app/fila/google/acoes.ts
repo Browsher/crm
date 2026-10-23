@@ -14,7 +14,7 @@ async function concluirSalvamento(r: { ok: true; ids: string[] } | { ok: false; 
   let sincronizacao: 'sincronizado' | 'pendente' = 'sincronizado'
   for (const id of r.ids) if ((await sincronizarPedido(id)).estado === 'pendente') sincronizacao = 'pendente'
   for (const caminho of ['/fila/google', '/fila/buscar', '/empresas/google']) revalidatePath(caminho)
-  return { erro: null, salvo: true, sincronizacao, aviso: sincronizacao === 'pendente' ? 'Salvo no CRM. A sincronização com a planilha está pendente.' : undefined }
+  return { erro: null, salvo: true, sincronizacao, aviso: sincronizacao === 'pendente' ? 'Salvo no CRM. A sincronização com a planilha está pendente.' : 'Salvo no CRM e sincronizado com a planilha.' }
 }
 export async function salvarSemanaAcao(_anterior: EstadoPlano, form: FormData): Promise<EstadoPlano> {
   const eu = await exigir('vendedor')

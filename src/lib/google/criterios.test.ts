@@ -36,3 +36,6 @@ test('lê ausência de critérios e texto legado sem perder orientações', () =
   expect(normalizarCriterios(undefined)).toEqual({ ok: true, valor: criteriosVazios() })
   expect(normalizarCriterios('Perto do centro')).toEqual({ ok: true, valor: { ...criteriosVazios(), observacoes: 'Perto do centro' } })
 })
+test.each(['termos','tipos','atendimento'])('null explícito em %s não vira opção neutra silenciosamente', campo => {
+  expect(normalizarCriterios({[campo]:null})).toMatchObject({ok:false})
+})

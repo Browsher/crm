@@ -10,6 +10,7 @@ import { normalizarCriterios, criteriosVazios } from '@/src/lib/google/criterios
 import { salvarSemanaAcao, type EstadoPlano } from './acoes'
 import { DialogoCriterios } from './criterios'
 import { EspelharPlanejamento } from './espelhar'
+import { SincronizarPlanejamento } from './sincronizar'
 import styles from './google.module.css'
 
 const ufs = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ')
@@ -23,8 +24,10 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
   const [editando, setEditando] = useState(false)
   const [rascunho, setRascunho] = useState<PlanoEntrada[]>([])
   const [tentou, setTentou] = useState(false)
+  const [conferido, setConferido] = useState(false)
   const [estado, acao, pendente] = useActionState(async (anterior: EstadoPlano, form: FormData) => {
     setTentou(true)
+    setConferido(false)
     const r = await salvarSemanaAcao(anterior, form)
     if (r.salvo) setEditando(false)
     return r
@@ -68,5 +71,10 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
       {tentou && estado.erro && <p role="alert" className={styles.aviso}>{estado.erro}</p>}
       {tentou && estado.salvo && <p role="status" className={estado.sincronizacao === 'pendente' ? styles.aviso : styles.sucesso}>{estado.aviso ?? 'Planejamento salvo.'}</p>}
     </form>
+    {planos.filter(p => p.dia > hoje && p.sincronizado === false).map(p => <div key={p.id} className={styles.rodapeSemana}>
+      <div><strong>Planilha pendente · {dataCurta(p.dia)}</strong><p className={styles.ajuda}>{p.sincronizacao_erro || 'O planejamento está salvo no CRM. Confira a sincronização antes da coleta.'}</p></div>
+      <SincronizarPlanejamento pedido={p.id} onSucesso={() => setConferido(true)} />
+    </div>)}
+    {conferido && <p role="status" className={styles.sucesso}>Sincronizado com a planilha.</p>}
   </section>
 }

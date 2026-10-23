@@ -17,3 +17,9 @@ test('critérios usados ficam consultáveis inclusive quando o mínimo é zero',
   expect(html).toContain('Nota mínima')
   expect(html).toContain('Telefone fixo')
 })
+
+test('recibo legado não apresenta validação antiga como uma entrega direta V2', () => {
+  const html = renderToStaticMarkup(<DetalheEntrega plano={plano} recibo={{ validacao_conferida: true }} resultados={[]} />)
+  expect(html).toContain('validação de contatos do fluxo anterior')
+  expect(html).not.toContain('Entrega direta')
+})

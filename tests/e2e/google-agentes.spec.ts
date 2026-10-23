@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { hojeEmSaoPaulo, proximosDiasUteis } from '../../src/features/google/regras'
+import { hojeEmSaoPaulo, semanaDe } from '../../src/features/google/regras'
 
 test.describe.configure({timeout:90000})
 async function entrar(page:Page,gestor=false) {
@@ -9,33 +9,29 @@ async function entrar(page:Page,gestor=false) {
   await page.getByRole('button',{name:'Entrar',exact:true}).click()
   await expect(page).toHaveURL(gestor?'/gestao':'/meu-dia')
 }
-test('agenda móvel salva critérios na planilha compartilhada e recupera resposta incerta',async({page,request},info)=>{
+test('semana salva critérios na planilha compartilhada e recupera resposta incerta',async({page,request},info)=>{
   await entrar(page)
   await page.goto('/fila/google')
-  await expect(page.getByRole('heading',{name:'Próximos cinco dias úteis',exact:true})).toBeVisible()
-  const dias=proximosDiasUteis(hojeEmSaoPaulo())!
+  await page.getByRole('link',{name:'Próxima semana',exact:true}).click()
+  const d=new Date(hojeEmSaoPaulo()+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+7)
+  const dias=semanaDe(d.toISOString().slice(0,10))!
   await expect(page.locator('time[datetime="'+dias[4]+'"]')).toBeVisible()
-  await page.getByRole('button',{name:/^Planejar /}).last().click()
-  const dialog=page.getByRole('dialog')
-  await dialog.getByLabel('Nicho',{exact:true}).fill('Sincronização brinquedos fictícios')
-  await dialog.getByLabel('Cidade',{exact:true}).fill('São Paulo')
-  await dialog.getByLabel('UF',{exact:true}).selectOption('SP')
-  await dialog.getByRole('button',{name:'Salvar dia',exact:true}).click()
-  await expect(dialog.getByText('Sincronizado com a planilha.',{exact:true})).toBeVisible()
-  await dialog.getByRole('button',{name:'Concluir',exact:true}).click()
+  await page.getByRole('button',{name:'Editar planejamento',exact:true}).click()
+  await page.getByRole('textbox',{name:/^Nicho de sexta-feira/}).fill('Sincronização brinquedos fictícios')
+  await page.getByRole('textbox',{name:/^Cidade de sexta-feira/}).fill('São Paulo')
+  await page.getByRole('combobox',{name:/^UF de sexta-feira/}).selectOption('SP')
+  await page.getByRole('button',{name:'Salvar planejamento',exact:true}).click()
+  await expect(page.getByRole('status')).toContainText(/sincronizado/i)
   const mock=process.env.GOOGLE_PLANILHA_MOCK_URL!
   const dados=await (await request.get(new URL('/__controle',mock).href)).json()
   expect(dados.linhas.some((l:string[])=>l[6]==='Sincronização brinquedos fictícios' && l[4]===dias[4])).toBe(true)
   await request.post(new URL('/__falhar',mock).href)
-  const artigo=page.locator('article').filter({hasText:'Sincronização brinquedos fictícios'})
-  await artigo.getByRole('button',{name:/^Editar /}).click()
-  await dialog.getByLabel('Nicho',{exact:true}).fill('Última edição preservada')
-  await dialog.getByRole('button',{name:'Salvar dia',exact:true}).click()
-  await expect(dialog.getByRole('alert')).toContainText('Salvo no CRM')
-  await dialog.getByRole('button',{name:'Concluir',exact:true}).click()
-  const novo=page.locator('article').filter({hasText:'Última edição preservada'})
-  await novo.getByRole('button',{name:'Sincronizar novamente',exact:true}).click()
-  await expect(novo.getByText('Sincronizado com a planilha',{exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Editar planejamento',exact:true}).click()
+  await page.getByRole('textbox',{name:/^Nicho de sexta-feira/}).fill('Última edição preservada')
+  await page.getByRole('button',{name:'Salvar planejamento',exact:true}).click()
+  await expect(page.getByRole('status')).toContainText('Salvo no CRM')
+  await page.getByRole('button',{name:'Sincronizar novamente',exact:true}).click()
+  await expect(page.getByText('Sincronizado com a planilha.',{exact:true})).toBeVisible()
   await page.evaluate(()=>window.scrollTo(0,0))
   await page.screenshot({path:info.outputPath('agentes-vendedor-desktop.png'),fullPage:true})
   await page.setViewportSize({width:390,height:844})

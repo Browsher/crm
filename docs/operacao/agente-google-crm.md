@@ -2,14 +2,27 @@
 
 ## O que muda
 
-O vendedor planeja nicho e região por dia em `/fila/buscar?fonte=google`.
-O recorte inicial mostra os próximos cinco dias de segunda a sexta, sem
-copiar critérios da semana anterior. Dias passados permanecem no histórico;
-o recorte avança à meia-noite de São Paulo. A consulta por semana continua
-disponível para planejar mais adiante e acompanhar entregas anteriores. Os
-pedidos do dia são congelados quando a rotina começa, a partir das 9h de
-São Paulo. Dias sem pedido não recebem coleta. A interface não inicia uma
-pesquisa instantânea. `/fila/google` e `/fila/google/[id]` mostram as entregas.
+O vendedor planeja nicho, região e critérios opcionais em `/fila/google`.
+A primeira visualização é sempre a semana corrente, de segunda a sexta,
+com Hoje destacado. Hoje e dias anteriores não podem ser editados. É
+possível salvar dias vazios: ficam Não definido e não geram coleta. Um dia
+configurado exige nicho, cidade e UF; bairro vazio cobre a cidade inteira.
+O espelhamento copia separadamente nicho, critérios e região de qualquer
+dia salvo no histórico, para datas futuras da semana exibida ou seguinte.
+
+A rotina existente deve rodar de segunda a sexta às **17h de São Paulo**.
+De segunda a quinta prepara o dia seguinte; na sexta prepara a segunda.
+Não cria novas rotinas no sábado ou domingo. Uma fila já iniciada pode
+terminar depois. O snapshot da execução congela revisão, nicho, região e
+critérios. Editar um dia futuro depois desse início salva uma nova revisão,
+sem mudar o que já está em execução nem abrir outra execução para a data.
+Sem revisão sincronizada com a planilha, a coleta fica pendente. A interface
+não dispara pesquisas instantâneas. As entregas ficam em
+`/fila/google?aba=entregas` e `/fila/google/[id]`.
+
+Todo vendedor novo recebe automaticamente seu agente lógico, planejamento
+vazio e critérios neutros. Não herda empresas nem precisa de outra planilha,
+workflow ou agendamento. Deve configurar seus dias antes da primeira busca.
 
 O gestor acompanha todos em `/empresas/google`, com filtros por semana,
 vendedor e situação. O detalhe conserva ocorrências indisponíveis,
@@ -29,14 +42,49 @@ A empresa pertence à base central. A primeira entrega cria exclusividade
 permanente de distribuição, separada da carteira e da reserva temporária.
 Outros vendedores não recebem nem reservam essa empresa, inclusive por
 lista antiga ou alvo direto. O gestor vê as ocorrências de todos. Virar a
-semana, expirar reserva ou desativar o vendedor não transfere seus leads.
+semana, expirar reserva ou desativar o vendedor não transfere suas empresas.
+Grupos novos são privados por vendedor e reúnem o mesmo nicho e região
+pesquisada (bairro, cidade e UF), sem a data na identidade. A execução usa
+o snapshot congelado para escolher o grupo. Novas semanas acrescentam
+empresas, preservando o nome e a situação do grupo já existente. Listas
+compartilhadas anteriores conservam seu comportamento.
+
+## Critérios e limite da entrega V2
+
+Cada vendedor/data recebe até **50 empresas confirmadas**, com no máximo
+**3 lotes de 50 candidatas**, total de até **150 empresas distintas
+analisadas**. Consultar primeiro o pool já coletado, sem gastar outro job
+quando ainda houver candidatas novas. Só então fazer coleta complementar,
+mantendo nicho, região e critérios congelados. Encerrar ao atingir 50,
+esgotar 3 lotes/150 candidatas ou não encontrar novidades. Não há paginação
+inventada nem ampliação da região para completar a meta.
+
+Sem critérios extras, ou somente com termos adicionais, a entrega é direta:
+não chama n8n, não exige WhatsApp, telefone, email, site ou endereço. As
+regras de identidade, exclusividade e duplicidade continuam obrigatórias.
+Os dados incompletos permanecem honestos: ausência de telefone não vira
+um número fictício nem impede o registro da empresa.
+
+Um único workflow n8n atende todos os vendedores e executa só as etapas
+necessárias: dados do Google, presença digital, perfil comercial, WhatsApp
+e formato de telefone fixo. Campos diferentes combinam com E; alternativas
+do mesmo campo com OU. WhatsApp e fixo marcados aceitam qualquer um dos
+dois. Com e Sem marcados juntos neutralizam o filtro. Preferências apenas
+ordenam, sem excluir. Email, site e perfil precisam de evidência da fonte;
+falha de acesso não comprova ausência. Resultado não confirmado fica no
+histórico do gestor. Falha sistêmica mantém o lote pendente para reconciliação.
+Fixo confere formato sem WhatsApp, sem afirmar que a linha está ativa.
+
+O gestor vê rodadas, critérios efetivamente usados, evidências, motivos de
+recusa e destinatário. Candidatas brutas e recibos são restritos ao gestor;
+o vendedor vê apenas as empresas entregues e canais conferidos.
 
 ## Preparar a ativação
 
 Esta entrega mantém a rotina operacional pausada. Não aplica migrações em
 produção, não altera a planilha, não chama o motor real e não consome créditos.
 Antes de ativar, publicar a versão revisada, aplicar a migração 0040 pelo
-procedimento de banco existente, seguida da 0041, e configurar no servidor:
+procedimento de banco existente, seguida da 0041 e da **0042**, e configurar no servidor:
 
 - `GOOGLE_AGENTE_TOKEN`: segredo aleatório de pelo menos 32 caracteres;
 - `GOOGLE_AGENTE_USUARIO_ID`: UUID de um gestor ativo, com senha definitiva;
@@ -52,14 +100,17 @@ chat não é uma credencial do servidor. Esta implementação não cria contas,
 chaves, permissões ou abas reais automaticamente.
 
 Provisionar **Planejamento CRM** no mesmo arquivo, preservando a aba antiga
-e o restante do workbook. A1:M1 precisa ter exatamente estes cabeçalhos:
+e o restante do workbook. A1:N1 precisa ter exatamente estes cabeçalhos:
 
 ```text
-Pedido ID | Revisão | Vendedor ID | Vendedor | Data | Dia da semana | Nicho | Bairro | Cidade | UF | Situação | Atualizado em | Versão
+Pedido ID | Revisão | Vendedor ID | Vendedor | Data | Dia da semana | Nicho | Bairro | Cidade | UF | Situação | Atualizado em | Versão | Critérios de busca
 ```
 
 O servidor confere arquivo, ID/título da aba, cabeçalho e conteúdo antes de
-gravar. Escreve como texto RAW, inclusive nichos que começam com `=`. O bairro
+gravar. N contém o JSON canônico dos critérios, na mesma revisão da linha.
+Intenções legadas de 13 colunas já persistidas conservam seu contrato até
+serem reconciliadas; não criar novas intenções sem N. Escreve como texto
+RAW, inclusive nichos que começam com `=`. O bairro
 vazio permanece vazio no espelho; a indicação operacional de cidade inteira
 continua separada. Cada pedido tem linha alocada no banco e suas intenções
 de escrita guardadas antes do HTTP. Resposta HTTP concluída, mas sem confirmação,
@@ -93,10 +144,89 @@ novos comandos mesmo que o token continue configurado.
 
 Conferir os lotes pendentes do agente antigo antes da transição. Atualizar o
 texto da automação existente para usar este contrato e os pedidos do CRM;
-manter seu horário de segunda a sexta às 9h, sem criar outro agendamento.
+ajustar seu horário para segunda a sexta às 17h, sem criar outro agendamento.
 Os comandos abaixo são operacionais, não são executados pelo aplicativo.
 
-## Execução diária, um pedido por vez
+O template `workflows/n8n/google/verificar-empresas.json` é único e está
+inativo. Antes de ativar, importar e testar na versão instalada do n8n,
+configurar Header Auth, `GOOGLE_VERIFICACOES_URL` e
+`GOOGLE_VERIFICACOES_TOKEN` no executor. O webhook verifica Authorization
+Bearer, sem credenciais exportadas no JSON. Reutiliza Evolution para a
+consulta de números, sem enviar mensagens. As etapas de presença/perfil
+que não puderem ser resolvidas pelos dados publicados exigem um
+qualificador de fontes públicas configurado em `GOOGLE_QUALIFICADOR_URL`
+e `GOOGLE_QUALIFICADOR_TOKEN` no n8n. Esse serviço não foi provisionado nesta
+entrega. Sem configuração, a verificação selecionada fica pendente;
+entrega direta continua independente. Detalhes do contrato e variáveis:
+`workflows/n8n/google/README.md`.
+
+## Executar contratos V2, um pedido e lote por vez
+
+Usar a mesma pasta privada `.google-agente`, ignorada pelo Git. O comando
+`proximo` persiste executor e snapshot; repetir reutiliza a execução.
+Nunca gerar outra identidade para contornar pendência ou limite.
+
+```powershell
+npx tsx scripts/google/agente.mts proximo --pasta .google-agente
+python scripts/google/coletar.py coletar --pedido .google-agente/<pedido>.json --campanha "C:\Users\ADM\Desktop\Web Scraping\armarinhos" --rodada 1
+python scripts/google/rodadas.py selecionar --candidatas <dados_preparados.json> --vistas <identidades-analisadas.json> --restante 150 --saida <lote.json>
+npx tsx scripts/google/agente.mts reservar_lote --pedido <pedido> --lote <lote.json> --pasta .google-agente
+npx tsx scripts/google/agente.mts verificar --contexto .google-agente/<pedido>.json --lote <lote.json> --saida <verificacoes.json> --pasta .google-agente
+```
+
+`vistas` é o conjunto de aliases Place ID/CNPJ dos lotes anteriores da mesma
+execução; o servidor também bloqueia repetições e aplica os contadores. O
+arquivo de lote preserva seu UUID. `restante` cai conforme o total reservado
+no CRM; não é reiniciado por rodada. Antes de outra coleta, consumir o pool
+com outro lote, se houver novidades. Rodadas 2 e 3 usam arquivos e jobs
+próprios no mesmo contexto; retomada de uma rodada reutiliza seu job.
+Intenção sem resposta do motor exige reconciliação, sem outro POST cego.
+Conservar a cópia completa do download, os CSVs, contexto e hashes.
+
+`verificar` produz evidências do workflow ou um resultado neutro local sem
+HTTP. Arquivar origem e resultado no Drive pelo procedimento já existente,
+inclusive no caminho direto. Não usar o disparador legado de WhatsApp para
+uma execução V2. Conservar as nove colunas originais do CSV nesta ordem:
+
+```text
+telefone,cnpj,razao_social,nome_fantasia,contato_nome,email,cep,cnae_principal,google_place_id
+```
+
+Preparar o recibo V2 com `versao:2`, `pedido_id`, `execucao_id`, `lote_id`,
+`revisao`, `snapshot_sha256`, `origem_sha256`, `resultado_sha256`,
+`arquivo_original_id`, `arquivo_resultado_id`, `verificacoes_requeridas` e
+`evidencias`. Os IDs Drive e hashes são conferidos após arquivamento; não
+inferir que um arquivo foi publicado só porque existe localmente. Evidências
+incluem candidata, critério, opção, estado, motivo, fonte e horário; telefone
+aprovado identifica também o contato exato. Entregar o mesmo lote reservado,
+incluindo recusadas para auditoria, sem truncar ou trocar candidatas.
+
+```powershell
+python scripts/google/coletar.py preparar --pedido .google-agente/<pedido>.json --coletadas <lote.json> --original <origem.csv> --resultado <resultado-conferido.json> --recibo <recibo-v2.json> --saida <publicacao-crm.json>
+npx tsx scripts/google/agente.mts entregar --publicacao <publicacao-crm.json> --original <origem.csv> --resultado <resultado-conferido.json> --pasta .google-agente
+python scripts/google/rodadas.py decidir --entregues <total-confirmado> --analisadas <total-reservado> --lotes <total-lotes> --novidades <novas-no-pool>
+npx tsx scripts/google/agente.mts concluir --pedido <pedido> --motivo <motivo-da-decisao> --pasta .google-agente
+```
+
+Se a decisão for `continuar`, reservar/verificar/entregar o próximo lote;
+não chamar concluir com esse valor. Motivos finais: `meta_atingida`,
+`limite_lotes`, `sem_novidades` ou `sem_resultados`. O CRM valida os limites.
+Somente depois da confirmação persistida pedir outro trabalho.
+
+Reserva, entrega e conclusão persistem a intenção antes do HTTP e admitem
+reconciliação do mesmo pedido/lote. Uma resposta perdida do workflow
+**não** dispara outra verificação: obter o retorno daquela execução e usar
+`verificar` com os mesmos argumentos mais `--reconciliar <retorno.json>`.
+Os arquivos pendentes bloqueiam o avanço. Nunca apagá-los para tentar de
+novo nem fabricar um recibo. Dados manuais, carteira, responsáveis e
+reservas existentes permanecem preservados.
+
+## Retomar somente contratos legados em andamento (V1)
+
+O procedimento desta seção é exclusivo das execuções que o CRM devolve
+com `contrato:1`. Novos pedidos usam V2. Não converter arquivos pendentes
+nem inserir o campo V2 em um recibo antigo. As regras abaixo preservam a
+validação antiga até a conclusão daquela execução; não são o padrão novo.
 
 Executar do checkout revisado do CRM. Usar uma pasta privada e estável para
 os recibos do cliente, fora de arquivos versionados. A pasta padrão

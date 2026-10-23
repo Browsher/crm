@@ -39,19 +39,19 @@ export function normalizarCriterios(entrada: unknown): Resultado<CriteriosGoogle
   const valor = criteriosVazios()
   if (Object.keys(dados).some(k => !Object.hasOwn(valor, k))) return INVALIDO
   for (const k of TEXTOS) {
-    const texto = dados[k] ?? ''
-    if (typeof texto !== 'string' || texto.length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/.test(texto)) return INVALIDO
+    const texto = dados[k] === undefined ? '' : dados[k]
+    if (typeof texto !== 'string' || Array.from(texto).length > 2000 || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/.test(texto)) return INVALIDO
     valor[k] = texto.replace(/\r\n?/g, '\n').trim()
   }
   for (const k of Object.keys(LISTAS) as (keyof typeof LISTAS)[]) {
-    const lista = dados[k] ?? []
+    const lista = dados[k] === undefined ? [] : dados[k]
     const opcoes: readonly string[] = LISTAS[k]
     if (!Array.isArray(lista) || lista.length > 100 || lista.some(v => typeof v !== 'string' || !opcoes.includes(v))) return INVALIDO
     const selecionadas = opcoes.filter(v => lista.includes(v))
     Object.assign(valor, { [k]: (k === 'site' || k === 'email') && selecionadas.length === 2 ? [] : selecionadas })
   }
   for (const k of Object.keys(ESCOLHAS) as (keyof typeof ESCOLHAS)[]) {
-    const escolha = dados[k] ?? ''
+    const escolha = dados[k] === undefined ? '' : dados[k]
     const opcoes: readonly string[] = ESCOLHAS[k]
     if (typeof escolha !== 'string' || !opcoes.includes(escolha)) return INVALIDO
     Object.assign(valor, { [k]: escolha })

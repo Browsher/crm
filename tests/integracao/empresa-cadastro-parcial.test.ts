@@ -42,7 +42,7 @@ test.each([
   [null, null, 'Aurora', null],
   ['invalido', null, 'Aurora', '11987654321'],
 ])('recusa cadastro inválido %o', async (cnpj, razao, fantasia, telefone) => {
-  await expect(banco.sql('INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone) VALUES ($1,$2,$3,$4)', [cnpj, razao, fantasia, telefone])).rejects.toMatchObject({ code: telefone === null ? '23502' : '23514' })
+  await expect(banco.sql('INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone) VALUES ($1,$2,$3,$4)', [cnpj, razao, fantasia, telefone])).rejects.toMatchObject({ code: '23514' })
 })
 
 
