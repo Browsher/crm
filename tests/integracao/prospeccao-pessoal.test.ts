@@ -47,12 +47,17 @@ test('filtros de origem e nicho são aplicados antes da paginação e não ampli
 test('importação própria e Google fazem união sem duplicar e preservam cliente trabalhado', async () => {
   const [g] = await banco.sql<{id:string}>("INSERT INTO grupo_importacao(nome) VALUES('Minha lista') RETURNING id")
   await banco.sql('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES($1,$2)',[g.id,minha])
-  await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id) VALUES($1,'Minha lista','{\"palavra\":\"Armarinhos\"}',1,'concluida',$2)",[eu,g.id])
+  await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id) VALUES($1,'Minha lista','{\"palavra\":\"Materiais\"}',1,'concluida',$2)",[eu,g.id])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[minha,eu])
   await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[minha,eu])
   const r = await consultar()
   expect(r.total).toBe(1)
   expect(r.empresas[0]).toMatchObject({id:minha,situacao:'cliente',origens:['banco','google']})
+  for(const filtros of [{origem:'google'},{origem:'banco'},{nicho:'Armarinhos'},{nicho:'Materiais'},{endereco:'Brás · São Paulo/SP'}]) {
+    const filtrada=await consultar(filtros)
+    expect(filtrada.total).toBe(1)
+    expect(filtrada.empresas[0]).toMatchObject({id:minha,origens:['banco','google']})
+  }
   expect((await consultar({},outro)).empresas.map(e=>e.id)).toEqual([alheia])
 })
 

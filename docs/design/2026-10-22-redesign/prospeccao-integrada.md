@@ -24,11 +24,13 @@ Verificação visual automatizada em 1920×1080 e 390×844, nos dois temas,
 em `tests/e2e/prospeccao-previa.spec.ts`. As capturas correspondem ao CRM
 real com banco descartável e serviços simulados, não ao HTML do mockup.
 
-Na validação final passaram 1.505 testes unitários (um ignorado), 68 jornadas
-no navegador, build, lint, typecheck e checagem das convenções do banco.
-Na integração, a rodada geral teve 670 aprovações; as cinco falhas eram listas
-de migrações esperadas ainda sem 0043/0044. Após atualizar essas expectativas,
-a reexecução dos cinco arquivos e do mock aprovou todos os 19 testes.
+Após a revisão independente, passaram 2.181 testes unitários e de integração
+(dois ignorados), 69 jornadas no navegador, build, lint, typecheck e checagem
+das convenções do banco. Os achados sobre perda de contexto ao abrir perfil
+ou continuar reserva e perda da segunda origem ao filtrar foram reproduzidos
+e corrigidos com testes RED→GREEN. A grade usa três colunas a partir de 1600 px,
+como na referência; a jornada de ida/volta e próxima aquisição preserva os
+filtros pessoais. As capturas finais foram conferidas nos dois temas.
 
 Os detalhes empresariais ficam separados de campos manuais; documentos de
 sócios são restritos ao gestor no banco e em componente servidor exclusivo.

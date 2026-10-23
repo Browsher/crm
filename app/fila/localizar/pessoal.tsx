@@ -11,7 +11,7 @@ import { Badge } from '@/src/components/ui/badge'
 import { UFS } from '@/src/features/busca-empresas/filtros'
 import { SITUACOES_PESSOAIS, urlPessoal, type ConsultaPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 import { Reservar } from './reservar'
-import { selecionarGrupo } from './navegacao'
+import { selecionarGrupo, urlConsulta } from './navegacao'
 import styles from './pessoal.module.css'
 
 type Props={filtros:FiltrosPessoais;dados:ConsultaPessoal;recolhido:boolean;reserva?:{contexto:string|null;empresaAtual:string|null}}
@@ -31,6 +31,8 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
     iniciar(()=>router.push(urlPessoal(v,1,true),{scroll:false}))
   }
   const pagina=Number(filtros.pagina||1)
+  const filtrosReserva={...selecionarGrupo(null),pagina,pessoal:JSON.stringify(filtros)}
+  const consulta=urlConsulta(filtrosReserva,pagina)
   const origem=filtros.origem==='google'?'Buscas no Google':filtros.origem==='banco'?'Banco de empresas':'Google e banco de empresas'
   return <>
     {recolhido&&<div className={styles.resumo}><div><strong>Filtros da pesquisa</strong><p>{[filtros.nicho,filtros.endereco,filtros.nome,filtros.cnpj,filtros.cnae,filtros.cidade,filtros.uf].filter(Boolean).join(' · ')||'Todos os nichos e bairros'}</p></div><Button variant="outline" onClick={()=>setRecolhido(false)} aria-expanded={false} aria-controls="filtros-pessoais">Editar filtros</Button></div>}
@@ -69,9 +71,9 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
           <p>{e.nichos.join(' · ')}</p><p>{[e.bairro,[e.cidade,e.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ')||'Endereço não informado'}</p>
           <div className={styles.meta}>{e.cnpj&&<span>CNPJ {e.cnpj}</span>}{e.cnae&&<span>CNAE {e.cnae}</span>}<span>{e.origens.map(o=>o==='google'?'Google':o==='banco'?'Banco de empresas':'Cadastro existente').join(' · ')}</span></div>
           <footer><small>Recebida em {new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo'}).format(new Date(e.entrada))}</small><div>
-            <Button asChild variant="outline"><Link href={`/fila/localizar/${e.id}`}>Ver empresa</Link></Button>
-            {e.situacao==='a_contatar'&&reserva&&<Reservar empresaId={e.id} {...reserva} filtros={{...selecionarGrupo(null),pessoal:JSON.stringify(filtros)}}/>}
-            {e.situacao==='reservada'&&<Button asChild><Link href="/fila?atendimento=1">Continuar atendimento</Link></Button>}
+            <Button asChild variant="outline"><Link href={consulta.replace('/fila/localizar?',`/fila/localizar/${e.id}?`)}>Ver empresa</Link></Button>
+            {e.situacao==='a_contatar'&&reserva&&<Reservar empresaId={e.id} {...reserva} filtros={filtrosReserva}/>}
+            {e.situacao==='reservada'&&<Button asChild><Link href={consulta.replace('/fila/localizar?','/fila?')+'&atendimento=1'}>Continuar atendimento</Link></Button>}
             {e.situacao==='cliente'&&<Button asChild><Link href={`/carteira/${e.id}`}>Abrir na carteira</Link></Button>}
             {['primeiro_contato','em_negociacao','proposta_enviada'].includes(e.situacao)&&<Button asChild><Link href="/funil">Abrir no funil</Link></Button>}
             {e.situacao==='atendimento'&&<Button asChild><Link href={`/carteira/${e.id}`}>Abrir atendimento</Link></Button>}

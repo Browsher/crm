@@ -6,13 +6,14 @@ const push=vi.fn()
 vi.mock('next/navigation',()=>({useRouter:()=>({push})}))
 vi.mock('./reservar',()=>({Reservar:()=> <button>Reservar para ligar</button>}))
 import { LocalizarPessoal } from './pessoal'
+import type { EmpresaPessoal, FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 const dados={empresas:[],total:0,nichos:['Armarinhos','Brinquedos'],bairros:['Brás · São Paulo/SP']}
 const limpar:(()=>void)[]=[]
 afterEach(()=>{limpar.splice(0).forEach(f=>f());push.mockClear()})
-async function montar(){
+async function montar(filtros:FiltrosPessoais={origem:'google'},empresas:EmpresaPessoal[]=[]){
   const div=document.createElement('div');document.body.append(div)
   const root=createRoot(div)
-  await act(async()=>root.render(<LocalizarPessoal filtros={{origem:'google'}} dados={dados} recolhido={false}/>))
+  await act(async()=>root.render(<LocalizarPessoal filtros={filtros} dados={{...dados,empresas,total:empresas.length}} recolhido={false}/>))
   limpar.push(()=>{act(()=>root.unmount());div.remove()})
   return div
 }
@@ -36,4 +37,18 @@ test('nicho limpa o bairro anterior ao consultar opções dependentes',async()=>
   await act(async()=>nicho.dispatchEvent(new Event('change',{bubbles:true})))
   expect(push.mock.calls[0][0]).toContain('nicho=Brinquedos')
   expect(push.mock.calls[0][0]).not.toContain('endereco=')
+})
+
+test('perfil e continuação preservam filtros pessoais e a página da consulta',async()=>{
+  const filtros={origem:'google',nicho:'Brinquedos',pagina:'2'}
+  const empresa:EmpresaPessoal={id:'00000000-0000-4000-8000-000000000123',nome:'Minha empresa',cnpj:null,cnae:null,cep:null,porte:null,abertura:null,bairro:null,cidade:null,uf:null,origens:['google'],nichos:['Brinquedos'],regioes:[],entrada:'2026-10-23T12:00:00Z',situacao:'reservada'}
+  const div=await montar(filtros,[empresa])
+  for(const nome of ['Ver empresa','Continuar atendimento']) {
+    const link=[...div.querySelectorAll('a')].find(a=>a.textContent===nome)!
+    const url=new URL(link.getAttribute('href')!,'http://localhost')
+    expect(url.searchParams.get('pagina')).toBe('2')
+    expect(JSON.parse(url.searchParams.get('pessoal')!)).toEqual(filtros)
+    expect(url.searchParams.has('grupo')).toBe(false)
+    expect(url.pathname).toBe(nome==='Ver empresa'?`/fila/localizar/${empresa.id}`:'/fila')
+  }
 })

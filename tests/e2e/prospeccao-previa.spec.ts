@@ -52,6 +52,30 @@ test('banco tem seis cartões, contagem e sugestão do nome conectadas à busca 
   await expect(page).toHaveURL(/busca=[0-9a-f-]{36}/)
   await expect(page.getByRole('heading',{name:'Luminárias Horizonte fictícia',exact:true})).toBeVisible()
 })
+test('perfil e reserva vigente preservam a consulta pessoal até a próxima aquisição',async({page})=>{
+  await entrar(page)
+  const consulta='/fila/localizar?origem=google&nicho=Lojas+de+brinquedos'
+  const empresa=()=>page.getByRole('article').filter({has:page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})})
+  await page.goto(consulta)
+  await empresa().getByRole('link',{name:'Ver empresa',exact:true}).click()
+  await expect(page).toHaveURL(/pessoal=/)
+  await page.getByRole('link',{name:'Voltar para localizar',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'Todas as minhas empresas',exact:true})).toBeVisible()
+  const contexto=JSON.parse(new URL(page.url()).searchParams.get('pessoal')!)
+  expect(contexto).toMatchObject({origem:'google',nicho:'Lojas de brinquedos'})
+  await empresa().getByRole('button',{name:'Reservar para ligar',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})).toBeVisible()
+  await page.goto(consulta)
+  await empresa().getByRole('link',{name:'Continuar atendimento',exact:true}).click()
+  await expect(page).toHaveURL(/pessoal=/)
+  await page.getByRole('button',{name:'Próxima',exact:true}).click()
+  await expect(page.getByRole('heading',{name:'Brinquedos do Bairro (fictícia)',exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Registrar resultado',exact:true}).click()
+  await page.getByLabel('Nota',{exact:true}).fill('Regressão fictícia da navegação pessoal')
+  await page.getByRole('button',{name:'Registrar',exact:true}).click()
+  await expect(page.getByLabel('Nota',{exact:true})).toHaveCount(0)
+})
+
 test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',async({page},info)=>{
   test.setTimeout(120000)
   await page.emulateMedia({reducedMotion:'reduce'})
@@ -63,6 +87,10 @@ test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',asy
       for(const tema of ['light','dark']) {
         await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
         await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBe(0)
+        if(tela==='localizar'&&largura===1920) {
+          const grade=page.getByRole('list').filter({has:page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})})
+          await expect.poll(()=>grade.evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(3)
+        }
         await page.screenshot({path:info.outputPath(`${tela}-${largura}-${tema}.png`),fullPage:true})
       }
     }

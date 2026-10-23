@@ -43,14 +43,18 @@ BEGIN
     FROM public.empresa_fila f WHERE (f.vendedor_id=v_eu OR (f.reservado_por=v_eu AND f.reservado_ate>now()))
       AND NOT EXISTS (SELECT 1 FROM public.google_resultado r JOIN public.google_planejamento g ON g.id=r.planejamento_id WHERE r.empresa_id=f.empresa_id AND r.situacao='entregue' AND g.vendedor_id=v_eu)
       AND NOT EXISTS (SELECT 1 FROM public.busca_empresa b JOIN public.grupo_importacao_empresa ge ON ge.grupo_id=b.grupo_id WHERE ge.empresa_id=f.empresa_id AND b.usuario_id=v_eu AND b.estado='concluida')
-  ), escolhidos AS MATERIALIZED (
+  ), vinculadas AS MATERIALIZED (
     SELECT v.*,concat_ws(' · ',nullif(v.bairro,''),nullif(concat_ws('/',nullif(v.cidade,''),nullif(v.uf,'')),'')) regiao
-    FROM vinculos v WHERE (coalesce(p->>'origem','')='' OR v.origem=p->>'origem') AND (coalesce(p->>'nicho','')='' OR v.nicho=p->>'nicho')
+    FROM vinculos v
+  ), escolhidos AS MATERIALIZED (
+    SELECT v.* FROM vinculadas v WHERE (coalesce(p->>'origem','')='' OR v.origem=p->>'origem') AND (coalesce(p->>'nicho','')='' OR v.nicho=p->>'nicho')
+  ), elegiveis AS MATERIALIZED (
+    SELECT DISTINCT empresa_id FROM escolhidos v WHERE coalesce(p->>'endereco','')='' OR v.regiao=p->>'endereco'
   ), unicas AS MATERIALIZED (
     SELECT v.empresa_id,array_agg(DISTINCT v.origem ORDER BY v.origem) origens,array_agg(DISTINCT v.nicho ORDER BY v.nicho) nichos,
       array_agg(DISTINCT v.regiao ORDER BY v.regiao) regioes,min(v.entrada) entrada,
       max(nullif(v.bairro,'')) bairro,max(nullif(v.cidade,'')) cidade,max(nullif(v.uf,'')) uf
-    FROM escolhidos v WHERE coalesce(p->>'endereco','')='' OR v.regiao=p->>'endereco' GROUP BY v.empresa_id
+    FROM vinculadas v JOIN elegiveis el ON el.empresa_id=v.empresa_id GROUP BY v.empresa_id
   ), resumo AS MATERIALIZED (
     SELECT e.id,coalesce(e.nome_fantasia,e.razao_social,'Empresa sem nome') nome,e.cnpj,e.cnae_principal cnae,e.cep,d.porte,d.data_abertura abertura,
       coalesce(c.bairro,d.bairro,u.bairro) bairro,coalesce(c.localidade,d.cidade,u.cidade) cidade,coalesce(c.uf::text,d.uf,u.uf) uf,u.origens,u.nichos,u.regioes,u.entrada,
