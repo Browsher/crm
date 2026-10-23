@@ -4,7 +4,8 @@
 // banco.
 export { formatarCnpj } from '../../lib/empresa-apresentacao'
 
-export function formatarTelefone(telefone: string): string {
+export function formatarTelefone(telefone: string | null): string {
+  if (telefone === null) return 'Sem telefone informado'
   if (/^[0-9]{11}$/.test(telefone)) {
     return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 7)}-${telefone.slice(7)}`
   }

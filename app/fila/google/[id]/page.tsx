@@ -16,7 +16,7 @@ export default async function PaginaEntrega({ params, searchParams }: { params: 
   const entrega = await repositorioGoogle(eu.usuarioId).detalhe(id, pagina)
   if (!entrega) notFound()
   const minhas = await lerMinhasEmpresas(eu.usuarioId)
-  return <main className={styles.pagina}><CabecalhoPagina titulo={entrega.plano.nicho} descricao="Leads recebidos pelo agente do Google." acoes={<Button asChild variant="outline"><Link href={`/fila/google?semana=${entrega.plano.dia}&aba=entregas`}>Voltar para leads recebidos</Link></Button>} />
+  return <main className={styles.pagina}><CabecalhoPagina titulo={entrega.execucao?.snapshot?.nicho ?? entrega.plano.snapshot?.nicho ?? entrega.plano.nicho} descricao="Empresas recebidas pelas buscas no Google." acoes={<Button asChild variant="outline"><Link href={`/fila/google?semana=${entrega.plano.dia}&aba=entregas`}>Voltar para empresas recebidas</Link></Button>} />
     <DetalheEntrega {...entrega} contexto={minhas.ok ? minhas.contexto : null} />
   </main>
 }

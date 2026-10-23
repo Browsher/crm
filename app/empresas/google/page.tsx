@@ -45,7 +45,7 @@ export default async function PaginaGoogleGestor({ searchParams }: { searchParam
       <label>Situação<NativeSelect name="estado" defaultValue={estado}><option value="">Todas as situações</option>{Object.entries(ESTADOS_GOOGLE).map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}</NativeSelect></label>
       <Button type="submit">Aplicar filtros</Button>
     </form>
-    <dl className={styles.totais}><div><dt>Pedidos na semana</dt><dd>{planos.length}</dd></div><div><dt>Leads entregues</dt><dd>{entregues}</dd></div><div><dt>Com atendimento</dt><dd>{trabalhadas}</dd></div><div><dt>Sem atendimento</dt><dd>{Math.max(0, entregues - trabalhadas)}</dd></div></dl>
+    <dl className={styles.totais}><div><dt>Pedidos na semana</dt><dd>{planos.length}</dd></div><div><dt>Empresas entregues</dt><dd>{entregues}</dd></div><div><dt>Com atendimento</dt><dd>{trabalhadas}</dd></div><div><dt>Sem atendimento</dt><dd>{Math.max(0, entregues - trabalhadas)}</dd></div></dl>
     <p className={styles.ajuda}>Atendimento conta quando o destinatário registra uma interação após receber a empresa. Coletas repetidas, conflitos e contatos sem validação ficam no histórico de cada pedido.</p>
     <Card className={styles.painel}><h2>Planejamento dos vendedores</h2>
       {!planos.length ? <p>Nenhum pedido para estes filtros. Cada vendedor precisa preencher os critérios da semana.</p> : <div className={styles.semana}>{planos.map(p => <article className={styles.dia} key={p.id}>

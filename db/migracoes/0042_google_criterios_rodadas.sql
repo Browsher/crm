@@ -141,6 +141,7 @@ ALTER TABLE google_execucao ADD COLUMN revisao integer;
 ALTER TABLE google_execucao ADD COLUMN snapshot jsonb;
 ALTER TABLE google_execucao ADD COLUMN analisadas integer NOT NULL DEFAULT 0 CHECK (analisadas BETWEEN 0 AND 150);
 ALTER TABLE google_execucao ADD COLUMN entregues integer NOT NULL DEFAULT 0 CHECK (entregues BETWEEN 0 AND 50);
+ALTER TABLE google_execucao ADD COLUMN lotes_reservados integer NOT NULL DEFAULT 0 CHECK (lotes_reservados BETWEEN 0 AND 3);
 ALTER TABLE google_execucao ADD COLUMN motivo_parada text;
 CREATE TABLE google_lote (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -155,7 +156,7 @@ CREATE TABLE google_lote (
   UNIQUE(execucao_id,ordinal)
 );
 ALTER TABLE google_lote ENABLE ROW LEVEL SECURITY;
-CREATE POLICY google_lote_leitura ON google_lote FOR SELECT TO app_usuario USING (pode_ler() AND (eh_gestor() OR EXISTS (SELECT 1 FROM google_planejamento p WHERE p.id=pedido_id AND p.vendedor_id=usuario_atual())));
+CREATE POLICY google_lote_leitura ON google_lote FOR SELECT TO app_usuario USING (pode_ler() AND eh_gestor());
 GRANT SELECT ON google_lote TO app_usuario;
 ALTER FUNCTION google_coordenar_em(uuid,timestamptz) RENAME TO google_coordenar_legado_em;
 CREATE FUNCTION google_coordenar_em(p_executor uuid,p_agora timestamptz) RETURNS jsonb
@@ -215,7 +216,7 @@ BEGIN
   SELECT count(*)+1 INTO n FROM public.google_lote WHERE execucao_id=e.id;
   IF n>3 OR e.analisadas+jsonb_array_length(candidatas)>150 THEN RAISE EXCEPTION 'orcamento esgotado' USING ERRCODE='55000'; END IF;
   INSERT INTO public.google_lote(id,execucao_id,pedido_id,ordinal,candidatas) VALUES (lote_id,e.id,p_id,n,candidatas) RETURNING * INTO l;
-  UPDATE public.google_execucao SET analisadas=analisadas+jsonb_array_length(candidatas) WHERE id=e.id;
+  UPDATE public.google_execucao SET analisadas=analisadas+jsonb_array_length(candidatas),lotes_reservados=lotes_reservados+1 WHERE id=e.id;
   RETURN to_jsonb(l);
 END;
 $$;
@@ -253,6 +254,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION empresa_telefone_origem_conferir() FROM PUBLIC;
 CREATE CONSTRAINT TRIGGER empresa_telefone_origem AFTER INSERT OR UPDATE ON empresa DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION empresa_telefone_origem_conferir();
 ALTER TABLE google_resultado ADD COLUMN lote_id uuid REFERENCES google_lote(id) ON DELETE SET NULL;
+ALTER TABLE google_resultado ADD COLUMN canais_verificados text[] NOT NULL DEFAULT '{}';
 CREATE FUNCTION google_criterios_regras(c jsonb) RETURNS jsonb
 LANGUAGE plpgsql IMMUTABLE SET search_path = '' AS $$
 DECLARE r jsonb := '[]'; k text;
@@ -394,7 +396,8 @@ BEGIN
         END IF;
       END IF;
     END IF;
-    INSERT INTO public.google_resultado(planejamento_id,lote_id,indice,empresa_id,dados,situacao,motivo,entregue_em) VALUES (p_id,l.id,indice,empresa_id,linha,situacao,motivo,CASE WHEN situacao='entregue' THEN clock_timestamp() END);
+    INSERT INTO public.google_resultado(planejamento_id,lote_id,indice,empresa_id,dados,situacao,motivo,entregue_em,canais_verificados) VALUES (p_id,l.id,indice,empresa_id,linha,situacao,motivo,CASE WHEN situacao='entregue' THEN clock_timestamp() END,
+      ARRAY(SELECT x.value->>'opcao' FROM jsonb_array_elements(p_recibo->'evidencias') x WHERE x.value->>'candidata'=identidade AND x.value->>'criterio'='telefone' AND x.value->>'estado'='aprovado'));
   END LOOP;
   resposta := CASE WHEN inativo THEN 'vendedor_inativo' ELSE 'ok' END;
   UPDATE public.google_execucao SET entregues=entregues+novas WHERE id=e.id;

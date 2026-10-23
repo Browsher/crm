@@ -10,7 +10,7 @@ export type EmpresaComigo = {
   cnaePrincipal: string | null
   ultimoContato: { nota: string | null; criadoEm: Date } | null
   contatoNome: string | null
-  telefone: string
+  telefone: string | null
   email: string | null
   // Os três estados de endereço, separados: com endereço, com CEP que a base
   // não resolveu, e sem CEP nenhum. A tela diz coisas diferentes para cada um.
@@ -42,7 +42,7 @@ type LinhaCrua = {
   ultima_nota: string | null
   ultimo_contato_em: Date | null
   contato_nome: string | null
-  telefone: string
+  telefone: string | null
   email: string | null
   cep: string | null
   reservado_ate: Date | null

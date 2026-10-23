@@ -6,7 +6,7 @@ import styles from './google.module.css'
 
 export function ListaEntregas({ planos, gestor = false }: { planos: PlanoGoogle[]; gestor?: boolean }) {
   const entregas = planos.filter(p => p.estado !== 'planejado')
-  if (!entregas.length) return <Card className={styles.vazio}><h2>Nenhuma entrega nesta semana</h2><p>Os pedidos salvos entram na rotina diária do agente. Acompanhe aqui a coleta, a validação e os leads liberados.</p></Card>
+  if (!entregas.length) return <Card className={styles.vazio}><h2>Nenhuma entrega nesta semana</h2><p>Os pedidos salvos entram na rotina diária do agente. Acompanhe aqui a coleta, as verificações e as empresas recebidas.</p></Card>
   return <div className={styles.entregas}>{entregas.map(p => <Card key={p.id} className={styles.entrega}>
     <div><span className={styles.situacao} data-estado={p.estado}>{ESTADOS_GOOGLE[p.estado]}</span><h2>{p.nicho}</h2>
       <p>{[p.bairro || 'Cidade inteira', p.cidade, p.uf].join(', ')}</p><p className={styles.ajuda}><time dateTime={p.dia}>{p.dia.split('-').reverse().join('/')}</time>{gestor ? ` · ${p.vendedor}` : ''}</p></div>

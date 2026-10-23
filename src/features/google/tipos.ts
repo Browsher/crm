@@ -8,6 +8,8 @@ export type PlanoGoogle = PlanoEntrada & { id: string; vendedor_id: string; vend
   sincronizado?: boolean; sincronizacao_erro?: string | null; revisao?: number; execucao_revisao?: number | null }
 export type AgenteGoogle = { vendedor_id: string; nome: string; pausado: boolean; disponivel: boolean; estado: EstadoGoogle | null; ultimo_inicio: string | null }
 export type ResultadoGoogle = { id: string; empresa_id: string | null; situacao: 'entregue' | 'repetida' | 'indisponivel' | 'pendente' | 'conflito';
-  dados: Record<string, unknown>; motivo: string | null; entregue_em: string | null; trabalhada: boolean }
+  dados: Record<string, unknown>; motivo: string | null; entregue_em: string | null; trabalhada: boolean; lote_id?: string | null; canais_verificados?: string[] }
+export type ExecucaoGoogle = { revisao: number | null; snapshot: PlanoGoogle['snapshot']; analisadas: number; entregues: number; lotes_reservados: number; motivo_parada: string | null }
+export type LoteGoogle = { id: string; ordinal: number; analisadas: number; recibo: Record<string, unknown> | null; resposta: { resultado?: string; entregues?: number } | null; concluido_em: string | null }
 export const ESTADOS_GOOGLE: Record<EstadoGoogle, string> = { planejado: 'Planejado', aguardando: 'Na fila do agente',
   coletando: 'Coletando empresas', validando: 'Validando contatos', concluido: 'Concluído', falhou: 'Precisa de conferência', cancelado: 'Não liberado' }

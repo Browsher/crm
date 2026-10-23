@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote_plus
+from rodadas import priorizar
 
 
 def sha256(arquivo):
@@ -159,6 +160,7 @@ def processar_neutro(raw, pedido, pasta):
             'endereco': linha.get('address') or linha.get('endereco') or '', 'categoria': linha.get('category') or linha.get('categoria') or '',
             'site': linha.get('website') or linha.get('site') or '', 'situacao_google': linha.get('status') or '',
             'link_maps': linha.get('link') or linha.get('link_maps') or '', 'dados_brutos': linha})
+    empresas = priorizar(empresas, pedido.get('criterios', {}))
     campos = ['telefone', 'cnpj', 'razao_social', 'nome_fantasia', 'contato_nome', 'email', 'cep', 'cnae_principal', 'google_place_id']
     for nome, selecionadas in [('empresas_novas.csv', empresas[:50]), ('empresas_sinalizadas.csv', empresas)]:
         with (pasta/nome).open('w', encoding='utf-8-sig', newline='') as stream:

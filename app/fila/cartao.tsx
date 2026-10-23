@@ -55,7 +55,7 @@ export function Cartao({ empresa, agora, contatos, bloqueado = false, etapa, onR
           </header>
           {!expirada && <AbasFicha dados={<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm">
             <dt className="text-neutral-600">Telefone</dt>
-            <dd className="font-medium">{empresa.telefone}</dd>
+            <dd className="font-medium">{empresa.telefone ?? 'Sem telefone informado'}</dd>
             {empresa.contatoNome ? <><dt className="text-neutral-600">Contato</dt><dd>{empresa.contatoNome}</dd></> : null}
             {empresa.email ? <><dt className="text-neutral-600">E-mail</dt><dd>{empresa.email}</dd></> : null}
             <dt className="text-neutral-600">Endereço</dt><dd>{endereco(empresa)}</dd>

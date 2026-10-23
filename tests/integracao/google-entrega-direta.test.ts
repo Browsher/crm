@@ -87,6 +87,11 @@ test('vendedor inativo conserva resultado para o gestor e não recebe empresa', 
 test('cadastro direto sem origem Google continua exigindo telefone no banco', async () => {
   await expect(chamar(gestor, "INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Manual sem contato',NULL)")).rejects.toMatchObject({ code: '23514' })
 })
+test('vendedor não lê candidatas brutas nem recibos de empresas não entregues', async () => {
+  const p = await preparar()
+  await p.lote([{ google_place_id: 'bruta', nome_fantasia: 'Empresa ainda não entregue', telefone: '1133334444' }])
+  expect(await chamar(vendedor, 'SELECT id FROM google_lote')).toEqual([])
+})
 test('reaproveita CNPJ preservando campos manuais e não entrega telefone de outra empresa', async () => {
   await banco.sql("INSERT INTO empresa(cnpj,nome_fantasia,telefone,email) VALUES ('11222333000181','Cadastro manual','1133334444','manual@exemplo.test')")
   const p = await preparar()

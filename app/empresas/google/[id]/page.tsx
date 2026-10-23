@@ -14,7 +14,7 @@ export default async function PaginaEntregaGestor({ params, searchParams }: { pa
   const pagina = Number.isInteger(numero) && numero >= 1 && numero <= 100 ? numero : 1
   const entrega = await repositorioGoogle(eu.usuarioId).detalhe(id, pagina)
   if (!entrega) notFound()
-  return <main className={styles.pagina}><CabecalhoPagina titulo={entrega.plano.nicho} descricao={`Coleta solicitada por ${entrega.plano.vendedor}.`} acoes={<Button asChild variant="outline"><Link href={`/empresas/google?semana=${entrega.plano.dia}`}>Voltar para planejamentos</Link></Button>} />
+  return <main className={styles.pagina}><CabecalhoPagina titulo={entrega.execucao?.snapshot?.nicho ?? entrega.plano.snapshot?.nicho ?? entrega.plano.nicho} descricao={`Coleta solicitada por ${entrega.plano.vendedor}.`} acoes={<Button asChild variant="outline"><Link href={`/empresas/google?semana=${entrega.plano.dia}`}>Voltar para planejamentos</Link></Button>} />
     <DetalheEntrega {...entrega} gestor />
   </main>
 }

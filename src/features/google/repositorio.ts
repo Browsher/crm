@@ -1,5 +1,5 @@
 import { comoUsuario } from '@/src/server/db/como-usuario'
-import type { AgenteGoogle, PlanoEntrada, PlanoGoogle, ResultadoGoogle } from './tipos'
+import type { AgenteGoogle, PlanoEntrada, PlanoGoogle, ResultadoGoogle, ExecucaoGoogle, LoteGoogle } from './tipos'
 
 const PLANOS = `SELECT p.id,p.vendedor_id,u.nome AS vendedor,to_char(p.dia,'YYYY-MM-DD') AS dia,p.nicho,p.bairro,p.cidade,p.uf,p.estado,
   p.criterios,p.revisao,(SELECT e.revisao FROM google_execucao e WHERE e.pedido_id=p.id) AS execucao_revisao,
@@ -85,11 +85,13 @@ export function repositorioGoogle(usuarioId: string) {
       return comoUsuario(usuarioId, async e => {
         const plano = (await e<PlanoGoogle>(`${PLANOS} WHERE p.id=$1 GROUP BY p.id,u.nome`, [id])).linhas[0]
         if (!plano) return null
-        const resultados = (await e<ResultadoGoogle>(`SELECT r.id,r.empresa_id,r.situacao,r.dados,r.motivo,r.entregue_em::text,
+        const resultados = (await e<ResultadoGoogle>(`SELECT r.id,r.empresa_id,r.situacao,r.dados,r.motivo,r.entregue_em::text,r.lote_id,r.canais_verificados,
           EXISTS (SELECT 1 FROM contato c WHERE c.empresa_id=r.empresa_id AND c.criado_por=$2 AND c.criado_em>=r.entregue_em) AS trabalhada
           FROM google_resultado r WHERE r.planejamento_id=$1 ORDER BY r.indice LIMIT 51 OFFSET $3`, [id, plano.vendedor_id, (pagina - 1) * 50])).linhas
         const recibo = (await e<{ recibo: Record<string, unknown> }>('SELECT recibo FROM google_publicacao WHERE planejamento_id=$1', [id])).linhas[0]?.recibo ?? null
-        return { plano, resultados: resultados.slice(0, 50), recibo, pagina, temProxima: resultados.length > 50 }
+        const execucao = (await e<ExecucaoGoogle>('SELECT revisao,snapshot,analisadas,entregues,lotes_reservados,motivo_parada FROM google_execucao WHERE pedido_id=$1', [id])).linhas[0] ?? null
+        const lotes = (await e<LoteGoogle>('SELECT id,ordinal,jsonb_array_length(candidatas) AS analisadas,recibo,resposta,concluido_em::text FROM google_lote WHERE pedido_id=$1 ORDER BY ordinal', [id])).linhas
+        return { plano, resultados: resultados.slice(0, 50), recibo, execucao, lotes, pagina, temProxima: resultados.length > 50 }
       })
     },
     async vendedores() {

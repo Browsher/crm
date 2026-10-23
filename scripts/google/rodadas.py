@@ -3,6 +3,8 @@ import argparse
 import json
 import re
 import uuid
+import math
+import unicodedata
 from pathlib import Path
 
 
@@ -15,6 +17,30 @@ def identidades(empresa):
     if isinstance(cnpj, str) and re.fullmatch(r'[0-9A-Z]{14}', cnpj):
         chaves.add('cnpj:' + cnpj)
     return chaves
+
+
+def priorizar(candidatas, criterios):
+    def texto(v):
+        return ''.join(c for c in unicodedata.normalize('NFKD', str(v).casefold()) if not unicodedata.combining(c))
+    prioridades = texto(criterios.get('prioridades', ''))
+    palavras = set(re.findall(r'\w{4,}', prioridades)) - {'mais', 'maior', 'menos', 'priorizar', 'empresas'}
+    def numero(v):
+        try:
+            n = float(v)
+            return n if math.isfinite(n) else -1
+        except (ValueError, TypeError):
+            return -1
+    def pontuacao(e):
+        bruto = e.get('dados_brutos', {})
+        publicado = texto(' '.join(str(e.get(k, '')) for k in ('nome_fantasia','categoria','endereco','site')) + ' ' + str(bruto.get('descriptions', '')))
+        return (
+            int(criterios.get('situacao') == 'priorizar_funcionamento' and str(e.get('situacao_google', '')).lower() in ('open','operational','em funcionamento')),
+            int(criterios.get('atendimento') == 'priorizar_fisica' and bool(e.get('endereco'))),
+            numero(bruto.get('review_count')) if 'avaliac' in prioridades else 0,
+            numero(bruto.get('review_rating')) if 'nota' in prioridades else 0,
+            sum(p in publicado for p in palavras),
+        )
+    return sorted(candidatas, key=pontuacao, reverse=True)
 
 
 def selecionar_lote(candidatas, vistas, restante):

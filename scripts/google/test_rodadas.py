@@ -1,8 +1,14 @@
 import unittest
-from rodadas import selecionar_lote, decidir_continuacao, identidades
+from rodadas import selecionar_lote, decidir_continuacao, identidades, priorizar
 
 
 class RodadasTest(unittest.TestCase):
+    def test_preferencias_ordenam_sem_descartar_empresas(self):
+        a = {'google_place_id':'a','dados_brutos':{'review_count':'2'},'endereco':''}
+        b = {'google_place_id':'b','dados_brutos':{'review_count':'30'},'endereco':'Rua recebida'}
+        self.assertEqual(priorizar([a,b], {'prioridades':'Mais avaliações'}), [b,a])
+        self.assertEqual(priorizar([a,b], {}), [a,b])
+        self.assertEqual(len(priorizar([a,b], {'atendimento':'priorizar_fisica'})), 2)
     def test_tres_lotes_de_50_entregam_18_22_10(self):
         vistas = set()
         entregues = 0

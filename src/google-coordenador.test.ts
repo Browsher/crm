@@ -75,6 +75,42 @@ test('CLI V2 entrega sem arquivo WhatsApp e mantém a mesma publicação após r
     await rm(pasta, { recursive: true, force: true })
   }
 }, 90000)
+test('verificação do CLI pula workflow neutro e exige reconciliação depois de resposta perdida', async () => {
+  const pasta = await mkdtemp(join(tmpdir(), 'crm-google-verificar-'))
+  const id = randomUUID(), execucao_id = randomUUID(), lote_id = randomUUID()
+  const contexto = join(pasta,'contexto.json'), lote = join(pasta,'lote.json'), saida = join(pasta,'verificacao.json'), resposta = join(pasta,'resposta.json')
+  await writeFile(contexto,JSON.stringify({id,execucao_id,revisao:1,snapshot_sha256:'a'.repeat(64),snapshot:{criterios:{}}}))
+  await writeFile(lote,JSON.stringify({lote_id,candidatas:[{google_place_id:'place',nome_fantasia:'Loja'}]}))
+  let chamadas=0
+  const servidor=createServer(req=>{chamadas++;req.socket.destroy()})
+  await new Promise<void>(r=>servidor.listen(0,'127.0.0.1',r))
+  try {
+    const endereco=servidor.address()
+    if(!endereco||typeof endereco==='string') throw new Error('Servidor indisponível')
+    const env={...process.env,GOOGLE_CRM_URL:'http://127.0.0.1:'+endereco.port,GOOGLE_AGENTE_TOKEN:'token-ficticio',GOOGLE_VERIFICACOES_URL:'http://127.0.0.1:'+endereco.port,GOOGLE_VERIFICACOES_TOKEN:'segredo-apenas-teste'}
+    const cli=(extra:string[]=[])=>promisify(execFile)(process.execPath,['--import','tsx','scripts/google/agente.mts','verificar','--pasta',pasta,'--contexto',contexto,'--lote',lote,'--saida',saida,...extra],{env,timeout:25000})
+    await cli()
+    expect(chamadas).toBe(0)
+    await rm(saida)
+    await writeFile(contexto,JSON.stringify({id,execucao_id,revisao:1,snapshot_sha256:'b'.repeat(64),snapshot:{criterios:{nota:4}}}))
+    const webhook = env.GOOGLE_VERIFICACOES_URL
+    env.GOOGLE_VERIFICACOES_URL = ''
+    await expect(cli()).rejects.toThrow()
+    await expect(readFile(join(pasta,'verificacao-pendente.json'))).rejects.toMatchObject({code:'ENOENT'})
+    env.GOOGLE_VERIFICACOES_URL = webhook
+    await expect(cli()).rejects.toThrow()
+    expect(chamadas).toBe(1)
+    await expect(cli()).rejects.toThrow()
+    expect(chamadas).toBe(1)
+    await writeFile(resposta,JSON.stringify({pedido_id:id,execucao_id,lote_id,revisao:1,snapshot_sha256:'b'.repeat(64),evidencias:[]}))
+    await cli(['--reconciliar',resposta])
+    expect(chamadas).toBe(1)
+    expect(JSON.parse(await readFile(saida,'utf8')).verificacoes_requeridas).toEqual(['dados_google'])
+  } finally {
+    await new Promise<void>((r,reject)=>servidor.close(e=>e?reject(e):r()))
+    await rm(pasta,{recursive:true,force:true})
+  }
+},90000)
 test('CLI reserva lote com identidade persistida e confirma conclusão explícita', async () => {
   const pasta = await mkdtemp(join(tmpdir(), 'crm-google-reserva-'))
   const pedido = randomUUID()
