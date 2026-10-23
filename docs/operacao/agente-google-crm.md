@@ -62,11 +62,23 @@ O servidor confere arquivo, ID/título da aba, cabeçalho e conteúdo antes de
 gravar. Escreve como texto RAW, inclusive nichos que começam com `=`. O bairro
 vazio permanece vazio no espelho; a indicação operacional de cidade inteira
 continua separada. Cada pedido tem linha alocada no banco e suas intenções
-de escrita guardadas antes do HTTP. Resposta perdida permite reconciliar a
-mesma linha, sem append. Linhas desconhecidas ou editadas manualmente ficam
+de escrita guardadas antes do HTTP. Resposta HTTP concluída, mas sem confirmação,
+permite conferir a mesma linha, sem append. Linhas desconhecidas ou editadas manualmente ficam
 para conferência. A aba é administrada pelo CRM; evitar edições estruturais
 ou manuais concorrentes nela. Não há sincronização de volta das células para
 alterar pedidos do CRM.
+
+Perda de transporte ou queda do processo após a reserva do envio conserva
+um bloqueio durável por pedido. A operação pode ainda terminar no Google;
+uma leitura dos valores, sozinha, não comprova seu encerramento. Novas edições
+continuam salvas no CRM, mas não são enviadas nem confirmadas enquanto houver
+esse envio pendente. O botão de nova conferência não remove esse bloqueio.
+O operador precisa identificar `envio_id`/`envio_versao` no histórico e obter
+evidência de que a requisição anterior terminou antes de liberar o envio
+exato por `google_planilha_liberar`, sob identidade de gestor. Sem essa prova,
+manter pendente; não apagar a intenção, trocar a linha/destino ou inventar um
+prazo de liberação. Depois, conferir novamente os critérios atuais. A expansão
+da grade apenas acrescenta linhas; nunca reduz a grade existente.
 
 Salvar confirma primeiro o CRM e tenta sincronizar. A interface diferencia
 salvo no CRM, sincronizado e pendente. Sem Google disponível, o pedido e sua
@@ -124,6 +136,10 @@ fixo de armarinhos. Bairro vazio significa cidade inteira.
 Se a pasta legada `coletas/crm/<pedido-uuid>` já existir, a ponte a reutiliza
 para não perder uma execução em andamento. Os IDs de vendedor e pedido são
 validados antes de compor caminhos. Nenhum critério vira nome de pasta.
+Na retomada, IDs, data, critérios e snapshot precisam coincidir. A introdução
+de `executor` e `revisao` é compatível com pedidos antigos sem esses campos;
+metadados já presentes não podem trocar de valor. O job e os arquivos
+existentes permanecem vinculados ao mesmo pedido.
 
 A ponte grava `contexto-operacional.json` na pasta do pedido. Para um pedido
 antigo que ainda não tenha esse arquivo, gerá-lo sem iniciar coleta:

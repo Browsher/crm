@@ -86,6 +86,10 @@ um pedido nessa transição concorrente; não concede acesso de outro vendedor
 e a entrega exige destinatário vendedor ativo. Não foi incluído na passagem
 de correções, conforme o processo de revisão inline.
 
+Atualização posterior: essa transição foi reproduzida novamente e corrigida
+na entrega de [agentes e planilha](../google-agentes/validacao.md), com
+revalidação de papel após a espera e teste concorrente RED → GREEN.
+
 ## Decisões tomadas durante a execução
 
 Registro completo das decisões do ledger desta implementação, em ordem:

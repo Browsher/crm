@@ -68,6 +68,7 @@ const sao = (): Estado => ({
     'public.google_planilha_preparar',
     'public.google_planilha_confirmar',
     'public.google_planilha_intencao',
+    'public.google_planilha_liberar',
   ],
   funcoesExecutaveisPorPublico: [],
 })

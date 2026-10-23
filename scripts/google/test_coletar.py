@@ -6,6 +6,8 @@ import subprocess
 import sys
 import types
 import csv
+from contextlib import nullcontext
+from unittest.mock import patch
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location('ponte', Path(__file__).with_name('coletar.py'))
@@ -15,6 +17,25 @@ SPEC.loader.exec_module(ponte)
 PEDIDO = {'id': '00000000-0000-4000-8000-000000000001', 'nicho': 'Pet shop $()', 'bairro': 'Brás', 'cidade': 'São Paulo', 'uf': 'SP', 'estado': 'coletando'}
 
 class PonteTest(unittest.TestCase):
+    def test_retoma_pasta_legada_com_metadados_novos_sem_criar_job(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz = Path(temp)
+            antigo = dict(PEDIDO, vendedor_id='00000000-0000-4000-8000-000000000002', dia='2026-10-22')
+            novo = dict(antigo, revisao=1, executor='00000000-0000-4000-8000-000000000003')
+            pasta = raiz/'coletas'/'crm'/antigo['id']
+            pasta.mkdir(parents=True)
+            for nome, valor in [('pedido.json', antigo), ('job.json', {'id':'job-anterior'}), ('dados_preparados.json', {'all':[]}), ('resumo.json', {'total':0})]:
+                (pasta/nome).write_text(json.dumps(valor), encoding='utf-8')
+            job_anterior = (pasta/'job.json').read_bytes()
+            modulo = types.SimpleNamespace(HERE=raiz, HISTORY=raiz/'historico.json', campaign_lock=lambda _:nullcontext(),
+                save_json=lambda caminho, valor:caminho.write_text(json.dumps(valor), encoding='utf-8'))
+            with patch.object(ponte, 'carregar_coletor', return_value=modulo):
+                self.assertEqual(ponte.coletar(novo, raiz), pasta)
+            self.assertEqual((pasta/'job.json').read_bytes(), job_anterior)
+            for divergente in [dict(novo, vendedor_id='00000000-0000-4000-8000-000000000004'), dict(novo, nicho='Outro nicho')]:
+                with self.assertRaisesRegex(RuntimeError, 'divergentes'):
+                    ponte.verificar_inicio(pasta, divergente)
+
     def test_pasta_do_agente_isola_vendedor_e_preserva_execucao_legada(self):
         with tempfile.TemporaryDirectory() as pasta:
             raiz = Path(pasta)

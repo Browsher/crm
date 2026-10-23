@@ -79,8 +79,8 @@
 - [x] Escrever jornada RED: dois agentes/gestores compartilhados, salvar e ler confirmação no fake, falha e recuperação, pausa e nova agenda, API ocupada e entrega protegida.
 - [x] Implementar fake isolado por preload do subprocesso E2E (sem URL remota configurável em produção), contas sintéticas e capturas nos dois temas/390 px.
 - [x] Rodar unidade completa, integração completa, build:e2e, E2E, lint/typecheck/db:checar/diff-check; esperado verde.
-- [ ] Atualizar prévia 3100 com build e banco fictícios, conferir no navegador; documentar configuração/ativação e limitações.
-- [ ] Revisão independente fresca de BASE até HEAD; uma passagem RED→GREEN para Critical/Important, suite inteira; registrar decisões e minores, sem re-review.
+- [x] Atualizar prévia 3100 com build e banco fictícios, conferir no navegador; documentar configuração/ativação e limitações.
+- [x] Revisão independente fresca de BASE até HEAD; uma passagem RED→GREEN para Critical/Important, suite inteira; registrar decisões e minores, sem re-review.
 - [ ] Commitar, atualizar PR #55 e conferir CI da revisão final; preservar worktree e prévia, remover apenas scratch deste plano após preservar resultados.
 
 ## Execução autorizada

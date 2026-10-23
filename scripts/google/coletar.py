@@ -32,7 +32,9 @@ def verificar_inicio(pasta, pedido):
         raise RuntimeError('Reconcilie a criação pendente no motor antes de iniciar outro job; preserve intencao.json.')
     if (pasta/'pedido.json').exists():
         antigo = json.loads((pasta/'pedido.json').read_text(encoding='utf-8'))
-        if antigo != pedido:
+        imutaveis = ('id', 'vendedor_id', 'dia', 'nicho', 'bairro', 'cidade', 'uf', 'snapshot')
+        metadados = ('executor', 'revisao')
+        if any(antigo.get(k) != pedido.get(k) for k in imutaveis) or any(k in antigo and antigo[k] != pedido.get(k) for k in metadados):
             raise RuntimeError('A pasta contém outro pedido ou critérios divergentes.')
 
 

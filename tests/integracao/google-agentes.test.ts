@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { QueryResultRow } from 'pg'
+import { Client, type QueryResultRow } from 'pg'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
@@ -124,4 +124,50 @@ test('executor de outro gestor não assume a execução em andamento e contrato 
   await proximo()
   expect(await proximo(executor, dia, gestor2)).toMatchObject({ ocupado: true })
   await expect(chamar(gestor, "SELECT google_agente_etapa($1,'validando',NULL)", [id])).rejects.toMatchObject({ code: '55000' })
+})
+
+test.each(['vendedor','gestor'] as const)('início serializa desativação do %s enquanto a sincronização bloqueia a gravação',async alvo=>{
+  const id=await plano()
+  await sincronizar(id)
+  await banco.sql('INSERT INTO google_rotina(dia,iniciado_em) VALUES ($1,now())',[dia])
+  await banco.sql("UPDATE google_planejamento SET estado='aguardando' WHERE id=$1",[id])
+  const bloqueio=new Client({connectionString:banco.urlAdmin})
+  const alteracao=new Client({connectionString:banco.urlAdmin})
+  await bloqueio.connect(); await alteracao.connect()
+  const {rows:[{pid}]}=await alteracao.query<{pid:number}>('SELECT pg_backend_pid() AS pid')
+  let terminou=false
+  let coleta:ReturnType<typeof proximo>|undefined
+  let desativacao:Promise<unknown>|undefined
+  try {
+    await bloqueio.query('BEGIN')
+    await bloqueio.query('SELECT pedido_id FROM google_sincronizacao WHERE pedido_id=$1 FOR UPDATE',[id])
+    coleta=proximo()
+    await expect.poll(async()=>(await banco.sql<{n:number}>("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND query LIKE 'SELECT google_coordenar_em(%' AND wait_event_type='Lock'"))[0].n).toBe(1)
+    desativacao=alteracao.query('UPDATE usuario SET ativo=false WHERE id=$1',[alvo==='vendedor'?vendedor:gestor]).then(()=>{terminou=true})
+    await expect.poll(async()=>terminou||(await banco.sql<{n:number}>("SELECT count(*)::int AS n FROM pg_stat_activity WHERE pid=$1 AND wait_event_type='Lock'",[pid]))[0].n===1).toBe(true)
+    expect(terminou).toBe(false)
+  } finally {
+    await bloqueio.query('ROLLBACK')
+    await Promise.allSettled([coleta,desativacao])
+    await bloqueio.end(); await alteracao.end()
+    await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1',[gestor])
+  }
+})
+
+test('vendedor promovido enquanto espera pelo planejamento não salva depois como gestor',async()=>{
+  const bloqueio=new Client({connectionString:banco.urlAdmin})
+  await bloqueio.connect()
+  let salvamento:Promise<unknown>|undefined
+  try {
+    await bloqueio.query('BEGIN')
+    await bloqueio.query('SELECT pg_advisory_xact_lock(40,1)')
+    salvamento=plano().catch(erro=>erro)
+    await expect.poll(async()=>(await banco.sql<{n:number}>("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND query LIKE 'SELECT google_planejar(%' AND wait_event_type='Lock'"))[0].n).toBe(1)
+    await banco.sql("UPDATE usuario SET papel='gestor' WHERE id=$1",[vendedor])
+  } finally {
+    await bloqueio.query('ROLLBACK')
+    await bloqueio.end()
+  }
+  expect(await salvamento).toMatchObject({code:'42501'})
+  expect(await banco.sql('SELECT id FROM google_planejamento')).toEqual([])
 })

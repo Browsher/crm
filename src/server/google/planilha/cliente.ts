@@ -2,7 +2,7 @@ import { sign } from 'node:crypto'
 import type { ConfiguracaoPlanilha } from './configuracao'
 
 export const CABECALHO_PLANILHA = ['Pedido ID','Revisão','Vendedor ID','Vendedor','Data','Dia da semana','Nicho','Bairro','Cidade','UF','Situação','Atualizado em','Versão']
-export type PayloadPlanilha = { pedido: string; linha: number; versao: number; revisao: number; anteriores: string[][]; dados: {
+export type PayloadPlanilha = { pedido: string; linha: number; versao: number; revisao: number; envio_id?: string|null; anteriores: string[][]; dados: {
   id: string; vendedor_id: string; vendedor: string; dia: string; nicho: string; bairro: string; cidade: string; uf: string; estado: string; atualizado_em: string } }
 const objeto = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
 const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
@@ -54,13 +54,17 @@ export function criarClientePlanilha(config: ConfiguracaoPlanilha, fetcher: type
         expira = Date.now()+r.expires_in*1000
       } catch { throw incerto() }
       return {
-        async gravar(p: PayloadPlanilha) {
+        async gravar(p: PayloadPlanilha, operacao = {incerta:false}) {
           if (!Number.isInteger(p.linha) || p.linha<2 || p.linha>200000 || expira<=Date.now()) throw conferir()
           const signal = AbortSignal.timeout(18000)
           const base = 'https://sheets.googleapis.com/v4/spreadsheets/'+config.planilhaId
           const req = async (url: string, init: RequestInit = {}) => {
             try {
-              return await lerJson(await fetcher(url,{...init,redirect:'error',signal,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}}))
+              const mutacao = init.method === 'PUT' || init.method === 'POST'
+              if (mutacao) operacao.incerta = true
+              const resposta = await fetcher(url,{...init,redirect:'error',signal,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}})
+              if (mutacao) operacao.incerta = false
+              return await lerJson(resposta)
             } catch { throw incerto() }
           }
           const meta = await req(base+'?fields=spreadsheetId,sheets(properties(sheetId,title,gridProperties))')
@@ -72,7 +76,7 @@ export function criarClientePlanilha(config: ConfiguracaoPlanilha, fetcher: type
           const valores = (a1: string) => base+'/values/'+encodeURIComponent("'Planejamento CRM'!"+a1)
           const header = linhas(await req(valores('A1:M1')+'?valueRenderOption=UNFORMATTED_VALUE'))
           if (!igual(header,[CABECALHO_PLANILHA])) throw conferir()
-          if (grade.rowCount<p.linha) await req(base+':batchUpdate',{method:'POST',body:JSON.stringify({requests:[{updateSheetProperties:{properties:{sheetId:config.abaId,gridProperties:{rowCount:p.linha}},fields:'gridProperties.rowCount'}}]})})
+          if (grade.rowCount<p.linha) await req(base+':batchUpdate',{method:'POST',body:JSON.stringify({requests:[{appendDimension:{sheetId:config.abaId,dimension:'ROWS',length:p.linha-grade.rowCount}}]})})
           const intervalo = 'A'+p.linha+':M'+p.linha
           const atual = celulasDoPedido(p)
           const encontradas = linhas(await req(valores(intervalo)+'?valueRenderOption=UNFORMATTED_VALUE'))

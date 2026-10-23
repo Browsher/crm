@@ -23,6 +23,7 @@ CREATE FUNCTION google_agente_definir(p_vendedor uuid,p_pausado boolean) RETURNS
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
   PERFORM pg_catalog.pg_advisory_xact_lock(40,1);
+  PERFORM id FROM public.usuario WHERE id IN (public.usuario_atual(),p_vendedor) ORDER BY id FOR SHARE;
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   IF p_pausado IS NULL OR NOT EXISTS (SELECT 1 FROM public.usuario WHERE id=p_vendedor AND papel='vendedor') THEN
     RAISE EXCEPTION 'vendedor invalido' USING ERRCODE='22023';
@@ -42,6 +43,8 @@ CREATE TABLE google_sincronizacao (
   versao_confirmada integer NOT NULL DEFAULT 0,
   revisao_confirmada integer NOT NULL DEFAULT 0,
   destino text,
+  envio_id uuid,
+  envio_versao integer,
   erro text,
   atualizada_em timestamptz NOT NULL DEFAULT now(),
   confirmada_em timestamptz
@@ -85,6 +88,21 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION google_planejamento_espelhar() FROM PUBLIC;
 CREATE TRIGGER google_planejamento_espelhar AFTER INSERT OR UPDATE ON google_planejamento FOR EACH ROW EXECUTE FUNCTION google_planejamento_espelhar();
+ALTER FUNCTION google_planejar(date,text,text,text,text) RENAME TO google_planejar_interno;
+REVOKE EXECUTE ON FUNCTION google_planejar_interno(date,text,text,text,text) FROM app_usuario;
+CREATE FUNCTION google_planejar(p_dia date,p_nicho text,p_bairro text,p_cidade text,p_uf text) RETURNS uuid
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(40,1);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
+  IF NOT public.pode_escrever() OR NOT EXISTS (SELECT 1 FROM public.usuario WHERE id=public.usuario_atual() AND papel='vendedor') THEN
+    RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501';
+  END IF;
+  RETURN public.google_planejar_interno(p_dia,p_nicho,p_bairro,p_cidade,p_uf);
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_planejar(date,text,text,text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION google_planejar(date,text,text,text,text) TO app_usuario;
 CREATE FUNCTION google_planilha_preparar(p_id uuid,p_destino text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE
@@ -96,6 +114,7 @@ BEGIN
     RAISE EXCEPTION 'destino invalido' USING ERRCODE='22023';
   END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(41,2);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   SELECT * INTO v FROM public.google_sincronizacao WHERE pedido_id=p_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'pedido invalido' USING ERRCODE='22023'; END IF;
@@ -105,21 +124,22 @@ BEGIN
     'bairro',p.bairro,'cidade',p.cidade,'uf',p.uf,'estado',p.estado,'atualizado_em',
     to_char(v.atualizada_em AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) INTO v_dados
     FROM public.google_planejamento p JOIN public.usuario u ON u.id=p.vendedor_id WHERE p.id=p_id;
-  RETURN jsonb_build_object('pedido',p_id,'linha',v.linha,'versao',v.versao,'revisao',v.revisao,'dados',v_dados,
+  RETURN jsonb_build_object('pedido',p_id,'linha',v.linha,'versao',v.versao,'revisao',v.revisao,'envio_id',v.envio_id,'dados',v_dados,
     'anteriores',coalesce((SELECT jsonb_agg(t.celulas ORDER BY t.versao) FROM public.google_planilha_tentativa t WHERE t.pedido_id=p_id),'[]'::jsonb));
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION google_planilha_preparar(uuid,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION google_planilha_preparar(uuid,text) TO app_usuario;
-CREATE FUNCTION google_planilha_intencao(p_id uuid,p_versao integer,p_celulas jsonb) RETURNS boolean
+CREATE FUNCTION google_planilha_intencao(p_id uuid,p_versao integer,p_celulas jsonb,p_envio uuid DEFAULT NULL) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v public.google_sincronizacao%ROWTYPE;
 BEGIN
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(41,2);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   SELECT * INTO v FROM public.google_sincronizacao WHERE pedido_id=p_id FOR UPDATE;
-  IF NOT FOUND OR v.versao<>p_versao OR v.destino IS NULL THEN RETURN false; END IF;
+  IF NOT FOUND OR v.versao<>p_versao OR v.destino IS NULL OR v.envio_id IS NOT NULL THEN RETURN false; END IF;
   IF p_celulas IS NULL OR jsonb_typeof(p_celulas)<>'array' OR jsonb_array_length(p_celulas)<>13
     OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_celulas) x WHERE jsonb_typeof(x.value)<>'string')
     OR p_celulas->>0 IS DISTINCT FROM p_id::text OR p_celulas->>1 IS DISTINCT FROM v.revisao::text
@@ -130,16 +150,32 @@ BEGIN
     RAISE EXCEPTION 'intencao divergente' USING ERRCODE='22023';
   END IF;
   INSERT INTO public.google_planilha_tentativa(pedido_id,versao,celulas) VALUES (p_id,p_versao,p_celulas) ON CONFLICT DO NOTHING;
+  IF p_envio IS NOT NULL THEN
+    UPDATE public.google_sincronizacao SET envio_id=p_envio,envio_versao=p_versao WHERE pedido_id=p_id;
+  END IF;
   RETURN true;
 END;
 $$;
-REVOKE EXECUTE ON FUNCTION google_planilha_intencao(uuid,integer,jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION google_planilha_intencao(uuid,integer,jsonb) TO app_usuario;
+REVOKE EXECUTE ON FUNCTION google_planilha_intencao(uuid,integer,jsonb,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION google_planilha_intencao(uuid,integer,jsonb,uuid) TO app_usuario;
+CREATE FUNCTION google_planilha_liberar(p_id uuid,p_envio uuid) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(41,2);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
+  IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
+  UPDATE public.google_sincronizacao SET envio_id=NULL,envio_versao=NULL WHERE pedido_id=p_id AND envio_id=p_envio;
+  RETURN FOUND;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_planilha_liberar(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION google_planilha_liberar(uuid,uuid) TO app_usuario;
 CREATE FUNCTION google_planilha_confirmar(p_id uuid,p_versao integer,p_erro text) RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(41,2);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   IF p_erro IS NOT NULL AND (length(p_erro)>500 OR p_erro ~ '[[:cntrl:]]') THEN
     RAISE EXCEPTION 'motivo invalido' USING ERRCODE='22023';
@@ -148,7 +184,7 @@ BEGIN
     versao_confirmada=CASE WHEN p_erro IS NULL THEN versao ELSE versao_confirmada END,
     revisao_confirmada=CASE WHEN p_erro IS NULL THEN revisao ELSE revisao_confirmada END,
     confirmada_em=CASE WHEN p_erro IS NULL THEN clock_timestamp() ELSE confirmada_em END
-    WHERE pedido_id=p_id AND versao=p_versao AND destino IS NOT NULL;
+    WHERE pedido_id=p_id AND versao=p_versao AND destino IS NOT NULL AND (p_erro IS NOT NULL OR envio_id IS NULL);
   RETURN FOUND;
 END;
 $$;
@@ -180,6 +216,9 @@ BEGIN
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   IF p_executor IS NULL THEN RAISE EXCEPTION 'executor obrigatorio' USING ERRCODE='55000'; END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(40,1);
+  PERFORM u.id FROM public.usuario u WHERE u.id=public.usuario_atual() OR u.id IN (
+    SELECT p.vendedor_id FROM public.google_planejamento p WHERE p.estado IN ('planejado','aguardando','coletando','validando','falhou')
+  ) ORDER BY u.id FOR SHARE;
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   SELECT * INTO v_execucao FROM public.google_execucao WHERE concluido_em IS NULL;
   IF FOUND THEN
@@ -206,7 +245,7 @@ BEGIN
     SELECT p.* INTO v_pedido FROM public.google_planejamento p JOIN public.google_agente a ON a.vendedor_id=p.vendedor_id
       WHERE p.estado='aguardando' AND p.dia=v_dia AND NOT a.pausado ORDER BY p.criado_em,p.id LIMIT 1;
     IF NOT FOUND THEN RETURN jsonb_build_object('pedido',NULL); END IF;
-    IF NOT EXISTS (SELECT 1 FROM public.google_sincronizacao s WHERE s.pedido_id=v_pedido.id AND s.revisao_confirmada=v_pedido.revisao) THEN
+    IF NOT EXISTS (SELECT 1 FROM public.google_sincronizacao s WHERE s.pedido_id=v_pedido.id AND s.revisao_confirmada=v_pedido.revisao AND s.envio_id IS NULL) THEN
       RETURN jsonb_build_object('pedido',NULL,'sincronizar',v_pedido.id);
     END IF;
     UPDATE public.google_planejamento SET estado='coletando',iniciado_em=p_agora WHERE id=v_pedido.id RETURNING * INTO v_pedido;
@@ -227,6 +266,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 BEGIN
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   PERFORM pg_catalog.pg_advisory_xact_lock(40,1);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
   IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
   IF p_executor IS NULL OR NOT EXISTS (SELECT 1 FROM public.google_execucao WHERE pedido_id=p_id AND executor_id=p_executor
     AND gestor_id=public.usuario_atual() AND (p_concluida OR concluido_em IS NULL)) THEN

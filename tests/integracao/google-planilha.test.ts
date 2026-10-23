@@ -23,7 +23,7 @@ function fakeGoogle(falhar = false, antesDeEscrever?: () => Promise<void>) {
       await antesDeEscrever?.()
       linhas.set(range,JSON.parse(String(init.body)).values[0])
       escritas++
-      if (falhar) { falhar=false; throw new Error('Retorno perdido') }
+      if (falhar) { falhar=false; return Response.json({error:'Resposta concluída sem confirmação'}, {status:503}) }
     }
     return Response.json({values:linhas.has(range)?[linhas.get(range)]:[]})
   }
@@ -37,6 +37,30 @@ beforeAll(async () => {
   dia=(await banco.sql<{dia:string}>("SELECT to_char(date_trunc('week',now() AT TIME ZONE 'America/Sao_Paulo')+interval '7 days','YYYY-MM-DD') AS dia"))[0].dia
 })
 afterAll(async () => { await banco?.derrubar() })
+
+test('PUT com transporte perdido impede revisão posterior mesmo se a escrita antiga terminar atrasada',async () => {
+  const [d]=await banco.sql<{dia:string}>("SELECT to_char($1::date+1,'YYYY-MM-DD') AS dia",[dia])
+  const salvar=(nicho:string)=>banco.comoUsuario(vendedor,async e=>(await e<{id:string}>("SELECT google_planejar($1,$2,'','São Paulo','SP') AS id",[d.dia,nicho])).linhas[0].id)
+  const id=await salvar('Critérios antigos')
+  const fake=fakeGoogle()
+  let tardia: (()=>Promise<Response>)|undefined
+  let puts=0
+  const fetcher:typeof fetch=async(input,init)=>{
+    if(init?.method==='PUT') {
+      puts++
+      if(puts===1) { tardia=()=>fake.fetcher(input,init); throw new Error('Conexão perdida antes da aplicação') }
+    }
+    return fake.fetcher(input,init)
+  }
+  expect(await sincronizarCom(id,{config,gestorId:gestor,fetcher})).toMatchObject({estado:'pendente'})
+  await salvar('Critérios novos')
+  const resultado=await sincronizarCom(id,{config,gestorId:gestor,fetcher})
+  await tardia!()
+  expect(resultado).toMatchObject({estado:'pendente'})
+  expect(puts).toBe(1)
+  expect((await banco.sql<{revisao_confirmada:number}>('SELECT revisao_confirmada FROM google_sincronizacao WHERE pedido_id=$1',[id]))[0].revisao_confirmada).toBe(0)
+  expect([...fake.linhas.values()][0][6]).toBe('Critérios antigos')
+})
 test('sincroniza pelo serviço real e registra confirmação da revisão exata',async () => {
   const id=await planejar('Papelarias')
   const fake=fakeGoogle()
