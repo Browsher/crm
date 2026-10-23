@@ -1,70 +1,72 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
-import { Alert } from '@/src/components/ui/alert'
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
-import { useTemaCrm } from '@/src/components/crm/tema'
-import { ESTADOS_GOOGLE, type PlanoGoogle } from '@/src/features/google/tipos'
-import { salvarPlanoAcao, type EstadoPlano } from './acoes'
+import { type PlanoGoogle, type PlanoEntrada } from '@/src/features/google/tipos'
+import { normalizarCriterios, criteriosVazios } from '@/src/lib/google/criterios'
+import { salvarSemanaAcao, type EstadoPlano } from './acoes'
+import { DialogoCriterios } from './criterios'
+import { EspelharPlanejamento } from './espelhar'
 import styles from './google.module.css'
-import { SincronizarPlanejamento } from './sincronizar'
 
 const ufs = 'AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' ')
 const diaDaSemana = (dia: string) => new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(dia + 'T12:00:00Z'))
 const dataCurta = (dia: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' }).format(new Date(dia + 'T12:00:00Z'))
-
-export function PlanejamentoSemanal({ dias, planos, hoje, rotinaIniciada }: { dias: string[]; planos: PlanoGoogle[]; hoje: string; rotinaIniciada: boolean }) {
-  return <div className={styles.semana}>{dias.map(dia => {
-    const plano = planos.find(p => p.dia === dia)
-    const bloqueado = dia < hoje || (dia === hoje && rotinaIniciada) || Boolean(plano && plano.estado !== 'planejado')
-    const situacao = !plano ? 'Sem pedido' : plano.estado === 'planejado' && dia < hoje ? 'Não executado' : ESTADOS_GOOGLE[plano.estado]
-    return <article key={dia} className={styles.dia} aria-label={diaDaSemana(dia)}>
-      <div className={styles.data}><strong>{diaDaSemana(dia)}</strong><time dateTime={dia}>{dataCurta(dia)}</time></div>
-      <div className={styles.criterios}><strong>{plano?.nicho ?? 'Defina o nicho deste dia'}</strong>
-        <p>{plano ? [plano.bairro || 'Cidade inteira', plano.cidade, plano.uf].join(', ') : 'O agente só busca quando você salva um pedido.'}</p>
-        {plano && <><small>{plano.sincronizado?'Sincronizado com a planilha':'Salvo no CRM. Sincronização pendente.'}</small>
-          {!plano.sincronizado && <SincronizarPlanejamento pedido={plano.id} />}</>}
-      </div>
-      <span className={styles.situacao} data-estado={plano?.estado ?? 'vazio'}>{situacao}</span>
-      <EditarDia dia={dia} plano={plano} bloqueado={bloqueado} />
-    </article>
-  })}</div>
+function entrada(dia: string, plano?: PlanoGoogle): PlanoEntrada {
+  const criterios = normalizarCriterios(plano?.criterios)
+  return { dia, nicho: plano?.nicho ?? '', bairro: plano?.bairro ?? '', cidade: plano?.cidade ?? '', uf: plano?.uf ?? '', criterios: criterios.ok ? criterios.valor : criteriosVazios() }
 }
-function EditarDia({ dia, plano, bloqueado }: { dia: string; plano?: PlanoGoogle; bloqueado: boolean }) {
-  const [aberto, setAberto] = useState(false)
-  const [pendente, setPendente] = useState(false)
-  const tema = useTemaCrm()
-  return <Dialog open={aberto} onOpenChange={v => { if (!pendente) setAberto(v) }}>
-    <DialogTrigger asChild><Button variant="outline" disabled={bloqueado} aria-label={`${plano ? 'Editar' : 'Planejar'} ${diaDaSemana(dia)}, ${dataCurta(dia)}`}>{plano ? 'Editar dia' : 'Planejar dia'}</Button></DialogTrigger>
-    {aberto && <DialogContent theme={tema} showCloseButton={!pendente} onEscapeKeyDown={e => { if (pendente) e.preventDefault() }} onPointerDownOutside={e => { if (pendente) e.preventDefault() }}>
-      <DialogHeader><DialogTitle>Planejar {diaDaSemana(dia)}</DialogTitle><DialogDescription>{dataCurta(dia)}. O agente fará a busca diária com estes critérios.</DialogDescription></DialogHeader>
-      <FormularioDia dia={dia} plano={plano} informarPendencia={setPendente} fechar={() => setAberto(false)} />
-    </DialogContent>}
-  </Dialog>
-}
-function FormularioDia({ dia, plano, informarPendencia, fechar }: { dia: string; plano?: PlanoGoogle; informarPendencia: (v: boolean) => void; fechar: () => void }) {
-  const inicial: EstadoPlano = { erro: null, salvo: false }
+export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { dias: string[]; planos: PlanoGoogle[]; hoje: string; rotinaIniciada?: boolean; historico?: PlanoGoogle[] }) {
+  const [editando, setEditando] = useState(false)
+  const [rascunho, setRascunho] = useState<PlanoEntrada[]>([])
+  const [tentou, setTentou] = useState(false)
   const [estado, acao, pendente] = useActionState(async (anterior: EstadoPlano, form: FormData) => {
-    informarPendencia(true)
-    try { return await salvarPlanoAcao(anterior, form) } finally { informarPendencia(false) }
-  }, inicial)
-  return <form action={acao} className={styles.formulario}>
-    <input name="dia" type="hidden" value={dia} />
-    <fieldset disabled={pendente}>
-      <label>Nicho<Input name="nicho" required maxLength={100} defaultValue={plano?.nicho ?? ''} placeholder="Ex.: loja de brinquedos" /></label>
-      <div className={styles.grade}><label>Cidade<Input name="cidade" required maxLength={100} defaultValue={plano?.cidade ?? ''} autoComplete="address-level2" /></label>
-        <label>UF<NativeSelect name="uf" aria-label="UF" required defaultValue={plano?.uf ?? ''} autoComplete="address-level1"><option value="">Selecione</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></label></div>
-      <label>Bairro<Input name="bairro" aria-label="Bairro" maxLength={100} defaultValue={plano?.bairro ?? ''} /><small>Opcional. Deixe vazio para buscar na cidade inteira.</small></label>
-    </fieldset>
-    <p className={styles.ajuda}>Até 50 leads por pedido. Os critérios ficam fechados quando o agente inicia a rotina do dia.</p>
-    {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
-    {estado.salvo && <p role="status" className={styles.sucesso}>Dia salvo no planejamento.</p>}
-    {estado.salvo && estado.sincronizacao==='sincronizado' && <p className={styles.sucesso}>Sincronizado com a planilha.</p>}
-    {estado.salvo && estado.sincronizacao==='pendente' && <p role="alert" className={styles.aviso}>{estado.aviso ?? 'Salvo no CRM. Sincronização pendente.'}</p>}
-    <DialogFooter><Button variant="outline" type="button" onClick={fechar} disabled={pendente}>{estado.salvo ? 'Concluir' : 'Cancelar'}</Button>
-      <Button type="submit" disabled={pendente}>{pendente ? 'Salvando…' : 'Salvar dia'}</Button></DialogFooter>
-  </form>
+    setTentou(true)
+    const r = await salvarSemanaAcao(anterior, form)
+    if (r.salvo) setEditando(false)
+    return r
+  }, { erro: null, salvo: false })
+  useEffect(() => {
+    if (!editando) return
+    const proteger = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', proteger)
+    return () => window.removeEventListener('beforeunload', proteger)
+  }, [editando])
+  const mover = (n: number) => { const d = new Date(dias[0] + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return '/fila/google?semana=' + d.toISOString().slice(0, 10) }
+  const alterar = (dia: string, campos: Partial<PlanoEntrada>) => setRascunho(anteriores => anteriores.map(p => p.dia === dia ? { ...p, ...campos } : p))
+  const temFuturo = dias.some(d => d > hoje)
+  return <section className={styles.semana}>
+    <div className={styles.cabecalhoSemana}><div><h2>Planejamento de {dataCurta(dias[0])} a {dataCurta(dias.at(-1)!)}</h2><p className={styles.ajuda}>Defina o nicho e a região de cada dia. Sem bairro, a busca cobre a cidade inteira.</p></div>
+      <div className={styles.acoes}>
+        {!editando && <><Button asChild variant="outline"><Link href={mover(-7)}>Semana anterior</Link></Button><Button asChild variant="outline"><Link href={mover(7)}>Próxima semana</Link></Button></>}
+        <EspelharPlanejamento dias={dias} hoje={hoje} historico={historico} disabled={editando || !historico.length} />
+        {!editando && <Button type="button" disabled={!temFuturo} onClick={() => { setRascunho(dias.map(d => entrada(d, planos.find(p => p.dia === d)))); setTentou(false); setEditando(true) }}>Editar planejamento</Button>}
+      </div>
+    </div>
+    <form action={acao}>
+      <input type="hidden" name="dias" value={JSON.stringify(rascunho.filter(p => p.dia > hoje))} />
+      <div className={styles.tabelaRolagem}><table className={styles.tabelaSemana}><caption className="sr-only">Planejamento semanal das buscas no Google</caption><thead><tr><th>Dia</th><th>Nicho</th><th>Bairro</th><th>Cidade / UF</th><th>Grupo de destino</th><th>Critérios</th></tr></thead><tbody>
+        {dias.map(dia => {
+          const plano = planos.find(p => p.dia === dia)
+          const p = editando ? rascunho.find(r => r.dia === dia)! : entrada(dia, plano)
+          const editavel = editando && dia > hoje
+          const rotulo = diaDaSemana(dia) + ', ' + dataCurta(dia)
+          return <tr key={dia} data-hoje={dia === hoje ? true : undefined}><th scope="row"><span className={styles.data}>{diaDaSemana(dia)}<time dateTime={dia}>{dataCurta(dia)}</time>{dia === hoje && <span className={styles.hoje}>Hoje</span>}</span></th>
+            <td>{editavel ? <Input aria-label={'Nicho de ' + rotulo} name={'nicho-' + dia} maxLength={100} value={p.nicho} onChange={e => alterar(dia, { nicho: e.target.value })} disabled={pendente} /> : p.nicho || <span className={styles.ajuda}>Não definido</span>}</td>
+            <td>{editavel ? <Input aria-label={'Bairro de ' + rotulo} name={'bairro-' + dia} maxLength={100} value={p.bairro} onChange={e => alterar(dia, { bairro: e.target.value })} disabled={pendente} /> : p.nicho ? p.bairro || 'Cidade inteira' : 'Não definido'}</td>
+            <td>{editavel ? <div className={styles.cidadeUf}><Input aria-label={'Cidade de ' + rotulo} name={'cidade-' + dia} maxLength={100} value={p.cidade} onChange={e => alterar(dia, { cidade: e.target.value })} disabled={pendente} /><NativeSelect aria-label={'UF de ' + rotulo} name={'uf-' + dia} value={p.uf} onChange={e => alterar(dia, { uf: e.target.value })} disabled={pendente}><option value="">UF</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></div> : p.cidade ? p.cidade + ' / ' + p.uf : 'Não definido'}</td>
+            <td>{p.nicho && p.cidade && p.uf ? p.nicho + ' · ' + (p.bairro || p.cidade) + ' / ' + p.uf : <span className={styles.ajuda}>Montado automaticamente</span>}
+              {plano?.execucao_revisao && plano.execucao_revisao !== plano.revisao && <small className={styles.avisoRevisao}>A busca iniciada usa o planejamento anterior.</small>}</td>
+            <td>{(editavel || p.nicho) && <DialogoCriterios dia={dia} valor={p.criterios ?? criteriosVazios()} leitura={!editavel || pendente} onAplicar={criterios => alterar(dia, { criterios })} />}</td>
+          </tr>
+        })}
+      </tbody></table></div>
+      {editando && <div className={styles.rodapeSemana}><p className={styles.ajuda}>Hoje e dias anteriores ficam bloqueados. Um dia vazio não gera busca.</p><div className={styles.acoes}><Button type="button" variant="outline" disabled={pendente} onClick={() => setEditando(false)}>Cancelar</Button><Button type="submit" disabled={pendente}>{pendente ? 'Salvando…' : 'Salvar planejamento'}</Button></div></div>}
+      {tentou && estado.erro && <p role="alert" className={styles.aviso}>{estado.erro}</p>}
+      {tentou && estado.salvo && <p role="status" className={estado.sincronizacao === 'pendente' ? styles.aviso : styles.sucesso}>{estado.aviso ?? 'Planejamento salvo.'}</p>}
+    </form>
+  </section>
 }

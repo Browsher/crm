@@ -12,7 +12,36 @@
 .acoes a, .abas a { min-height: 44px; }
 .painel { display: grid; gap: 20px; min-width: 0; padding: 24px; }
 .tituloPainel p { margin-bottom: 0; }
-.semana { display: grid; }
+.semana { display:grid; grid-template-columns:minmax(0,1fr); min-width:0; }
+.semana > form { min-width:0; }
+.tabelaRolagem { max-width:100%; overflow-x:auto; margin-top:20px; }
+.tabelaSemana { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
+.tabelaSemana th, .tabelaSemana td { text-align:left; padding:16px 12px; border-bottom:1px solid var(--ui-border); overflow-wrap:anywhere; vertical-align:middle; }
+.tabelaSemana thead th { color:var(--ui-muted-foreground); font-size:12px; font-weight:500; }
+.tabelaSemana th:first-child { width:12%; }
+.tabelaSemana th:nth-child(2) { width:20%; }
+.tabelaSemana th:nth-child(3) { width:14%; }
+.tabelaSemana th:nth-child(4) { width:20%; }
+.tabelaSemana th:last-child { width:145px; }
+.tabelaSemana tbody th { font-weight:500; }
+.tabelaSemana tr[data-hoje] { background:var(--surface-muted); box-shadow:inset 3px 0 var(--ui-primary); }
+.hoje { background:var(--ui-primary); color:var(--ui-primary-foreground); border-radius:4px; font-size:11px; padding:2px 6px; width:fit-content; }
+.cidadeUf { display:grid; grid-template-columns:minmax(0,1fr) 70px; gap:6px; }
+.rodapeSemana { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; align-items:center; padding-top:18px; }
+.avisoRevisao { display:block; margin-top:6px; color:var(--ui-warning); }
+.dialogoCriterios:global(.ui-dialog-content) { width:min(900px,calc(100vw - 32px)); max-width:900px; max-height:calc(100dvh - 32px); }
+.corpoDialogo { max-height:60dvh; overflow:auto; overscroll-behavior:contain; padding:2px; display:grid; gap:20px; }
+.gruposCriterios { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px!important; }
+.grupoCriterios { display:grid; align-content:start; gap:14px; min-width:0; border:1px solid var(--ui-border)!important; border-radius:8px; padding:16px!important; }
+.grupoCriterios > legend { font-size:14px; font-weight:600; padding:0 6px; }
+.caixas { display:flex!important; flex-wrap:wrap; gap:10px 16px!important; border:0; padding:0; margin:0; }
+.caixas legend { margin-bottom:10px; font-size:13px; }
+.caixas label { display:flex!important; flex-direction:row; align-items:center; min-height:32px; gap:8px; font-size:13px; cursor:pointer; }
+.caixas input { accent-color:var(--ui-primary); width:16px; height:16px; }
+.textarea { width:100%; resize:vertical; min-height:64px; border:1px solid var(--ui-border-control); border-radius:6px; padding:8px 10px; color:var(--ui-foreground); background:var(--ui-background); font:inherit; }
+.textarea:focus-visible { outline:2px solid var(--ui-primary); outline-offset:2px; }
+@media(max-width:1000px) { .tabelaSemana { min-width:900px; } }
+@media(max-width:650px) { .gruposCriterios { grid-template-columns:minmax(0,1fr); } .dialogoCriterios { max-height:calc(100dvh - 16px); } .corpoDialogo { max-height:65dvh; } }
 .dia { display: grid; grid-template-columns: minmax(120px, .65fr) minmax(0, 2fr) minmax(100px, 1fr) auto; gap: 20px; padding: 22px 0; align-items: center; border-top: 1px solid var(--ui-border); min-width: 0; }
 .data { display: grid; gap: 5px; text-transform: capitalize; min-width: 0; overflow-wrap: anywhere; }
 .dia button, .dia > a { min-height: 44px; }
