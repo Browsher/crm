@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { Client, type QueryResultRow } from 'pg'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { criteriosVazios } from '@/src/lib/google/criterios'
 
 let banco: BancoDeTeste
 let gestor: string
@@ -48,7 +49,7 @@ beforeEach(async () => {
 test('intenção de escrita fica guardada antes do Google e não aceita conteúdo divergente na mesma versão', async () => {
   const id = await plano()
   const p = await preparar(id)
-  const celulas = [id,'1',vendedor,'AgenteVendedor',dia,'segunda-feira','Brinquedos','Centro','São Paulo','SP','planejado','2026-10-22T00:00:00.000Z',String(p.versao)]
+  const celulas = [id,'1',vendedor,'AgenteVendedor',dia,'segunda-feira','Brinquedos','Centro','São Paulo','SP','planejado','2026-10-22T00:00:00.000Z',String(p.versao),JSON.stringify(criteriosVazios())]
   await chamar(gestor, 'SELECT google_planilha_intencao($1,$2,$3)', [id,p.versao,JSON.stringify(celulas)])
   await expect(chamar(gestor, 'SELECT google_planilha_intencao($1,$2,$3)', [id,p.versao,JSON.stringify([...celulas.slice(0,6),'Outra',...celulas.slice(7)])])).rejects.toMatchObject({code:'22023'})
   await chamar(vendedor, "SELECT google_planejar($1,'Pet shops','','São Paulo','SP')", [dia])

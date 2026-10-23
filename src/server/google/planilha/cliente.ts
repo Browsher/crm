@@ -1,9 +1,11 @@
 import { sign } from 'node:crypto'
 import type { ConfiguracaoPlanilha } from './configuracao'
+import { normalizarCriterios } from '@/src/lib/google/criterios'
 
-export const CABECALHO_PLANILHA = ['Pedido ID','Revisão','Vendedor ID','Vendedor','Data','Dia da semana','Nicho','Bairro','Cidade','UF','Situação','Atualizado em','Versão']
-export type PayloadPlanilha = { pedido: string; linha: number; versao: number; revisao: number; envio_id?: string|null; anteriores: string[][]; dados: {
-  id: string; vendedor_id: string; vendedor: string; dia: string; nicho: string; bairro: string; cidade: string; uf: string; estado: string; atualizado_em: string } }
+export const CABECALHO_LEGADO = ['Pedido ID','Revisão','Vendedor ID','Vendedor','Data','Dia da semana','Nicho','Bairro','Cidade','UF','Situação','Atualizado em','Versão']
+export const CABECALHO_PLANILHA = [...CABECALHO_LEGADO, 'Critérios de busca']
+export type PayloadPlanilha = { pedido: string; linha: number; versao: number; revisao: number; contrato?: 1|2; envio_id?: string|null; anteriores: string[][]; dados: {
+  id: string; vendedor_id: string; vendedor: string; dia: string; nicho: string; bairro: string; cidade: string; uf: string; estado: string; atualizado_em: string; criterios?: unknown } }
 const objeto = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
 const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 const conferir = () => new Error('Planilha precisa de conferência. Preserve a mesma revisão antes de tentar novamente.')
@@ -11,7 +13,14 @@ const incerto = () => new Error('Gravação não confirmada. Reconcilie a mesma 
 export function celulasDoPedido(p: PayloadPlanilha): string[] {
   const d = p.dados
   const semana = new Intl.DateTimeFormat('pt-BR',{weekday:'long',timeZone:'UTC'}).format(new Date(d.dia+'T12:00:00Z'))
-  return [p.pedido,String(p.revisao),d.vendedor_id,d.vendedor,d.dia,semana,d.nicho,d.bairro,d.cidade,d.uf,d.estado,d.atualizado_em,String(p.versao)]
+  const celulas = [p.pedido,String(p.revisao),d.vendedor_id,d.vendedor,d.dia,semana,d.nicho,d.bairro,d.cidade,d.uf,d.estado,d.atualizado_em,String(p.versao)]
+  if (d.criterios === undefined) {
+    if (p.contrato === 2) throw conferir()
+    return celulas
+  }
+  const criterios = normalizarCriterios(d.criterios)
+  if (!criterios.ok) throw conferir()
+  return [...celulas, JSON.stringify(criterios.valor)]
 }
 async function lerJson(r: Response): Promise<Record<string, unknown>> {
   if (!r.ok || Number(r.headers.get('content-length')) > 256000 || !r.body) throw incerto()
@@ -72,12 +81,13 @@ export function criarClientePlanilha(config: ConfiguracaoPlanilha, fetcher: type
           const aba = meta.sheets.find(s => objeto(s) && objeto(s.properties) && s.properties.sheetId===config.abaId)
           if (!objeto(aba) || !objeto(aba.properties) || aba.properties.title !== 'Planejamento CRM' || !objeto(aba.properties.gridProperties)) throw conferir()
           const grade = aba.properties.gridProperties
-          if (typeof grade.rowCount !== 'number' || typeof grade.columnCount !== 'number' || grade.columnCount<13) throw conferir()
+          const novo = p.dados.criterios !== undefined
+          if (typeof grade.rowCount !== 'number' || typeof grade.columnCount !== 'number' || grade.columnCount<(novo ? 14 : 13)) throw conferir()
           const valores = (a1: string) => base+'/values/'+encodeURIComponent("'Planejamento CRM'!"+a1)
-          const header = linhas(await req(valores('A1:M1')+'?valueRenderOption=UNFORMATTED_VALUE'))
-          if (!igual(header,[CABECALHO_PLANILHA])) throw conferir()
+          const header = linhas(await req(valores(novo ? 'A1:N1' : 'A1:M1')+'?valueRenderOption=UNFORMATTED_VALUE'))
+          if (!igual(header,[novo ? CABECALHO_PLANILHA : CABECALHO_LEGADO])) throw conferir()
           if (grade.rowCount<p.linha) await req(base+':batchUpdate',{method:'POST',body:JSON.stringify({requests:[{appendDimension:{sheetId:config.abaId,dimension:'ROWS',length:p.linha-grade.rowCount}}]})})
-          const intervalo = 'A'+p.linha+':M'+p.linha
+          const intervalo = 'A'+p.linha+(novo ? ':N' : ':M')+p.linha
           const atual = celulasDoPedido(p)
           const encontradas = linhas(await req(valores(intervalo)+'?valueRenderOption=UNFORMATTED_VALUE'))
           if (encontradas.length>1) throw conferir()

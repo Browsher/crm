@@ -1,6 +1,6 @@
 import { generateKeyPairSync, verify } from 'node:crypto'
 import { expect, test } from 'vitest'
-import { criarClientePlanilha, celulasDoPedido, CABECALHO_PLANILHA, type PayloadPlanilha } from './cliente'
+import { criarClientePlanilha, celulasDoPedido, CABECALHO_PLANILHA, CABECALHO_LEGADO, type PayloadPlanilha } from './cliente'
 import { configuracaoPlanilha } from './configuracao'
 
 const chaves = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -24,9 +24,10 @@ function provedor({ outraAba = false, ocupado = false, retornoErrado = false, in
     }
     expect(u.hostname).toBe('sheets.googleapis.com')
     expect(init?.headers).toMatchObject({Authorization:'Bearer token-ficticio'})
-    if (!u.pathname.includes('/values/')) return Response.json({spreadsheetId:config.planilhaId,sheets:[{properties:{sheetId:outraAba?456:123,title:'Planejamento CRM',gridProperties:{rowCount:1000,columnCount:13}}}]})
+    if (!u.pathname.includes('/values/')) return Response.json({spreadsheetId:config.planilhaId,sheets:[{properties:{sheetId:outraAba?456:123,title:'Planejamento CRM',gridProperties:{rowCount:1000,columnCount:14}}}]})
     const intervalo = decodeURIComponent(u.pathname.split('/values/')[1])
-    if (intervalo.endsWith('A1:M1')) return Response.json({values:[CABECALHO_PLANILHA]})
+    if (intervalo.endsWith('A1:M1')) return Response.json({values:[CABECALHO_LEGADO]})
+    if (intervalo.endsWith('A1:N1')) return Response.json({values:[CABECALHO_PLANILHA]})
     if (init?.method === 'PUT') {
       expect(u.searchParams.get('valueInputOption')).toBe('RAW')
       linha = JSON.parse(String(init.body)).values[0]
@@ -66,4 +67,28 @@ test('leitura divergente depois da escrita não produz confirmação', async () 
   const fake = provedor({retornoErrado:true})
   const cliente = await criarClientePlanilha(config,fake.fetcher).conectar()
   await expect(cliente.gravar(payload)).rejects.toThrow('conferência')
+})
+test('contrato novo acrescenta critérios canônicos na coluna N e mantém A:M', () => {
+  const novo = { ...payload, dados: { ...payload.dados, criterios: { nota: 0, termos: '=IMPORTXML("x")', telefone: ['fixo'] } } }
+  const celulas = celulasDoPedido(novo)
+  expect(celulas).toHaveLength(14)
+  expect(celulas.slice(0, 13)).toEqual(celulasDoPedido(payload))
+  expect(JSON.parse(celulas[13])).toMatchObject({ nota: 0, termos: '=IMPORTXML("x")', telefone: ['fixo'], site: [] })
+})
+test('envia e confere 14 células como texto RAW na mesma linha', async () => {
+  const p = { ...payload, dados: { ...payload.dados, criterios: { telefone: ['fixo'] } } }
+  const fake = provedor()
+  const cliente = await criarClientePlanilha(config, fake.fetcher).conectar()
+  await cliente.gravar(p)
+  expect(fake.linha()).toEqual(celulasDoPedido(p))
+  expect(fake.linha()).toHaveLength(14)
+})
+test('estende linha legada na mesma posição depois de reconciliar versão anterior', async () => {
+  const fake = provedor()
+  const cliente = await criarClientePlanilha(config, fake.fetcher).conectar()
+  await cliente.gravar(payload)
+  const p = { ...payload, versao: 2, revisao: 2, anteriores: [celulasDoPedido(payload)], dados: { ...payload.dados, criterios: { nota: 4 } } }
+  await cliente.gravar(p)
+  expect(fake.linha()).toEqual(celulasDoPedido(p))
+  expect(fake.escritas()).toBe(2)
 })

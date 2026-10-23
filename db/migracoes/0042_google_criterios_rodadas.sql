@@ -408,4 +408,45 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION google_agente_entregar(uuid,jsonb,jsonb,uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION google_agente_entregar(uuid,jsonb,jsonb,uuid) TO app_usuario;
+ALTER FUNCTION google_planilha_preparar(uuid,text) RENAME TO google_planilha_preparar_legado;
+REVOKE EXECUTE ON FUNCTION google_planilha_preparar_legado(uuid,text) FROM app_usuario;
+CREATE FUNCTION google_planilha_preparar(p_id uuid,p_destino text) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE r jsonb; c jsonb;
+BEGIN
+  r := public.google_planilha_preparar_legado(p_id,p_destino);
+  IF EXISTS (SELECT 1 FROM public.google_planilha_tentativa t WHERE t.pedido_id=p_id AND t.versao=(r->>'versao')::integer AND jsonb_array_length(t.celulas)=13) THEN RETURN r||jsonb_build_object('contrato',1); END IF;
+  SELECT public.google_criterios_normalizar(p.criterios) INTO c FROM public.google_planejamento p WHERE p.id=p_id;
+  RETURN jsonb_set(r,ARRAY['dados','criterios'],c)||jsonb_build_object('contrato',2);
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_planilha_preparar(uuid,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION google_planilha_preparar(uuid,text) TO app_usuario;
+ALTER TABLE google_planilha_tentativa ADD CONSTRAINT google_planilha_tentativa_celulas_check CHECK (jsonb_typeof(celulas)='array' AND jsonb_array_length(celulas) IN (13,14));
+CREATE OR REPLACE FUNCTION google_planilha_intencao(p_id uuid,p_versao integer,p_celulas jsonb,p_envio uuid DEFAULT NULL) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE v public.google_sincronizacao%ROWTYPE; n integer; c jsonb;
+BEGIN
+  IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
+  PERFORM pg_catalog.pg_advisory_xact_lock(41,2);
+  PERFORM id FROM public.usuario WHERE id=public.usuario_atual() FOR SHARE;
+  IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'usuario sem permissao' USING ERRCODE='42501'; END IF;
+  SELECT * INTO v FROM public.google_sincronizacao WHERE pedido_id=p_id FOR UPDATE;
+  IF NOT FOUND OR v.versao<>p_versao OR v.destino IS NULL OR v.envio_id IS NOT NULL THEN RETURN false; END IF;
+  IF p_celulas IS NULL OR jsonb_typeof(p_celulas)<>'array' THEN RAISE EXCEPTION 'intencao invalida' USING ERRCODE='22023'; END IF;
+  n := jsonb_array_length(p_celulas);
+  IF n NOT IN (13,14) OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_celulas) x WHERE jsonb_typeof(x.value)<>'string')
+    OR p_celulas->>0 IS DISTINCT FROM p_id::text OR p_celulas->>1 IS DISTINCT FROM v.revisao::text
+    OR p_celulas->>12 IS DISTINCT FROM p_versao::text OR pg_column_size(p_celulas)>100000 THEN RAISE EXCEPTION 'intencao invalida' USING ERRCODE='22023'; END IF;
+  IF n=13 AND NOT EXISTS (SELECT 1 FROM public.google_planilha_tentativa WHERE pedido_id=p_id AND versao=p_versao AND celulas=p_celulas) THEN RAISE EXCEPTION 'novo espelho exige criterios' USING ERRCODE='22023'; END IF;
+  IF n=14 THEN
+    SELECT public.google_criterios_normalizar(p.criterios) INTO c FROM public.google_planejamento p WHERE p.id=p_id;
+    IF (p_celulas->>13)::jsonb IS DISTINCT FROM c THEN RAISE EXCEPTION 'criterios divergentes' USING ERRCODE='22023'; END IF;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.google_planilha_tentativa WHERE pedido_id=p_id AND versao=p_versao AND celulas IS DISTINCT FROM p_celulas) THEN RAISE EXCEPTION 'intencao divergente' USING ERRCODE='22023'; END IF;
+  INSERT INTO public.google_planilha_tentativa(pedido_id,versao,celulas) VALUES (p_id,p_versao,p_celulas) ON CONFLICT DO NOTHING;
+  IF p_envio IS NOT NULL THEN UPDATE public.google_sincronizacao SET envio_id=p_envio,envio_versao=p_versao WHERE pedido_id=p_id; END IF;
+  RETURN true;
+END;
+$$;
 COMMIT;

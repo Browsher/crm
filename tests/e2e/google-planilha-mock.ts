@@ -1,7 +1,7 @@
 import { generateKeyPairSync, verify } from 'node:crypto'
 import { createServer } from 'node:http'
 
-const header=['Pedido ID','Revisão','Vendedor ID','Vendedor','Data','Dia da semana','Nicho','Bairro','Cidade','UF','Situação','Atualizado em','Versão']
+const header=['Pedido ID','Revisão','Vendedor ID','Vendedor','Data','Dia da semana','Nicho','Bairro','Cidade','UF','Situação','Atualizado em','Versão','Critérios de busca']
 export async function iniciarSheetsDeTeste() {
   const chaves=generateKeyPairSync('rsa',{modulusLength:2048})
   const email='sheets-e2e@crm-test.iam.gserviceaccount.com'
@@ -31,16 +31,17 @@ export async function iniciarSheetsDeTeste() {
       }
       if(req.headers.authorization!=='Bearer sheets-token-e2e') {responder({erro:'Token fictício inválido'},401);return}
       if(u.pathname==='/v4/spreadsheets/planilha-somente-e2e') {
-        responder({spreadsheetId:'planilha-somente-e2e',sheets:[{properties:{sheetId:123,title:'Planejamento CRM',gridProperties:{rowCount:200000,columnCount:13}}}]});return
+        responder({spreadsheetId:'planilha-somente-e2e',sheets:[{properties:{sheetId:123,title:'Planejamento CRM',gridProperties:{rowCount:200000,columnCount:14}}}]});return
       }
       const prefixo='/v4/spreadsheets/planilha-somente-e2e/values/'
       if(!u.pathname.startsWith(prefixo)) {responder({erro:'Rota fictícia não permitida'},404);return}
       const range=decodeURIComponent(u.pathname.slice(prefixo.length))
-      if(range==="'Planejamento CRM'!A1:M1" && req.method==='GET') {responder({values:[header]});return}
-      if(!/^'Planejamento CRM'!A([0-9]+):M\1$/.test(range)) {responder({erro:'Faixa inválida'},400);return}
+      if(range==="'Planejamento CRM'!A1:M1" && req.method==='GET') {responder({values:[header.slice(0,13)]});return}
+      if(range==="'Planejamento CRM'!A1:N1" && req.method==='GET') {responder({values:[header]});return}
+      if(!/^'Planejamento CRM'!A([0-9]+):[MN]\1$/.test(range)) {responder({erro:'Faixa inválida'},400);return}
       if(req.method==='PUT') {
         const dados=JSON.parse(texto)
-        if(u.searchParams.get('valueInputOption')!=='RAW' || dados.values?.length!==1 || dados.values[0].length!==13) {responder({erro:'Matriz inválida'},400);return}
+        if(u.searchParams.get('valueInputOption')!=='RAW' || dados.values?.length!==1 || dados.values[0].length!==(range.includes(':N')?14:13)) {responder({erro:'Matriz inválida'},400);return}
         linhas.set(range,dados.values[0])
         if(falhar) {falhar=false;responder({erro:'Resposta perdida após gravação fictícia'},503);return}
         responder({updatedRows:1});return
