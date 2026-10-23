@@ -88,6 +88,7 @@ test('intenção antiga de 13 colunas retoma com seu formato original', async ()
   const [{id}] = await banco.comoUsuario(vendedor, async e => (await e<{id:string}>("SELECT google_planejar($1,'Legado','','São Paulo','SP') AS id", [d.dia])).linhas)
   const [{p}] = await banco.comoUsuario(gestor, async e => (await e<{p:PayloadPlanilha}>("SELECT google_planilha_preparar($1,'fixture-planilha:123') AS p", [id])).linhas)
   delete p.dados.criterios
+  p.contrato = 1
   const celulas = celulasDoPedido(p)
   await banco.sql('INSERT INTO google_planilha_tentativa(pedido_id,versao,celulas) VALUES ($1,$2,$3)', [id,p.versao,JSON.stringify(celulas)])
   const fake = fakeGoogle()
