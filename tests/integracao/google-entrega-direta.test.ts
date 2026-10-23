@@ -103,6 +103,23 @@ test('reaproveita CNPJ preservando campos manuais e não entrega telefone de out
   expect(await chamar(gestor, 'SELECT nome_fantasia,telefone,email FROM empresa')).toEqual([{ nome_fantasia: 'Cadastro manual', telefone: '1133334444', email: 'manual@exemplo.test' }])
   expect(await banco.sql('SELECT entregues FROM google_execucao WHERE id=$1', [p.eid])).toEqual([{ entregues: 1 }])
 })
+
+test.each(['telefone', 'email'] as const)('contato histórico %s preservado fora do cadastro manual impede distribuição a outro vendedor', async campo => {
+  await banco.sql("INSERT INTO empresa(cnpj,nome_fantasia,telefone,email) VALUES ('11222333000181','Cadastro manual','1133334444','manual@exemplo.test')")
+  const contato = campo === 'telefone' ? '1144445555' : 'coletado@exemplo.test'
+  const p = await preparar()
+  await (await p.lote([{ google_place_id: 'origem-' + campo, cnpj: '11222333000181', nome_fantasia: 'Nome coletado', [campo]: contato }])).entregar()
+  await chamar(gestor, 'SELECT google_agente_concluir($1,$2,$3)', [p.id, executor, 'sem_novidades'])
+  const outro = await criarUsuario(banco, 'vendedor', 'Historico' + campo)
+  const q = await preparar(criteriosVazios(), dia, outro)
+  const l = await q.lote([{ google_place_id: 'outra-' + campo, nome_fantasia: 'Outro identificador com mesmo contato', [campo]: campo === 'email' ? contato.toUpperCase() : contato }])
+  const respostas = await Promise.all([l.entregar(), l.entregar()])
+  expect(respostas.flat().map(r => r.r).sort()).toEqual(['ok', 'repetida'])
+  expect(await banco.sql('SELECT entregues FROM google_execucao WHERE id=$1', [q.eid])).toEqual([{ entregues: 0 }])
+  expect(await banco.sql('SELECT situacao FROM google_resultado WHERE planejamento_id=$1', [q.id])).toEqual([{ situacao: 'repetida' }])
+  expect(await chamar(outro, 'SELECT id FROM empresa')).toEqual([])
+  expect(await chamar(gestor, 'SELECT nome_fantasia,telefone,email FROM empresa')).toEqual([{ nome_fantasia: 'Cadastro manual', telefone: '1133334444', email: 'manual@exemplo.test' }])
+})
 test('CNPJ sem Place ID é identidade suficiente e não exige telefone inventado', async () => {
   const p=await preparar()
   const l=await p.lote([{cnpj:'11222333000181',nome_fantasia:'Empresa identificada por CNPJ',telefone:null}])

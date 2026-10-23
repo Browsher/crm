@@ -30,7 +30,9 @@ beforeAll(async () => {
   gestor2 = await criarUsuario(banco, 'gestor', 'AgenteGestorDois')
   vendedor = await criarUsuario(banco, 'vendedor', 'AgenteVendedor')
   outro = await criarUsuario(banco, 'vendedor', 'AgenteOutro')
-  dia = (await banco.sql<{ dia: string }>("SELECT to_char(date_trunc('week',now() AT TIME ZONE 'America/Sao_Paulo')+interval '7 days','YYYY-MM-DD') AS dia"))[0].dia
+  // A sexta simulada precisa ocorrer depois da criação do plano, inclusive
+  // quando esta suíte roda numa sexta real após as 17h.
+  dia = (await banco.sql<{ dia: string }>("SELECT to_char(date_trunc('week',now() AT TIME ZONE 'America/Sao_Paulo')+interval '14 days','YYYY-MM-DD') AS dia"))[0].dia
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {

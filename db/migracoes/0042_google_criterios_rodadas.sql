@@ -277,6 +277,8 @@ REVOKE EXECUTE ON FUNCTION empresa_telefone_origem_conferir() FROM PUBLIC;
 CREATE CONSTRAINT TRIGGER empresa_telefone_origem AFTER INSERT OR UPDATE ON empresa DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION empresa_telefone_origem_conferir();
 ALTER TABLE google_resultado ADD COLUMN lote_id uuid REFERENCES google_lote(id) ON DELETE SET NULL;
 ALTER TABLE google_resultado ADD COLUMN canais_verificados text[] NOT NULL DEFAULT '{}';
+CREATE INDEX google_resultado_telefone_entregue_idx ON google_resultado ((dados->>'telefone')) WHERE situacao='entregue';
+CREATE INDEX google_resultado_email_entregue_idx ON google_resultado ((lower(btrim(dados->>'email')))) WHERE situacao='entregue';
 CREATE FUNCTION google_criterios_regras(c jsonb) RETURNS jsonb
 LANGUAGE plpgsql IMMUTABLE SET search_path = '' AS $$
 DECLARE r jsonb := '[]'; k text;
@@ -467,7 +469,9 @@ BEGIN
         situacao := 'conflito'; motivo := 'CNPJ e identificador Google precisam de conferência.';
       ELSE
         empresa_id := coalesce(por_cnpj,por_google);
-        IF EXISTS (SELECT 1 FROM public.empresa x WHERE x.id IS DISTINCT FROM entrega.empresa_id AND ((fone IS NOT NULL AND x.telefone=fone) OR (mail IS NOT NULL AND lower(x.email)=mail))) THEN
+        IF EXISTS (SELECT 1 FROM public.empresa x WHERE x.id IS DISTINCT FROM entrega.empresa_id AND ((fone IS NOT NULL AND x.telefone=fone) OR (mail IS NOT NULL AND lower(x.email)=mail)))
+          OR EXISTS (SELECT 1 FROM public.google_resultado r WHERE r.situacao='entregue' AND r.empresa_id IS DISTINCT FROM entrega.empresa_id
+            AND ((fone IS NOT NULL AND r.dados->>'telefone'=fone) OR (mail IS NOT NULL AND lower(btrim(r.dados->>'email'))=mail))) THEN
           situacao := 'repetida'; motivo := 'Telefone ou e-mail já encontrado na base da empresa.';
         ELSIF empresa_id IS NOT NULL AND (EXISTS (SELECT 1 FROM public.google_exclusividade x WHERE x.empresa_id=entrega.empresa_id)
           OR EXISTS (SELECT 1 FROM public.empresa_fila f WHERE f.empresa_id=entrega.empresa_id AND ((f.vendedor_id IS NOT NULL AND f.vendedor_id<>p.vendedor_id) OR (f.reservado_por IS NOT NULL AND f.reservado_por<>p.vendedor_id AND f.reservado_ate>clock_timestamp()))) OR public.empresa_cliente(entrega.empresa_id)) THEN
