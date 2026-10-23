@@ -189,7 +189,8 @@ BEGIN
     UPDATE public.google_planejamento SET estado='coletando',iniciado_em=p_agora,snapshot=jsonb_build_object('nicho',p.nicho,'bairro',p.bairro,'cidade',p.cidade,'uf',p.uf,'criterios',public.google_criterios_normalizar(p.criterios),'revisao',p.revisao) WHERE id=p.id RETURNING * INTO p;
     INSERT INTO public.google_execucao(executor_id,gestor_id,pedido_id,revisao,snapshot) VALUES (p_executor,public.usuario_atual(),p.id,p.revisao,p.snapshot) RETURNING * INTO e;
   END IF;
-  RETURN jsonb_build_object('pedido',to_jsonb(p)||e.snapshot||jsonb_build_object('snapshot',e.snapshot,'execucao_id',e.id,'contrato',2,'snapshot_sha256',encode(sha256(convert_to(e.snapshot::text,'UTF8')),'hex'),'analisadas',e.analisadas,'entregues',e.entregues),'agente',p.vendedor_id);
+  RETURN jsonb_build_object('pedido',to_jsonb(p)||e.snapshot||jsonb_build_object('snapshot',e.snapshot,'execucao_id',e.id,'contrato',2,'snapshot_sha256',encode(sha256(convert_to(e.snapshot::text,'UTF8')),'hex'),'analisadas',e.analisadas,'entregues',e.entregues,
+    'lotes',(SELECT count(*) FROM public.google_lote l WHERE l.execucao_id=e.id),'lote_pendente',(SELECT to_jsonb(l) FROM public.google_lote l WHERE l.execucao_id=e.id AND l.concluido_em IS NULL)),'agente',p.vendedor_id);
 END;
 $$;
 REVOKE EXECUTE ON FUNCTION google_coordenar_em(uuid,timestamptz) FROM PUBLIC;

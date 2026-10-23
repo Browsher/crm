@@ -18,7 +18,10 @@ def sha256(arquivo):
 
 
 def consulta(pedido):
-    return ' '.join(str(pedido[k]).strip() for k in ('nicho', 'bairro', 'cidade', 'uf') if str(pedido[k]).strip())
+    partes = [str(pedido[k]).strip() for k in ('nicho', 'bairro', 'cidade', 'uf') if str(pedido[k]).strip()]
+    if pedido.get('contrato') == 2 and pedido.get('criterios', {}).get('termos'):
+        partes.append(pedido['criterios']['termos'])
+    return ' '.join(partes)
 
 
 def contexto_operacional(pedido):
@@ -33,7 +36,7 @@ def verificar_inicio(pasta, pedido):
     if (pasta/'pedido.json').exists():
         antigo = json.loads((pasta/'pedido.json').read_text(encoding='utf-8'))
         imutaveis = ('id', 'vendedor_id', 'dia', 'nicho', 'bairro', 'cidade', 'uf', 'snapshot')
-        metadados = ('executor', 'revisao')
+        metadados = ('executor', 'revisao', 'execucao_id', 'snapshot_sha256', 'criterios', 'rodada')
         if any(antigo.get(k) != pedido.get(k) for k in imutaveis) or any(k in antigo and antigo[k] != pedido.get(k) for k in metadados):
             raise RuntimeError('A pasta contém outro pedido ou critérios divergentes.')
 
@@ -43,6 +46,10 @@ def pasta_do_pedido(raiz, pedido):
     if not all(re.fullmatch(formato, str(pedido.get(k, '')), re.I) for k in ('id', 'vendedor_id')):
         raise ValueError('Identidade do vendedor ou pedido inválida.')
     antiga = raiz/'coletas'/'crm'/pedido['id']
+    if pedido.get('contrato') == 2:
+        if not re.fullmatch(formato, str(pedido.get('execucao_id', '')), re.I) or type(pedido.get('rodada', 1)) is not int or not 1 <= pedido.get('rodada', 1) <= 3:
+            raise ValueError('Identidade da execução ou rodada inválida.')
+        return raiz/'coletas'/'agentes'/pedido['vendedor_id']/pedido['id']/pedido['execucao_id']/('coleta-%02d' % pedido.get('rodada', 1))
     return antiga if antiga.exists() else raiz/'coletas'/'agentes'/pedido['vendedor_id']/pedido['id']
 
 
@@ -75,6 +82,14 @@ def normalizar(origem, validadas):
 
 
 def conferir_recibo(pedido, recibo, original, final):
+    if recibo.get('versao') == 2:
+        if pedido.get('contrato') != 2 or any(recibo.get(k) != pedido.get(k) for k in ('execucao_id', 'revisao', 'snapshot_sha256')) or recibo.get('pedido_id') != pedido['id']:
+            raise ValueError('Recibo diverge do snapshot da execução.')
+        if recibo.get('origem_sha256') != sha256(original) or recibo.get('resultado_sha256') != sha256(final):
+            raise ValueError('O hash dos arquivos não corresponde ao recibo da rodada.')
+        if not all(isinstance(recibo.get(k), str) and 0 < len(recibo[k]) <= 255 for k in ('arquivo_original_id', 'arquivo_resultado_id')):
+            raise ValueError('Recibo precisa identificar os arquivos originais e de resultado no Drive.')
+        return
     if recibo.get('pedido_id') != pedido['id'] or recibo.get('validacao_conferida') is not True:
         raise ValueError('Recibo não corresponde ao pedido ou à validação conferida.')
     if recibo.get('origem_sha256') != sha256(original) or recibo.get('final_sha256') != sha256(final):
@@ -95,6 +110,8 @@ def carregar_coletor(campanha):
 
 
 def processar_resultados(modulo, raw, mapa, pedido, pasta):
+    if pedido.get('contrato') == 2:
+        return processar_neutro(raw, pedido, pasta)
     with raw.open(encoding='utf-8-sig', newline='') as stream:
         reader = csv.DictReader(stream)
         campos_brutos = reader.fieldnames or []
@@ -115,6 +132,46 @@ def processar_resultados(modulo, raw, mapa, pedido, pasta):
         'verificacao': 'Coleta vazia preservada. Nenhuma pesquisa adicional foi iniciada.'}
     for nome, valor in [('dados_preparados.json', dados), ('resumo.json', resumo)]:
         temporario = pasta/(nome+'.tmp')
+        temporario.write_text(json.dumps(valor, ensure_ascii=False, indent=2), encoding='utf-8')
+        temporario.replace(pasta/nome)
+    return resumo
+
+
+def processar_neutro(raw, pedido, pasta):
+    with raw.open(encoding='utf-8-sig', newline='') as stream:
+        linhas = list(csv.DictReader(stream))
+    empresas = []
+    for linha in linhas:
+        emails = linha.get('email') or linha.get('emails') or ''
+        try:
+            lista = json.loads(emails)
+            if isinstance(lista, list):
+                emails = ';'.join(str(v) for v in lista)
+        except (ValueError, TypeError):
+            pass
+        email = next((v.strip().lower() for v in re.split('[;,]', str(emails)) if re.fullmatch(r'[^\s@]+@[^\s@]+', v.strip())), None)
+        empresas.append({'google_place_id': linha.get('place_id') or linha.get('google_place_id') or None,
+            'cnpj': linha.get('cnpj') or None, 'razao_social': linha.get('razao_social') or None,
+            'nome_fantasia': linha.get('title') or linha.get('nome_empresa') or linha.get('nome_fantasia') or None,
+            'contato_nome': linha.get('contato_nome') or None,
+            'telefone': telefone(linha.get('phone') or linha.get('telefone')) or None, 'email': email,
+            'cep': linha.get('cep') or None, 'cnae_principal': linha.get('cnae_principal') or None,
+            'endereco': linha.get('address') or linha.get('endereco') or '', 'categoria': linha.get('category') or linha.get('categoria') or '',
+            'site': linha.get('website') or linha.get('site') or '', 'situacao_google': linha.get('status') or '',
+            'link_maps': linha.get('link') or linha.get('link_maps') or '', 'dados_brutos': linha})
+    campos = ['telefone', 'cnpj', 'razao_social', 'nome_fantasia', 'contato_nome', 'email', 'cep', 'cnae_principal', 'google_place_id']
+    for nome, selecionadas in [('empresas_novas.csv', empresas[:50]), ('empresas_sinalizadas.csv', empresas)]:
+        with (pasta/nome).open('w', encoding='utf-8-sig', newline='') as stream:
+            writer = csv.DictWriter(stream, fieldnames=campos, extrasaction='ignore', quoting=csv.QUOTE_ALL, lineterminator='\r\n')
+            writer.writeheader()
+            writer.writerows(selecionadas)
+    (pasta/'bruto_completo.csv').write_bytes(raw.read_bytes())
+    dados = {'fields': campos, 'all': empresas, 'selected': empresas[:50], 'raw_rows': linhas,
+        'output_files': {'selected': 'empresas_novas.csv', 'all': 'empresas_sinalizadas.csv', 'raw': 'bruto_completo.csv'}}
+    resumo = {'registros_brutos': len(linhas), 'candidatas_preparadas': len(empresas), 'novas_selecionadas': 0,
+        'meta': 50, 'contrato': 2, 'snapshot_sha256': pedido.get('snapshot_sha256'), 'revisao': pedido.get('revisao')}
+    for nome, valor in [('dados_preparados.json', dados), ('resumo.json', resumo)]:
+        temporario = pasta/(nome + '.tmp')
         temporario.write_text(json.dumps(valor, ensure_ascii=False, indent=2), encoding='utf-8')
         temporario.replace(pasta/nome)
     return resumo
@@ -145,7 +202,8 @@ def coletar(pedido, campanha):
             if not coords:
                 raise RuntimeError('Geocodificação indisponível. Preserve o pedido.')
             inicio = datetime.now(timezone.utc).isoformat()
-            body = {'name': 'crm-'+pedido['id'], 'keywords': [termo], 'lang': 'pt', 'zoom': 15, 'lat': coords[0], 'lon': coords[1],
+            nome = 'crm-' + pedido['id'] + ('-coleta-' + str(pedido.get('rodada', 1)) if pedido.get('contrato') == 2 else '')
+            body = {'name': nome, 'keywords': [termo], 'lang': 'pt', 'zoom': 15, 'lat': str(coords[0]), 'lon': str(coords[1]),
                 'fast_mode': False, 'email': True, 'radius': modulo.CONFIG['radius'], 'depth': modulo.CONFIG['depth'], 'max_time': modulo.CONFIG['max_time']}
             modulo.save_json(pasta/'intencao.json', {'pedido_id': pedido['id'], 'request': body, 'started_at': inicio})
             resposta = json.loads(kit.req('POST', '/api/v1/jobs', body)[1])
@@ -181,8 +239,9 @@ def coletar(pedido, campanha):
                 if match and unquote_plus(match[2]) == termo:
                     mapa[match[1]] = termo
             modulo.save_json(pasta/'termos_por_input_id.json', mapa)
-        modulo.CONFIG['termos'] = [pedido['nicho']]
-        modulo.profile = lambda row, evidence: ('Nicho solicitado', 'Aderência comercial a conferir pelo vendedor.', 0)
+        if pedido.get('contrato') != 2:
+            modulo.CONFIG['termos'] = [pedido['nicho']]
+            modulo.profile = lambda row, evidence: ('Nicho solicitado', 'Aderência comercial a conferir pelo vendedor.', 0)
         processar_resultados(modulo, raw, mapa, pedido, pasta)
         return pasta
 
@@ -193,12 +252,15 @@ def main():
     parser.add_argument('--pedido', required=True)
     parser.add_argument('--campanha')
     parser.add_argument('--coletadas')
-    parser.add_argument('--final')
+    parser.add_argument('--final', '--resultado', dest='final')
     parser.add_argument('--original')
     parser.add_argument('--recibo')
     parser.add_argument('--saida')
+    parser.add_argument('--rodada', type=int, choices=(1, 2, 3), default=1)
     args = parser.parse_args()
     pedido = json.loads(Path(args.pedido).read_text(encoding='utf-8-sig'))
+    if pedido.get('contrato') == 2:
+        pedido['rodada'] = args.rodada
     if args.acao == 'contexto':
         if not args.saida:
             parser.error('contexto exige --saida')
@@ -219,12 +281,19 @@ def main():
     recibo = json.loads(Path(args.recibo).read_text(encoding='utf-8-sig'))
     conferir_recibo(pedido, recibo, args.original, args.final)
     dados = json.loads(Path(args.coletadas).read_text(encoding='utf-8-sig'))
-    with Path(args.final).open(encoding='utf-8-sig', newline='') as stream:
-        validadas = list(csv.DictReader(stream))
-    origem = dados['all']
-    if len(origem) > 5000:
-        raise ValueError('Lote excede a capacidade de auditoria. Preserve os arquivos e confira antes de publicar.')
-    publicacao = {'acao': 'entregar', 'pedido': pedido['id'], 'empresas': normalizar(origem, validadas), 'recibo': recibo}
+    if recibo.get('versao') == 2:
+        origem = dados.get('candidatas')
+        if dados.get('lote_id') != recibo.get('lote_id') or not isinstance(origem, list) or not 1 <= len(origem) <= 50:
+            raise ValueError('Use o mesmo lote reservado no CRM.')
+        empresas = origem
+    else:
+        with Path(args.final).open(encoding='utf-8-sig', newline='') as stream:
+            validadas = list(csv.DictReader(stream))
+        origem = dados['all']
+        if len(origem) > 5000:
+            raise ValueError('Lote excede a capacidade de auditoria. Preserve os arquivos e confira antes de publicar.')
+        empresas = normalizar(origem, validadas)
+    publicacao = {'acao': 'entregar', 'pedido': pedido['id'], 'empresas': empresas, 'recibo': recibo}
     saida = Path(args.saida)
     conteudo = json.dumps(publicacao, ensure_ascii=False, indent=2)
     if saida.exists() and saida.read_text(encoding='utf-8') != conteudo:

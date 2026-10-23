@@ -33,8 +33,10 @@ try {
   }
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(executor)) throw new Error('Identidade do executor inválida. Preserve a pasta para reconciliação.')
   if (acao === 'proximo') {
-    try { await readFile(resolve(pasta, 'publicacao-pendente.json')); throw new Error('Há publicação sem confirmação local. Reconcilie o mesmo arquivo antes de pedir outro lote.') }
-    catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
+    for (const nome of ['publicacao-pendente.json', 'operacao-pendente.json']) {
+      try { await readFile(resolve(pasta, nome)); throw new Error('Há operação sem confirmação local. Reconcilie o mesmo arquivo antes de pedir outro lote.') }
+      catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
+    }
     const resposta = await enviar({ acao: 'proximo', executor })
     if (resposta.pedido) {
       const pedido = resposta.pedido as { id: string }
@@ -42,12 +44,41 @@ try {
       await salvar(pedido.id + '.json', { ...pedido, executor })
     }
     console.log(JSON.stringify(resposta))
+  } else if (acao === 'reservar_lote' || acao === 'concluir') {
+    try { await readFile(resolve(pasta, 'publicacao-pendente.json')); throw new Error('Reconcilie a publicação pendente antes de continuar.') }
+    catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
+    const entrada = acao === 'reservar_lote'
+      ? { acao, executor, pedido: opcoes.get('pedido'), lote: JSON.parse(await readFile(resolve(opcoes.get('lote') || ''), 'utf8')) }
+      : { acao, executor, pedido: opcoes.get('pedido'), motivo: opcoes.get('motivo') }
+    const r = await lerComando(new Request('http://localhost', { method: 'POST', body: JSON.stringify(entrada) }))
+    if (!r.ok || (r.comando.acao !== 'reservar_lote' && r.comando.acao !== 'concluir')) throw new Error('Reserva ou conclusão inválida.')
+    const assinatura = hash(Buffer.from(JSON.stringify(r.comando)))
+    try {
+      const anterior = JSON.parse(await readFile(resolve(pasta, 'operacao-pendente.json'), 'utf8'))
+      if (anterior.assinatura !== assinatura) throw new Error('Há outra operação pendente. Reconcilie o mesmo comando.')
+    } catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
+    await salvar('operacao-pendente.json', { assinatura, comando: r.comando })
+    const resposta = await enviar(r.comando)
+    if (r.comando.acao === 'reservar_lote') {
+      const lote = resposta.lote as { id?: string } | undefined
+      if (!lote || typeof lote.id !== 'string' || lote.id !== r.comando.lote.lote_id) throw new Error('Reserva não confirmada. Preserve o mesmo lote.')
+      await salvar(r.comando.pedido + '-' + lote.id + '-reserva.json', resposta)
+    } else {
+      const resultado = resposta.resultado as { motivo_parada?: string } | undefined
+      if (resultado?.motivo_parada !== r.comando.motivo) throw new Error('Conclusão não confirmada. Preserve o mesmo pedido.')
+      await salvar(r.comando.pedido + '-conclusao.json', resposta)
+    }
+    await unlink(resolve(pasta, 'operacao-pendente.json'))
+    console.log(JSON.stringify(resposta))
   } else if (acao === 'etapa') {
     const r = await lerComando(new Request('http://localhost', { method: 'POST', body: JSON.stringify({ acao, executor, pedido: opcoes.get('pedido'), estado: opcoes.get('estado'), motivo: opcoes.get('motivo') ?? null }) }))
     if (!r.ok) throw new Error('Pedido ou etapa inválidos.')
     console.log(JSON.stringify(await enviar(r.comando)))
   } else if (acao === 'entregar') {
-    if (!opcoes.get('publicacao') || !opcoes.get('original') || !opcoes.get('final')) throw new Error('Informe --publicacao, --original e --final.')
+    try { await readFile(resolve(pasta, 'operacao-pendente.json')); throw new Error('Reconcilie a reserva pendente antes de entregar.') }
+    catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
+    const resultado = opcoes.get('resultado') || opcoes.get('final')
+    if (!opcoes.get('publicacao') || !opcoes.get('original') || !resultado) throw new Error('Informe --publicacao, --original e --resultado (ou --final no legado).')
     const texto = await readFile(resolve(opcoes.get('publicacao')!), 'utf8')
     const valor = JSON.parse(texto)
     if (valor.executor && valor.executor !== executor) throw new Error('Publicação de outro executor. Preserve a identidade original.')
@@ -55,7 +86,7 @@ try {
     if (!r.ok || r.comando.acao !== 'entregar') throw new Error('Publicação inválida.')
     const { comando } = r
     if (hash(await readFile(resolve(opcoes.get('original')!))) !== comando.recibo.origem_sha256
-      || hash(await readFile(resolve(opcoes.get('final')!))) !== comando.recibo.final_sha256) throw new Error('Arquivos não conferem com os hashes do recibo.')
+      || hash(await readFile(resolve(resultado))) !== (comando.recibo.versao === 2 ? comando.recibo.resultado_sha256 : comando.recibo.final_sha256)) throw new Error('Arquivos não conferem com os hashes do recibo.')
     const pendente = { pedido: comando.pedido, executor, publicacao_sha256: hash(Buffer.from(texto)) }
     try {
       const anterior = JSON.parse(await readFile(resolve(pasta, 'publicacao-pendente.json'), 'utf8'))
@@ -65,9 +96,10 @@ try {
     const resposta = await enviar(comando)
     if (!['ok', 'repetida', 'vendedor_inativo'].includes(String(resposta.resultado))) throw new Error('Publicação sem confirmação reconhecida. Preserve o mesmo lote.')
     await salvar(comando.pedido + '-retorno.json', resposta)
+    if (comando.recibo.versao === 2) await salvar(comando.pedido + '-' + comando.recibo.lote_id + '-retorno.json', resposta)
     await unlink(resolve(pasta, 'publicacao-pendente.json'))
     console.log(JSON.stringify(resposta))
-  } else throw new Error('Use proximo, etapa ou entregar. Consulte docs/operacao/agente-google-crm.md.')
+  } else throw new Error('Use proximo, etapa, reservar_lote, entregar ou concluir. Consulte docs/operacao/agente-google-crm.md.')
 } finally {
   await lock.close()
   await unlink(resolve(pasta, 'execucao.lock'))

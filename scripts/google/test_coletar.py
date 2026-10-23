@@ -17,6 +17,48 @@ SPEC.loader.exec_module(ponte)
 PEDIDO = {'id': '00000000-0000-4000-8000-000000000001', 'nicho': 'Pet shop $()', 'bairro': 'Brás', 'cidade': 'São Paulo', 'uf': 'SP', 'estado': 'coletando'}
 
 class PonteTest(unittest.TestCase):
+    def test_recibo_v2_nao_exige_whatsapp_e_confere_snapshot_e_arquivos(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz = Path(temp)
+            original = raiz/'original.csv'
+            resultado = raiz/'resultado.json'
+            original.write_text('origem', encoding='utf-8')
+            resultado.write_text('[]', encoding='utf-8')
+            pedido = dict(PEDIDO, contrato=2, execucao_id='00000000-0000-4000-8000-000000000003', revisao=1, snapshot_sha256='c'*64)
+            recibo = dict(versao=2, pedido_id=pedido['id'], execucao_id=pedido['execucao_id'], lote_id='00000000-0000-4000-8000-000000000004', revisao=1, snapshot_sha256='c'*64,
+                origem_sha256=ponte.sha256(original), resultado_sha256=ponte.sha256(resultado), arquivo_original_id='original', arquivo_resultado_id='resultado', verificacoes_requeridas=[], evidencias=[])
+            ponte.conferir_recibo(pedido, recibo, original, resultado)
+            with self.assertRaisesRegex(ValueError, 'snapshot'):
+                ponte.conferir_recibo(pedido, dict(recibo, revisao=2), original, resultado)
+
+    def test_v2_processa_google_neutro_sem_classificador_da_campanha(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz = Path(temp)
+            raw = raiz/'bruto_original_full.csv'
+            raw.write_text('place_id,title,phone,address,website,status,emails,review_rating,review_count\nA,Loja sem telefone,,Endereço real,,permanently_closed,[],4.5,10\n', encoding='utf-8')
+            modulo = types.SimpleNamespace(process=lambda *a, **k: self.fail('Classificador legado não deve rodar'))
+            ponte.processar_resultados(modulo, raw, {}, dict(PEDIDO, contrato=2), raiz)
+            dados = json.loads((raiz/'dados_preparados.json').read_text(encoding='utf-8'))
+            self.assertEqual(len(dados['all']), 1)
+            self.assertEqual(dados['all'][0]['google_place_id'], 'A')
+            self.assertIsNone(dados['all'][0]['telefone'])
+            self.assertEqual(dados['all'][0]['endereco'], 'Endereço real')
+            self.assertNotIn('validado', dados['all'][0])
+            self.assertEqual((raiz/'bruto_completo.csv').read_bytes(), raw.read_bytes())
+
+    def test_v2_isola_coletas_e_congela_criterios_adicionais(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz = Path(temp)
+            pedido = dict(PEDIDO, contrato=2, vendedor_id='00000000-0000-4000-8000-000000000002', execucao_id='00000000-0000-4000-8000-000000000003', criterios={'termos':'perto do centro'}, rodada=1)
+            primeira = ponte.pasta_do_pedido(raiz, pedido)
+            segunda = ponte.pasta_do_pedido(raiz, dict(pedido, rodada=2))
+            self.assertNotEqual(primeira, segunda)
+            self.assertIn('perto do centro', ponte.consulta(pedido))
+            primeira.mkdir(parents=True)
+            (primeira/'pedido.json').write_text(json.dumps(pedido), encoding='utf-8')
+            with self.assertRaisesRegex(RuntimeError, 'divergentes'):
+                ponte.verificar_inicio(primeira, dict(pedido, criterios={'termos':'outro termo'}))
+
     def test_retoma_pasta_legada_com_metadados_novos_sem_criar_job(self):
         with tempfile.TemporaryDirectory() as temp:
             raiz = Path(temp)

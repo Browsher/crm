@@ -81,6 +81,8 @@ test('reserva três lotes, retoma sem consumir novamente e bloqueia quarto', asy
     const lote = { lote_id: randomUUID(), candidatas: Array.from({ length: 50 }, (_, i) => ({ google_place_id: `place-${rodada}-${i}`, nome_fantasia: 'Loja' })) }
     const reserva = () => chamar(gestor, 'SELECT google_agente_reservar_lote($1,$2,$3) AS r', [id, executor, JSON.stringify(lote)])
     expect(await reserva()).toMatchObject([{ r: { id: lote.lote_id, ordinal: rodada + 1 } }])
+    const [{ r: progresso }] = await banco.sql<{ r: unknown }>("SELECT google_coordenar_em($2,$3::timestamptz) AS r FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) x", [gestor,executor,dias[0]+'T17:00:00-03:00'])
+    expect(progresso).toMatchObject({pedido:{lotes:rodada+1,lote_pendente:{id:lote.lote_id}}})
     await reserva()
     expect(await banco.sql('SELECT analisadas FROM google_execucao WHERE pedido_id=$1', [id])).toEqual([{ analisadas: (rodada + 1) * 50 }])
     await expect(chamar(gestor, 'SELECT google_agente_concluir($1,$2,$3)', [id, executor, 'sem_novidades'])).rejects.toMatchObject({ code: '55000' })
