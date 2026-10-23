@@ -22,8 +22,10 @@ export async function POST(request: Request) {
       }
       return responder(r)
     }
+    if (comando.acao === 'reservar_lote') return responder({ lote: await repo.reservarLote(comando.pedido, comando.executor, comando.lote) })
     if (comando.acao === 'etapa') await repo.etapa(comando.pedido, comando.estado, comando.motivo, comando.executor)
-    const resultado = comando.acao === 'entregar' ? await repo.entregar(comando.pedido, comando.empresas, comando.recibo, comando.executor) : 'ok'
+    const resultado = comando.acao === 'entregar' ? await repo.entregar(comando.pedido, comando.empresas, comando.recibo, comando.executor)
+      : comando.acao === 'concluir' ? await repo.concluir(comando.pedido, comando.executor, comando.motivo) : 'ok'
     await sincronizarPedido(comando.pedido)
     revalidatePath('/fila/google')
     revalidatePath('/fila/buscar')

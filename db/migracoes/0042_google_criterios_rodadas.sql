@@ -240,4 +240,172 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION google_agente_concluir(uuid,uuid,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION google_agente_concluir(uuid,uuid,text) TO app_usuario;
+ALTER TABLE empresa ALTER COLUMN telefone DROP NOT NULL;
+CREATE FUNCTION empresa_telefone_origem_conferir() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.empresa e WHERE e.id=NEW.id AND e.telefone IS NULL)
+    AND NOT EXISTS (SELECT 1 FROM public.empresa_origem_google o WHERE o.empresa_id=NEW.id) THEN RAISE EXCEPTION 'telefone obrigatorio fora da origem Google' USING ERRCODE='23514'; END IF;
+  RETURN NULL;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION empresa_telefone_origem_conferir() FROM PUBLIC;
+CREATE CONSTRAINT TRIGGER empresa_telefone_origem AFTER INSERT OR UPDATE ON empresa DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION empresa_telefone_origem_conferir();
+ALTER TABLE google_resultado ADD COLUMN lote_id uuid REFERENCES google_lote(id) ON DELETE SET NULL;
+CREATE FUNCTION google_criterios_regras(c jsonb) RETURNS jsonb
+LANGUAGE plpgsql IMMUTABLE SET search_path = '' AS $$
+DECLARE r jsonb := '[]'; k text;
+BEGIN
+  FOREACH k IN ARRAY ARRAY['produtos','excluir','observacoes'] LOOP
+    IF c->>k<>'' THEN r := r||jsonb_build_array(jsonb_build_object('criterio',k,'opcoes',jsonb_build_array(c->k))); END IF;
+  END LOOP;
+  FOREACH k IN ARRAY ARRAY['tipos','site','email','telefone'] LOOP
+    IF jsonb_array_length(c->k)>0 THEN r := r||jsonb_build_array(jsonb_build_object('criterio',k,'opcoes',c->k)); END IF;
+  END LOOP;
+  FOREACH k IN ARRAY ARRAY['atendimento','situacao'] LOOP
+    IF c->>k<>'' AND c->>k NOT IN ('priorizar_fisica','priorizar_funcionamento') THEN r := r||jsonb_build_array(jsonb_build_object('criterio',k,'opcoes',jsonb_build_array(c->k))); END IF;
+  END LOOP;
+  FOREACH k IN ARRAY ARRAY['nota','avaliacoes'] LOOP
+    IF c->k<>'null'::jsonb THEN r := r||jsonb_build_array(jsonb_build_object('criterio',k,'opcoes',jsonb_build_array(c->>k))); END IF;
+  END LOOP;
+  RETURN r;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_criterios_regras(jsonb) FROM PUBLIC;
+CREATE FUNCTION google_verificacoes_requeridas(c jsonb) RETURNS jsonb
+LANGUAGE plpgsql IMMUTABLE SET search_path = '' AS $$
+DECLARE r jsonb := '[]';
+BEGIN
+  IF c->'nota'<>'null'::jsonb OR c->'avaliacoes'<>'null'::jsonb OR (c->>'situacao'<>'' AND c->>'situacao'<>'priorizar_funcionamento') THEN r := r||'"dados_google"'::jsonb; END IF;
+  IF jsonb_array_length(c->'site')=1 OR jsonb_array_length(c->'email')=1 THEN r := r||'"presenca_digital"'::jsonb; END IF;
+  IF c->>'produtos'<>'' OR c->>'excluir'<>'' OR c->>'observacoes'<>'' OR jsonb_array_length(c->'tipos')>0 OR (c->>'atendimento'<>'' AND c->>'atendimento'<>'priorizar_fisica') THEN r := r||'"perfil_comercial"'::jsonb; END IF;
+  IF c->'telefone' ? 'whatsapp' THEN r := r||'"whatsapp"'::jsonb; END IF;
+  IF c->'telefone' ? 'fixo' THEN r := r||'"fixo"'::jsonb; END IF;
+  RETURN r;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_verificacoes_requeridas(jsonb) FROM PUBLIC;
+CREATE FUNCTION google_evidencias_decidir(c jsonb,p_evidencias jsonb,p_candidata text) RETURNS text
+LANGUAGE plpgsql IMMUTABLE SET search_path = '' AS $$
+DECLARE regra jsonb; pendente boolean := false;
+BEGIN
+  FOR regra IN SELECT value FROM jsonb_array_elements(public.google_criterios_regras(c)) LOOP
+    IF EXISTS (SELECT 1 FROM jsonb_array_elements(p_evidencias) e WHERE e.value->>'candidata'=p_candidata AND e.value->>'criterio'=regra->>'criterio' AND regra->'opcoes' ? (e.value->>'opcao') AND e.value->>'estado'='aprovado') THEN CONTINUE; END IF;
+    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements_text(regra->'opcoes') o WHERE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_evidencias) e WHERE e.value->>'candidata'=p_candidata AND e.value->>'criterio'=regra->>'criterio' AND e.value->>'opcao'=o.value AND e.value->>'estado'='reprovado')) THEN RETURN 'reprovado'; END IF;
+    pendente := true;
+  END LOOP;
+  RETURN CASE WHEN pendente THEN 'nao_confirmado' ELSE 'aprovado' END;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_evidencias_decidir(jsonb,jsonb,text) FROM PUBLIC;
+ALTER FUNCTION google_agente_entregar(uuid,jsonb,jsonb,uuid) RENAME TO google_entregar_legado;
+REVOKE EXECUTE ON FUNCTION google_entregar_legado(uuid,jsonb,jsonb,uuid) FROM app_usuario;
+CREATE FUNCTION google_agente_entregar(p_id uuid,p_empresas jsonb,p_recibo jsonb,p_executor uuid DEFAULT NULL) RETURNS text
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+<<entrega>>
+DECLARE
+  p public.google_planejamento%ROWTYPE;
+  e public.google_execucao%ROWTYPE;
+  l public.google_lote%ROWTYPE;
+  c jsonb;
+  ev jsonb;
+  linha jsonb;
+  identidade text;
+  empresa_id uuid;
+  por_cnpj uuid;
+  por_google uuid;
+  fone text;
+  mail text;
+  situacao text;
+  motivo text;
+  decisao text;
+  indice integer;
+  novas integer := 0;
+  inativo boolean;
+  resposta text;
+BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(27,1);
+  PERFORM public.google_execucao_validar(p_id,p_executor,true);
+  SELECT * INTO e FROM public.google_execucao WHERE pedido_id=p_id FOR UPDATE;
+  IF e.contrato=1 AND p_recibo->'versao' IS DISTINCT FROM '2'::jsonb THEN RETURN public.google_entregar_legado(p_id,p_empresas,p_recibo,p_executor); END IF;
+  IF e.contrato<>2 OR p_recibo->'versao' IS DISTINCT FROM '2'::jsonb OR p_recibo->>'pedido_id' IS DISTINCT FROM p_id::text
+    OR p_recibo->>'execucao_id' IS DISTINCT FROM e.id::text OR p_recibo->>'revisao' IS DISTINCT FROM e.revisao::text
+    OR p_recibo->>'snapshot_sha256' IS DISTINCT FROM encode(sha256(convert_to(e.snapshot::text,'UTF8')),'hex')
+    OR coalesce(p_recibo->>'lote_id','') !~ '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$'
+    OR coalesce(p_recibo->>'origem_sha256','') !~ '^[0-9a-f]{64}$' OR coalesce(p_recibo->>'resultado_sha256','') !~ '^[0-9a-f]{64}$'
+    OR length(coalesce(p_recibo->>'arquivo_original_id','')) NOT BETWEEN 1 AND 255 OR length(coalesce(p_recibo->>'arquivo_resultado_id','')) NOT BETWEEN 1 AND 255 THEN RAISE EXCEPTION 'recibo invalido' USING ERRCODE='22023'; END IF;
+  SELECT * INTO l FROM public.google_lote WHERE id=(p_recibo->>'lote_id')::uuid AND execucao_id=e.id FOR UPDATE;
+  IF NOT FOUND OR l.candidatas IS DISTINCT FROM p_empresas THEN RAISE EXCEPTION 'lote divergente' USING ERRCODE='22023'; END IF;
+  IF l.recibo IS NOT NULL THEN
+    IF l.recibo IS DISTINCT FROM p_recibo THEN RAISE EXCEPTION 'publicacao divergente' USING ERRCODE='22023'; END IF;
+    RETURN 'repetida';
+  END IF;
+  IF e.concluido_em IS NOT NULL THEN RAISE EXCEPTION 'execucao concluida' USING ERRCODE='55000'; END IF;
+  c := public.google_criterios_normalizar(e.snapshot->'criterios');
+  IF p_recibo->'verificacoes_requeridas' IS DISTINCT FROM public.google_verificacoes_requeridas(c) OR jsonb_typeof(p_recibo->'evidencias') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'verificacoes divergentes' USING ERRCODE='22023'; END IF;
+  IF jsonb_array_length(p_recibo->'evidencias')>1000 THEN RAISE EXCEPTION 'evidencias excessivas' USING ERRCODE='22023'; END IF;
+  FOR ev IN SELECT value FROM jsonb_array_elements(p_recibo->'evidencias') LOOP
+    IF jsonb_typeof(ev)<>'object' OR EXISTS (SELECT 1 FROM unnest(ARRAY['candidata','criterio','opcao','estado','motivo','fonte','horario']) k WHERE jsonb_typeof(ev->k) IS DISTINCT FROM 'string')
+      OR ev->>'estado' NOT IN ('aprovado','reprovado','nao_confirmado') OR length(ev->>'motivo') NOT BETWEEN 1 AND 500 OR length(ev->>'fonte') NOT BETWEEN 1 AND 2048
+      OR ev->>'horario' !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$'
+      OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_empresas) x WHERE x.value->>'google_place_id'=ev->>'candidata')
+      OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(public.google_criterios_regras(c)) r WHERE r.value->>'criterio'=ev->>'criterio' AND r.value->'opcoes' ? (ev->>'opcao')) THEN RAISE EXCEPTION 'evidencia invalida' USING ERRCODE='22023'; END IF;
+    PERFORM (ev->>'horario')::timestamptz;
+    IF ev->>'criterio'='telefone' AND ev->>'estado'='aprovado' AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_empresas) x WHERE x.value->>'google_place_id'=ev->>'candidata' AND x.value->>'telefone'=ev->>'contato'
+      AND x.value->>'telefone' ~ '^[0-9]{10,11}$' AND (ev->>'opcao'<>'fixo' OR x.value->>'telefone' ~ '^[0-9]{2}[2-5][0-9]{7}$')) THEN RAISE EXCEPTION 'contato divergente' USING ERRCODE='22023'; END IF;
+  END LOOP;
+  IF EXISTS (SELECT 1 FROM jsonb_array_elements(p_recibo->'evidencias') x GROUP BY x.value->>'candidata',x.value->>'criterio',x.value->>'opcao' HAVING count(*)>1) THEN RAISE EXCEPTION 'evidencia repetida' USING ERRCODE='22023'; END IF;
+  SELECT * INTO p FROM public.google_planejamento WHERE id=p_id FOR UPDATE;
+  PERFORM id FROM public.usuario WHERE id IN (public.usuario_atual(),p.vendedor_id) ORDER BY id FOR SHARE;
+  IF NOT public.pode_escrever() OR NOT public.eh_gestor() THEN RAISE EXCEPTION 'sem permissao' USING ERRCODE='42501'; END IF;
+  inativo := NOT EXISTS (SELECT 1 FROM public.usuario WHERE id=p.vendedor_id AND ativo AND papel='vendedor' AND NOT senha_provisoria_pendente);
+  SELECT coalesce(max(r.indice),0) INTO indice FROM public.google_resultado r WHERE r.planejamento_id=p_id;
+  FOR linha IN SELECT value FROM jsonb_array_elements(p_empresas) LOOP
+    indice := indice+1; empresa_id := NULL; por_cnpj := NULL; por_google := NULL;
+    identidade := linha->>'google_place_id';
+    fone := CASE WHEN linha->>'telefone' ~ '^[0-9]{10,11}$' THEN linha->>'telefone' END;
+    mail := CASE WHEN linha->>'email' ~ '^[^[:space:]@]+@[^[:space:]@]+$' THEN lower(btrim(linha->>'email')) END;
+    decisao := public.google_evidencias_decidir(c,p_recibo->'evidencias',identidade);
+    situacao := 'pendente'; motivo := CASE decisao WHEN 'reprovado' THEN 'Não atende aos critérios selecionados.' ELSE 'Critério selecionado não confirmado.' END;
+    IF inativo THEN motivo := 'Vendedor indisponível. Resultados preservados para o gestor.';
+    ELSIF e.entregues+novas>=50 THEN motivo := 'Meta de 50 empresas atingida.';
+    ELSIF decisao='aprovado' AND coalesce(nullif(btrim(linha->>'razao_social'),''),nullif(btrim(linha->>'nome_fantasia'),'')) IS NOT NULL
+      AND (nullif(linha->>'cnpj','') IS NULL OR public.empresa_cnpj_valido(linha->>'cnpj')) THEN
+      SELECT id INTO por_cnpj FROM public.empresa WHERE cnpj=nullif(linha->>'cnpj','') FOR UPDATE;
+      SELECT o.empresa_id INTO por_google FROM public.empresa_origem_google o WHERE google_place_id=identidade FOR UPDATE;
+      IF (por_cnpj IS NOT NULL AND por_google IS NOT NULL AND por_cnpj<>por_google) OR (por_google IS NOT NULL AND nullif(linha->>'cnpj','') IS NOT NULL AND EXISTS (SELECT 1 FROM public.empresa WHERE id=por_google AND cnpj IS DISTINCT FROM linha->>'cnpj')) THEN
+        situacao := 'conflito'; motivo := 'CNPJ e identificador Google precisam de conferência.';
+      ELSE
+        empresa_id := coalesce(por_cnpj,por_google);
+        IF EXISTS (SELECT 1 FROM public.empresa x WHERE x.id IS DISTINCT FROM entrega.empresa_id AND ((fone IS NOT NULL AND x.telefone=fone) OR (mail IS NOT NULL AND lower(x.email)=mail))) THEN
+          situacao := 'repetida'; motivo := 'Telefone ou e-mail já encontrado na base da empresa.';
+        ELSIF empresa_id IS NOT NULL AND (EXISTS (SELECT 1 FROM public.google_exclusividade x WHERE x.empresa_id=entrega.empresa_id)
+          OR EXISTS (SELECT 1 FROM public.empresa_fila f WHERE f.empresa_id=entrega.empresa_id AND ((f.vendedor_id IS NOT NULL AND f.vendedor_id<>p.vendedor_id) OR (f.reservado_por IS NOT NULL AND f.reservado_por<>p.vendedor_id AND f.reservado_ate>clock_timestamp()))) OR public.empresa_cliente(entrega.empresa_id)) THEN
+          situacao := 'indisponivel'; motivo := 'Empresa já destinada ou em atendimento.';
+        ELSE
+          IF empresa_id IS NULL THEN
+            INSERT INTO public.empresa(cnpj,razao_social,nome_fantasia,telefone,email,cep,cnae_principal) VALUES (nullif(linha->>'cnpj',''),nullif(btrim(linha->>'razao_social'),''),nullif(btrim(linha->>'nome_fantasia'),''),fone,mail,
+              CASE WHEN linha->>'cep' ~ '^[0-9]{8}$' THEN linha->>'cep' END,CASE WHEN linha->>'cnae_principal' ~ '^[0-9]{7}$' THEN linha->>'cnae_principal' END) RETURNING id INTO empresa_id;
+          END IF;
+          INSERT INTO public.empresa_origem_google(google_place_id,empresa_id) VALUES (identidade,empresa_id) ON CONFLICT DO NOTHING;
+          INSERT INTO public.google_exclusividade(empresa_id,vendedor_id,planejamento_id) VALUES (empresa_id,p.vendedor_id,p_id);
+          situacao := 'entregue'; motivo := NULL; novas := novas+1;
+        END IF;
+      END IF;
+    END IF;
+    INSERT INTO public.google_resultado(planejamento_id,lote_id,indice,empresa_id,dados,situacao,motivo,entregue_em) VALUES (p_id,l.id,indice,empresa_id,linha,situacao,motivo,CASE WHEN situacao='entregue' THEN clock_timestamp() END);
+  END LOOP;
+  resposta := CASE WHEN inativo THEN 'vendedor_inativo' ELSE 'ok' END;
+  UPDATE public.google_execucao SET entregues=entregues+novas WHERE id=e.id;
+  UPDATE public.google_lote SET recibo=p_recibo,resposta=jsonb_build_object('resultado',entrega.resposta,'entregues',novas),concluido_em=clock_timestamp() WHERE id=l.id;
+  IF inativo THEN
+    UPDATE public.google_execucao SET concluido_em=clock_timestamp(),motivo_parada='vendedor_inativo' WHERE id=e.id;
+    UPDATE public.google_planejamento SET estado='cancelado',motivo='Vendedor indisponível.',concluido_em=clock_timestamp() WHERE id=p_id;
+  END IF;
+  RETURN resposta;
+EXCEPTION WHEN invalid_datetime_format OR datetime_field_overflow THEN RAISE EXCEPTION 'horario invalido' USING ERRCODE='22023';
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION google_agente_entregar(uuid,jsonb,jsonb,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION google_agente_entregar(uuid,jsonb,jsonb,uuid) TO app_usuario;
 COMMIT;
