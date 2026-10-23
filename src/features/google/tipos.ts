@@ -1,4 +1,6 @@
-export type PlanoEntrada = { dia: string; nicho: string; bairro: string; cidade: string; uf: string }
+import type { CriteriosGoogle } from '@/src/lib/google/criterios'
+
+export type PlanoEntrada = { dia: string; nicho: string; bairro: string; cidade: string; uf: string; criterios?: CriteriosGoogle }
 export type EstadoGoogle = 'planejado' | 'aguardando' | 'coletando' | 'validando' | 'concluido' | 'falhou' | 'cancelado'
 export type PlanoGoogle = PlanoEntrada & { id: string; vendedor_id: string; vendedor: string; estado: EstadoGoogle;
   snapshot: Omit<PlanoEntrada, 'dia'> | null; motivo: string | null; iniciado_em: string | null; concluido_em: string | null;

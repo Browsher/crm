@@ -84,7 +84,13 @@ O que será copiado e o resumo fixo de nicho/quantidade/região preservada.
 Nicho, região e termos adicionais são entradas da coleta. Os termos
 complementam o nicho, sem substituí-lo nem autorizar outra região.
 
-Verificações reutilizáveis, acionadas somente quando necessárias:
+Um único workflow n8n recebe o lote e os critérios do snapshot. Suas etapas
+condicionais executam apenas verificações necessárias, conservam evidências
+individuais e respondem uma vez com o resultado completo. Todos os vendedores
+compartilham esse workflow; pedido, vendedor, revisão e lote distinguem as
+execuções. Sem verificações necessárias, a entrega direta dispensa o n8n.
+
+Verificações reutilizáveis dentro desse workflow:
 
 1. Dados do Google: nota mínima de 0 a 5, mínimo inteiro de avaliações a partir
    de zero e situação do estabelecimento. Situação usa o cadastro do Google,
@@ -110,8 +116,8 @@ ambas. WhatsApp e fixo juntos aceitam pelo menos um canal, conservam os dois
 quando disponíveis e não duplicam uma empresa. Com e Sem de site/e-mail juntos
 equivalem a ausência de restrição naquele campo. Sem seleção de contato não
 exigir WhatsApp nem telefone fixo. Cada campo neutro deixa de acionar a
-verificação correspondente; reaproveitar uma única execução quando vários
-campos usam o mesmo workflow.
+verificação correspondente; reaproveitar a leitura quando vários campos usam
+a mesma etapa do workflow.
 
 Exemplo: Com site + Com e-mail + WhatsApp e fixo significa site E e-mail E
 (WhatsApp OU fixo). Uma aprovação de contato não substitui outro filtro.

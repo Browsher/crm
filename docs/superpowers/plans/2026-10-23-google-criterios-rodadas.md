@@ -4,7 +4,7 @@
 
 **Goal:** Aplicar o planejamento aprovado ao CRM e ao executor, com verificações opcionais, coleta às 17h para o próximo dia útil e até 3 lotes/150 candidatas para entregar até 50 empresas.
 
-**Architecture:** O banco mantém plano versionado, execução imutável, lotes, contadores e exclusividade. O executor reutiliza o motor e os arquivos existentes, acionando os cinco workflows somente para as regras selecionadas. Interface e planilha mostram o plano atual e o estado real da execução, sem substituir o histórico.
+**Architecture:** O banco mantém plano versionado, execução imutável, lotes, contadores e exclusividade. O executor reutiliza o motor e os arquivos existentes. Um único workflow n8n executa etapas condicionais para as regras selecionadas e devolve evidências por critério. Sem verificações necessárias, o executor entrega diretamente ao CRM. Interface e planilha mostram o plano atual e o estado real da execução, sem substituir o histórico.
 
 **Tech Stack:** Next.js 16.3.8, React 19.2.8, TypeScript, PostgreSQL/RLS, Vitest, Playwright, Python padrão e n8n. Reutilizar shadcn/ui e o kit local; não atualizar dependências como parte desta mudança.
 
@@ -117,9 +117,9 @@ Os exemplos de duas semanas passadas são fictícios e não devem virar seed de 
 
 ### Task 7: Workflows opcionais e transparência da entrega
 
-**Files:** Create `workflows/n8n/google/dados-google.json`, `presenca-digital.json`, `perfil-comercial.json`, `whatsapp.json`, `fixo.json`, `README.md`; Create `src/server/google/verificacoes/cliente.ts`, `cliente.test.ts`, `contrato.test.ts`; Modify `app/empresas/google/page.tsx`, `app/empresas/google/[id]/page.tsx`, `app/fila/google/entrega.tsx`, `src/components/crm/historico-google.tsx`, `src/features/empresas/perfil.ts`, `src/features/empresas/listagem.ts`, `src/features/empresas/formato.ts`, `src/features/fila/consulta.ts`, `src/lib/whatsapp-empresa.ts` e seus consumidores de contato.
+**Files:** Create `workflows/n8n/google/verificar-empresas.json`, `README.md`; Create `src/server/google/verificacoes/cliente.ts`, `cliente.test.ts`, `contrato.test.ts`; Modify `app/empresas/google/page.tsx`, `app/empresas/google/[id]/page.tsx`, `app/fila/google/entrega.tsx`, `src/components/crm/historico-google.tsx`, `src/features/empresas/perfil.ts`, `src/features/empresas/listagem.ts`, `src/features/empresas/formato.ts`, `src/features/fila/consulta.ts`, `src/lib/whatsapp-empresa.ts` e seus consumidores de contato.
 
-**Interfaces:** `executarVerificacoes(contexto,candidatas,fetcher)` chama somente `verificacoesNecessarias`, espera respostas identificadas por pedido/lote/candidata e retorna evidências para o recibo V2. Templates recebem somente dados do lote e regras necessárias, devolvendo estado/motivo/fonte/horário por regra; nenhum callback decide o vendedor. Exportar JSON sem segredos e com ativação desabilitada.
+**Interfaces:** `executarVerificacoes(contexto,candidatas,fetcher)` faz zero chamadas se `verificacoesNecessarias` estiver vazio e uma chamada ao workflow único nos demais casos. Recebe respostas identificadas por pedido/lote/candidata e retorna evidências para o recibo V2. O workflow executa apenas etapas selecionadas, recebe somente dados do lote e regras necessárias e devolve estado/motivo/fonte/horário por regra; nenhum callback decide o vendedor. Exportar JSON sem segredos e com ativação desabilitada.
 
 - [ ] **Step 1: Escrever testes falhando** dos contratos: zero chamadas externas no plano neutro; um workflow compartilhado para nota+avaliações; tipo de contato OU e demais filtros E; preferências ordenam sem excluir; timeout vira não confirmado/pendência, não Sem e-mail; fonte de página não altera regras. Fixo verifica formato e não inventa estado de linha ativa.
 - [ ] **Step 2: Rodar** `npm run test:unit -- src/server/google/verificacoes`; conferir falha pelos arquivos/contratos ausentes.

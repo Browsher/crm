@@ -21,6 +21,14 @@ test('não normaliza silenciosamente uma data inexistente', () => {
 test('dia de São Paulo não depende do fuso do servidor', () => {
   expect(hojeEmSaoPaulo(new Date('2026-10-23T01:30:00Z'))).toBe('2026-10-22')
 })
+test('dia totalmente vazio pode ficar não definido', () => {
+  expect(validarPlano({ dia: '2026-10-26', nicho: '', bairro: '', cidade: '', uf: '' })).toMatchObject({ ok: true })
+})
+test('critério inválido impede salvar e critério válido acompanha o plano', () => {
+  const base = { dia: '2026-10-26', nicho: 'Loja', bairro: '', cidade: 'São Paulo', uf: 'SP' }
+  expect(validarPlano({ ...base, criterios: { telefone: ['celular'] } })).toMatchObject({ ok: false })
+  expect(validarPlano({ ...base, criterios: { nota: 0 } })).toMatchObject({ ok: true, plano: { criterios: { nota: 0 } } })
+})
 test('critérios são dados literais e bairro é opcional', () => {
   expect(validarPlano({ dia: '2026-10-26', nicho: ' Pet shop $() ', bairro: '', cidade: ' São Paulo ', uf: 'sp' })).toEqual({ ok: true,
     plano: { dia: '2026-10-26', nicho: 'Pet shop $()', bairro: '', cidade: 'São Paulo', uf: 'SP' } })
