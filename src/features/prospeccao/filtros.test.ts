@@ -3,6 +3,10 @@ import { lerFiltros } from './filtros'
 
 const vazio = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
 
+it.each(['{"nome":1}','{"origem":"alheia"}','{"papel":"gestor"}','{"aberturaDe":"2026-02-31"}'])('filtro pessoal inválido falha fechado: %s',pessoal=>{
+  expect(lerFiltros({pessoal}).ok).toBe(false)
+})
+
 describe('lerFiltros', () => {
   it('aceita ausência e campos vazios do formulário', () => {
     expect(lerFiltros({})).toEqual({ ok: true, filtros: vazio })

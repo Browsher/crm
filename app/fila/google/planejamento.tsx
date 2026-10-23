@@ -42,7 +42,7 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
   const alterar = (dia: string, campos: Partial<PlanoEntrada>) => setRascunho(anteriores => anteriores.map(p => p.dia === dia ? { ...p, ...campos } : p))
   const temFuturo = dias.some(d => d > hoje)
   return <section className={styles.semana}>
-    <div className={styles.cabecalhoSemana}><div><h2>Planejamento de {dataCurta(dias[0])} a {dataCurta(dias.at(-1)!)}</h2><p className={styles.ajuda}>Defina o nicho e a região de cada dia. Sem bairro, a busca cobre a cidade inteira.</p></div>
+    <div className={styles.cabecalhoSemana}><div><h2>Planejamento da semana</h2><p className={styles.ajuda}>{dataCurta(dias[0])} a {dataCurta(dias.at(-1)!)}. Sem bairro, a busca cobre a cidade inteira.</p></div>
       <div className={styles.acoes}>
         {!editando && <><Button asChild variant="outline"><Link href={mover(-7)}>Semana anterior</Link></Button><Button asChild variant="outline"><Link href={mover(7)}>Próxima semana</Link></Button></>}
         <EspelharPlanejamento dias={dias} hoje={hoje} historico={historico} disabled={editando || !historico.length} />
@@ -51,19 +51,18 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
     </div>
     <form action={acao}>
       <input type="hidden" name="dias" value={JSON.stringify(rascunho.filter(p => p.dia > hoje))} />
-      <div className={styles.tabelaRolagem}><table className={styles.tabelaSemana}><caption className="sr-only">Planejamento semanal das buscas no Google</caption><thead><tr><th>Dia</th><th>Nicho</th><th>Bairro</th><th>Cidade / UF</th><th>Grupo de destino</th><th>Critérios</th></tr></thead><tbody>
+      <div className={styles.tabelaRolagem}><table className={styles.tabelaSemana}><caption className="sr-only">Planejamento semanal das buscas no Google</caption><thead><tr><th>Dia</th><th>Nicho</th><th>Bairro</th><th>Cidade / UF</th><th>Grupo de destino</th></tr></thead><tbody>
         {dias.map(dia => {
           const plano = planos.find(p => p.dia === dia)
           const p = editando ? rascunho.find(r => r.dia === dia)! : entrada(dia, plano)
           const editavel = editando && dia > hoje
           const rotulo = diaDaSemana(dia) + ', ' + dataCurta(dia)
           return <tr key={dia} data-hoje={dia === hoje ? true : undefined}><th scope="row"><span className={styles.data}>{diaDaSemana(dia)}<time dateTime={dia}>{dataCurta(dia)}</time>{dia === hoje && <span className={styles.hoje}>Hoje</span>}</span></th>
-            <td>{editavel ? <Input aria-label={'Nicho de ' + rotulo} name={'nicho-' + dia} maxLength={100} value={p.nicho} onChange={e => alterar(dia, { nicho: e.target.value })} disabled={pendente} /> : p.nicho || <span className={styles.ajuda}>Não definido</span>}</td>
+            <td><div className={styles.nichoCelula}>{editavel ? <Input aria-label={'Nicho de ' + rotulo} name={'nicho-' + dia} maxLength={100} value={p.nicho} onChange={e => alterar(dia, { nicho: e.target.value })} disabled={pendente} /> : <span>{p.nicho || <span className={styles.ajuda}>Não definido</span>}</span>}{(editavel || p.nicho) && <DialogoCriterios dia={dia} valor={p.criterios ?? criteriosVazios()} leitura={!editavel || pendente} onAplicar={criterios => alterar(dia, { criterios })} />}</div></td>
             <td>{editavel ? <Input aria-label={'Bairro de ' + rotulo} name={'bairro-' + dia} maxLength={100} value={p.bairro} onChange={e => alterar(dia, { bairro: e.target.value })} disabled={pendente} /> : p.nicho ? p.bairro || 'Cidade inteira' : 'Não definido'}</td>
             <td>{editavel ? <div className={styles.cidadeUf}><Input aria-label={'Cidade de ' + rotulo} name={'cidade-' + dia} maxLength={100} value={p.cidade} onChange={e => alterar(dia, { cidade: e.target.value })} disabled={pendente} /><NativeSelect aria-label={'UF de ' + rotulo} name={'uf-' + dia} value={p.uf} onChange={e => alterar(dia, { uf: e.target.value })} disabled={pendente}><option value="">UF</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></div> : p.cidade ? p.cidade + ' / ' + p.uf : 'Não definido'}</td>
             <td>{p.nicho && p.cidade && p.uf ? p.nicho + ' · ' + (p.bairro || p.cidade) + ' / ' + p.uf : <span className={styles.ajuda}>Montado automaticamente</span>}
               {plano?.execucao_revisao && plano.execucao_revisao !== plano.revisao && <small className={styles.avisoRevisao}>A busca iniciada usa o planejamento anterior.</small>}</td>
-            <td>{(editavel || p.nicho) && <DialogoCriterios dia={dia} valor={p.criterios ?? criteriosVazios()} leitura={!editavel || pendente} onAplicar={criterios => alterar(dia, { criterios })} />}</td>
           </tr>
         })}
       </tbody></table></div>

@@ -13,7 +13,7 @@ const original = globalThis.fetch
 globalThis.fetch = (input, init) => {
   const url = new URL(input instanceof Request ? input.url : String(input))
   if (url.hostname !== 'cnpj.biz') return original(input, init)
-  if (url.origin !== 'https://cnpj.biz' || !['/api/v2/atividades/buscar', '/api/v2/empresas/listar-com-dados'].includes(url.pathname)) {
+  if (url.origin !== 'https://cnpj.biz' || !['/api/v2/atividades/buscar', '/api/v2/naturezas-juridicas/buscar', '/api/v2/empresas/contar', '/api/v2/empresas/listar-com-dados'].includes(url.pathname)) {
     return Promise.reject(new Error('Rota CNPJ.biz fora da simulação'))
   }
   const destino = new URL(url.pathname, mock)

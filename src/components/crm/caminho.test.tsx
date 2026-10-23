@@ -13,7 +13,7 @@ test.each([
   ['/empresas/id-privado', 'empresas', 'Empresas', 'Ficha da empresa', '/empresas'],
   ['/usuarios/vendedores/id-privado', 'usuarios', 'Usuários', 'Perfil do vendedor', '/usuarios'],
   ['/carteira/id-privado', 'carteira', 'Carteira', 'Ficha da empresa', '/carteira'],
-  ['/fila/localizar', 'fila', 'Prospecção', 'Localizar empresa', '/fila'],
+  ['/fila/localizar', 'fila', 'Prospecção', 'Localizar empresas', '/fila'],
   ['/fila/localizar/id-privado', 'fila', 'Prospecção', 'Perfil da empresa', '/fila/localizar'],
 ])('mapeia %s com retorno ao nível existente', (url, area, titulo, atual, retorno) => {
   rota.atual = url

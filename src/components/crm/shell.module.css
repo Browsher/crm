@@ -34,7 +34,7 @@
 .nome { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 18px; }
 .shell .topbar .menu { display: none; }
 .conteudo { width: 100%; min-width: 0; }
-.conteudo main { width: 100%; max-width: 1600px; margin: 0 auto; padding: 30px 32px; }
+.conteudo main { width: 100%; max-width: 1420px; margin: 0 auto; padding: 30px 32px; }
 .conteudo h1 { font-size: 28px; line-height: 36px; font-weight: 650; letter-spacing: -.025em; }
 .conteudo :global(.text-neutral-600) { color: var(--muted-foreground); }
 .conteudo :global(.text-amber-700) { color: var(--warning); }

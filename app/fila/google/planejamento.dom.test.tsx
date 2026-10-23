@@ -10,6 +10,14 @@ const elemento = document.createElement('div')
 document.body.append(elemento)
 let raiz: ReturnType<typeof createRoot> | undefined
 afterEach(async () => { await act(async () => raiz?.unmount()); elemento.replaceChildren() })
+
+test('layout segue a prévia com cinco colunas e critérios junto do nicho',async()=>{
+  raiz=createRoot(elemento)
+  await act(async()=>raiz!.render(<PlanejamentoSemanal dias={['2026-10-23']} planos={[]} hoje="2026-10-22"/>))
+  expect(elemento.querySelectorAll('thead th')).toHaveLength(5)
+  await act(async()=>Array.from(elemento.querySelectorAll('button')).find(b=>b.textContent==='Editar planejamento')!.click())
+  expect(elemento.querySelectorAll('tbody td')[0].textContent).toContain('Critérios de busca')
+})
 test('tabela destaca hoje e edição só habilita datas futuras', async () => {
   raiz = createRoot(elemento)
   await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']} planos={[]} hoje="2026-10-22" rotinaIniciada={false} />))

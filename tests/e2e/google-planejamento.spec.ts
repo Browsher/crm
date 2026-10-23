@@ -17,8 +17,7 @@ async function entrar(page: Page, apelido: string, gestor = false) {
 test('vendedor salva um novo planejamento semanal e outra semana começa vazia', async ({ page }, info) => {
   await entrar(page, 'redesigne2e')
   await page.goto('/fila')
-  await page.getByRole('link', { name: 'Buscar empresas', exact: true }).click()
-  await page.getByRole('link', { name: 'Busca no Google', exact: true }).click()
+  await page.getByRole('link', { name: 'Planejar buscas', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Buscas no Google', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
   await page.getByRole('button', { name: 'Editar planejamento', exact: true }).click()

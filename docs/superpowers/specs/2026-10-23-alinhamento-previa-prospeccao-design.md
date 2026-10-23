@@ -42,6 +42,10 @@ Manter quotas e UUID idempotente da consulta paga. Os novos filtros são
 persistidos e validados pelo banco, preservando consultas históricas antigas.
 Somente o servidor conhece a chave e consulta o fornecedor.
 
+Clarificação posterior do usuário: vendedores veem somente nome e função dos
+sócios. Os demais dados ficam restritos ao gestor em tabela com RLS própria e
+componente servidor exclusivo; o JSON compartilhado é sanitizado no banco.
+
 ## Visual e verificação
 
 Segoe UI, títulos 28/36, corpo 14, branco e cinza claro, verde #17634d e

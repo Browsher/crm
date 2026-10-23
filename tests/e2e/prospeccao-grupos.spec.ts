@@ -50,7 +50,7 @@ test('CSV sem CNPJ cria lista pública e inicia a prospecção pelo cartão esco
   await expect(page.getByRole('heading', { name:'Importação concluída' })).toBeFocused()
   await page.getByRole('button', { name:'Sair', exact:true }).click()
   await entrar(page,'catalogovendedore2e')
-  await page.goto('/fila')
+  await page.goto('/fila?atendimento=1')
   const cartao = page.locator('article').filter({has:page.getByRole('heading',{name:nomeLista,exact:true})})
   await expect(cartao).toBeVisible()
   const prospectar=cartao.getByRole('link',{name:'Prospectar esta lista',exact:true})
@@ -217,7 +217,7 @@ test('CSV sem CNPJ cria lista pública e inicia a prospecção pelo cartão esco
     expect(await comBancoGrupos(async c=>(await c.query('SELECT count(*)::int AS total FROM venda WHERE empresa_id=$1',[empresaAtual])).rows[0].total)).toBe(1)
     await page.goto('/carteira')
     await expect(page.getByRole('heading',{name:nomeAtual!,exact:true})).toBeVisible()
-    await page.goto('/fila/localizar?grupo='+grupo)
+    await page.goto('/fila/localizar?legado=1&grupo='+grupo)
     await expect(page.getByRole('region',{name:'Lista da próxima busca'})).toContainText('Origem revisada pelo gestor')
     // Desativação após leitura e antes da Action não vira busca irrestrita.
     await comBancoGrupos(async c=> {await c.query('UPDATE grupo_importacao SET ativo=false WHERE id=$1',[grupo])})

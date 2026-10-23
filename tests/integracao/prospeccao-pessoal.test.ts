@@ -68,3 +68,13 @@ test('aquisição pessoal recusa ID alheio e próxima empresa respeita filtros p
   expect(await reservar(null,r.contexto,{nicho:'Inexistente'})).toMatchObject({resultado:'sem_candidata'})
   expect(await banco.sql('SELECT reservado_por FROM empresa_fila WHERE empresa_id=$1',[e.id])).toEqual([{reservado_por:eu}])
 })
+
+test('nicho e região usam o snapshot da entrega legada mesmo após edição do planejamento',async()=>{
+  const [e]=await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Empresa congelada','11955553333') RETURNING id")
+  const [p]=await banco.sql<{id:string}>(`INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf,snapshot)
+    VALUES($1,'2026-10-21','Plano alterado','Mooca','São Paulo','SP','{"nicho":"Nicho entregue","bairro":"Sé","cidade":"São Paulo","uf":"SP"}') RETURNING id`,[eu])
+  await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])
+  const r=await consultar({nicho:'Nicho entregue'})
+  expect(r.empresas.map(x=>x.id)).toEqual([e.id])
+  expect(r.bairros).toEqual(['Sé · São Paulo/SP'])
+})

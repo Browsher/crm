@@ -27,7 +27,7 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
   const bloqueado = !configurado || Boolean(limite?.pausado) || restante === 0
   return <main className={styles.pagina} style={{maxWidth:1420,marginInline:'auto'}}>
     <CabecalhoPagina titulo="Banco de empresas" descricao="Encontre novas empresas para os seus grupos." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><Button asChild variant="outline"><Link href="#historico-banco">Ver histórico de buscas</Link></Button></>} />
-    {process.env.CRM_E2E === '1' && process.env.CNPJ_BIZ_API_KEY === 'chave-apenas-e2e' && <p className={styles.aviso} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
+    {process.env.CRM_E2E === '1' && process.env.CNPJ_BIZ_API_KEY === 'chave-apenas-e2e' && <p className={styles.ajuda} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
       <aside aria-label="Seu limite de hoje" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-5 py-3 text-sm">
         <p><strong>{limite?.usado ?? 0} de {limite?.limite_diario ?? 0}</strong> empresas solicitadas hoje. {restante} disponíveis.</p>
         <p className={styles.ajuda}>Horário de São Paulo. Consultas com falha também entram no limite.</p>

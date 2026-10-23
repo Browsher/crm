@@ -2,3 +2,5 @@
 @media(max-width:1000px){.grade{grid-template-columns:1fr 1fr}.rodape{align-items:start;flex-direction:column}}
 @media(max-width:600px){.grade{grid-template-columns:1fr}.corpo{padding:18px}.grupo h2>button{padding:16px 18px}.nomeLista>div{flex-direction:column}.rodape>div:last-child{flex-wrap:wrap;width:100%}.rodape button{flex:1}.tituloRegiao{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.grupo h2 svg{transition:none}}
+
+.nomeLista{display:grid;gap:6px;font-size:13px}

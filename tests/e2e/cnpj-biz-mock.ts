@@ -30,6 +30,13 @@ export async function prepararBuscaDemo(banco: BancoDeTeste) {
   await banco.sql("INSERT INTO empresa_origem_google(google_place_id,empresa_id) VALUES('google-demo-integracao',$1)", [googleEmpresa])
   await banco.sql("INSERT INTO grupo_importacao(id,nome,origem,vinculadas) VALUES('00000000-0000-4000-8000-000000009f02','Google — lista de demonstração','Google Maps',1)")
   await banco.sql("INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES('00000000-0000-4000-8000-000000009f02',$1)", [googleEmpresa])
+  const buscaPessoal='00000000-0000-4000-8000-000000009f03'
+  const pessoal={...resultado.empresas[0],cnpj:'99887766000369',razao_social:'Armarinhos Horizonte (fictícia)',nome_fantasia:null,telefone:'11955550888',telefones:['11955550888'],cnae_principal:'4755502'}
+  await banco.comoUsuario(id,async sql=>{
+    await sql('SELECT busca_empresa_reservar($1,$2,$3)',[buscaPessoal,'Armarinhos · Centro · São Paulo/SP',JSON.stringify({...FILTROS_DEMO,palavra:'Armarinhos',cnae:'4755502',quantidade:1})])
+    await sql('SELECT busca_empresa_concluir($1,$2,NULL)',[buscaPessoal,JSON.stringify([pessoal])])
+    await sql('SELECT * FROM busca_empresa_importar($1,$2)',[buscaPessoal,[pessoal.cnpj]])
+  })
 }
 
 // Importado somente pelo harness. Nunca faz requisições ao fornecedor.

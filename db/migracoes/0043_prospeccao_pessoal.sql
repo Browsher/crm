@@ -25,10 +25,10 @@ BEGIN
     RAISE EXCEPTION 'filtros invalidos' USING ERRCODE='22023';
   END IF;
   WITH vinculos AS MATERIALIZED (
-    SELECT r.empresa_id, 'google'::text origem, coalesce(x.snapshot->>'nicho',g.nicho) nicho,
-      coalesce(nullif(r.dados->>'bairro',''),x.snapshot->>'bairro',g.bairro) bairro,
-      coalesce(nullif(r.dados->>'cidade',''),x.snapshot->>'cidade',g.cidade) cidade,
-      coalesce(nullif(r.dados->>'uf',''),x.snapshot->>'uf',g.uf) uf, r.entregue_em entrada
+    SELECT r.empresa_id, 'google'::text origem, coalesce(x.snapshot->>'nicho',g.snapshot->>'nicho',g.nicho) nicho,
+      coalesce(nullif(r.dados->>'bairro',''),x.snapshot->>'bairro',g.snapshot->>'bairro',g.bairro) bairro,
+      coalesce(nullif(r.dados->>'cidade',''),x.snapshot->>'cidade',g.snapshot->>'cidade',g.cidade) cidade,
+      coalesce(nullif(r.dados->>'uf',''),x.snapshot->>'uf',g.snapshot->>'uf',g.uf) uf, r.entregue_em entrada
     FROM public.google_resultado r JOIN public.google_planejamento g ON g.id=r.planejamento_id
     LEFT JOIN public.google_execucao x ON x.pedido_id=g.id
     WHERE g.vendedor_id=v_eu AND r.situacao='entregue' AND r.empresa_id IS NOT NULL

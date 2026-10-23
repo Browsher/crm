@@ -1,4 +1,5 @@
 import type { Filtros } from './tipos'
+import { lerFiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 
 export type { Filtros } from './tipos'
 
@@ -17,7 +18,7 @@ export function lerFiltros(params: Params): ResultadoFiltros {
   if (pessoal) {
     try {
       const f:unknown=JSON.parse(pessoal)
-      if(pessoal.length>4000 || !f || typeof f!=='object' || Array.isArray(f)) return {ok:false,motivo:'filtro_invalido'}
+      if(pessoal.length>4000 || !lerFiltrosPessoais(f).ok) return {ok:false,motivo:'filtro_invalido'}
     } catch {return {ok:false,motivo:'filtro_invalido'}}
   }
   const grupo = primeiro(params.grupo) || null

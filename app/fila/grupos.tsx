@@ -20,14 +20,14 @@ export function GruposProspeccao({grupos,pagina,temProxima,escolha}: {
       <p>Confira como cada lista foi obtida e quantas empresas estão disponíveis para uma nova reserva.</p>
       {escolha && <Button asChild variant="outline"><Link href={urlConsulta(selecionarGrupo(null),1).replace('/fila/localizar',escolha.atendimento?'/fila':'/fila/localizar')}>Todas as listas ativas</Link></Button>}
     </header>
-    <p className={styles.ajuda}>Estas listas são compartilhadas. Seus leads exclusivos do agente ficam em Leads recebidos.</p>
-    <Button asChild variant="outline"><Link href="/fila/google?aba=entregas">Meus leads do Google</Link></Button>
+    <p className={styles.ajuda}>Estas são as listas compartilhadas antigas. Suas empresas do agente estão em Localizar empresas.</p>
+    <Button asChild variant="outline"><Link href="/fila/localizar?origem=google">Consultar empresas do Google</Link></Button>
     {grupos.length ? <div className={styles.listas}>{grupos.map(grupo=> {
       const destino=urlConsulta(selecionarGrupo(grupo.id),1)
       return <article key={grupo.id} className={styles.cartao}>
         <header><h3>{grupo.nome}</h3>{grupo.descricao && <p className={styles.texto}>{grupo.descricao}</p>}</header>
         <div><h4>Origem</h4><p className={styles.texto}>{grupo.origem ?? 'Origem não informada'}</p></div>
-        {grupo.googleLegado && <p className={styles.ajuda}>Lista compartilhada com empresas de origem Google. As novas entregas pessoais ficam em Leads recebidos.</p>}
+        {grupo.googleLegado && <p className={styles.ajuda}>Lista compartilhada com empresas de origem Google. Consulte as novas entregas em Localizar empresas.</p>}
         <dl className={styles.dados}>
           <div><dt>Importada em</dt><dd><time dateTime={grupo.criadoEm}>{dataImportacao.format(new Date(grupo.criadoEm))}</time></dd></div>
           <div><dt>Empresas</dt><dd>{grupo.total}</dd></div>

@@ -21,7 +21,7 @@ test.each(recusados)('preload recusa simulação fora do ambiente local isolado:
   expect(resultado.stderr).toContain('Ambiente de simulação CNPJ.biz inválido')
 })
 
-test('preload local falha fechado para rota do fornecedor fora das duas operações permitidas', () => {
+test('preload local falha fechado para rota do fornecedor fora das operações permitidas', () => {
   const resultado = executar({}, "fetch('https://cnpj.biz/api/v2/outra-rota').catch(e => { console.log(e.message) })")
   expect(resultado.status).toBe(0)
   expect(resultado.stdout).toContain('Rota CNPJ.biz fora da simulação')

@@ -4,3 +4,5 @@
 @media(max-width:900px){.grade{grid-template-columns:1fr 1fr}.cartoes{grid-template-columns:1fr}}
 @media(max-width:600px){.principais,.grade{grid-template-columns:1fr}.acoes{align-items:stretch;flex-direction:column}.acoes>div{flex-wrap:wrap}.acoes>div>a,.acoes>div>button{flex:1}.resumo{align-items:start;flex-direction:column}.empresa header{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.resumo,.resultados{animation:none}.mais svg{transition:none}}
+
+.principais>div{display:grid;gap:6px;align-content:start;min-width:0}

@@ -1,5 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+vi.mock('../socios-gestor',()=>({SociosGestor:()=>null}))
 import Pagina from './page'
 
 const mocks = vi.hoisted(() => ({ exigir: vi.fn(), perfil: vi.fn(), historico: vi.fn() }))
