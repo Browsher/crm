@@ -2,6 +2,7 @@ import { comoUsuario } from '@/src/server/db/como-usuario'
 import type { AgenteGoogle, PlanoEntrada, PlanoGoogle, ResultadoGoogle } from './tipos'
 
 const PLANOS = `SELECT p.id,p.vendedor_id,u.nome AS vendedor,to_char(p.dia,'YYYY-MM-DD') AS dia,p.nicho,p.bairro,p.cidade,p.uf,p.estado,
+  p.criterios,p.revisao,(SELECT e.revisao FROM google_execucao e WHERE e.pedido_id=p.id) AS execucao_revisao,
   p.snapshot,p.motivo,p.iniciado_em::text,p.concluido_em::text,
   EXISTS (SELECT 1 FROM google_sincronizacao s WHERE s.pedido_id=p.id AND s.versao_confirmada=s.versao) AS sincronizado,
   (SELECT s.erro FROM google_sincronizacao s WHERE s.pedido_id=p.id) AS sincronizacao_erro,
@@ -15,7 +16,34 @@ const PLANOS = `SELECT p.id,p.vendedor_id,u.nome AS vendedor,to_char(p.dia,'YYYY
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function repositorioGoogle(usuarioId: string) {
+  async function alterarPlanejamento(sql: string, parametros: unknown[]): Promise<{ ok: true; ids: string[] } | { ok: false; motivo: string }> {
+    try {
+      const r = await comoUsuario(usuarioId, async e => (await e<{ r: { ids: string[] } }>(sql, parametros)).linhas[0].r)
+      return { ok: true, ids: r.ids }
+    } catch (erro) {
+      const codigo = (erro as { code?: string }).code
+      if (codigo === '42501') return { ok: false, motivo: 'Seu acesso não permite alterar este planejamento.' }
+      if (codigo === '55000') return { ok: false, motivo: 'O planejamento de origem mudou. Atualize a página e tente novamente.' }
+      if (codigo === '22023' || codigo === '23514') return { ok: false, motivo: 'Confira os critérios e os dias escolhidos. Hoje e dias anteriores não podem ser alterados.' }
+      throw erro
+    }
+  }
   return {
+    salvarSemana(dias: PlanoEntrada[]) {
+      return alterarPlanejamento('SELECT google_planejamento_salvar_semana($1) AS r', [JSON.stringify(dias)])
+    },
+    copiarDia(origem: string, revisao: number, destinos: string[], campos: ('nicho' | 'criterios' | 'regiao')[]) {
+      return alterarPlanejamento('SELECT google_planejamento_copiar($1,$2,$3,$4) AS r', [origem, revisao, destinos, campos])
+    },
+    async historicoPlanejamento(): Promise<PlanoGoogle[]> {
+      return comoUsuario(usuarioId, async e => (await e<PlanoGoogle>(`${PLANOS} WHERE p.vendedor_id=$1 GROUP BY p.id,u.nome ORDER BY p.dia DESC`, [usuarioId])).linhas)
+    },
+    async reservarLote(pedido: string, executor: string, lote: Record<string, unknown>) {
+      return comoUsuario(usuarioId, async e => (await e<{ r: Record<string, unknown> }>('SELECT google_agente_reservar_lote($1,$2,$3) AS r', [pedido, executor, JSON.stringify(lote)])).linhas[0].r)
+    },
+    async concluir(pedido: string, executor: string, motivo: string) {
+      return comoUsuario(usuarioId, async e => (await e<{ r: Record<string, unknown> }>('SELECT google_agente_concluir($1,$2,$3) AS r', [pedido, executor, motivo])).linhas[0].r)
+    },
     async historicoEmpresa(empresaId: string) {
       if (!UUID.test(empresaId)) return []
       return comoUsuario(usuarioId, async e => (await e<{ pedidoId: string; dia: string; vendedor: string; nicho: string; situacao: string }>(`

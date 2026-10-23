@@ -21,7 +21,7 @@ async function sincronizar(id: string) {
 }
 type Coleta = { pedido: { id: string; vendedor_id: string } | null; ocupado?: boolean; sincronizar?: string }
 const proximo = (quem = executor, data = dia, autor = gestor) => banco.sql<{ r: Coleta }>(
-  "SELECT google_coordenar_em($2,$3::timestamptz) AS r FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade", [autor, quem, `${data}T09:00:00-03:00`]).then(r => r[0].r)
+  "SELECT google_coordenar_em($2,(($3::date-CASE WHEN extract(isodow FROM $3::date)=1 THEN 3 ELSE 1 END)::text||'T17:00:00-03:00')::timestamptz) AS r FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade", [autor, quem, data]).then(r => r[0].r)
 
 beforeAll(async () => {
   banco = await criarBancoDeTeste()

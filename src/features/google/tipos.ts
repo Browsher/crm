@@ -5,7 +5,7 @@ export type EstadoGoogle = 'planejado' | 'aguardando' | 'coletando' | 'validando
 export type PlanoGoogle = PlanoEntrada & { id: string; vendedor_id: string; vendedor: string; estado: EstadoGoogle;
   snapshot: Omit<PlanoEntrada, 'dia'> | null; motivo: string | null; iniciado_em: string | null; concluido_em: string | null;
   encontradas: number; entregues: number; trabalhadas: number; pendentes: number; indisponiveis: number;
-  sincronizado?: boolean; sincronizacao_erro?: string | null }
+  sincronizado?: boolean; sincronizacao_erro?: string | null; revisao?: number; execucao_revisao?: number | null }
 export type AgenteGoogle = { vendedor_id: string; nome: string; pausado: boolean; disponivel: boolean; estado: EstadoGoogle | null; ultimo_inicio: string | null }
 export type ResultadoGoogle = { id: string; empresa_id: string | null; situacao: 'entregue' | 'repetida' | 'indisponivel' | 'pendente' | 'conflito';
   dados: Record<string, unknown>; motivo: string | null; entregue_em: string | null; trabalhada: boolean }

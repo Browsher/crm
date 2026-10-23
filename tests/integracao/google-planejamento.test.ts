@@ -83,9 +83,10 @@ test('banco rejeita fim de semana, UF inválida, controles e dia passado', async
   await expect(planejar(vendedor, r.sabado)).rejects.toMatchObject({ code: '22023' })
   await expect(chamar(vendedor, 'SELECT google_planejar($1,$2,$3,$4,$5)', [dia, 'loja\u0001', '', 'Cidade', 'XX'])).rejects.toMatchObject({ code: '22023' })
 })
-test('snapshot impede editar o pedido já iniciado e senha provisória impede planejar', async () => {
-  await iniciado()
-  await expect(planejar(vendedor, dia, 'Pet shop')).rejects.toMatchObject({ code: '55000' })
+test('edição futura preserva snapshot e senha provisória impede planejar', async () => {
+  const id = await iniciado()
+  await planejar(vendedor, dia, 'Pet shop')
+  expect(await chamar(vendedor, 'SELECT nicho,snapshot FROM google_planejamento WHERE id=$1', [id])).toMatchObject([{ nicho: 'Pet shop', snapshot: { nicho: 'Loja de brinquedos' } }])
   await banco.sql('UPDATE usuario SET senha_provisoria_pendente=true WHERE id=$1', [outro])
   await expect(planejar(outro)).rejects.toMatchObject({ code: '42501' })
 })
@@ -197,7 +198,7 @@ test('exclusividade impede reserva por alvo direto e fonte compartilhada', async
   expect(await chamar(vendedor, "SELECT resultado FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)", [e])).toEqual([{ resultado: 'ok' }])
 })
 
-test('rotina congela todos os pedidos do dia às 9h e retoma o mesmo lote antes de avançar', async () => {
+test('coordenador legado preserva congelamento dos pedidos antigos e sua retomada', async () => {
   const a = await planejar()
   const b = await planejar(outro)
   for (const id of [a,b]) {
@@ -205,12 +206,15 @@ test('rotina congela todos os pedidos do dia às 9h e retoma o mesmo lote antes 
     await chamar(gestor, 'SELECT google_planilha_confirmar($1,$2,NULL)', [id, p.versao])
   }
   const proximo = (hora: string) => banco.sql<{ pedido: { id: string } | null }>(
-    "SELECT google_coordenar_em($3,$2::timestamptz)->'pedido' AS pedido FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade", [gestor, `${dia}T${hora}-03:00`, executor])
+    "SELECT google_coordenar_legado_em($3,$2::timestamptz)->'pedido' AS pedido FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade", [gestor, `${dia}T${hora}-03:00`, executor])
   expect(await proximo('08:59:00')).toEqual([{ pedido: null }])
   expect((await proximo('09:00:00'))[0].pedido?.id).toBe(a)
   expect((await proximo('09:01:00'))[0].pedido?.id).toBe(a)
   expect(await chamar(outro, 'SELECT estado,snapshot FROM google_planejamento WHERE id=$1', [b])).toMatchObject([{ estado: 'aguardando', snapshot: { nicho: 'Loja de brinquedos' } }])
-  await expect(planejar(outro, dia, 'Outra pesquisa')).rejects.toMatchObject({ code: '55000' })
+  await planejar(outro, dia, 'Outra pesquisa')
+  expect(await chamar(outro, 'SELECT snapshot FROM google_planejamento WHERE id=$1', [b])).toMatchObject([{ snapshot: { nicho: 'Loja de brinquedos' } }])
+  const [{ p: revisado }] = await chamar<{ p: { versao: number } }>(gestor, "SELECT google_planilha_preparar($1,'planilha-fixture:123') AS p", [b])
+  await chamar(gestor, 'SELECT google_planilha_confirmar($1,$2,NULL)', [b, revisado.versao])
   await entregar(a)
   expect((await proximo('09:05:00'))[0].pedido?.id).toBe(b)
   await entregar(b, [])
