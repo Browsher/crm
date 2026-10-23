@@ -6,6 +6,7 @@ export function urlConsulta(filtros: Filtros, pagina: number): string {
     if (filtros[campo]) params.set(campo, filtros[campo])
   }
   params.set('pagina', String(pagina))
+  if(filtros.pessoal) params.set('pessoal',filtros.pessoal)
   return `/fila/localizar?${params}`
 }
 

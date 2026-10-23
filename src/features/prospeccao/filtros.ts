@@ -13,6 +13,13 @@ function primeiro(valor: string | string[] | undefined): string {
 }
 
 export function lerFiltros(params: Params): ResultadoFiltros {
+  const pessoal = primeiro(params.pessoal)
+  if (pessoal) {
+    try {
+      const f:unknown=JSON.parse(pessoal)
+      if(pessoal.length>4000 || !f || typeof f!=='object' || Array.isArray(f)) return {ok:false,motivo:'filtro_invalido'}
+    } catch {return {ok:false,motivo:'filtro_invalido'}}
+  }
   const grupo = primeiro(params.grupo) || null
   const nomeOriginal = primeiro(params.nome)
   const cnae = primeiro(params.cnae) || null
@@ -35,5 +42,5 @@ export function lerFiltros(params: Params): ResultadoFiltros {
     !Number.isInteger(pagina) || pagina < 1 || pagina > 10000
   ) return { ok: false, motivo: 'filtro_invalido' }
 
-  return { ok: true, filtros: { nome, cnae, uf, cidade, bairro, pagina, grupo } }
+  return { ok: true, filtros: { nome, cnae, uf, cidade, bairro, pagina, grupo, ...(pessoal?{pessoal}:{}) } }
 }

@@ -13,12 +13,16 @@ import { GruposProspeccao } from './grupos'
 import { ContextoGrupo } from './localizar/contexto-grupo'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 import { Button } from '@/src/components/ui/button'
+import { CentralProspeccao } from './central'
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 
 export default async function PaginaFila({ searchParams }: { searchParams: Promise<Record<string,string|string[]|undefined>> }) {
   const eu = await exigir('vendedor')
   const params = await searchParams
   const entrada = lerFiltros(params)
   const r = await lerMinhasEmpresas(eu.usuarioId)
+  const operando = ['atendimento','grupo','pagina','escolher_lista','nome','cnae','uf','cidade','bairro'].some(campo => params[campo] !== undefined)
+  if (!operando) return <CentralProspeccao atendimento={r.ok && r.reserva ? nomeEmpresa(r.reserva) : null} />
   const escolhendo = params.escolher_lista === '1'
   const paginaListas = lerFiltros({pagina:params.listas_pagina})
   const mostrarCatalogo = r.ok && entrada.ok && (!r.reserva || escolhendo)
