@@ -25,6 +25,17 @@ vi.mock('react', async () => {
 const { FormularioContato } = await import('./formulario')
 
 describe('FormularioContato', () => {
+  test('todos os atendimentos usam controles temáticos e erro anunciado sem perder o rascunho', () => {
+    captura.estado = { erro: 'Sua posse mudou. Anotações preservadas.', ok: false }
+    try {
+      const html = renderToStaticMarkup(<FormularioContato empresaId="e1" posse rascunho={{ tipo: 'acompanhamento', nota: 'Nota importante', proximoPasso: 'Retornar', proximoPassoData: '2026-10-23' }} />)
+      expect(html).toContain('role="alert"')
+      expect(html).toContain('Nota importante')
+      expect(html).toContain('data-slot="textarea"')
+      expect(html).toContain('type="date"')
+      expect(html).not.toContain('type="datetime-local"')
+    } finally { captura.estado = { erro: null, ok: false } }
+  })
   test('visual da fila usa os componentes de campo sem mudar o padrao legado', () => {
     const fila = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} visual="fila" />)
     const legado = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} />)
@@ -55,10 +66,10 @@ describe('FormularioContato', () => {
     const html = renderToStaticMarkup(<><FormularioContato empresaId="e1" posse={false}
       rascunho={{ tipo: 'nao_liguei', nota: 'Texto preenchido', proximoPasso: '', proximoPassoData: '' }} />
       <FormularioContato empresaId="e2" posse={false} /></>)
-    const ids = [...html.matchAll(/<label for="([^"]+)"[^>]*>Nota<\/label>/g)].map(m => m[1])
+    const ids = [...html.matchAll(/<label[^>]* for="([^"]+)"[^>]*>Nota<\/label>/g)].map(m => m[1])
     expect(ids).toHaveLength(2)
     expect(new Set(ids).size).toBe(2)
-    for (const id of ids) expect(html).toContain(`<textarea id="${id}"`)
+    for (const id of ids) expect(html).toMatch(new RegExp(`<textarea[^>]* id="${id}"`))
   })
   test('enquanto grava congela os campos sem impedir copiar anotações', () => {
     captura.pendente = true
@@ -67,7 +78,7 @@ describe('FormularioContato', () => {
       expect(html).toMatch(/<textarea[^>]*readOnly=""/)
       expect(html.match(/<input[^>]*readOnly=""/g)).toHaveLength(2)
       expect(html.match(/<input[^>]*type="radio"[^>]*disabled=""/g)).toHaveLength(5)
-      expect(html).not.toMatch(/<textarea[^>]*disabled/)
+      expect(html).not.toMatch(/<textarea[^>]* disabled=""/)
     } finally { captura.pendente = false }
   })
   test('sucesso notifica empresa submetida antes de encerrar envio', async () => {
@@ -102,7 +113,7 @@ describe('FormularioContato', () => {
     expect(saida).toContain('value="Retornar"')
     expect(saida).toContain('value="2026-10-01"')
     expect(saida).toMatch(/<button[^>]*disabled/)
-    expect(saida).not.toMatch(/<textarea[^>]*disabled/)
+    expect(saida).not.toMatch(/<textarea[^>]* disabled=""/)
   })
   test('sem posse, NAO pede proximo passo obrigatorio', () => {
     const saida = renderToStaticMarkup(<FormularioContato empresaId="e1" posse={false} />)

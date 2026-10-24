@@ -11,8 +11,10 @@ export function exigirAdminLocal(url: string) {
 export function ambienteDoBuild(fonte: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return {
     ...fonte, CRM_E2E: '1', NODE_ENV: 'production', ALVO: '',
-    DATABASE_URL: '', DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '',
-    IMPORTACAO_CONFERENCIA_SEGREDO: '',
+    DATABASE_URL: '', DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '', CNPJ_BIZ_API_KEY: '', CNPJ_BIZ_MOCK_URL: '',
+    IMPORTACAO_CONFERENCIA_SEGREDO: '', GOOGLE_AGENTE_TOKEN: '', GOOGLE_AGENTE_USUARIO_ID: '', GOOGLE_CRM_URL: '',
+    GOOGLE_PLANILHA_ID:'', GOOGLE_PLANILHA_ABA_ID:'', GOOGLE_PLANILHA_CLIENT_EMAIL:'', GOOGLE_PLANILHA_PRIVATE_KEY:'', GOOGLE_PLANILHA_MOCK_URL:'',
+    EVOLUTION_API_URL: '', EVOLUTION_API_KEY: '', EVOLUTION_INSTANCE_NAME: '',
     PG_SSL: '', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '',
   }
 }
@@ -25,9 +27,11 @@ export function ambienteDoServidor(fonte: NodeJS.ProcessEnv, urlApp: string): No
   }
   return {
     ...fonte,
-    DATABASE_URL: urlApp, DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '',
-    ALVO: '', PG_SSL: 'off', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '',
+    DATABASE_URL: urlApp, DATABASE_URL_ADMIN: '', DATABASE_URL_CONFERENCIA: '', CNPJ_BIZ_API_KEY: '', CNPJ_BIZ_MOCK_URL: '',
+    ALVO: '', PG_SSL: 'off', PG_SSL_CA: '', PG_SSL_NOME_SERVIDOR: '', GOOGLE_AGENTE_TOKEN: '', GOOGLE_AGENTE_USUARIO_ID: '', GOOGLE_CRM_URL: '',
+    GOOGLE_PLANILHA_ID:'', GOOGLE_PLANILHA_ABA_ID:'', GOOGLE_PLANILHA_CLIENT_EMAIL:'', GOOGLE_PLANILHA_PRIVATE_KEY:'', GOOGLE_PLANILHA_MOCK_URL:'',
     CRM_E2E: '1', NODE_ENV: 'production',
+    EVOLUTION_API_URL: '', EVOLUTION_API_KEY: '', EVOLUTION_INSTANCE_NAME: '',
     // Exclusivamente teste: nunca herdar a chave real do ambiente pai.
     IMPORTACAO_CONFERENCIA_SEGREDO: 'e2'.repeat(32),
   }

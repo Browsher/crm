@@ -125,7 +125,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
     pagina: document.documentElement.scrollWidth,
     viewport: window.innerWidth,
   }))
-  expect(rolagem.conteudo).toBeGreaterThan(rolagem.visivel)
+  expect(rolagem.conteudo).toBeLessThanOrEqual(rolagem.visivel)
   expect(rolagem.pagina).toBeLessThanOrEqual(rolagem.viewport)
   await page.getByLabel('Buscar empresas', { exact: true }).focus()
   await tabAte(page, regiaoTabela)

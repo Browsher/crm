@@ -5,7 +5,7 @@ export function lerEntradaReserva(form: FormData) {
   const acao = String(form.get('acao') ?? '')
   const alvo = acao === 'puxar' ? null : String(form.get('empresaId') ?? '')
   const contexto = String(form.get('contexto') ?? '') || null
-  const params = Object.fromEntries(['nome','cnae','uf','cidade','bairro','grupo'].map(k => [k, String(form.get(k) ?? '')]))
+  const params = Object.fromEntries(['nome','cnae','uf','cidade','bairro','grupo','pessoal'].map(k => [k, String(form.get(k) ?? '')]))
   const consulta = lerFiltros(params)
   if (!['puxar','reservar','renovar'].includes(acao) || (alvo !== null && !UUID.test(alvo)) ||
       (contexto !== null && !UUID.test(contexto)) || !consulta.ok) return { ok: false as const }

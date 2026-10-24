@@ -6,6 +6,7 @@ import { FiltrosForm } from './filtros-form'
 import { lerFiltrosCarteira } from './filtros'
 import { ListaCarteira } from './lista'
 import styles from './carteira.module.css'
+import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -15,10 +16,7 @@ export default async function PaginaCarteira({ searchParams }: Props) {
   const leitura = lerFiltrosCarteira(params)
 
   return <main className={styles.pagina}>
-    <header>
-      <h1>Minha carteira</h1>
-      <p>Clientes que estão sob seus cuidados.</p>
-    </header>
+    <CabecalhoPagina titulo="Minha carteira" descricao="Clientes que estão sob seus cuidados." />
     {!r.ok ? <p role="alert">{textoDoMotivo(r.motivo)}</p> : !leitura.ok ? <div role="alert" className={styles.vazio}>
       <h2>Filtros inválidos</h2>
       <p>Os filtros informados não puderam ser aplicados.</p>

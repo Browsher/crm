@@ -5,19 +5,23 @@
 .filtros { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; border: 1px solid var(--ui-border); border-radius: .75rem; padding: 1rem; background: var(--ui-surface); }
 .filtros label, .formulario label { display: flex; flex-direction: column; gap: .5rem; font-size: .875rem; }
 .busca { flex: 1; min-width: 180px; }
-.rolagem { overflow-x: auto; border: 1px solid var(--ui-border); border-radius: .75rem; }
+.rolagem { min-width:0; overflow-x:auto; border:1px solid var(--border); border-radius:8px; background:var(--background); }
 .tabela { width: 100%; border-collapse: collapse; font-size: .875rem; text-align: left; }
 .tabela th { color: var(--ui-muted-foreground); font-weight: 500; background: var(--ui-surface); }
 .tabela th, .tabela td { padding: .9rem 1rem; border-bottom: 1px solid var(--ui-border); vertical-align: middle; }
 .tabela tr:last-child td { border-bottom: 0; }
-.tabela td:first-child { min-width: 220px; }
-.tabela td:last-child { min-width: 250px; }
+.tabela td:first-child { min-width:0; width:25%; overflow-wrap:anywhere; }
+.tabela td:last-child { min-width:0; width:35%; }
 .email { display: block; margin-top: .3rem; overflow-wrap: anywhere; }
 .acoes { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .formulario { display: flex; flex-direction: column; gap: 1rem; }
 .formulario legend { font-size: .875rem; margin-bottom: .5rem; }
 .formulario .acoes label { display: inline; }
+@media (max-width:820px), (pointer:coarse) {
+  .formulario .acoes label { display:inline-flex; flex-direction:row; align-items:center; min-height:44px; padding-inline:8px; }
+}
 .senha { padding: 1rem; border-radius: .5rem; background: var(--ui-surface); overflow-wrap: anywhere; user-select: all; font-size: 1.125rem; }
 .vazio { text-align: center; padding: 2rem 1rem; }
 .vazio h2 { font-weight: 600; margin-bottom: .5rem; }
+@media (max-width:760px) { .tabela td:first-child, .tabela td:last-child { width:auto; } }
 @media (max-width: 640px) { .pagina { padding: 1rem; } .filtros label { width: 100%; } }

@@ -5,14 +5,20 @@ import { usePathname } from 'next/navigation'
 import styles from './shell.module.css'
 
 const subpaginas: { rota: RegExp; niveis: { nome: string; href?: string }[] }[] = [
+  { rota: /^\/fila\/google$/, niveis: [{ nome: 'Busca no Google' }] },
+  { rota: /^\/fila\/google\/[^/]+$/, niveis: [{ nome: 'Busca no Google', href: '/fila/google' }, { nome: 'Empresas recebidas' }] },
+  { rota: /^\/empresas\/google$/, niveis: [{ nome: 'Coletas do Google' }] },
+  { rota: /^\/empresas\/google\/[^/]+$/, niveis: [{ nome: 'Coletas do Google', href: '/empresas/google' }, { nome: 'Histórico da coleta' }] },
+  { rota: /^\/fila\/buscar$/, niveis: [{ nome: 'Banco de empresas' }] },
+  { rota: /^\/empresas\/busca$/, niveis: [{ nome: 'Busca de empresas' }] },
   { rota: /^\/whatsapp\/configuracao$/, niveis: [{ nome: 'Configurar vendedores' }] },
   { rota: /^\/empresas\/importar$/, niveis: [{ nome: 'Importar empresas' }] },
-  { rota: /^\/empresas\/grupos$/, niveis: [{ nome: 'Grupos' }] },
-  { rota: /^\/empresas\/grupos\/[^/]+$/, niveis: [{ nome: 'Grupos', href: '/empresas/grupos' }, { nome: 'Detalhes do grupo' }] },
+  { rota: /^\/empresas\/grupos$/, niveis: [{ nome: 'Listas' }] },
+  { rota: /^\/empresas\/grupos\/[^/]+$/, niveis: [{ nome: 'Listas', href: '/empresas/grupos' }, { nome: 'Detalhes da lista' }] },
   { rota: /^\/empresas\/[^/]+$/, niveis: [{ nome: 'Ficha da empresa' }] },
   { rota: /^\/usuarios\/vendedores\/[^/]+$/, niveis: [{ nome: 'Perfil do vendedor' }] },
   { rota: /^\/carteira\/[^/]+$/, niveis: [{ nome: 'Ficha da empresa' }] },
-  { rota: /^\/fila\/localizar$/, niveis: [{ nome: 'Localizar empresa' }] },
+  { rota: /^\/fila\/localizar$/, niveis: [{ nome: 'Localizar empresas' }] },
   { rota: /^\/fila\/localizar\/[^/]+$/, niveis: [{ nome: 'Localizar empresa', href: '/fila/localizar' }, { nome: 'Perfil da empresa' }] },
 ]
 

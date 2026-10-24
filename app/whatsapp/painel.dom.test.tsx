@@ -17,6 +17,24 @@ const mensagens: Mensagem[] = [
   { id: '1', conversa: 'a@lid', nome: 'Ana', direcao: 'recebida', texto: 'Mensagem A', em: '2026-09-21T15:00:00Z' },
   { id: '2', conversa: 'b@lid', nome: 'Bia', direcao: 'recebida', texto: 'Mensagem B', em: '2026-09-21T16:00:00Z' },
 ]
+
+test('voltar à lista preserva conversa e rolagem sem buscar mensagens novamente', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} />))
+  const lista = host.querySelector<HTMLElement>('[aria-label="Lista de conversas"]')!
+  lista.scrollTop = 120
+  const conversa = lista.querySelectorAll('button')[1]
+  await act(async () => conversa.click())
+  const chat = host.querySelector<HTMLOListElement>('ol')!
+  await act(async () => { chat.scrollTop = 80; chat.dispatchEvent(new Event('scroll')) })
+  const voltar = [...host.querySelectorAll('button')].find(b => b.textContent === 'Voltar para conversas')
+  expect(voltar).toBeTruthy()
+  await act(async () => voltar!.click())
+  expect(lista.scrollTop).toBe(120)
+  expect(chat.scrollTop).toBe(80)
+  expect(lista.querySelector('[aria-current]')).toBe(conversa)
+  expect(historicoMensagensAcao).not.toHaveBeenCalled()
+  expect(host.querySelector('textarea')).toBeNull()
+})
 test('mesmo cliente e mesmo ID em vendedores distintos não misturam conversa', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[
     { ...mensagens[0], fonteId: 'a', vendedor: 'Vendedor A' },
@@ -312,7 +330,7 @@ test('carga por vendedor aguarda a página pendente e continua com os cursores r
 
 test('carga normal não oferece botão manual nem anuncia fim enquanto ainda há páginas', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
-  expect([...host.querySelectorAll('button')].every(b => b.closest('[aria-label="Lista de conversas"], [aria-label="Filtrar conversas"]'))).toBe(true)
+  expect([...host.querySelectorAll('button')].every(b => b.textContent === 'Voltar para conversas' || b.closest('[aria-label="Lista de conversas"], [aria-label="Filtrar conversas"]'))).toBe(true)
   expect(host.textContent).not.toContain('Fim do histórico')
   expect(host.textContent).toContain('Carregando histórico automaticamente')
 })

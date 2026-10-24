@@ -1,0 +1,5 @@
+import type { FiltrosBanco } from '@/src/lib/banco-empresas'
+export function CriteriosBanco({filtros:f}:{filtros:FiltrosBanco}) {
+  const campos: [string,string][]=[['Palavras',f.palavras.join(', ')],['CNAEs',f.cnaes.join(', ')],['Naturezas jurídicas',f.naturezas.join(', ')],['Atividade',f.atividadeTipo.join(', ')],['Regiões',f.regioes.map(r=>[r.bairros.join(', '),r.cidade,r.estado].filter(Boolean).join(' · ')).join('; ')],['Porte',f.portes.join(', ')],['Estabelecimento',f.tipos.map(t=>t==='2'?'Matriz':'Filial').join(', ')],['Situação cadastral',f.situacoes.join(', ')],['Regime tributário',f.regimes.join(', ')],['Capital mínimo',f.capitalMinimo],['Capital máximo',f.capitalMaximo],['Abertura a partir de',f.aberturaDe],['Abertura até',f.aberturaAte],['Contato disponível',f.contato],['DDDs',f.ddds.join(', ')],['Evitar emails de contabilidade',f.semEmailContabil?'Sim':'Não'],['Dados completos dos sócios',f.socios?'Solicitados':'Não solicitados']]
+  return <dl className="grid gap-3 text-sm sm:grid-cols-2">{campos.filter(([,v])=>v).map(([k,v])=><div key={k}><dt className="text-muted-foreground">{k}</dt><dd className="break-words">{v}</dd></div>)}</dl>
+}

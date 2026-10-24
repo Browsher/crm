@@ -10,7 +10,7 @@ async function entrar(page: Page, apelido: string) {
 
 test('perfil não reserva, recentes persistem e pertencem somente ao usuário', async ({ page, browser }) => {
   await entrar(page, 'recenteae2e')
-  await page.goto('/fila/localizar')
+  await page.goto('/fila/localizar?legado=1')
   await expect(page.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()
   await page.getByLabel('Nome', { exact: true }).fill('Consulta E2E 01')
   await page.getByRole('button', { name: 'Consultar', exact: true }).click()
@@ -20,7 +20,7 @@ test('perfil não reserva, recentes persistem e pertencem somente ao usuário', 
   const respostaSemJavascript = await page.request.get(perfil!)
   expect(respostaSemJavascript.status()).toBe(200)
   expect(await respostaSemJavascript.text()).not.toContain('11987650001')
-  await page.goto('/fila/localizar')
+  await page.goto('/fila/localizar?legado=1')
   await expect(page.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()
   const visitaGravada = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.startsWith('/fila/localizar/'))
   await page.goto(perfil!)
@@ -41,7 +41,7 @@ test('perfil não reserva, recentes persistem e pertencem somente ao usuário', 
   await novaVisitaGravada
   await page.getByRole('link', { name: 'Voltar para localizar', exact: true }).click()
   await expect(page.getByRole('list', { name: 'Empresas encontradas', exact: true }).getByRole('listitem')).toHaveCount(1)
-  await page.goto('/fila')
+  await page.goto('/fila?atendimento=1')
   await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
   await page.getByRole('link',{name:'Todas as listas ativas',exact:true}).click()
   await expect(page).toHaveURL(/\/fila\/localizar/)
@@ -51,7 +51,7 @@ test('perfil não reserva, recentes persistem e pertencem somente ao usuário', 
   try {
     const novaPagina = await outroComputador.newPage()
     await entrar(novaPagina, 'recenteae2e')
-    await novaPagina.goto('/fila/localizar')
+    await novaPagina.goto('/fila/localizar?legado=1')
     await expect(novaPagina.getByRole('heading', { name: 'Empresas recentes', exact: true })).toBeVisible()
     await expect(novaPagina.getByRole('heading', { name: 'Consulta E2E 01', exact: true })).toBeVisible()
   } finally { await outroComputador.close() }
@@ -60,7 +60,7 @@ test('perfil não reserva, recentes persistem e pertencem somente ao usuário', 
   try {
     const novaPagina = await outroUsuario.newPage()
     await entrar(novaPagina, 'recentebe2e')
-    await novaPagina.goto('/fila/localizar')
+    await novaPagina.goto('/fila/localizar?legado=1')
     await expect(novaPagina.getByRole('heading', { name: 'Sugestões de empresas', exact: true })).toBeVisible()
     await expect(novaPagina.getByRole('heading', { name: 'Consulta E2E 01', exact: true })).toHaveCount(0)
   } finally { await outroUsuario.close() }

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Form from 'next/form'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
@@ -7,7 +8,7 @@ import type { FiltrosMeuDia } from './agenda'
 import styles from './meu-dia.module.css'
 
 export function FiltrosForm({ filtros }: { filtros: FiltrosMeuDia }) {
-  return <form action="/meu-dia" method="get" className={styles.filtros}>
+  return <Form key={JSON.stringify(filtros)} action="/meu-dia" className={styles.filtros}>
     <div><Label htmlFor="meu-dia-nome">Nome</Label><Input id="meu-dia-nome" name="nome" type="search"
       maxLength={120} defaultValue={filtros.nome} placeholder="Razão social ou nome fantasia" /></div>
     <div><Label htmlFor="meu-dia-retorno">Retorno</Label><NativeSelect id="meu-dia-retorno" name="retorno" defaultValue={filtros.retorno}>
@@ -17,5 +18,5 @@ export function FiltrosForm({ filtros }: { filtros: FiltrosMeuDia }) {
       <Button type="submit">Filtrar</Button>
       <Button asChild variant="ghost"><Link href="/meu-dia">Limpar filtros</Link></Button>
     </div>
-  </form>
+  </Form>
 }

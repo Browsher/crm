@@ -1,9 +1,15 @@
 import Link from 'next/link'
 import type { ResultadoGrupoProspeccao } from '@/src/server/grupos/prospeccao'
 import type { Filtros } from '@/src/features/prospeccao/tipos'
-import { urlEscolhaLista } from './navegacao'
+import { Button } from '@/src/components/ui/button'
+import { urlConsulta, urlEscolhaLista } from './navegacao'
 
 export function ContextoGrupo({resultado,filtros,atendimento=false,escolhendo=false}: {resultado:ResultadoGrupoProspeccao|null;filtros:Filtros;atendimento?:boolean;escolhendo?:boolean}) {
+  if(filtros.pessoal) return <section aria-label="Pesquisa atual" className="rounded border p-4">
+    <h2 className="font-semibold">Pesquisa atual</h2>
+    <p>A próxima empresa respeita a origem e os filtros desta consulta pessoal.</p>
+    <Button asChild variant="outline" className="mt-3"><Link href={urlConsulta(filtros,filtros.pagina)}>Alterar filtros</Link></Button>
+  </section>
   const escolher=urlEscolhaLista(filtros,atendimento,!escolhendo)
   return <section aria-label="Lista da próxima busca" className="rounded border p-4">
     <h2 className="font-semibold">Lista da próxima busca</h2>

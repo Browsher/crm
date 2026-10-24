@@ -8,6 +8,7 @@ let container: HTMLDivElement
 let root: ReturnType<typeof createRoot>
 
 beforeEach(async () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   vi.useFakeTimers()
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   container = document.createElement('div')
@@ -20,6 +21,7 @@ afterEach(async () => {
   await act(async () => root.unmount())
   container.remove()
   vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 function botao(texto: string) {
@@ -27,6 +29,14 @@ function botao(texto: string) {
   if (!elemento) throw new Error(`Botao nao encontrado: ${texto}`)
   return elemento
 }
+
+test('abas da ficha mostram dados e histórico sem misturar o conteúdo', async () => {
+  const abas = container.querySelectorAll<HTMLButtonElement>('[role=tab]')
+  expect(abas.length).toBe(2)
+  expect(container.querySelector('[role=tabpanel]')?.textContent).toContain('Contato principal')
+  await act(async () => abas[1].click())
+  expect(container.querySelector('[role=tabpanel]')?.textContent).toContain('Ligação de demonstração')
+})
 
 test('expõe as seções e dados fictícios da referência', () => {
   expect(container.textContent).toContain('Dados fictícios')

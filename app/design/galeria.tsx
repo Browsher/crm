@@ -11,6 +11,7 @@ import { Label } from '@/src/components/ui/label'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Skeleton } from '@/src/components/ui/skeleton'
 import { Textarea } from '@/src/components/ui/textarea'
+import { TabsRoot, TabsList, TabsTab, TabsPanel, TabsIndicator } from '@/src/components/ui/tabs'
 import styles from './galeria.module.css'
 
 type Tema = 'light' | 'dark' | 'system'
@@ -21,6 +22,7 @@ const secoes = [
   ['botoes', 'Botões'],
   ['filtros', 'Filtros'],
   ['empresas', 'Empresas'],
+  ['ficha', 'Ficha e histórico'],
   ['avisos', 'Avisos'],
   ['dialogo', 'Diálogo'],
   ['fluxo', 'Fluxo simulado'],
@@ -123,6 +125,15 @@ export function Galeria() {
             <AlertTitle>Dados fictícios e estado local</AlertTitle>
             <AlertDescription>Os exemplos desta página não consultam, reservam ou alteram empresas reais.</AlertDescription>
           </Alert>
+
+          <section id="ficha" className={styles.section}>
+            <header><h2>Ficha e histórico</h2><p>Informações fictícias para demonstrar as abas do novo padrão.</p></header>
+            <TabsRoot defaultValue="dados">
+              <TabsList aria-label="Ficha de demonstração"><TabsTab value="dados">Dados</TabsTab><TabsTab value="historico">Histórico</TabsTab><TabsIndicator /></TabsList>
+              <TabsPanel value="dados"><p>Contato principal: Mariana, da Aurora Papelaria. Dados fictícios.</p></TabsPanel>
+              <TabsPanel value="historico"><p>Ligação de demonstração: retorno combinado com a responsável.</p></TabsPanel>
+            </TabsRoot>
+          </section>
 
           <Secao id="tipografia" titulo="Tipografia" descricao="Hierarquia curta para leitura rápida durante a ligação.">
             <div className={styles.typeSample}>

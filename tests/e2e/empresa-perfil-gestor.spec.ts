@@ -37,9 +37,10 @@ test('gestor abre ficha pela lista, consulta sem ações e volta mantendo busca'
   await expect(page.getByRole('heading', { name: 'Perfil Gestor Aurora' })).toBeVisible()
   await expect(page.getByText('Marina', { exact: true })).toBeVisible()
   await expect(page.getByText('(11) 98877-6655', { exact: true })).toBeVisible()
+  await expect(page.getByText('Origem da ficha do gestor', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(page.getByText('Conversa de teste registrada', { exact: true })).toBeVisible()
   await expect(page.getByText('Registrado por vendedore2e', { exact: true })).toBeVisible()
-  await expect(page.getByText('Origem da ficha do gestor', { exact: true })).toBeVisible()
   await expect(page.locator('main form')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Registrar atendimento' })).toHaveCount(0)
   for (const largura of [1280,390]) {

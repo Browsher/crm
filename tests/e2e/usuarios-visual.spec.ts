@@ -58,6 +58,12 @@ test('gestor administra usuário em diálogos, combina filtros e mantém foco ap
       await page.screenshot({ path: `test-results/usuarios-${largura}-${tema}.png`, fullPage: true, animations: 'disabled' })
       await page.getByRole('button', { name: 'Novo usuário', exact: true }).click()
       await expect(dialogo).toBeVisible()
+      if (largura === 390) {
+        for (const papel of ['Vendedor', 'Gestor']) {
+          const rotulo = dialogo.locator('label').filter({ has: page.getByRole('radio', { name: papel, exact: true }) })
+          expect((await rotulo.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+        }
+      }
       await page.screenshot({ path: `test-results/usuarios-dialogo-${largura}-${tema}.png`, animations: 'disabled' })
       await dialogo.getByRole('button', { name: 'Cancelar' }).click()
     }

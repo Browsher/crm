@@ -27,6 +27,7 @@ async function enviar() { const f=document.querySelector<HTMLFormElement>('[role
 
 test('lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias',async()=>{
   await montar();expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
+  expect(document.querySelector('table')?.getAttribute('aria-label')).toBe('Acessos da equipe')
   expect(linha('Bruno').querySelector('a')?.getAttribute('href')).toBe('/usuarios/vendedores/bruno')
   expect(linha('Ana').querySelector('a')).toBeNull()
   expect(linha('Carla').querySelector('a')).toBeNull()

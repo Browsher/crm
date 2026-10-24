@@ -59,6 +59,12 @@ describe('Ficha no navegador', () => {
     expect(document.body.textContent).toContain('Descartar as alterações?')
     await act(async () => [...document.body.querySelectorAll('button')].find(b => b.textContent === 'Cancelar')?.click())
     expect(tela.querySelector('textarea')?.value).toBe('Não perder')
+    const historico = [...tela.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Histórico')
+    expect(historico).toBeTruthy()
+    await act(async () => historico!.click())
+    expect(tela.querySelector('textarea')).toBe(nota)
+    expect(nota.value).toBe('Não perder')
+    expect(tela.querySelector('input[name=voltarPara]')?.getAttribute('value')).toBe('/carteira?nome=Aurora')
   })
 
   test('voltar do navegador pede confirmação quando existe rascunho', async () => {
