@@ -81,8 +81,9 @@ o vendedor vê apenas as empresas entregues e canais conferidos.
 
 ## Preparar a ativação
 
-Esta entrega mantém a rotina operacional pausada. Não aplica migrações em
-produção, não altera a planilha, não chama o motor real e não consome créditos.
+A rotina operacional continua pausada. A preparação manual da aba compartilhada
+está registrada abaixo. O código não provisiona abas automaticamente, não aplica
+migrações em produção, não chama o motor real e não consome créditos.
 Antes de ativar, publicar a versão revisada, aplicar a migração 0040 pelo
 procedimento de banco existente, seguida da 0041 e da **0042**, e configurar no servidor:
 
@@ -105,6 +106,38 @@ e o restante do workbook. A1:N1 precisa ter exatamente estes cabeçalhos:
 ```text
 Pedido ID | Revisão | Vendedor ID | Vendedor | Data | Dia da semana | Nicho | Bairro | Cidade | UF | Situação | Atualizado em | Versão | Critérios de busca
 ```
+
+### Aba preparada em 25/10/2026
+
+A aba **Planejamento CRM** foi criada no arquivo existente
+[PLANILHA BASE CRM Prospecção](https://docs.google.com/spreadsheets/d/17uQ8KmuboL808cvb9M9piIhZwCfHYDJRJ5uw2bUAxvU/edit#gid=10151006),
+com os IDs que deverão ser configurados no servidor:
+
+```text
+GOOGLE_PLANILHA_ID=17uQ8KmuboL808cvb9M9piIhZwCfHYDJRJ5uw2bUAxvU
+GOOGLE_PLANILHA_ABA_ID=10151006
+```
+
+A grade inicial tem 1.000 linhas e 14 colunas, cabeçalho congelado e células
+como texto. A1:N1 foi conferido por leitura e coincide com o contrato acima.
+Nenhum pedido foi inserido: os registros virão do CRM, com uma linha fixa por
+pedido de vendedor/data. As oito abas anteriores foram mantidas; os cabeçalhos
+da coleta, validação e exportação e o início do planejamento antigo foram
+conferidos antes e depois, sem alteração.
+
+A estrutura passou por revisão independente de compatibilidade com o cliente
+existente. Ainda falta configurar a credencial de serviço e validar a
+sincronização real pelo servidor. Não foram alteradas permissões, credenciais,
+workflows ou agendamentos, nem iniciado scraping. A conferência visual no
+navegador não foi possível por ausência de sessão Google; a validação desta
+etapa usou os valores, formatos e propriedades devolvidos pela API.
+
+Preparar a aba antes de configurar o workflow mantém os identificadores e o
+contrato definidos. A planilha continua sendo um espelho do CRM; o workflow
+recebe o pedido e os critérios congelados pelo executor e não transforma
+edições manuais da planilha em comandos.
+
+### Conferência e sincronização
 
 O servidor confere arquivo, ID/título da aba, cabeçalho e conteúdo antes de
 gravar. N contém o JSON canônico dos critérios, na mesma revisão da linha.
