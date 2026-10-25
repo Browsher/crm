@@ -71,9 +71,20 @@ A validação online incluiu:
   na revisão/versão 3 e na mesma linha, sem duplicação;
 - zero execuções, lotes, publicações de coleta e resultados ao terminar.
 
-A sincronização CRM → planilha foi validada com escrita real. O próximo
-passo é configurar e homologar o executor de coleta e os provedores das
-verificações selecionadas; somente depois ajustar a rotina existente.
+A sincronização CRM → planilha foi validada com escrita real. A etapa
+posterior conectou o coletor local e homologou as verificações básicas no
+workflow único. Qualificação de perfil e uma entrega real por planejamento
+continuam pendentes; a rotina automática segue pausada.
+
+Em 25/10, a mesma publicação foi reconstruída para aplicar
+`GOOGLE_AGENTE_TOKEN` sensível, exclusivo de Production. O deployment atual
+`dpl_HowW7mJmFFRPbdY6w5VY6xsrcEhu` ficou READY no endereço estável,
+por redeploy de `dpl_5nqm29e4oSrmLJM33eXe5Jk761r1`, sem mudar a fonte
+da aplicação já aprovada no CI #153. A autenticação do executor foi conferida
+sem executar operação: POST sem token retornou 401; com token e comando
+inválido retornou 400 antes de acessar o repositório. Login respondeu 200 e
+rota privada sem sessão retornou 307 para login. Nenhum pedido foi adquirido,
+nenhuma coleta/importação/mensagem ou nova migração foi executada nessa etapa.
 
 ## Configuração do projeto
 
