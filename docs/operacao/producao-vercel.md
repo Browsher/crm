@@ -15,6 +15,48 @@ O site usa HTTPS na Vercel e o banco CRM CH já existente na Railway. O computad
 - Limpeza local concluída em transação: 66 empresas, três vendedores e seus registros de teste removidos sem backup. Gestor e sua credencial, 1.209.313 CEPs, a carga de CEP e as 38 migrações preservados. Arquivos originais da coleta permanecem no disco.
 - Atalho existente CRM Prospecção atualizado para o endereço hospedado. Não inicia Docker, banco ou servidor local. CRM Social permaneceu intacto.
 
+## Preparação da sincronização Google em 25/10/2026
+
+O projeto `crm-prospeccao`, na mesma equipe, recebeu quatro variáveis no
+alvo técnico Production, após autorização explícita do usuário para o
+envio do token da integração:
+
+- `GOOGLE_PLANILHA_ID`
+- `GOOGLE_PLANILHA_ABA_ID`
+- `GOOGLE_PLANILHA_N8N_URL`
+- `GOOGLE_PLANILHA_N8N_TOKEN`
+
+Os valores foram fornecidos por stdin; os metadados confirmaram tipo
+`sensitive` e escopo exclusivamente Production para as quatro. As oito
+variáveis anteriores foram preservadas, totalizando 12; Preview permanece
+sem variáveis. O token pertence ao webhook de planejamento, separado da
+chave administrativa do n8n; a autorização Google permanece no n8n.
+
+A configuração local passou pelo mesmo validador de ambiente do CRM e
+corresponde à aba e ao webhook já conferidos. Uma nova publicação é
+necessária para receber essas variáveis; o site existente não foi
+republicado e o workflow preparado permanece inativo.
+
+A conferência somente leitura do Railway CRM CH usou TLS verificado:
+38 migrações aplicadas, sem divergência, e sete pendentes:
+
+```text
+0038_busca_empresas.sql
+0039_busca_papel_vigente.sql
+0040_google_planejamento.sql
+0041_google_agentes_planilha.sql
+0042_google_criterios_rodadas.sql
+0043_prospeccao_pessoal.sql
+0044_busca_filtros_completos.sql
+```
+
+O banco tem 30 empresas e quatro usuários; os registros foram preservados.
+Nenhuma migração foi aplicada nesta conferência. Antes da validação de
+escrita pelo servidor, aplicar as migrações pela operação separada prevista
+neste guia e publicar a versão revisada. O código da sincronização em
+`5062475` passou no [CI #152](https://github.com/Browsher/crm/actions/runs/40214110803),
+incluindo jornadas no navegador e conferência remota das migrações.
+
 ## Configuração do projeto
 
 Foi criado um projeto separado chamado crm-prospeccao. A publicação atual foi feita pelo CLI, com código já integrado e validado. Uma conexão futura com Browsher/crm deve usar main e a raiz do repositório; ela ainda não foi ativada. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.

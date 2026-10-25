@@ -171,13 +171,23 @@ que começam com `=`. Essa leitura de grade também foi conferida na aba real
 (A2:N2), sem escrita; os nós temporários de diagnóstico foram removidos e a
 cópia final permaneceu inativa, com 32 nós.
 
-Os parâmetros privados do CRM estão preparados em
+Os parâmetros privados locais permanecem em
 `.env.n8n-planilha.local`, ignorado pelo Git e sem carregamento automático.
-Ainda é necessário configurá-los no servidor publicado do CRM e validar uma
-sincronização pelo pedido real do banco. Esta etapa comprova acesso de leitura
-no n8n; a escrita e os cenários de revisão foram validados com Sheets simulado
-e banco local descartável. As etapas reais de qualificação e WhatsApp seguem
-dependentes da configuração dos provedores já descrita abaixo.
+Em 25/10/2026, os quatro parâmetros `GOOGLE_PLANILHA_*` do transporte n8n
+foram cadastrados como variáveis sensíveis em Production no projeto Vercel
+`crm-prospeccao`, após autorização explícita do usuário. Os metadados
+confirmaram o tipo e o escopo, preservando as oito variáveis anteriores e
+Preview sem variáveis. A nova configuração depende de uma nova publicação
+para chegar ao servidor; o site não foi republicado nesta etapa.
+
+A conferência remota do banco encontrou 38 migrações aplicadas, sem
+divergências, e sete pendentes (0038 a 0044). Nenhuma foi aplicada nesta
+conferência. A validação de sincronização de pedido real depende dessas
+migrações e da publicação revisada. O acesso real de leitura no n8n foi
+conferido; escrita e revisões foram validadas com Sheets simulado e banco
+local descartável. As etapas reais de qualificação e WhatsApp seguem
+dependentes da configuração dos provedores já descrita abaixo. O estado do
+servidor está registrado em [Produção Vercel](producao-vercel.md).
 
 O ramo de sincronização só aceita o destino fixo da aba preparada. Confere
 cabeçalho, linha vazia ou intenção conhecida, escreve RAW na posição alocada
