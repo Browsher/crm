@@ -81,7 +81,7 @@ o vendedor vê apenas as empresas entregues e canais conferidos.
 
 ## Preparar a ativação
 
-A rotina operacional continua pausada. A preparação manual da aba compartilhada
+A integração nova continua sem ativação operacional. A preparação manual da aba compartilhada
 está registrada abaixo. O código não provisiona abas automaticamente, não aplica
 migrações em produção, não chama o motor real e não consome créditos.
 Antes de ativar, publicar a versão revisada, aplicar a migração 0040 pelo
@@ -92,13 +92,22 @@ procedimento de banco existente, seguida da 0041 e da **0042**, e configurar no 
 - no executor local, o mesmo segredo e `GOOGLE_CRM_URL`, origem HTTPS do CRM.
 - `GOOGLE_PLANILHA_ID`: ID do mesmo arquivo compartilhado;
 - `GOOGLE_PLANILHA_ABA_ID`: ID numérico da aba **Planejamento CRM**;
-- `GOOGLE_PLANILHA_CLIENT_EMAIL` e `GOOGLE_PLANILHA_PRIVATE_KEY`: credencial
-  de serviço dedicada, com chave RSA de pelo menos 2048 bits.
+- para reutilizar a conexão Google já existente no n8n:
+  `GOOGLE_PLANILHA_N8N_URL` e `GOOGLE_PLANILHA_N8N_TOKEN`;
+- como alternativa de transporte direto, `GOOGLE_PLANILHA_CLIENT_EMAIL` e
+  `GOOGLE_PLANILHA_PRIVATE_KEY`: conta de serviço dedicada, RSA de pelo
+  menos 2048 bits. Não são necessárias no transporte n8n.
 
-Na ativação, habilitar o acesso Sheets apropriado e conceder explicitamente
-à conta de serviço acesso ao arquivo necessário. A conexão Google deste
-chat não é uma credencial do servidor. Esta implementação não cria contas,
-chaves, permissões ou abas reais automaticamente.
+No transporte n8n, a autorização Google permanece na credencial OAuth2
+selecionada dentro do workflow. O CRM usa um token Header Auth próprio para
+pedir a sincronização, sem receber tokens Google. A chave administrativa
+`N8N_API_KEY` serve somente para preparar a instalação e não é usada pelo CRM.
+Configuração n8n incompleta mantém a sincronização pendente, sem trocar
+silenciosamente de transporte.
+
+No transporte direto, habilitar Sheets e conceder à conta de serviço acesso
+ao arquivo necessário. A conexão Google deste chat não é uma credencial do
+servidor. O código não cria contas, chaves, permissões ou abas automaticamente.
 
 Provisionar **Planejamento CRM** no mesmo arquivo, preservando a aba antiga
 e o restante do workbook. A1:N1 precisa ter exatamente estes cabeçalhos:
@@ -136,6 +145,39 @@ Preparar a aba antes de configurar o workflow mantém os identificadores e o
 contrato definidos. A planilha continua sendo um espelho do CRM; o workflow
 recebe o pedido e os critérios congelados pelo executor e não transforma
 edições manuais da planilha em comandos.
+
+### Conexão n8n conferida em 25/10/2026
+
+O workflow preparado tem ID `gITBY7vBYNfgUWMp` e nome
+**CRM · Prospecção e planejamento**, na instalação
+`https://primary-production-04eb.up.railway.app`. É um único workflow com
+duas entradas autenticadas: sincronização de planejamento e verificação
+condicional de candidatas. Foi importado com a credencial **Google Sheets
+account** existente e autenticação Header Auth própria, sem exportar tokens
+Google ou modificar o workflow legado.
+
+A primeira conferência identificou que a autorização Google precisava ser
+reconectada. Depois da reconexão feita pelo usuário, uma chamada real do
+tipo `conferir` leu metadados e A1:N1: destino e 14 cabeçalhos corretos.
+Sem autenticação, o webhook respondeu 403. Nenhuma célula foi escrita,
+nenhum pedido fictício foi inserido e nenhuma coleta ou mensagem foi iniciada.
+O workflow foi desativado ao terminar a conferência; o legado permaneceu
+preservado.
+
+Os parâmetros privados do CRM estão preparados em
+`.env.n8n-planilha.local`, ignorado pelo Git e sem carregamento automático.
+Ainda é necessário configurá-los no servidor publicado do CRM e validar uma
+sincronização pelo pedido real do banco. Esta etapa comprova acesso de leitura
+no n8n; a escrita e os cenários de revisão foram validados com Sheets simulado
+e banco local descartável. As etapas reais de qualificação e WhatsApp seguem
+dependentes da configuração dos provedores já descrita abaixo.
+
+O ramo de sincronização só aceita o destino fixo da aba preparada. Confere
+cabeçalho, linha vazia ou intenção conhecida, escreve RAW na posição alocada
+e relê A:N, inclusive ao reconciliar uma intenção legada de 13 colunas.
+O recibo devolve pedido, envio, revisão, versão, destino, linha e células.
+Qualquer retorno incerto conserva o bloqueio no banco, sem novo POST automático.
+Tokens e payloads não são guardados nos dados das execuções do workflow.
 
 ### Conferência e sincronização
 

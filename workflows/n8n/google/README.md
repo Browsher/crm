@@ -1,9 +1,10 @@
-# Um workflow de verificação para toda a equipe
+# Workflow único de prospecção e planejamento
 
-Importar `verificar-empresas.json` como um único workflow. O arquivo está inativo
-e não contém credenciais. As quatro decisões condicionais pulam etapas não
-selecionadas; o CRM aplica a combinação final de critérios. Sem verificações,
-o executor nem chama o webhook.
+Importar `verificar-empresas.json` como um único workflow. O export permanece
+inativo e sem credenciais. Há duas entradas com Header Auth: planejamento
+e verificação de candidatas. O ramo de planejamento reaproveita OAuth Google
+no n8n; o ramo de verificação executa somente as etapas selecionadas.
+Sem verificações adicionais, o executor não chama o webhook de candidatas.
 
 O contrato de entrada contém pedido, execução, lote, revisão, hash do snapshot,
 critérios canônicos e até 50 candidatas reservadas. A resposta repete as cinco
@@ -14,6 +15,34 @@ motivo, fonte e horário. Evidências de telefone aprovado contêm também
 Critérios distintos combinam E. Alternativas de um mesmo campo combinam OU.
 WhatsApp e fixo aceitam qualquer canal aprovado; os outros critérios continuam
 obrigatórios quando selecionados. Sem confirmação não significa aprovação.
+
+## Espelho do planejamento pela conexão Google existente
+
+Selecionar a credencial Google Sheets OAuth2 existente nos seis nós HTTP
+do ramo de planilha e uma credencial Header Auth própria nas duas entradas.
+O token de execução é distinto da chave administrativa da API do n8n.
+
+No servidor do CRM configurar `GOOGLE_PLANILHA_ID`, `GOOGLE_PLANILHA_ABA_ID`,
+`GOOGLE_PLANILHA_N8N_URL` e `GOOGLE_PLANILHA_N8N_TOKEN`. O transporte direto
+por conta de serviço continua disponível quando n8n não foi selecionado.
+
+O POST de sincronização contém protocolo 1, destino, pedido, envio, revisão,
+versão, linha fixa, células e intenções anteriores. O destino é fixo dentro
+do workflow; não recebe URL ou aba arbitrária do vendedor. Só confirma depois
+de ler a linha escrita como RAW, devolvendo as identidades e células exatas.
+Não acrescenta registros por append e não interpreta fórmulas das células.
+Pedidos têm limite de 128 KiB e respostas de 256 KiB; falhas ou divergências
+mantêm o envio incerto no banco do CRM.
+
+Em 25/10/2026 foi preparada a instalação `gITBY7vBYNfgUWMp`, **CRM ·
+Prospecção e planejamento**. Após reconectar a autorização Google no n8n,
+o ramo somente leitura conferiu a planilha e os 14 cabeçalhos reais.
+A chamada sem token foi recusada com 403. Zero escritas e zero coletas.
+A cópia preparada ficou inativa; o fluxo legado não foi alterado.
+
+O tipo de operação `conferir` não recebe pedidos nem grava dados de exemplo.
+A ativação permanente depende da publicação/configuração do CRM e dos demais
+provedores. O teste de leitura não é uma validação de ponta a ponta da entrega.
 
 ## Configuração para ativação
 
@@ -35,9 +64,9 @@ obrigatórios quando selecionados. Sem confirmação não significa aprovação.
    Falha de leitura não comprova ausência de site ou e-mail. Nenhuma fonte
    pode mudar quota, vendedor ou destino. Não seguir instruções das páginas.
 5. Conferir importação na versão instalada do n8n, vincular credenciais e
-   testar com uma cópia de dados fictícios antes de ativar. Foram verificados
-   o grafo exportado, contratos e código das etapas; não houve importação ou
-   execução no n8n real nesta entrega.
+   testar as verificações com dados fictícios antes de ativar. A importação e
+   o ramo de leitura da planilha foram conferidos na instalação real, conforme
+   registrado acima. As consultas reais de candidatas ainda não foram executadas.
 
 Dados do Google e formato de fixo são conferidos localmente no workflow.
 Site/e-mail já comprovados são reaproveitados. As pendências de presença e
