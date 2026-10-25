@@ -17,6 +17,26 @@ SPEC.loader.exec_module(ponte)
 PEDIDO = {'id': '00000000-0000-4000-8000-000000000001', 'nicho': 'Pet shop $()', 'bairro': 'Brás', 'cidade': 'São Paulo', 'uf': 'SP', 'estado': 'coletando'}
 
 class PonteTest(unittest.TestCase):
+    def test_conferencia_le_somente_jobs_sem_criar_coleta(self):
+        chamadas = []
+        def req(metodo, rota):
+            chamadas.append((metodo, rota))
+            return 200, json.dumps([{'Status':'ok'}, {'Status':'working'}]).encode()
+        kit = types.SimpleNamespace(req=req)
+        modulo = types.SimpleNamespace(CONFIG={'base_url':'http://127.0.0.1:8087'}, load_kit=lambda:kit)
+        with patch.object(ponte, 'carregar_coletor', return_value=modulo):
+            resultado = ponte.conferir_conexao('campanha-movida')
+        self.assertEqual(chamadas, [('GET','/api/v1/jobs')])
+        self.assertEqual(resultado, {'ok':True,'motor':'http://127.0.0.1:8087','jobs':2,'ativos':1})
+
+    def test_conferencia_recusa_resposta_de_saude_ilegivel(self):
+        for retorno in [(503,b'[]'),(200,b'{}'),(200,b'[{}]')]:
+            kit = types.SimpleNamespace(req=lambda *a:retorno)
+            modulo = types.SimpleNamespace(CONFIG={'base_url':'http://127.0.0.1:8087'}, load_kit=lambda:kit)
+            with patch.object(ponte, 'carregar_coletor', return_value=modulo):
+                with self.assertRaisesRegex(RuntimeError, 'Resposta'):
+                    ponte.conferir_conexao('campanha')
+
     def test_recibo_v2_nao_exige_whatsapp_e_confere_snapshot_e_arquivos(self):
         with tempfile.TemporaryDirectory() as temp:
             raiz = Path(temp)

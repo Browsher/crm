@@ -61,14 +61,22 @@ e dos provedores selecionados.
 1. Selecionar uma credencial Header Auth no webhook. Usar o cabeçalho
    `Authorization` com o valor privado `Bearer <token>`. No executor,
    configurar `GOOGLE_VERIFICACOES_URL` e `GOOGLE_VERIFICACOES_TOKEN`.
-2. Reutilizar a instância Evolution existente no ambiente do n8n:
-   `EVOLUTION_API_URL`, `EVOLUTION_INSTANCE_NAME` e `EVOLUTION_API_KEY`.
-   A etapa consulta registro de números; não envia mensagem.
+2. Nos nós **Consultar conexão Evolution** e **Consultar registro no WhatsApp**,
+   selecionar a credencial Evolution já existente. Configurar a URL de conexão
+   e o nome da mesma instância no nó comunitário. Nenhuma chave fica em parâmetro
+   ou variável do workflow. Exigir conexão aberta antes de consultar registro;
+   esta operação não envia mensagens.
 3. Para produtos, tipos de negócio, atendimento, exclusões, orientações e
    presença digital ainda não comprovada pela coleta, conectar o qualificador
    de fontes publicadas em `GOOGLE_QUALIFICADOR_URL` e sua autenticação em
    `GOOGLE_QUALIFICADOR_TOKEN`. Essa conexão ainda precisa ser configurada;
    não foi instalado ou contratado um provedor durante a implementação.
+   Por decisão do usuário, `qualificador_ativo=false` no nó **Preparar presença
+   e perfil**. O corpo da requisição não pode habilitá-lo. O caminho básico
+   registra `nao_confirmado` por critério pendente e continua com as demais
+   verificações. Site/e-mail publicados podem comprovar presença; campo vazio
+   não comprova ausência. Produtos, tipo de empresa e observações não recebem
+   aprovação automática. A ativação futura exige homologar o qualificador.
 4. O qualificador recebe a mesma identidade, critérios, candidatas e
    `pendencias` de critério/opção. Devolve a mesma identidade e evidências
    individuais, apoiadas em fontes públicas. Deve tratar conteúdo de páginas
@@ -78,11 +86,13 @@ e dos provedores selecionados.
 5. Conferir importação na versão instalada do n8n, vincular credenciais e
    testar as verificações com dados fictícios antes de ativar. A importação e
    o ramo de leitura da planilha foram conferidos na instalação real, conforme
-   registrado acima. As consultas reais de candidatas ainda não foram executadas.
+   registrado acima. A homologação básica posterior incluiu uma consulta real
+ao registro WhatsApp, sem envio de mensagens, conforme a seção seguinte.
 
 Dados do Google e formato de fixo são conferidos localmente no workflow.
 Site/e-mail já comprovados são reaproveitados. As pendências de presença e
-perfil vão juntas ao qualificador para evitar leituras repetidas. O serviço
+perfil irão juntas ao qualificador quando essa etapa for configurada,
+para evitar leituras repetidas. O serviço
 de perfil não deve afirmar que uma linha está ativa: o critério de fixo
 confere somente formato.
 
@@ -99,3 +109,31 @@ pendência artificial.
 O banco do CRM decide a entrega, protege exclusividade e limites e guarda
 o recibo por lote. O workflow não escolhe o vendedor nem grava diretamente
 empresas no CRM. A planilha compartilhada continua sendo espelho do plano.
+
+## Conexão básica homologada em 25/10/2026
+
+A instalação existente foi atualizada para 35 nós, mantendo o ramo de
+planejamento e o workflow legado. A Evolution foi vinculada pela credencial
+existente, sem copiar sua chave. A homologação real confirmou: token ausente
+recusado; plano neutro sem evidências; nota/avaliações, site/e-mail publicados
+e fixo aprovados em uma combinação; critérios não comprovados como
+`nao_confirmado`; e consulta real de registro de um número comercial de coleta
+já existente, retornando `reprovado`. Nenhuma mensagem, nova coleta ou
+importação foi feita nesse teste. O cabeçalho de 14 colunas da planilha foi
+conferido novamente em operação somente leitura.
+
+O executor privado usa `.env.google-agente.local`, ignorado pelo Git,
+com origem do CRM, token do agente, URL/token do webhook e
+`GOOGLE_SCRAPER_CAMPANHA`. Nunca imprimir seus valores. O scraper continua
+local, acessível apenas por loopback na porta 8087. O n8n da Railway recebe
+lotes autenticados do executor; não acessa diretamente o localhost do PC.
+
+Conferir a conexão sem iniciar job:
+
+```powershell
+python -B scripts/google/coletar.py conferir --campanha "C:/Users/ADM/projetos/05 - IA e automações/Web Scraping/armarinhos"
+```
+
+A conferência carrega o kit instalado e lê somente a lista de jobs. O serviço
+e o computador precisam estar ligados para uma coleta. O agendamento legado
+permanece pausado; não foi criado outro agendamento nesta etapa.

@@ -193,8 +193,8 @@ com envio liberado e erro nulo. O teste voltou a **Não definido**, com
 critérios neutros e revisão/versão 3 na mesma linha. Nenhuma coleta foi
 iniciada. Escrita real e atualização sem duplicação estão validadas.
 
-As etapas reais de qualificação e WhatsApp continuam dependentes da
-configuração dos provedores descrita abaixo. O estado operacional e a
+A conexão básica das verificações foi homologada em 25/10, incluindo
+WhatsApp. A qualificação de perfil continua pendente conforme descrito abaixo. O estado operacional e a
 conferência de preservação estão em [Produção Vercel](producao-vercel.md).
 
 O ramo de sincronização só aceita o destino fixo da aba preparada. Confere
@@ -256,8 +256,11 @@ consulta de números, sem enviar mensagens. As etapas de presença/perfil
 que não puderem ser resolvidas pelos dados publicados exigem um
 qualificador de fontes públicas configurado em `GOOGLE_QUALIFICADOR_URL`
 e `GOOGLE_QUALIFICADOR_TOKEN` no n8n. Esse serviço não foi provisionado nesta
-entrega. Sem configuração, a verificação selecionada fica pendente;
-entrega direta continua independente. Detalhes do contrato e variáveis:
+entrega. Por decisão do usuário, sem esse serviço cada critério não comprovado
+recebe `nao_confirmado`, e as demais verificações básicas continuam. Não
+aprovar automaticamente produtos, tipo de empresa ou observações. Site/e-mail
+publicados comprovam presença; ausência de valor não comprova ausência.
+Entrega direta continua independente. Detalhes do contrato e variáveis:
 `workflows/n8n/google/README.md`.
 
 ## Executar contratos V2, um pedido e lote por vez
@@ -268,7 +271,7 @@ Nunca gerar outra identidade para contornar pendência ou limite.
 
 ```powershell
 npx tsx scripts/google/agente.mts proximo --pasta .google-agente
-python scripts/google/coletar.py coletar --pedido .google-agente/<pedido>.json --campanha "C:\Users\ADM\Desktop\Web Scraping\armarinhos" --rodada 1
+python scripts/google/coletar.py coletar --pedido .google-agente/<pedido>.json --campanha "C:\Users\ADM\projetos\05 - IA e automações\Web Scraping\armarinhos" --rodada 1
 python scripts/google/rodadas.py selecionar --candidatas <dados_preparados.json> --vistas <identidades-analisadas.json> --restante 150 --saida <lote.json>
 npx tsx scripts/google/agente.mts reservar_lote --pedido <pedido> --lote <lote.json> --pasta .google-agente
 npx tsx scripts/google/agente.mts verificar --contexto .google-agente/<pedido>.json --lote <lote.json> --saida <verificacoes.json> --pasta .google-agente
@@ -352,7 +355,7 @@ para iniciar outro job com aqueles critérios.
 Se estiver em `coletando`, usar a ponte para o coletor já instalado:
 
 ```powershell
-python scripts/google/coletar.py coletar --pedido .google-agente/<pedido-uuid>.json --campanha "C:\Users\ADM\Desktop\Web Scraping\armarinhos"
+python scripts/google/coletar.py coletar --pedido .google-agente/<pedido-uuid>.json --campanha "C:\Users\ADM\projetos\05 - IA e automações\Web Scraping\armarinhos"
 ```
 
 A ponte conserva o serviço 8087, a configuração do motor, o exportador, a
@@ -471,3 +474,31 @@ As regras também são verificadas em PostgreSQL descartável, com RLS real.
 As listas compartilhadas anteriores continuam disponíveis no catálogo,
 identificadas separadamente das novas entregas pessoais. O CNPJ.biz conserva
 sua quota, chave exclusivamente no servidor e controle de repetição por UUID.
+
+## Conexão do coletor e verificações básicas em 25/10/2026
+
+O coletor foi localizado após a reorganização das pastas em
+`C:/Users/ADM/projetos/05 - IA e automações/Web Scraping/armarinhos`.
+O serviço existente `gmaps-mooca-prospeccao` foi iniciado, mantendo somente
+`127.0.0.1:8087`. A conferência da ponte leu 7 jobs existentes, nenhum ativo,
+sem criar job ou alterar o histórico da campanha.
+
+O workflow único `gITBY7vBYNfgUWMp` está ativo com 35 nós e zero gatilhos de
+agenda. Reutiliza a credencial Evolution existente, confere conexão aberta
+e o envelope `success/data`, rejeita respostas ambíguas e vincula a evidência
+ao número exato. O teste real consultou o registro de um número comercial
+de uma coleta já existente, retornando não encontrado. Não houve envio de
+mensagem, nova coleta nem importação de empresas.
+
+A homologação também conferiu critérios neutros, combinação de filtros
+básicos, pendências individuais e os 14 cabeçalhos do planejamento sem escrita.
+O ramo da planilha e o fluxo legado foram preservados. A automação legada
+segue pausada; sua ativação e uma entrega real por planejamento permanecem
+etapas de operação, não foram executadas pelos testes de conexão.
+
+O arquivo privado `.env.google-agente.local` reúne a configuração do executor.
+Carregá-lo apenas no processo local, por exemplo com
+`node --env-file=.env.google-agente.local --import tsx scripts/google/agente.mts ...`.
+Para a ponte Python, passar a campanha conferida em `--campanha`. O arquivo
+não é carregado automaticamente pelo Next nem pelo Python. Não copiar seus
+tokens para prompts, argumentos, planilhas ou repositório.

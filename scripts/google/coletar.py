@@ -110,6 +110,22 @@ def carregar_coletor(campanha):
     return modulo
 
 
+def conferir_conexao(campanha):
+    modulo = carregar_coletor(campanha)
+    status, corpo = modulo.load_kit().req('GET', '/api/v1/jobs')
+    try:
+        jobs = json.loads(corpo)
+        if status != 200 or not isinstance(jobs, list) or any(
+            not isinstance(j, dict) or j.get('Status', j.get('status')) not in
+            ('ok', 'failed', 'working', 'pending', 'queued') for j in jobs
+        ):
+            raise ValueError()
+    except (ValueError, TypeError):
+        raise RuntimeError('Resposta do motor não confirmada.') from None
+    return {'ok': True, 'motor': modulo.CONFIG['base_url'], 'jobs': len(jobs),
+        'ativos': sum(j.get('Status', j.get('status')) in ('working', 'pending', 'queued') for j in jobs)}
+
+
 def processar_resultados(modulo, raw, mapa, pedido, pasta):
     if pedido.get('contrato') == 2:
         return processar_neutro(raw, pedido, pasta)
@@ -250,8 +266,8 @@ def coletar(pedido, campanha):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('acao', choices=('coletar', 'preparar', 'contexto'))
-    parser.add_argument('--pedido', required=True)
+    parser.add_argument('acao', choices=('coletar', 'preparar', 'contexto', 'conferir'))
+    parser.add_argument('--pedido')
     parser.add_argument('--campanha')
     parser.add_argument('--coletadas')
     parser.add_argument('--final', '--resultado', dest='final')
@@ -260,6 +276,13 @@ def main():
     parser.add_argument('--saida')
     parser.add_argument('--rodada', type=int, choices=(1, 2, 3), default=1)
     args = parser.parse_args()
+    if args.acao == 'conferir':
+        if not args.campanha:
+            parser.error('conferir exige --campanha')
+        print(json.dumps(conferir_conexao(args.campanha)))
+        return
+    if not args.pedido:
+        parser.error('--pedido é obrigatório para esta ação')
     pedido = json.loads(Path(args.pedido).read_text(encoding='utf-8-sig'))
     if pedido.get('contrato') == 2:
         pedido['rodada'] = args.rodada

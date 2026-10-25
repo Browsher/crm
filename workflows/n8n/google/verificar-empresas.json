@@ -30,7 +30,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const v = $input.first().json.body;\nif (!v || !Array.isArray(v.candidatas) || v.candidatas.length > 50 || !v.criterios || !Array.isArray(v.verificacoes_requeridas)) throw new Error('Pedido inválido');\nfor (const k of ['pedido_id','execucao_id','lote_id']) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v[k])) throw new Error('Identidade inválida');\nv.evidencias = []; v.pendencias = [];\nreturn [{json:v}];"
+        "jsCode": "const v = $input.first().json.body;\nif (!v || !Array.isArray(v.candidatas) || v.candidatas.length < 1 || v.candidatas.length > 50 || !v.criterios || typeof v.criterios !== 'object' || Array.isArray(v.criterios)) throw new Error('Pedido inválido');\nfor (const k of ['pedido_id','execucao_id','lote_id']) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v[k])) throw new Error('Identidade inválida');\nif (!Number.isSafeInteger(v.revisao) || v.revisao < 1 || !/^[0-9a-f]{64}$/.test(v.snapshot_sha256)) throw new Error('Snapshot inválido');\nconst c=v.criterios, listas={tipos:['varejista','atacadista','distribuidor','fabricante'],site:['com','sem'],email:['com','sem'],telefone:['whatsapp','fixo']};\nconst textos=['termos','produtos','excluir','prioridades','observacoes'];\nconst chaves=[...textos,...Object.keys(listas),'atendimento','situacao','nota','avaliacoes'];\nif (Object.keys(c).length!==chaves.length || Object.keys(c).some(k=>!chaves.includes(k))) throw new Error('Critérios inválidos');\nfor(const k of textos) if(typeof c[k]!=='string'||Array.from(c[k]).length>2000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f-\\u009f]/.test(c[k])) throw new Error('Texto inválido');\nfor(const [k,opcoes] of Object.entries(listas)) if(!Array.isArray(c[k])||c[k].some(x=>!opcoes.includes(x))||new Set(c[k]).size!==c[k].length) throw new Error('Opção inválida');\nif(!['','priorizar_fisica','fisica','online','ambos'].includes(c.atendimento)||!['','priorizar_funcionamento','funcionamento','excluir_encerradas','excluir_fechadas'].includes(c.situacao)\n || (c.nota!==null&&(!Number.isFinite(c.nota)||c.nota<0||c.nota>5)) || (c.avaliacoes!==null&&(!Number.isSafeInteger(c.avaliacoes)||c.avaliacoes<0))) throw new Error('Critério inválido');\nconst ids=v.candidatas.map(e=>e&&typeof e==='object'&&(e.google_place_id||e.cnpj&&'cnpj:'+e.cnpj));\nif(ids.some(id=>typeof id!=='string'||!id.trim()||id.length>255)||new Set(ids).size!==ids.length) throw new Error('Candidata inválida ou repetida');\nconst etapas=[];\nif(c.nota!==null||c.avaliacoes!==null||(c.situacao&&c.situacao!=='priorizar_funcionamento')) etapas.push('dados_google');\nif(c.site.length===1||c.email.length===1) etapas.push('presenca_digital');\nif(c.produtos||c.tipos.length||c.excluir||c.observacoes||(c.atendimento&&c.atendimento!=='priorizar_fisica')) etapas.push('perfil_comercial');\nif(c.telefone.includes('whatsapp')) etapas.push('whatsapp');\nif(c.telefone.includes('fixo')) etapas.push('fixo');\nreturn [{json:{pedido_id:v.pedido_id,execucao_id:v.execucao_id,lote_id:v.lote_id,revisao:v.revisao,snapshot_sha256:v.snapshot_sha256,criterios:c,candidatas:v.candidatas,verificacoes_requeridas:etapas,evidencias:[],pendencias:[]}}];"
       }
     },
     {
@@ -91,7 +91,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const v=$input.first().json, c=v.criterios;\nfor(const e of v.candidatas) {\n const id=e.google_place_id||('cnpj:'+e.cnpj), b=e.dados_brutos||{};\n const ev=(criterio,opcao,estado,motivo)=>v.evidencias.push({candidata:id,criterio,opcao,estado,motivo,fonte:e.site||e.link_maps||'coleta_google',horario:new Date().toISOString()});\n for(const k of ['site','email']) if(c[k].length===1) {\n  const opcao=c[k][0], valor=e[k];\n  let presente=k==='email'?/^[^\\s@]+@[^\\s@]+$/.test(String(valor||'')):false;\n  if(k==='site'&&valor) { try {const u=new URL(valor); presente=['http:','https:'].includes(u.protocol)&&!/(^|\\.)(instagram|facebook|linkedin|google|whatsapp)\\.(com|net)$/i.test(u.hostname)} catch {} }\n  const confirmado=presente||b[k+'_verificado']===true;\n  if(confirmado) ev(k,opcao,(opcao==='com')===presente?'aprovado':'reprovado','Presença comercial conferida na fonte.');\n  else v.pendencias.push({candidata:id,criterio:k,opcao});\n }\n for(const k of ['produtos','excluir','observacoes']) if(c[k]) v.pendencias.push({candidata:id,criterio:k,opcao:c[k]});\n for(const opcao of c.tipos) v.pendencias.push({candidata:id,criterio:'tipos',opcao});\n if(c.atendimento&&c.atendimento!=='priorizar_fisica') v.pendencias.push({candidata:id,criterio:'atendimento',opcao:c.atendimento});\n}\nif(v.pendencias.length&&!$env.GOOGLE_QUALIFICADOR_URL) throw new Error('Qualificação selecionada ainda não configurada. Preserve o lote.');\nreturn [{json:v}];"
+        "jsCode": "const v=$input.first().json, c=v.criterios;\nfor(const e of v.candidatas) {\n const id=e.google_place_id||('cnpj:'+e.cnpj);\n const ev=(criterio,opcao,estado,motivo)=>v.evidencias.push({candidata:id,criterio,opcao,estado,motivo,fonte:e.link_maps||'coleta_google',horario:new Date().toISOString()});\n for(const k of ['site','email']) if(c[k].length===1) {\n  const opcao=c[k][0], valor=e[k];\n  let presente=k==='email'?/^[^\\s@]+@[^\\s@]+$/.test(String(valor||'')):false;\n  if(k==='site'&&valor) { try {\n   const u=String(valor).match(/^https?:\\/\\/([a-z0-9-]+(?:\\.[a-z0-9-]+)+)(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$/i), host=u?u[1].toLowerCase():'';\n   const terceiros=['instagram.com','facebook.com','fb.com','linkedin.com','google.com','google.com.br','goo.gl','whatsapp.com','wa.me','linktr.ee','youtube.com','youtu.be','tiktok.com'];\n   presente=Boolean(u)&&!terceiros.some(h=>host===h||host.endsWith('.'+h));\n  } catch {} }\n  if(presente) ev(k,opcao,opcao==='com'?'aprovado':'reprovado','Contato publicado na coleta Google.');\n  else v.pendencias.push({candidata:id,criterio:k,opcao});\n }\n for(const k of ['produtos','excluir','observacoes']) if(c[k]) v.pendencias.push({candidata:id,criterio:k,opcao:c[k]});\n for(const opcao of c.tipos) v.pendencias.push({candidata:id,criterio:'tipos',opcao});\n if(c.atendimento&&c.atendimento!=='priorizar_fisica') v.pendencias.push({candidata:id,criterio:'atendimento',opcao:c.atendimento});\n}\nv.qualificador_ativo=false;\nreturn [{json:v}];"
       }
     },
     {
@@ -113,7 +113,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.pendencias.length > 0 }}",
+              "leftValue": "={{ $json.qualificador_ativo === true && $json.pendencias.length > 0 }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -186,7 +186,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const v=$input.first().json;\nv.numeros_whatsapp=[];\nif(v.verificacoes_requeridas.includes('whatsapp')) for(const e of v.candidatas) {\n if(/^[0-9]{10,11}$/.test(e.telefone||'')) v.numeros_whatsapp.push('55'+e.telefone);\n else v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'whatsapp',estado:'reprovado',motivo:'Número não informado ou sem formato válido na coleta.',fonte:'coleta_google',horario:new Date().toISOString()});\n}\nif(v.numeros_whatsapp.length&&(!$env.EVOLUTION_API_URL||!$env.EVOLUTION_API_KEY||!$env.EVOLUTION_INSTANCE_NAME)) throw new Error('WhatsApp selecionado ainda não configurado. Preserve o lote.');\nreturn [{json:v}];"
+        "jsCode": "const v=$input.first().json;\nv.numeros_whatsapp=[];\nif(v.verificacoes_requeridas.includes('whatsapp')) for(const e of v.candidatas) {\n if(/^[0-9]{10,11}$/.test(e.telefone||'')) v.numeros_whatsapp.push('55'+e.telefone);\n else v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'whatsapp',estado:'reprovado',motivo:'Número não informado ou sem formato válido na coleta.',fonte:'coleta_google',horario:new Date().toISOString()});\n}\nv.numeros_whatsapp=[...new Set(v.numeros_whatsapp)];\nreturn [{json:v}];"
       }
     },
     {
@@ -225,35 +225,16 @@
     {
       "id": "00000011-0000-4000-8000-000000000001",
       "name": "Consultar registro no WhatsApp",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
       "position": [
         2200,
         -160
       ],
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.EVOLUTION_API_URL.replace(/\\/$/, \"\") + \"/chat/whatsappNumbers/\" + encodeURIComponent($env.EVOLUTION_INSTANCE_NAME) }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $env.EVOLUTION_API_KEY }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({numbers:$json.numeros_whatsapp}) }}",
-        "options": {
-          "timeout": 60000,
-          "redirect": {
-            "redirect": {
-              "followRedirects": false
-            }
-          }
-        }
+        "resource": "chat-api",
+        "instanceName": "CONFIGURAR_INSTANCIA_EVOLUTION",
+        "numbers": "={{ $json.numeros_whatsapp.join(\",\") }}"
       }
     },
     {
@@ -267,7 +248,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const v=$('Preparar WhatsApp').first().json;\nconst respostas=$input.all().flatMap(i=>Array.isArray(i.json)?i.json:[i.json]);\nif(!respostas.length||respostas.some(r=>typeof r.exists!=='boolean'||typeof r.number!=='string')) throw new Error('Resposta WhatsApp não confirmada');\nfor(const e of v.candidatas) if(/^[0-9]{10,11}$/.test(e.telefone||'')) {\n const r=respostas.find(r=>r.number.replace(/\\D/g,'')==='55'+e.telefone);\n v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'whatsapp',contato:e.telefone,estado:r?(r.exists?'aprovado':'reprovado'):'nao_confirmado',motivo:r?'Consulta de registro no WhatsApp.':'Número sem confirmação no retorno.',fonte:'evolution_api',horario:new Date().toISOString()});\n}\nreturn [{json:v}];"
+        "jsCode": "const v=$('Preparar WhatsApp').first().json, envelope=$input.first().json;\nif(envelope.success!==true||Object.hasOwn(envelope,'error')||!Array.isArray(envelope.data)) throw new Error('Resposta WhatsApp não confirmada');\nconst respostas=envelope.data;\nif(respostas.some(r=>!r||typeof r.exists!=='boolean'||typeof r.number!=='string')||new Set(respostas.map(r=>r.number)).size!==respostas.length) throw new Error('Resposta WhatsApp inválida ou ambígua');\nfor(const e of v.candidatas) if(/^[0-9]{10,11}$/.test(e.telefone||'')) {\n const r=respostas.find(r=>r.number==='55'+e.telefone);\n v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'whatsapp',contato:e.telefone,estado:r?(r.exists?'aprovado':'reprovado'):'nao_confirmado',motivo:r?'Consulta de registro no WhatsApp.':'Número sem confirmação no retorno.',fonte:'evolution_api',horario:new Date().toISOString()});\n}\nreturn [{json:v}];"
       }
     },
     {
@@ -699,6 +680,64 @@
         "responseBody": "={{ JSON.stringify($json) }}",
         "options": {}
       }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$input.first().json;\nfor(const p of v.pendencias) v.evidencias.push({...p,estado:'nao_confirmado',motivo:['site','email'].includes(p.criterio)?'A coleta não comprova este critério. Verificação complementar pendente.':'Qualificador de fontes públicas pendente de configuração.',fonte:'qualificacao_pendente',horario:new Date().toISOString()});\nreturn [{json:v}];"
+      },
+      "id": "google-criterios-pendentes",
+      "name": "Registrar critérios pendentes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://configurar-evolution.invalid/instance/connectionState/CONFIGURAR_INSTANCIA",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "evolutionApi",
+        "options": {
+          "timeout": 15000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "google-evolution-conexao",
+      "name": "Consultar conexão Evolution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2050,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const r=$input.first().json;\nif(!Number.isInteger(r.statusCode)||r.statusCode<200||r.statusCode>=300||r.body?.instance?.state!=='open') throw new Error('Instância WhatsApp desconectada. Preserve o lote.');\nreturn [{json:$('Preparar WhatsApp').first().json}];"
+      },
+      "id": "google-evolution-conferir",
+      "name": "Conferir conexão Evolution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        -100
+      ]
     }
   ],
   "connections": {
@@ -775,7 +814,7 @@
         ],
         [
           {
-            "node": "Preparar WhatsApp",
+            "node": "Registrar critérios pendentes",
             "type": "main",
             "index": 0
           }
@@ -819,7 +858,7 @@
       "main": [
         [
           {
-            "node": "Consultar registro no WhatsApp",
+            "node": "Consultar conexão Evolution",
             "type": "main",
             "index": 0
           }
@@ -1075,6 +1114,39 @@
         [
           {
             "node": "Planilha · Confirmar gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar critérios pendentes": {
+      "main": [
+        [
+          {
+            "node": "Preparar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar conexão Evolution": {
+      "main": [
+        [
+          {
+            "node": "Conferir conexão Evolution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir conexão Evolution": {
+      "main": [
+        [
+          {
+            "node": "Consultar registro no WhatsApp",
             "type": "main",
             "index": 0
           }
