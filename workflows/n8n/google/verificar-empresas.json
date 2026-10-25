@@ -1,5 +1,5 @@
 {
-  "name": "CRM · Verificar empresas do Google",
+  "name": "CRM · Prospecção e planejamento",
   "active": false,
   "nodes": [
     {
@@ -331,6 +331,374 @@
         "responseBody": "={{ JSON.stringify({pedido_id:$json.pedido_id,execucao_id:$json.execucao_id,lote_id:$json.lote_id,revisao:$json.revisao,snapshot_sha256:$json.snapshot_sha256,evidencias:$json.evidencias}) }}",
         "options": {}
       }
+    },
+    {
+      "id": "planilha-1",
+      "name": "Receber planejamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        800
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-google-planejamento",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-2",
+      "name": "Planilha · Preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const b=$input.first().json.body;\nconst planilha='17uQ8KmuboL808cvb9M9piIhZwCfHYDJRJ5uw2bUAxvU',aba=10151006;\nconst erro=()=>{throw new Error('Planejamento precisa de conferência.');};\nconst uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v);\nif(!b||typeof b!=='object'||Array.isArray(b)||Buffer.byteLength(JSON.stringify(b),'utf8')>128000||b.protocolo!==1||b.planilha_id!==planilha||b.aba_id!==aba||!['conferir','sincronizar'].includes(b.operacao))erro();\nconst c={...b,base:'https://sheets.googleapis.com/v4/spreadsheets/'+planilha,cabecalho:[\"Pedido ID\",\"Revisão\",\"Vendedor ID\",\"Vendedor\",\"Data\",\"Dia da semana\",\"Nicho\",\"Bairro\",\"Cidade\",\"UF\",\"Situação\",\"Atualizado em\",\"Versão\",\"Critérios de busca\"]};\nif(b.operacao==='sincronizar'){\n const linha=v=>Array.isArray(v)&&[13,14].includes(v.length)&&v.every(x=>typeof x==='string')&&v[0]===b.pedido_id;\n if(!uuid(b.pedido_id)||!uuid(b.envio_id)||!Number.isInteger(b.linha)||b.linha<2||b.linha>200000||!Number.isSafeInteger(b.revisao)||b.revisao<1||!Number.isSafeInteger(b.versao)||b.versao<1||!linha(b.celulas)||b.celulas[1]!==String(b.revisao)||b.celulas[12]!==String(b.versao)||!Array.isArray(b.anteriores)||!b.anteriores.every(linha))erro();\n c.intervalo=\"'Planejamento CRM'!A\"+b.linha+':'+(b.celulas.length===14?'N':'M')+b.linha;\n c.leitura=\"'Planejamento CRM'!A\"+b.linha+':N'+b.linha;\n}\nreturn [{json:c}];"
+      }
+    },
+    {
+      "id": "planilha-3",
+      "name": "Planilha · Ler metadados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        800
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.base + '?fields=spreadsheetId,sheets(properties(sheetId,title,gridProperties))' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-4",
+      "name": "Planilha · Conferir destino",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Preparar').first().json,m=$input.first().json;\nif(m.spreadsheetId!==c.planilha_id||!Array.isArray(m.sheets))throw new Error('Arquivo divergente.');\nconst a=m.sheets.find(s=>s&&s.properties&&s.properties.sheetId===c.aba_id);\nconst g=a&&a.properties.gridProperties;\nif(!a||a.properties.title!=='Planejamento CRM'||!g||!Number.isInteger(g.rowCount)||g.rowCount<1||g.columnCount<14)throw new Error('Aba divergente.');\nreturn [{json:{...c,expandir:c.operacao==='sincronizar'&&g.rowCount<c.linha,ampliar:Math.max(0,(c.linha||0)-g.rowCount)}}];"
+      }
+    },
+    {
+      "id": "planilha-5",
+      "name": "Planilha · Ler cabeçalho",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        1010
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.base + '/values/' + encodeURIComponent(\"'Planejamento CRM'!A1:N1\") + '?valueRenderOption=UNFORMATTED_VALUE' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-6",
+      "name": "Planilha · Validar cabeçalho",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        1010
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Conferir destino').first().json,r=$input.first().json;\nif(JSON.stringify(r.values)!==JSON.stringify([c.cabecalho]))throw new Error('Cabeçalho divergente.');\nreturn [{json:c}];"
+      }
+    },
+    {
+      "id": "planilha-7",
+      "name": "Planilha · Apenas conferir",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        1010
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-6",
+              "leftValue": "={{ $json.operacao === 'conferir' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-8",
+      "name": "Planilha · Confirmar acesso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        1010
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$input.first().json;return [{json:{protocolo:1,estado:'conferido',planilha_id:c.planilha_id,aba_id:c.aba_id,cabecalho:c.cabecalho}}];"
+      }
+    },
+    {
+      "id": "planilha-9",
+      "name": "Planilha · Expandir grade",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        1010
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-8",
+              "leftValue": "={{ $json.expandir }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-10",
+      "name": "Planilha · Ampliar grade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        1220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.base + ':batchUpdate' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({requests:[{appendDimension:{sheetId:$json.aba_id,dimension:'ROWS',length:$json.ampliar}}]}) }}",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-11",
+      "name": "Planilha · Ler linha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        1220
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '/values/' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '?valueRenderOption=UNFORMATTED_VALUE' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-12",
+      "name": "Planilha · Avaliar linha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        1220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json,r=$input.first().json;\nif(r.values!==undefined&&(!Array.isArray(r.values)||r.values.length>1||!r.values.every(l=>Array.isArray(l)&&l.every(v=>typeof v==='string'))))throw new Error('Linha divergente.');\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nconst atual=normalizar((r.values||[])[0]||[]);\nconst igual=(a,b)=>JSON.stringify(normalizar(a))===JSON.stringify(normalizar(b));\nif(atual.some(v=>v!=='')&&!igual(atual,c.celulas)&&!c.anteriores.some(a=>igual(atual,a)))throw new Error('Conteúdo manual ou pedido divergente.');\nreturn [{json:{...c,gravar:!igual(atual,c.celulas),values:r.values||[]}}];"
+      }
+    },
+    {
+      "id": "planilha-13",
+      "name": "Planilha · Precisa gravar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        1220
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-12",
+              "leftValue": "={{ $json.gravar }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-14",
+      "name": "Planilha · Gravar linha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        1220
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.base + '/values/' + encodeURIComponent($json.intervalo) + '?valueInputOption=RAW' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({range:$json.intervalo,majorDimension:'ROWS',values:[$json.celulas]}) }}",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-15",
+      "name": "Planilha · Relê gravação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        1430
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '/values/' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '?valueRenderOption=UNFORMATTED_VALUE' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-16",
+      "name": "Planilha · Confirmar gravação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        1430
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json,r=$input.first().json;\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nif(!Array.isArray(r.values)||r.values.length!==1||!Array.isArray(r.values[0])||JSON.stringify(normalizar(r.values[0]))!==JSON.stringify(normalizar(c.celulas)))throw new Error('Gravação não confirmada.');\nreturn [{json:{protocolo:1,estado:'sincronizado',planilha_id:c.planilha_id,aba_id:c.aba_id,pedido_id:c.pedido_id,envio_id:c.envio_id,linha:c.linha,revisao:c.revisao,versao:c.versao,celulas:c.celulas}}];"
+      }
+    },
+    {
+      "id": "planilha-17",
+      "name": "Responder planejamento",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        80,
+        1430
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -515,11 +883,208 @@
           }
         ]
       ]
+    },
+    "Receber planejamento": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Preparar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Preparar": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ler metadados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ler metadados": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Conferir destino",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Conferir destino": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ler cabeçalho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ler cabeçalho": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Validar cabeçalho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Validar cabeçalho": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Apenas conferir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Confirmar acesso": {
+      "main": [
+        [
+          {
+            "node": "Responder planejamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ampliar grade": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ler linha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ler linha": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Avaliar linha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Avaliar linha": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Precisa gravar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Gravar linha": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Relê gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Relê gravação": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Confirmar gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Confirmar gravação": {
+      "main": [
+        [
+          {
+            "node": "Responder planejamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Apenas conferir": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Confirmar acesso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planilha · Expandir grade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Expandir grade": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ampliar grade",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planilha · Ler linha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Precisa gravar": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Gravar linha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planilha · Confirmar gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "saveDataErrorExecution": "all",
+    "saveDataErrorExecution": "none",
     "saveDataSuccessExecution": "none",
     "saveManualExecutions": false,
     "timezone": "America/Sao_Paulo"

@@ -6,8 +6,8 @@ const ler = async () => JSON.parse(await readFile('workflows/n8n/google/verifica
 test('há um único workflow inativo, com etapas condicionais e sem credenciais exportadas', async () => {
   const w = await ler()
   expect(w.active).toBe(false)
-  expect(w.nodes.filter(n => n.type === 'n8n-nodes-base.webhook')).toHaveLength(1)
-  expect(w.nodes.filter(n => n.type === 'n8n-nodes-base.respondToWebhook')).toHaveLength(1)
+  expect(w.nodes.filter(n => n.type === 'n8n-nodes-base.webhook')).toHaveLength(2)
+  expect(w.nodes.filter(n => n.type === 'n8n-nodes-base.respondToWebhook')).toHaveLength(2)
   expect(w.nodes.filter(n => n.type === 'n8n-nodes-base.if').length).toBeGreaterThanOrEqual(3)
   expect(JSON.stringify(w)).not.toContain('segredo-apenas-teste')
 })

@@ -128,3 +128,44 @@ test('edição concorrente espera a escrita em andamento e a última revisão pr
   expect(await sincronizarCom(id,{config,gestorId:gestor,fetcher:fake.fetcher})).toEqual({estado:'sincronizado'})
   expect([...fake.linhas.values()][0][6]).toBe('Última edição')
 })
+
+const configN8n = { transporte: 'n8n' as const, planilhaId: config.planilhaId, abaId: 123,
+  url: 'https://n8n.ficticio.test/webhook/planejamento', token: 'token-ficticio-com-mais-de-32-caracteres' }
+
+test('transporte n8n confirma a identidade da intenção persistida no banco', async () => {
+  const [d] = await banco.sql<{dia:string}>("SELECT to_char($1::date+4,'YYYY-MM-DD') AS dia", [dia])
+  const [{id}] = await banco.comoUsuario(vendedor, async e => (await e<{id:string}>("SELECT google_planejar($1,'Via n8n','','São Paulo','SP') AS id", [d.dia])).linhas)
+  let postagens = 0
+  const fetcher: typeof fetch = async (_url, init) => {
+    postagens++
+    const b = JSON.parse(String(init?.body))
+    expect(b).toMatchObject({pedido_id:id,linha:expect.any(Number),envio_id:expect.any(String)})
+    const [intencao] = await banco.sql<{envio_id:string;envio_versao:number}>('SELECT envio_id,envio_versao FROM google_sincronizacao WHERE pedido_id=$1', [id])
+    expect(b.envio_id).toBe(intencao.envio_id)
+    expect(b.versao).toBe(intencao.envio_versao)
+    return Response.json({...b,estado:'sincronizado'})
+  }
+  expect(await sincronizarCom(id,{config:configN8n,gestorId:gestor,fetcher})).toEqual({estado:'sincronizado'})
+  expect(postagens).toBe(1)
+  expect((await banco.sql<{revisao_confirmada:number;envio_id:string|null}>('SELECT revisao_confirmada,envio_id FROM google_sincronizacao WHERE pedido_id=$1',[id]))[0]).toEqual({revisao_confirmada:1,envio_id:null})
+})
+
+test('n8n sem resposta mantém bloqueio durável e impede enviar revisão posterior', async () => {
+  const [d] = await banco.sql<{dia:string}>("SELECT to_char($1::date+7,'YYYY-MM-DD') AS dia", [dia])
+  const salvar = (nicho:string) => banco.comoUsuario(vendedor, async e => (await e<{id:string}>("SELECT google_planejar($1,$2,'','São Paulo','SP') AS id", [d.dia,nicho])).linhas[0].id)
+  const id = await salvar('Antes da perda')
+  let postagens = 0
+  const fetcher: typeof fetch = async () => { postagens++; throw new Error('resposta perdida com segredo fictício') }
+  expect(await sincronizarCom(id,{config:configN8n,gestorId:gestor,fetcher})).toMatchObject({estado:'pendente'})
+  const [falha] = await banco.sql<{erro:string}>('SELECT erro FROM google_sincronizacao WHERE pedido_id=$1',[id])
+  expect(falha.erro).toEqual(expect.any(String))
+  expect(falha.erro).not.toContain('segredo')
+  await salvar('Revisão nova salva no CRM')
+  expect(await sincronizarCom(id,{config:configN8n,gestorId:gestor,fetcher})).toMatchObject({estado:'pendente'})
+  expect(postagens).toBe(1)
+  const [p] = await banco.sql<{envio_id:string;revisao:number;revisao_confirmada:number;erro:string|null}>('SELECT envio_id,revisao,revisao_confirmada,erro FROM google_sincronizacao WHERE pedido_id=$1',[id])
+  expect(p.envio_id).toEqual(expect.any(String))
+  expect(p.revisao_confirmada).toBe(0)
+  expect(p.revisao).toBe(2)
+  expect(p.erro).toBeNull()
+})

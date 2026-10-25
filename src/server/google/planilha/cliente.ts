@@ -1,4 +1,5 @@
 import { sign } from 'node:crypto'
+import { criarClientePlanilhaN8n } from './cliente-n8n'
 import type { ConfiguracaoPlanilha } from './configuracao'
 import { normalizarCriterios } from '@/src/lib/google/criterios'
 
@@ -46,6 +47,7 @@ function linhas(v: Record<string, unknown>): string[][] {
   return v.values as string[][]
 }
 export function criarClientePlanilha(config: ConfiguracaoPlanilha, fetcher: typeof fetch = fetch) {
+  if ('transporte' in config) return criarClientePlanilhaN8n(config,celulasDoPedido,fetcher)
   return {
     async conectar() {
       let token: string
