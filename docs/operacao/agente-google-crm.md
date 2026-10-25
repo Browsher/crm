@@ -82,7 +82,8 @@ o vendedor vê apenas as empresas entregues e canais conferidos.
 ## Preparar a ativação
 
 A sincronização de planejamento está publicada e validada, conforme registro
-abaixo. A coleta automática continua desligada. O aplicativo não provisiona
+abaixo. A coleta automática foi ativada após o piloto real, conforme registro
+final. O aplicativo não provisiona
 abas nem aplica migrações automaticamente; essas operações são separadas.
 A ativação da coleta exige versão revisada, migrações 0040–0042 aplicadas e
 as configurações de servidor e executor listadas a seguir:
@@ -492,9 +493,9 @@ mensagem, nova coleta nem importação de empresas.
 
 A homologação também conferiu critérios neutros, combinação de filtros
 básicos, pendências individuais e os 14 cabeçalhos do planejamento sem escrita.
-O ramo da planilha e o fluxo legado foram preservados. A automação legada
-segue pausada; sua ativação e uma entrega real por planejamento permanecem
-etapas de operação, não foram executadas pelos testes de conexão.
+O ramo da planilha e o fluxo legado foram preservados. Na etapa de conexão,
+a automação ainda estava pausada; o piloto e a ativação posteriores estão
+registrados na seção seguinte.
 
 O arquivo privado `.env.google-agente.local` reúne a configuração do executor.
 Carregá-lo apenas no processo local, por exemplo com
@@ -502,3 +503,39 @@ Carregá-lo apenas no processo local, por exemplo com
 Para a ponte Python, passar a campanha conferida em `--campanha`. O arquivo
 não é carregado automaticamente pelo Next nem pelo Python. Não copiar seus
 tokens para prompts, argumentos, planilhas ou repositório.
+
+## Piloto real e ativação em 25/10/2026
+
+O usuário escolheu Junior, Armarinhos e variedades, Brás, São Paulo/SP.
+O planejamento de 26/10 foi salvo pela sessão autenticada do vendedor e
+sincronizado com a planilha na revisão 4. Como era domingo, a operação
+liberou pontualmente somente esse pedido na fila, com horário real e
+checagens de exclusividade da liberação. Não foi simulado outro relógio nem
+alterada a regra automática de dias úteis às 17h.
+
+Duas coletas dos mesmos critérios retornaram 16 candidatas cada. O primeiro
+lote reservou 16 identidades distintas e entregou 13 empresas; três
+ocorrências ficaram como repetidas. A segunda coleta não trouxe identidades
+novas. O pedido foi concluído por `sem_novidades`, com um lote, 16 analisadas
+e 13 entregues. Nenhuma verificação externa foi chamada no caminho neutro.
+Os arquivos original, bruto e verificações do lote foram arquivados no Drive
+e seus downloads conferidos por tamanho e SHA256; o bruto complementar
+também foi arquivado e seu download conferido pelos mesmos critérios.
+Os quatro arquivos coincidiram com seus originais. O mesmo recibo devolveu
+`repetida` sem alterar contagens.
+
+A listagem pessoal do Junior mostrou as 13 empresas como A contatar. As 13
+exclusividades pertencem somente ao destinatário. O cadastro total passou de
+30 para 43 empresas, com um novo grupo. A planilha confirmou concluido,
+revisão 4, versão 6; o envio estava liberado e sem erro. A consulta seguinte
+não encontrou pedido elegível, intenção pendente ou lock.
+
+A automação existente `prospec-o-de-armarinhos-e-variedades` foi atualizada,
+sem duplicata, para **CRM · Coleta Google por vendedor**, e ativada.
+Horário: segunda a sexta às 17h, America/Sao_Paulo; sexta prepara segunda.
+O destino do heartbeat e as demais automações foram preservados. As
+instruções ficam em [Rotina Google](agente-google-rotina.md). A operação
+automática usa somente a API do CRM, sem a liberação administrativa do piloto.
+O computador, o Codex e o Docker precisam estar disponíveis para a execução
+local; dias sem planejamento continuam sem coleta. Não houve envio de
+mensagens nem consulta paga ao CNPJ.biz.

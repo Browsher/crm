@@ -135,5 +135,16 @@ python -B scripts/google/coletar.py conferir --campanha "C:/Users/ADM/projetos/0
 ```
 
 A conferência carrega o kit instalado e lê somente a lista de jobs. O serviço
-e o computador precisam estar ligados para uma coleta. O agendamento legado
-permanece pausado; não foi criado outro agendamento nesta etapa.
+e o computador precisam estar ligados para uma coleta. Na etapa de conexão,
+o agendamento ainda estava pausado; sua ativação posterior ao piloto está
+registrada a seguir, sem outro agendamento.
+
+## Piloto e rotina ativada
+
+Após a homologação básica, o piloto de 25/10 entregou 13 empresas reais ao
+vendedor escolhido pelo usuário; três ocorrências foram repetidas. O mesmo
+recibo foi reconfirmado sem novas empresas. A segunda coleta esgotou as
+novidades e o pedido terminou sincronizado. A rotina existente está ativa
+seg–sex às 17h de São Paulo; o workflow n8n continua sem gatilho de agenda.
+Detalhes: [operação](../../../docs/operacao/agente-google-crm.md) e
+[instruções da rotina](../../../docs/operacao/agente-google-rotina.md).

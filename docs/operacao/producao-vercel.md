@@ -73,8 +73,9 @@ A validação online incluiu:
 
 A sincronização CRM → planilha foi validada com escrita real. A etapa
 posterior conectou o coletor local e homologou as verificações básicas no
-workflow único. Qualificação de perfil e uma entrega real por planejamento
-continuam pendentes; a rotina automática segue pausada.
+workflow único. A qualificação de perfil continua pendente. O piloto de
+entrega real e a ativação posteriores estão registrados na atualização final
+deste documento.
 
 Em 25/10, a mesma publicação foi reconstruída para aplicar
 `GOOGLE_AGENTE_TOKEN` sensível, exclusivo de Production. O deployment atual
@@ -135,3 +136,13 @@ Fontes: [Node e runtime](https://vercel.com/docs/functions/runtimes/node-js/node
 Validação desta preparação: 1266 testes unitários e 587 de integração passaram, com dois skips existentes; 44 jornadas passaram; typecheck, lint, db:checar e build sem env aprovados. npm audit --omit=dev não aponta vulnerabilidades. A auditoria completa mantém cinco avisos altos na cadeia de ESLint de desenvolvimento, sem correção compatível indicada pelo npm; não aplicar o downgrade sugerido para eslint-config-next 14.
 
 A revisão automática inicialmente bloqueou a rotação de app_conexao por falta de autorização explícita para o alvo e o impacto em outros consumidores. Depois de o usuário autorizar a troca e a configuração, a senha foi definida e validada; DATABASE_URL foi enviada por stdin como variável sensível. Não reutilizar a credencial local, que havia devolvido 28P01 no remoto, nem repetir a rotação sem necessidade.
+
+## Ativação da coleta após piloto
+
+Em 25/10/2026, a validação real do planejamento entregou 13 empresas ao
+Junior, com três ocorrências repetidas bloqueadas e repetição idempotente do
+mesmo recibo. A segunda coleta não trouxe novidades; o pedido foi concluído
+e sincronizado. A automação existente foi atualizada e ativada para
+segunda a sexta às 17h de São Paulo. Nenhuma nova publicação da aplicação,
+migração, alteração de permissões ou mensagem foi necessária.
+O procedimento e os limites estão em [Agente Google](agente-google-crm.md).
