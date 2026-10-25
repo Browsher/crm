@@ -135,11 +135,11 @@ da coleta, validação e exportação e o início do planejamento antigo foram
 conferidos antes e depois, sem alteração.
 
 A estrutura passou por revisão independente de compatibilidade com o cliente
-existente. Ainda falta configurar a credencial de serviço e validar a
-sincronização real pelo servidor. Não foram alteradas permissões, credenciais,
-workflows ou agendamentos, nem iniciado scraping. A conferência visual no
-navegador não foi possível por ausência de sessão Google; a validação desta
-etapa usou os valores, formatos e propriedades devolvidos pela API.
+existente. Na preparação inicial da aba, foram conferidos os valores, formatos
+e propriedades devolvidos pela API; não houve alteração de permissões,
+workflows ou agendamentos. A conexão posterior pelo n8n usa a autorização
+Google existente, conforme registrado abaixo, e dispensa conta de serviço
+adicional.
 
 Preparar a aba antes de configurar o workflow mantém os identificadores e o
 contrato definidos. A planilha continua sendo um espelho do CRM; o workflow
@@ -163,6 +163,13 @@ Sem autenticação, o webhook respondeu 403. Nenhuma célula foi escrita,
 nenhum pedido fictício foi inserido e nenhuma coleta ou mensagem foi iniciada.
 O workflow foi desativado ao terminar a conferência; o legado permaneceu
 preservado.
+
+A revisão independente identificou que uma fórmula pode devolver texto vazio
+ou um valor igual ao esperado. O ramo n8n passou a conferir `userEnteredValue`
+antes e depois da gravação, recusando fórmulas e preservando textos literais
+que começam com `=`. Essa leitura de grade também foi conferida na aba real
+(A2:N2), sem escrita; os nós temporários de diagnóstico foram removidos e a
+cópia final permaneceu inativa, com 32 nós.
 
 Os parâmetros privados do CRM estão preparados em
 `.env.n8n-planilha.local`, ignorado pelo Git e sem carregamento automático.

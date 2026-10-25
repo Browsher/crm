@@ -559,7 +559,7 @@
       ],
       "parameters": {
         "method": "GET",
-        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '/values/' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '?valueRenderOption=UNFORMATTED_VALUE' }}",
+        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '?includeGridData=true&ranges=' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '&fields=' + encodeURIComponent('spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue))))') }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleSheetsOAuth2Api",
         "options": {
@@ -583,7 +583,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json,r=$input.first().json;\nif(r.values!==undefined&&(!Array.isArray(r.values)||r.values.length>1||!r.values.every(l=>Array.isArray(l)&&l.every(v=>typeof v==='string'))))throw new Error('Linha divergente.');\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nconst atual=normalizar((r.values||[])[0]||[]);\nconst igual=(a,b)=>JSON.stringify(normalizar(a))===JSON.stringify(normalizar(b));\nif(atual.some(v=>v!=='')&&!igual(atual,c.celulas)&&!c.anteriores.some(a=>igual(atual,a)))throw new Error('Conteúdo manual ou pedido divergente.');\nreturn [{json:{...c,gravar:!igual(atual,c.celulas),values:r.values||[]}}];"
+        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json;\nfunction lerCelulas(m,c){\n const erro=()=>{throw new Error('Linha precisa de conferência; preserve conteúdo manual.');};\n if(!m||m.spreadsheetId!==c.planilha_id||!Array.isArray(m.sheets))erro();\n const abas=m.sheets.filter(s=>s&&s.properties&&s.properties.sheetId===c.aba_id);\n if(abas.length!==1||abas[0].properties.title!=='Planejamento CRM'||!Array.isArray(abas[0].data)||abas[0].data.length!==1)erro();\n const g=abas[0].data[0];\n if(!g||(g.startRow||0)!==c.linha-1||(g.startColumn||0)!==0)erro();\n const rows=g.rowData===undefined?[]:g.rowData;\n if(!Array.isArray(rows)||rows.length>1||rows.some(r=>!r||typeof r!=='object'||Array.isArray(r)))erro();\n const cells=rows[0]?.values===undefined?[]:rows[0].values;\n if(!Array.isArray(cells)||cells.length>14)erro();\n return cells.map(cell=>{\n  if(!cell||typeof cell!=='object'||Array.isArray(cell))erro();\n  const v=cell.userEnteredValue;\n  if(v===undefined)return '';\n  if(!v||typeof v!=='object'||Array.isArray(v))erro();\n  const keys=Object.keys(v);\n  if(keys.length===0)return '';\n  if(keys.length!==1||keys[0]!=='stringValue'||typeof v.stringValue!=='string')erro();\n  return v.stringValue;\n });\n}\n\nconst valores=lerCelulas($input.first().json,c);\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nconst atual=normalizar(valores);\nconst igual=(a,b)=>JSON.stringify(normalizar(a))===JSON.stringify(normalizar(b));\nif(atual.some(v=>v!=='')&&!igual(atual,c.celulas)&&!c.anteriores.some(a=>igual(atual,a)))throw new Error('Conteúdo manual ou pedido divergente.');\nreturn [{json:{...c,gravar:!igual(atual,c.celulas),values:valores.length?[valores]:[]}}];"
       }
     },
     {
@@ -658,7 +658,7 @@
       ],
       "parameters": {
         "method": "GET",
-        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '/values/' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '?valueRenderOption=UNFORMATTED_VALUE' }}",
+        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '?includeGridData=true&ranges=' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '&fields=' + encodeURIComponent('spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue))))') }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleSheetsOAuth2Api",
         "options": {
@@ -682,7 +682,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json,r=$input.first().json;\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nif(!Array.isArray(r.values)||r.values.length!==1||!Array.isArray(r.values[0])||JSON.stringify(normalizar(r.values[0]))!==JSON.stringify(normalizar(c.celulas)))throw new Error('Gravação não confirmada.');\nreturn [{json:{protocolo:1,estado:'sincronizado',planilha_id:c.planilha_id,aba_id:c.aba_id,pedido_id:c.pedido_id,envio_id:c.envio_id,linha:c.linha,revisao:c.revisao,versao:c.versao,celulas:c.celulas}}];"
+        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json;\nfunction lerCelulas(m,c){\n const erro=()=>{throw new Error('Linha precisa de conferência; preserve conteúdo manual.');};\n if(!m||m.spreadsheetId!==c.planilha_id||!Array.isArray(m.sheets))erro();\n const abas=m.sheets.filter(s=>s&&s.properties&&s.properties.sheetId===c.aba_id);\n if(abas.length!==1||abas[0].properties.title!=='Planejamento CRM'||!Array.isArray(abas[0].data)||abas[0].data.length!==1)erro();\n const g=abas[0].data[0];\n if(!g||(g.startRow||0)!==c.linha-1||(g.startColumn||0)!==0)erro();\n const rows=g.rowData===undefined?[]:g.rowData;\n if(!Array.isArray(rows)||rows.length>1||rows.some(r=>!r||typeof r!=='object'||Array.isArray(r)))erro();\n const cells=rows[0]?.values===undefined?[]:rows[0].values;\n if(!Array.isArray(cells)||cells.length>14)erro();\n return cells.map(cell=>{\n  if(!cell||typeof cell!=='object'||Array.isArray(cell))erro();\n  const v=cell.userEnteredValue;\n  if(v===undefined)return '';\n  if(!v||typeof v!=='object'||Array.isArray(v))erro();\n  const keys=Object.keys(v);\n  if(keys.length===0)return '';\n  if(keys.length!==1||keys[0]!=='stringValue'||typeof v.stringValue!=='string')erro();\n  return v.stringValue;\n });\n}\n\nconst m=$input.first().json;\nconst avaliada=$('Planilha · Avaliar linha').first().json;\nconst valores=avaliada.gravar?lerCelulas(m,c):avaliada.values?.[0];\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nif(!Array.isArray(valores)||JSON.stringify(normalizar(valores))!==JSON.stringify(normalizar(c.celulas)))throw new Error('Gravação não confirmada.');\nreturn [{json:{protocolo:1,estado:'sincronizado',planilha_id:c.planilha_id,aba_id:c.aba_id,pedido_id:c.pedido_id,envio_id:c.envio_id,linha:c.linha,revisao:c.revisao,versao:c.versao,celulas:c.celulas}}];"
       }
     },
     {

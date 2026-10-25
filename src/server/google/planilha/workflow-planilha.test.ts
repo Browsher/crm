@@ -11,7 +11,7 @@ const envio = '00000000-0000-4000-8000-000000000003'
 const celulas = [pedido,'3','00000000-0000-4000-8000-000000000002','Fictício','2026-10-26','segunda-feira','=IMPORTXML("literal")','','São Paulo','SP','planejado','2026-10-25T15:00:00Z','2','{"telefone":["fixo"]}']
 const entrada = () => ({ protocolo:1,operacao:'sincronizar',planilha_id:planilha,aba_id:10151006,pedido_id:pedido,envio_id:envio,linha:2,revisao:3,versao:2,celulas:[...celulas],anteriores:[] as string[][] })
 const ler = async () => JSON.parse(await readFile('workflows/n8n/google/verificar-empresas.json','utf8')) as Fluxo
-async function executar(body: Record<string,unknown>, op: { existente?:string[]; header?:string[]; rowCount?:number; retornoDivergente?:boolean; planilhaDivergente?:boolean } = {}) {
+async function executar(body: Record<string,unknown>, op: { existente?:string[]; header?:string[]; rowCount?:number; retornoDivergente?:boolean; planilhaDivergente?:boolean; retornoSemGrade?:boolean; formulas?:Record<number,string>; formulasDepois?:Record<number,string>; observado?:{escritas:number} } = {}) {
   const fluxo = await ler()
   let nome = 'Receber planejamento'
   let atual: Record<string,unknown> = {body}
@@ -47,6 +47,15 @@ async function executar(body: Record<string,unknown>, op: { existente?:string[];
         const req = (b as {requests:{appendDimension:{length:number}}[]}).requests[0]
         tamanho += req.appendDimension.length
         atual = {}
+      } else if(u.searchParams.has('ranges')) {
+        const valores=op.retornoDivergente&&escritas?['divergente']:linha
+        const formulas=escritas?(op.formulasDepois??{}):(op.formulas??{})
+        const comprimento=Math.max(valores.length,...Object.keys(formulas).map(k=>Number(k)+1),0)
+        const values=Array.from({length:comprimento},(_,i)=>i in formulas?{userEnteredValue:{formulaValue:formulas[i]}}:
+          valores[i]===undefined?{}:{userEnteredValue:{stringValue:valores[i]}})
+        atual={spreadsheetId:planilha,sheets:[{properties:{sheetId:10151006,title:'Planejamento CRM'},
+          data:[{startRow:Number(body.linha)-1,rowData:values.length?[{values}]:[]}]}]}
+        if(op.retornoSemGrade&&escritas)atual={values:[linha]}
       } else if(!u.pathname.includes('/values/')) {
         atual = {spreadsheetId:op.planilhaDivergente?'outro':planilha,sheets:[{properties:{sheetId:10151006,title:'Planejamento CRM',gridProperties:{rowCount:tamanho,columnCount:14}}}]}
       } else {
@@ -57,6 +66,7 @@ async function executar(body: Record<string,unknown>, op: { existente?:string[];
             expect(u.searchParams.get('valueInputOption')).toBe('RAW')
             linha = (b as {values:string[][]}).values[0]
             escritas++
+            if(op.observado)op.observado.escritas=escritas
             atual = {updatedRows:1}
           } else atual = {values:op.retornoDivergente&&escritas?[['divergente']]:linha.length?[linha]:[]}
         }
@@ -127,4 +137,33 @@ test('expande apenas o fim da grade para linha alocada além da capacidade',asyn
   expect(r.tamanho).toBe(1002)
   expect(r.chamadas.filter(c=>c.method==='POST')).toHaveLength(1)
   expect(r.escritas).toBe(1)
+})
+
+test('preserva fórmula manual com resultado vazio, sem PUT',async()=>{
+  const observado={escritas:0}
+  await expect(executar(entrada(),{formulas:{0:'=""'},observado})).rejects.toThrow()
+  expect(observado.escritas).toBe(0)
+})
+test('preserva fórmula cujo resultado parece uma intenção anterior conhecida',async()=>{
+  const anterior=[...celulas];anterior[1]='2';anterior[12]='1';anterior[6]='Nicho anterior'
+  const observado={escritas:0}
+  await expect(executar({...entrada(),anteriores:[anterior]},{existente:anterior,formulas:{6:'="Nicho anterior"'},observado})).rejects.toThrow()
+  expect(observado.escritas).toBe(0)
+})
+test('não confirma fórmula manual equivalente a texto RAW iniciado por igual',async()=>{
+  await expect(executar(entrada(),{existente:[...celulas],formulas:{6:'=INDIRECT("A99")'}})).rejects.toThrow()
+})
+test('fórmula inserida após PUT impede confirmar a revisão',async()=>{
+  const observado={escritas:0}
+  await expect(executar(entrada(),{formulasDepois:{0:'=INDIRECT("A99")'},observado})).rejects.toThrow()
+  expect(observado.escritas).toBe(1)
+})
+test('legado não sobrescreve nem confirma coluna N preenchida manualmente',async()=>{
+  const observado={escritas:0}
+  await expect(executar({...entrada(),celulas:celulas.slice(0,13)},{existente:[...celulas.slice(0,13),'manual'],observado})).rejects.toThrow()
+  expect(observado.escritas).toBe(0)
+})
+
+test('retorno de valores sem identidade da grade após PUT não confirma',async()=>{
+  await expect(executar(entrada(),{retornoSemGrade:true})).rejects.toThrow()
 })

@@ -36,11 +36,11 @@ src/server/google/verificacoes/contrato.test.ts; tests/integracao/google-planilh
 criarClientePlanilha mantém conectar().gravar(payload, operacao).
 O grafo aceita operacao conferir ou sincronizar e devolve identidade/células exatas.
 
-- [ ] Escrever testes RED de configuração, recibo, perda de transporte, grafo RAW e conflitos.
-- [ ] Executar testes unitários e observar falhas pela ausência do transporte/ramo.
-- [ ] Implementar transporte e ramo mantendo o cliente direto.
-- [ ] Testar integração do banco com resposta incerta via n8n; executar testes direcionados, typecheck e lint.
-- [ ] Registrar resultado e commit apenas dos arquivos desta tarefa.
+- [x] Escrever testes RED de configuração, recibo, perda de transporte, grafo RAW e conflitos.
+- [x] Executar testes unitários e observar falhas pela ausência do transporte/ramo.
+- [x] Implementar transporte e ramo mantendo o cliente direto.
+- [x] Testar integração do banco com resposta incerta via n8n; executar testes direcionados, typecheck e lint.
+- [x] Registrar resultado e commit apenas dos arquivos desta tarefa.
 
 ## Task 2: Preparar instalação e operação
 
@@ -49,8 +49,8 @@ Artifacts privados locais: backup do legado, credencial Header Auth e estado de 
 
 **Interfaces:** Usa o grafo e contrato da tarefa 1. IDs observados da API, nunca credenciais exportadas.
 
-- [ ] Configurar a cópia preparada com credencial Google existente e Header Auth próprio.
-- [ ] Testar somente leitura real de metadados/cabeçalho, sem coleta ou alteração de registros.
-- [ ] Documentar IDs, resultados e pendências reais de servidor/ativação.
-- [ ] Executar revisão independente final e corrigir achados relevantes com RED/GREEN.
-- [ ] Commit/push na PR existente; manter a rotina sem novo agendamento.
+- [x] Configurar a cópia preparada com credencial Google existente e Header Auth próprio.
+- [x] Testar somente leitura real de metadados/cabeçalho, sem coleta ou alteração de registros.
+- [x] Documentar IDs, resultados e pendências reais de servidor/ativação.
+- [x] Executar revisão independente final e corrigir achados relevantes com RED/GREEN.
+- [x] Commit/push na PR existente; manter a rotina sem novo agendamento.

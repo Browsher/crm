@@ -30,7 +30,9 @@ O POST de sincronização contém protocolo 1, destino, pedido, envio, revisão,
 versão, linha fixa, células e intenções anteriores. O destino é fixo dentro
 do workflow; não recebe URL ou aba arbitrária do vendedor. Só confirma depois
 de ler a linha escrita como RAW, devolvendo as identidades e células exatas.
-Não acrescenta registros por append e não interpreta fórmulas das células.
+Não acrescenta registros por append. Confere o valor digitado
+(`userEnteredValue`) antes e depois do PUT: fórmulas impedem sobrescrita e
+confirmação; textos RAW iniciados por `=` continuam literais.
 Pedidos têm limite de 128 KiB e respostas de 256 KiB; falhas ou divergências
 mantêm o envio incerto no banco do CRM.
 
