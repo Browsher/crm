@@ -15,51 +15,69 @@ O site usa HTTPS na Vercel e o banco CRM CH já existente na Railway. O computad
 - Limpeza local concluída em transação: 66 empresas, três vendedores e seus registros de teste removidos sem backup. Gestor e sua credencial, 1.209.313 CEPs, a carga de CEP e as 38 migrações preservados. Arquivos originais da coleta permanecem no disco.
 - Atalho existente CRM Prospecção atualizado para o endereço hospedado. Não inicia Docker, banco ou servidor local. CRM Social permaneceu intacto.
 
-## Preparação da sincronização Google em 25/10/2026
+## Publicação e sincronização Google em 25/10/2026
 
-O projeto `crm-prospeccao`, na mesma equipe, recebeu quatro variáveis no
-alvo técnico Production, após autorização explícita do usuário para o
-envio do token da integração:
+O CRM foi atualizado em
+[crm-prospeccao-bice.vercel.app](https://crm-prospeccao-bice.vercel.app),
+deployment `dpl_5nqm29e4oSrmLJM33eXe5Jk761r1`, estado READY. A fonte é
+`e42adfa`, aprovada no [CI #153](https://github.com/Browsher/crm/actions/runs/40215177831).
+O deployment foi preparado com `--prod --skip-domain`, conferido e promovido
+ao endereço estável. A PR #55 permanece em rascunho, sem merge; esta é a
+publicação do ambiente de testes online já autorizado.
+
+Foram cadastradas por stdin, como `sensitive` e somente em Production:
 
 - `GOOGLE_PLANILHA_ID`
 - `GOOGLE_PLANILHA_ABA_ID`
 - `GOOGLE_PLANILHA_N8N_URL`
 - `GOOGLE_PLANILHA_N8N_TOKEN`
+- `GOOGLE_AGENTE_USUARIO_ID`
 
-Os valores foram fornecidos por stdin; os metadados confirmaram tipo
-`sensitive` e escopo exclusivamente Production para as quatro. As oito
-variáveis anteriores foram preservadas, totalizando 12; Preview permanece
-sem variáveis. O token pertence ao webhook de planejamento, separado da
-chave administrativa do n8n; a autorização Google permanece no n8n.
+A identidade operacional aponta para o único gestor ativo com senha
+definitiva já existente. Os metadados confirmaram tipo e escopo das cinco
+variáveis; as oito anteriores foram preservadas, totalizando 13. Preview
+continua sem variáveis. A autorização Google permanece no n8n.
 
-A configuração local passou pelo mesmo validador de ambiente do CRM e
-corresponde à aba e ao webhook já conferidos. Uma nova publicação é
-necessária para receber essas variáveis; o site existente não foi
-republicado e o workflow preparado permanece inativo.
+Antes da migração, foi gerado backup privado custom com pg_dump 18, TLS
+`verify-full`, 14.030.114 bytes e SHA256 registrado localmente. O arquivo
+foi lido e descomprimido integralmente por pg_restore, sem conexão a banco.
+Isso confere o arquivo; não representa ensaio de restauração em banco.
 
-A conferência somente leitura do Railway CRM CH usou TLS verificado:
-38 migrações aplicadas, sem divergência, e sete pendentes:
+O runner separado aplicou somente as migrações pendentes 0038–0044.
+Resultado: **45 aplicadas, zero pendentes/divergentes e invariantes aprovadas**.
+A comparação imediatamente após a migração preservou contagens das 17
+tabelas anteriores, inclusive 30 empresas e quatro usuários. Os hashes
+também coincidiram nas tabelas de até 10 mil registros; na base maior de
+CEPs foi conferida a contagem. Existem três perfis para os três vendedores,
+nenhum vendedor sem perfil e nenhuma execução iniciada.
 
-```text
-0038_busca_empresas.sql
-0039_busca_papel_vigente.sql
-0040_google_planejamento.sql
-0041_google_agentes_planilha.sql
-0042_google_criterios_rodadas.sql
-0043_prospeccao_pessoal.sql
-0044_busca_filtros_completos.sql
-```
+O workflow `gITBY7vBYNfgUWMp`, **CRM · Prospecção e planejamento**, está
+ativo para receber webhooks autenticados, com 32 nós e nenhum agendamento.
+A conferência sem token retornou 403; a autenticada confirmou os 14
+cabeçalhos. O workflow legado foi preservado. A coleta e os provedores
+de verificação continuam sem ativação nesta operação.
 
-O banco tem 30 empresas e quatro usuários; os registros foram preservados.
-Nenhuma migração foi aplicada nesta conferência. Antes da validação de
-escrita pelo servidor, aplicar as migrações pela operação separada prevista
-neste guia e publicar a versão revisada. O código da sincronização em
-`5062475` passou no [CI #152](https://github.com/Browsher/crm/actions/runs/40214110803),
-incluindo jornadas no navegador e conferência remota das migrações.
+A validação online incluiu:
+
+- login por sessão real de vendedor; tentativa inválida com mensagem
+  esperada e nenhuma falha de infraestrutura;
+- páginas privadas redirecionando visitantes sem sessão; `/usuarios`
+  redirecionando o vendedor para `/meu-dia`;
+- salvamento de um dia futuro identificado como teste, com cidade inteira
+  e critério de e-mail; a interface confirmou sincronização;
+- correlação da revisão/versão com a intenção persistida e os 14 valores
+  lidos diretamente do Google Sheets na linha 2; envio liberado e erro nulo;
+- retorno do teste a **Não definido**, com critérios neutros, confirmado
+  na revisão/versão 3 e na mesma linha, sem duplicação;
+- zero execuções, lotes, publicações de coleta e resultados ao terminar.
+
+A sincronização CRM → planilha foi validada com escrita real. O próximo
+passo é configurar e homologar o executor de coleta e os provedores das
+verificações selecionadas; somente depois ajustar a rotina existente.
 
 ## Configuração do projeto
 
-Foi criado um projeto separado chamado crm-prospeccao. A publicação atual foi feita pelo CLI, com código já integrado e validado. Uma conexão futura com Browsher/crm deve usar main e a raiz do repositório; ela ainda não foi ativada. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.
+Foi criado um projeto separado chamado crm-prospeccao. As publicações são feitas pelo CLI; a atualização de 25/10 usa a fonte revisada da PR #55, com CI aprovado e ainda sem merge. Uma conexão futura com Browsher/crm deve usar main e a raiz do repositório; ela ainda não foi ativada. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.
 
 O vercel.json declara Next.js, npm ci e npm run build. package.json fixa Node 24.x, a mesma versão principal do CI. O .vercelignore exclui arquivos de ambiente, certificados locais, bases coletadas, logs e artefatos de teste da carga de código.
 

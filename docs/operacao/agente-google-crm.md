@@ -81,11 +81,11 @@ o vendedor vê apenas as empresas entregues e canais conferidos.
 
 ## Preparar a ativação
 
-A integração nova continua sem ativação operacional. A preparação manual da aba compartilhada
-está registrada abaixo. O código não provisiona abas automaticamente, não aplica
-migrações em produção, não chama o motor real e não consome créditos.
-Antes de ativar, publicar a versão revisada, aplicar a migração 0040 pelo
-procedimento de banco existente, seguida da 0041 e da **0042**, e configurar no servidor:
+A sincronização de planejamento está publicada e validada, conforme registro
+abaixo. A coleta automática continua desligada. O aplicativo não provisiona
+abas nem aplica migrações automaticamente; essas operações são separadas.
+A ativação da coleta exige versão revisada, migrações 0040–0042 aplicadas e
+as configurações de servidor e executor listadas a seguir:
 
 - `GOOGLE_AGENTE_TOKEN`: segredo aleatório de pelo menos 32 caracteres;
 - `GOOGLE_AGENTE_USUARIO_ID`: UUID de um gestor ativo, com senha definitiva;
@@ -173,21 +173,29 @@ cópia final permaneceu inativa, com 32 nós.
 
 Os parâmetros privados locais permanecem em
 `.env.n8n-planilha.local`, ignorado pelo Git e sem carregamento automático.
-Em 25/10/2026, os quatro parâmetros `GOOGLE_PLANILHA_*` do transporte n8n
-foram cadastrados como variáveis sensíveis em Production no projeto Vercel
-`crm-prospeccao`, após autorização explícita do usuário. Os metadados
-confirmaram o tipo e o escopo, preservando as oito variáveis anteriores e
-Preview sem variáveis. A nova configuração depende de uma nova publicação
-para chegar ao servidor; o site não foi republicado nesta etapa.
+Em 25/10/2026, os quatro parâmetros do transporte n8n e
+`GOOGLE_AGENTE_USUARIO_ID` foram cadastrados como variáveis sensíveis
+somente em Production no projeto Vercel `crm-prospeccao`. A identidade
+operacional usa o único gestor ativo com senha definitiva existente.
+Os metadados confirmaram tipo e escopo; são 13 variáveis, com as oito
+anteriores preservadas e Preview sem variáveis.
 
-A conferência remota do banco encontrou 38 migrações aplicadas, sem
-divergências, e sete pendentes (0038 a 0044). Nenhuma foi aplicada nesta
-conferência. A validação de sincronização de pedido real depende dessas
-migrações e da publicação revisada. O acesso real de leitura no n8n foi
-conferido; escrita e revisões foram validadas com Sheets simulado e banco
-local descartável. As etapas reais de qualificação e WhatsApp seguem
-dependentes da configuração dos provedores já descrita abaixo. O estado do
-servidor está registrado em [Produção Vercel](producao-vercel.md).
+O banco foi atualizado pelo runner separado após backup conferido:
+45 migrações aplicadas, sem pendências/divergências e invariantes aprovadas.
+O deployment `dpl_5nqm29e4oSrmLJM33eXe5Jk761r1`, fonte `e42adfa` com
+CI #153 aprovado, foi promovido ao endereço estável do CRM. O workflow
+está ativo para webhooks autenticados, sem agendamento de coleta.
+
+Uma sessão real de vendedor salvou um dia futuro de teste com cidade
+inteira e critério de e-mail. A revisão/versão confirmada no banco coincidiu
+com a intenção e os 14 valores lidos diretamente na linha 2 do Google Sheets,
+com envio liberado e erro nulo. O teste voltou a **Não definido**, com
+critérios neutros e revisão/versão 3 na mesma linha. Nenhuma coleta foi
+iniciada. Escrita real e atualização sem duplicação estão validadas.
+
+As etapas reais de qualificação e WhatsApp continuam dependentes da
+configuração dos provedores descrita abaixo. O estado operacional e a
+conferência de preservação estão em [Produção Vercel](producao-vercel.md).
 
 O ramo de sincronização só aceita o destino fixo da aba preparada. Confere
 cabeçalho, linha vazia ou intenção conhecida, escreve RAW na posição alocada

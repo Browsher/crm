@@ -42,9 +42,19 @@ o ramo somente leitura conferiu a planilha e os 14 cabeçalhos reais.
 A chamada sem token foi recusada com 403. Zero escritas e zero coletas.
 A cópia preparada ficou inativa; o fluxo legado não foi alterado.
 
+Na publicação posterior de 25/10, o workflow foi ativado para webhooks
+autenticados, sem agendamento. O CRM publicou os cinco parâmetros da
+sincronização, incluindo a identidade de gestor operacional. Uma sessão
+real de vendedor salvou um dia de teste; a revisão/versão confirmada foi
+correlacionada à intenção do banco e aos 14 valores lidos diretamente na
+linha 2. O dia voltou a Não definido, com critérios neutros e revisão/versão
+3 na mesma linha. Nenhuma coleta foi iniciada. O template versionado
+permanece inativo e sem credenciais para instalações novas.
+
 O tipo de operação `conferir` não recebe pedidos nem grava dados de exemplo.
-A ativação permanente depende da publicação/configuração do CRM e dos demais
-provedores. O teste de leitura não é uma validação de ponta a ponta da entrega.
+O ramo de planejamento está ativo e validado com gravação real. A coleta
+e a entrega de empresas dependem da configuração e homologação do executor
+e dos provedores selecionados.
 
 ## Configuração para ativação
 
