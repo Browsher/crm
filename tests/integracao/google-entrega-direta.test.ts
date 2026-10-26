@@ -34,7 +34,7 @@ beforeEach(async () => {
 })
 async function preparar(c: CriteriosGoogle = criteriosVazios(), data = dia, destinatario = vendedor) {
   const [{ id }] = await banco.sql<{ id: string }>("INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf,criterios,snapshot,estado) VALUES ($1,$2,'Loja','','São Paulo','SP',$3,jsonb_build_object('nicho','Loja','bairro','','cidade','São Paulo','uf','SP','criterios',$3::jsonb,'revisao',1),'coletando') RETURNING id", [destinatario, data, JSON.stringify(c)])
-  const [{ eid, hash }] = await banco.sql<{ eid: string; hash: string }>("INSERT INTO google_execucao(executor_id,gestor_id,pedido_id,revisao,snapshot) SELECT $1,$2,id,1,snapshot FROM google_planejamento WHERE id=$3 RETURNING id AS eid,encode(sha256(convert_to(snapshot::text,'UTF8')),'hex') AS hash", [executor, gestor, id])
+  const [{ eid, hash }] = await banco.sql<{ eid: string; hash: string }>("INSERT INTO google_execucao(executor_id,gestor_id,pedido_id,vendedor_id,revisao,snapshot) SELECT $1,$2,id,vendedor_id,1,snapshot FROM google_planejamento WHERE id=$3 RETURNING id AS eid,encode(sha256(convert_to(snapshot::text,'UTF8')),'hex') AS hash", [executor, gestor, id])
   async function lote(empresas: Record<string, unknown>[], evidencias: EvidenciaGoogle[] = []) {
     const lote_id = randomUUID()
     await chamar(gestor, 'SELECT google_agente_reservar_lote($1,$2,$3)', [id, executor, JSON.stringify({ lote_id, candidatas: empresas })])

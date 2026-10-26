@@ -29,8 +29,8 @@ async function entregar(id: string, empresas: unknown[] = [empresa], comprovante
   try {
     await cliente.query('BEGIN')
     await cliente.query('SELECT pg_advisory_xact_lock(27,1)')
-    await cliente.query(`INSERT INTO google_execucao(executor_id,gestor_id,pedido_id,contrato)
-      SELECT $1,$2,id,1 FROM google_planejamento WHERE id=$3 ON CONFLICT (pedido_id) DO UPDATE SET contrato=1`, [executor, gestor, id])
+    await cliente.query(`INSERT INTO google_execucao(executor_id,gestor_id,pedido_id,vendedor_id,contrato)
+      SELECT $1,$2,id,vendedor_id,1 FROM google_planejamento WHERE id=$3 ON CONFLICT (pedido_id) DO UPDATE SET contrato=1`, [executor, gestor, id])
     await cliente.query("SELECT set_config('app.usuario_id',$1,true),set_config('role','app_usuario',true)", [usuario])
     const r = await cliente.query<{ resultado: string }>('SELECT google_agente_entregar($1,$2,$3,$4) AS resultado', [id, JSON.stringify(empresas), JSON.stringify(comprovante), executor])
     await cliente.query('COMMIT')

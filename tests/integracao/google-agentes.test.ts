@@ -93,15 +93,17 @@ test('o agente só inicia com a revisão correta confirmada', async () => {
   await sincronizar(id)
   expect(await proximo()).toMatchObject({ pedido: { id, vendedor_id: vendedor } })
 })
-test('dois executores não ocupam o motor e a planilha ao mesmo tempo; o dono retoma', async () => {
+test('dois executores atendem vendedores diferentes e cada dono retoma', async () => {
   const a = await plano()
   const b = await plano(outro)
   await sincronizar(a)
   await sincronizar(b)
   expect(await proximo()).toMatchObject({ pedido: { id: a } })
-  expect(await proximo(randomUUID())).toMatchObject({ pedido: null, ocupado: true })
+  const segundoExecutor = randomUUID()
+  expect(await proximo(segundoExecutor)).toMatchObject({ pedido: { id: b } })
   expect(await proximo()).toMatchObject({ pedido: { id: a } })
-  expect(await banco.sql('SELECT count(*)::int AS n FROM google_execucao WHERE concluido_em IS NULL')).toEqual([{ n: 1 }])
+  expect(await proximo(segundoExecutor)).toMatchObject({ pedido: { id: b } })
+  expect(await banco.sql('SELECT count(*)::int AS n FROM google_execucao WHERE concluido_em IS NULL')).toEqual([{ n: 2 }])
 })
 test('pausa bloqueia novas buscas, mas não invalida a etapa iniciada', async () => {
   const id = await plano()
