@@ -1,6 +1,6 @@
 # Coleta Google simultânea para três vendedores
 
-Data: 2026-10-26. Estado: desenho para revisão do usuário; paralelismo de produção ainda não implantado. Builder check independente concluído, sem dúvidas materiais pendentes.
+Data: 2026-10-26. Estado: desenho aprovado pelo usuário em 26/10/2026; paralelismo de produção ainda não implantado. Builder check independente concluído, sem dúvidas materiais pendentes.
 
 ## Intenção e decisões do usuário
 
@@ -104,7 +104,7 @@ Os executores estáveis e as intenções atuais de `.google-agente` permanecem n
 
 ## Entrega e ativação
 
-Implementar em passos com teste falhando primeiro. Validar banco isolado, três posições com servidores falsos e workflow com entradas controladas. Exigir revisão independente do conjunto antes de alterar produção. Não tratar o ensaio de motores como validação do fluxo CRM/Drive/n8n.
+Implementar em passos com teste falhando primeiro. Validar banco isolado, três posições com servidores falsos e workflow com entradas controladas. Pausar a rotina existente antes de editar os scripts que ela usa, preservando sua configuração. Exigir revisão independente do conjunto antes de migrar o banco, publicar código, alterar motores ou reativar a coleta. Não tratar o ensaio de motores como validação do fluxo CRM/Drive/n8n.
 
 Após os checks: guardar backup, conferir ambiente e execuções abertas, aplicar migração nova, publicar o código correspondente e preparar motores sem substituir o original. Pausar a automação existente durante essa janela e reativar somente depois de conferir versões e retomadas. Atualizar o prompt da mesma automação, preservando identidade, horário e preferências de notificação.
 
