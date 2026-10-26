@@ -8,10 +8,10 @@ import { conferirRetornoVerificacoes } from './cliente'
 type No = { name: string; type: string; parameters: { jsCode?: string; conditions?: {conditions: {leftValue:string}[]}; responseBody?:string; numbers?:string } }
 type Grafo = {nodes:No[];connections:Record<string,{main:{node:string}[][]}>}
 const base = {pedido_id:'00000000-0000-4000-8000-000000000001',execucao_id:'00000000-0000-4000-8000-000000000002',lote_id:'00000000-0000-4000-8000-000000000003',revisao:1,snapshot_sha256:'a'.repeat(64)}
-async function executar(criterios: CriteriosGoogle, candidatas: Record<string,unknown>[], retorno?: unknown, alterar?: Record<string,unknown>, conectado=true) {
+async function executar(criterios: CriteriosGoogle, candidatas: Record<string,unknown>[], retorno?: unknown, alterar?: Record<string,unknown>, conectado=true, identidade=base, aoConsultar?: () => void) {
   const w: Grafo = JSON.parse(await readFile('workflows/n8n/google/verificar-empresas.json','utf8'))
   let nome = 'Validar pedido'
-  let entrada: {json:Record<string,unknown>}[] = [{json:{body:{...base,criterios,candidatas,verificacoes_requeridas:[],...alterar}}}]
+  let entrada: {json:Record<string,unknown>}[] = [{json:{body:{...identidade,criterios,candidatas,verificacoes_requeridas:[],...alterar}}}]
   const memoria = new Map<string, typeof entrada>()
   const chamadas: unknown[] = []
   for(let i=0;i<40;i++) {
@@ -24,11 +24,12 @@ async function executar(criterios: CriteriosGoogle, candidatas: Record<string,un
     else if(n.type==='n8n-nodes-base.if') ramo=avaliar(n.parameters.conditions!.conditions[0].leftValue.replace(/^=\{\{\s*|\s*\}\}$/g,''))?0:1
     else if(n.type==='n8n-nodes-evolution-api.evolutionApi') {
       chamadas.push(avaliar(n.parameters.numbers!.replace(/^=\{\{\s*|\s*\}\}$/g,'')))
-      entrada=[{json:retorno as Record<string,unknown>}]
+      aoConsultar?.()
+      entrada=[{json:await Promise.resolve(retorno) as Record<string,unknown>}]
     } else if(n.name==='Consultar conexão Evolution') entrada=[{json:{statusCode:200,body:{instance:{state:conectado?'open':'close'}}}}]
     else if(n.type==='n8n-nodes-base.respondToWebhook') {
       const dados=JSON.parse(avaliar(n.parameters.responseBody!.replace(/^=\{\{\s*|\s*\}\}$/g,'')))
-      return {dados,chamadas,conferido:conferirRetornoVerificacoes({...base,criterios},candidatas,dados)}
+      return {dados,chamadas,conferido:conferirRetornoVerificacoes({...identidade,criterios},candidatas,dados)}
     } else throw new Error('Chamada externa indevida: '+n.name)
     memoria.set(nome,entrada)
     nome=w.connections[nome].main[ramo][0].node
@@ -76,4 +77,29 @@ test.each([{revisao:0},{snapshot_sha256:'x'},{candidatas:[{google_place_id:'A'},
 
 test('instância desconectada impede consulta e aprovação',async()=>{
  await expect(executar({...criteriosVazios(),telefone:['whatsapp']},[{google_place_id:'A',telefone:'11999998888'}],{success:true,data:[{number:'5511999998888',exists:true}]},undefined,false)).rejects.toThrow('desconectada')
+})
+
+
+test('tres contextos simultaneos retornam fora de ordem sem misturar evidencias', async () => {
+  const criar = () => { let liberar!: (v: unknown) => void; const promessa = new Promise<unknown>(r => { liberar = r }); return { promessa, liberar } }
+  const respostas = [criar(), criar(), criar()]
+  const identidades = [0, 1, 2].map(i => ({ ...base, pedido_id: '00000000-0000-4000-8000-00000000001'+i, execucao_id: '00000000-0000-4000-8000-00000000002'+i, lote_id: '00000000-0000-4000-8000-00000000003'+i, revisao: i+1, snapshot_sha256: String(i+1).repeat(64) }))
+  let avisar!: () => void, entradas = 0
+  const tres = new Promise<void>(r => { avisar = r })
+  const criterio = { ...criteriosVazios(), telefone: ['whatsapp'] } as CriteriosGoogle
+  const tarefas = identidades.map((id, i) => executar(criterio, [{ google_place_id: 'place-'+i, telefone: '1199999888'+i }], respostas[i].promessa, undefined, true, id, () => { if (++entradas === 3) avisar() }))
+  const resultados = Promise.allSettled(tarefas)
+  await tres
+  respostas[2].liberar({ success: true, data: [{ number: '5511999998882', exists: true }] })
+  respostas[1].liberar({ success: false, error: 'fixture' })
+  respostas[0].liberar({ success: true, data: [{ number: '5511999998880', exists: false }] })
+  const r = await resultados
+  expect(r[1].status).toBe('rejected')
+  for (const i of [0, 2]) {
+    expect(r[i].status).toBe('fulfilled')
+    if (r[i].status === 'fulfilled') {
+      expect(r[i].value.dados).toMatchObject(identidades[i])
+      expect(r[i].value.conferido.evidencias[0].candidata).toBe('place-'+i)
+    }
+  }
 })

@@ -148,3 +148,15 @@ novidades e o pedido terminou sincronizado. A rotina existente estÃ¡ ativa
 segâ€“sex Ã s 17h de SÃ£o Paulo; o workflow n8n continua sem gatilho de agenda.
 Detalhes: [operaÃ§Ã£o](../../../docs/operacao/agente-google-crm.md) e
 [instruÃ§Ãµes da rotina](../../../docs/operacao/agente-google-rotina.md).
+
+
+## Uso simultâneo por três vendedores
+
+O mesmo webhook recebe contextos independentes com pedido, execução, lote,
+revisão e hash do snapshot. O grafo usa o contexto da própria execução;
+nenhuma variável global associa respostas de vendedores. Teste do grafo real
+cobre respostas fora de ordem, uma falha e critérios neutros sem HTTP. Os 17
+nós do ramo da planilha e suas conexões permanecem preservados.
+
+O coordenador local agenda os três motores; o n8n não recebe outro gatilho
+de horário nem precisa de workflow por vendedor. Ver [rotina do coordenador](../../../docs/operacao/agente-google-rotina.md).

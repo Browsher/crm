@@ -8,19 +8,20 @@ import { promisify } from 'node:util'
 import { expect, test } from 'vitest'
 import { criteriosVazios } from './lib/google/criterios'
 import { lerComando } from './server/google/protocolo'
+import { coordenar, type ServicosPool } from '../scripts/google/coordenar.mts'
 import { executarPedido } from '../scripts/google/fluxo.mts'
-import type { Posicao, SolicitacaoDrive, ComprovanteDrive, DependenciasFluxo } from '../scripts/google/coordenador-tipos.mts'
+import type { Posicao, SolicitacaoDrive, ComprovanteDrive, DependenciasFluxo, MotorId } from '../scripts/google/coordenador-tipos.mts'
 const executar=promisify(execFile)
 const candidatas=(n:number)=>Array.from({length:n},(_,i)=>({google_place_id:'place-'+i,nome_fantasia:'Loja '+i,telefone:null,cnpj:null}))
-async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false){
+async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false,motor:MotorId='01'){
  const raiz=await mkdtemp(join(tmpdir(),'crm-fluxo-'))
  const pastaEstado=join(raiz,'estado'),campanha=join(raiz,'campanha')
  await mkdir(pastaEstado,{recursive:true});await mkdir(campanha)
- const v={motor:'01' as const,executor:randomUUID(),pedido_id:randomUUID(),execucao_id:randomUUID(),vendedor_id:randomUUID(),revisao:1,snapshot_sha256:'a'.repeat(64)}
+ const v={motor,executor:randomUUID(),pedido_id:randomUUID(),execucao_id:randomUUID(),vendedor_id:randomUUID(),revisao:1,snapshot_sha256:'a'.repeat(64)}
  const contexto=join(pastaEstado,'pedido-inicial.json')
  const p={id:v.pedido_id,vendedor_id:v.vendedor_id,executor:v.executor,execucao_id:v.execucao_id,revisao:1,snapshot_sha256:v.snapshot_sha256,contrato:2,motor:v.motor,dia:'2026-10-26',nicho:'Brinquedos',bairro:'Brás',cidade:'São Paulo',uf:'SP',criterios:criteriosVazios(),estado:'coletando'}
  await writeFile(contexto,JSON.stringify(p));await writeFile(join(pastaEstado,'executor.json'),JSON.stringify({id:v.executor}))
- let posicao:Posicao={motor:'01',associacao:{contrato:2,vinculo:v},etapa:'retomar',contexto,lote:null,coleta:0,motivo:null}
+ let posicao:Posicao={motor,associacao:{contrato:2,vinculo:v},etapa:'retomar',contexto,lote:null,coleta:0,motivo:null}
  const chamadas:string[]=[],entregas:unknown[]=[],arquivos:SolicitacaoDrive[]=[]
  const lotes:{id:string;ordinal:number;candidatas:Record<string,unknown>[];concluido:boolean;recibo:Record<string,unknown>|null;entregues:number}[]=[]
  let entregues=0,motivo:string|null=null,encerrado=false,perdido=false,reservaPerdida=false,conclusaoPerdida=false
@@ -244,3 +245,43 @@ test('conclusao confirmada no servidor limpa intencao local apos resposta perdid
   expect(f.chamadas.filter(c=>c.startsWith('coletar:'))).toEqual(['coletar:1'])
  }finally{await f.limpar()}
 },90000)
+test('pool real conserva tres pipelines e recibos com uma falha isolada', async () => {
+  const fixtures = await Promise.all((['01', '02', '03'] as const).map(m => fixture([candidatas(2)], [2], false, false, false, m)))
+  let soltar!: () => void, avisar!: () => void, entradas = 0
+  const barreira = new Promise<void>(r => { soltar = r })
+  const tres = new Promise<void>(r => { avisar = r })
+  const feitos = new Set<MotorId>()
+  const deps: ServicosPool = {
+    excluir: async () => ({ liberar: async () => {} }), dono: async () => ({ pid: 1, inicio: 'fixture' }),
+    ler: async () => null, salvar: async () => {},
+    medir: async () => ({ ok: true, disponivelMiB: 7000, instante: new Date().toISOString() }),
+    conferir: async () => true, evento: () => {}, intervaloMs: 0,
+    proximo: async m => { if (feitos.has(m)) return null; feitos.add(m); return fixtures[Number(m)-1].posicao },
+    executar: (p, gate, persistir) => {
+      const f = fixtures[Number(p.motor)-1], original = f.deps.comando
+      return executarPedido(p, { ...f.deps, admitirColeta: gate, persistir,
+        comando: async (programa, args) => {
+          if (programa === 'python' && args.includes('coletar')) {
+            if (++entradas === 3) avisar()
+            await barreira
+            if (p.motor === '02') throw new Error('Falha isolada de coleta')
+          }
+          return original(programa, args)
+        }
+      })
+    },
+  }
+  try {
+    const run = coordenar('rodar', deps)
+    await tres
+    expect(entradas).toBe(3)
+    soltar()
+    const j = await run
+    expect(j.posicoes.filter(p => p.etapa === 'concluido')).toHaveLength(2)
+    expect(j.posicoes[1].etapa).toBe('pendente')
+    expect(fixtures[1].entregas).toHaveLength(0)
+    expect(fixtures[0].arquivos[0].associacao.vinculo.motor).toBe('01')
+    expect(fixtures[2].arquivos[0].associacao.vinculo.motor).toBe('03')
+    expect(fixtures[0].arquivos[0].lote_id).not.toBe(fixtures[2].arquivos[0].lote_id)
+  } finally { soltar(); await Promise.all(fixtures.map(f => f.limpar())) }
+}, 90000)
