@@ -288,7 +288,7 @@ test('pool real conserva tres pipelines e recibos com uma falha isolada', async 
 }, 90000)
 
 
-test('retoma resposta perdida da terceira reserva antes de concluir orÁamento', async () => {
+test('retoma resposta perdida da terceira reserva antes de concluir or√ßamento', async () => {
   const f = await fixture([candidatas(150)], [0, 0, 0], false, true, false, '01', 3)
   try {
     expect((await executarPedido(f.posicao, f.deps)).etapa).toBe('pendente')
@@ -299,15 +299,15 @@ test('retoma resposta perdida da terceira reserva antes de concluir orÁamento', 
     expect(f.motivo).toBe('limite_lotes')
   } finally { await f.limpar() }
 }, 90000)
-test.each(['verificar', 'drive'] as const)('terceiro lote retoma falha de %s e preserva conclus„o prematura', async etapa => {
+test.each(['verificar', 'drive'] as const)('terceiro lote retoma falha de %s e preserva conclus√£o prematura', async etapa => {
   const f = await fixture([candidatas(150)], [0, 0, 0])
   const original = f.deps.comando, upload = f.deps.arquivar
   let verificacoes = 0, uploads = 0
   f.deps.comando = async (programa, args) => {
-    if (etapa === 'verificar' && args.includes('verificar') && ++verificacoes === 3) throw new Error('InterrupÁ„o antes da verificaÁ„o')
+    if (etapa === 'verificar' && args.includes('verificar') && ++verificacoes === 3) throw new Error('Interrup√ß√£o antes da verifica√ß√£o')
     return original(programa, args)
   }
-  f.deps.arquivar = async s => { if (etapa === 'drive' && ++uploads === 3) throw new Error('InterrupÁ„o no Drive'); return upload(s) }
+  f.deps.arquivar = async s => { if (etapa === 'drive' && ++uploads === 3) throw new Error('Interrup√ß√£o no Drive'); return upload(s) }
   try {
     expect((await executarPedido(f.posicao, f.deps)).etapa).toBe('pendente')
     expect(f.lotes[2].concluido).toBe(false)

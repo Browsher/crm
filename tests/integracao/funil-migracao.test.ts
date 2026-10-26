@@ -7,7 +7,7 @@ import { aplicar } from '@/src/server/db/migracoes/aplicar'
 import { lerMigracoes, PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { conferirInvariantes } from '@/src/server/db/migracoes/invariantes'
 
-test('atualizaÃ§Ã£o preserva dados anteriores, cria sÃ³ ciclos de posse e nÃ£o inventa vendas', async () => {
+test('atualização preserva dados anteriores, cria só ciclos de posse e não inventa vendas', async () => {
   const banco = await criarBancoDeTeste({semMigracoes:true})
   const pasta = await mkdtemp(join(tmpdir(),'crm-funil-migracao-'))
   try {

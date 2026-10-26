@@ -150,13 +150,13 @@ Detalhes: [opera√ß√£o](../../../docs/operacao/agente-google-crm.md) e
 [instru√ß√µes da rotina](../../../docs/operacao/agente-google-rotina.md).
 
 
-## Uso simult‚neo por trÍs vendedores
+## Uso simult√¢neo por tr√™s vendedores
 
-O mesmo webhook recebe contextos independentes com pedido, execuÁ„o, lote,
-revis„o e hash do snapshot. O grafo usa o contexto da prÛpria execuÁ„o;
-nenhuma vari·vel global associa respostas de vendedores. Teste do grafo real
-cobre respostas fora de ordem, uma falha e critÈrios neutros sem HTTP. Os 17
-nÛs do ramo da planilha e suas conexıes permanecem preservados.
+O mesmo webhook recebe contextos independentes com pedido, execu√ß√£o, lote,
+revis√£o e hash do snapshot. O grafo usa o contexto da pr√≥pria execu√ß√£o;
+nenhuma vari√°vel global associa respostas de vendedores. Teste do grafo real
+cobre respostas fora de ordem, uma falha e crit√©rios neutros sem HTTP. Os 17
+n√≥s do ramo da planilha e suas conex√µes permanecem preservados.
 
-O coordenador local agenda os trÍs motores; o n8n n„o recebe outro gatilho
-de hor·rio nem precisa de workflow por vendedor. Ver [rotina do coordenador](../../../docs/operacao/agente-google-rotina.md).
+O coordenador local agenda os tr√™s motores; o n8n n√£o recebe outro gatilho
+de hor√°rio nem precisa de workflow por vendedor. Ver [rotina do coordenador](../../../docs/operacao/agente-google-rotina.md).

@@ -7,7 +7,7 @@ import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { comAdmin } from '@/src/server/db/admin'
 import { criarBancoDeTeste, criarUsuario } from './ajuda'
 
-test('0026 inicializa dez empresas por autor usando Ãºltimo contato e ignora autor nulo', async () => {
+test('0026 inicializa dez empresas por autor usando último contato e ignora autor nulo', async () => {
   const banco = await criarBancoDeTeste({ semMigracoes: true })
   const pasta = await mkdtemp(join(tmpdir(), 'crm-migracao-0026-'))
   try {
@@ -22,7 +22,7 @@ test('0026 inicializa dez empresas por autor usando Ãºltimo contato e ignora a
       await c.query('BEGIN')
       await c.query('ALTER TABLE contato DISABLE TRIGGER contato_auditoria')
       for (let i = 0; i < 12; i++) {
-        const { rows } = await c.query('INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ($1,\'HistÃ³rica\',\'11999999999\') RETURNING id', [String(i+1).padStart(14,'0')])
+        const { rows } = await c.query('INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ($1,\'Histórica\',\'11999999999\') RETURNING id', [String(i+1).padStart(14,'0')])
         ids.push(rows[0].id)
         await c.query("INSERT INTO contato(empresa_id,tipo,criado_por,criado_em) VALUES ($1,'ligacao',$2,'2026-01-01'::timestamptz+$3*interval '1 day')", [ids[i],autor,i])
       }

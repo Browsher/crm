@@ -571,32 +571,32 @@ O cache e os locks ficam no estado privado, sem versionar coordenadas.
 
 ## Coordenador paralelo e retomada
 
-A entrada única é scripts/google/coordenar.mts rodar|retomar, carregada com
-.env.google-agente.local. O agente atende somente as solicitações de Drive;
-para V2 não chama proximo/coletar por fora do coordenador. As instruções
-completas e o protocolo de stdin estão na [rotina](agente-google-rotina.md).
+A entrada Ãºnica Ã© scripts/google/coordenar.mts rodar|retomar, carregada com
+.env.google-agente.local. O agente atende somente as solicitaÃ§Ãµes de Drive;
+para V2 nÃ£o chama proximo/coletar por fora do coordenador. As instruÃ§Ãµes
+completas e o protocolo de stdin estÃ£o na [rotina](agente-google-rotina.md).
 O journal fica em .google-agente/coordenador/journal.json. A porta local 8096
-mantém a exclusão durante coletas e esperas; não encerre seu dono nem apague
-intenções para retomar. O processo anterior precisa estar comprovadamente
-encerrado. Identidades são preservadas; rodar recusa pendências, retomar as
+mantÃ©m a exclusÃ£o durante coletas e esperas; nÃ£o encerre seu dono nem apague
+intenÃ§Ãµes para retomar. O processo anterior precisa estar comprovadamente
+encerrado. Identidades sÃ£o preservadas; rodar recusa pendÃªncias, retomar as
 atende antes de reivindicar outros pedidos.
 
-Até três pipelines usam as portas 8087, 8088 e 8089 com estados separados.
-Uma falha preserva sua posição enquanto as outras progridem. Antes de novas
-admissões/ondas, são necessários 5.632 MiB disponíveis no Windows; abaixo de
-512 MiB durante execução, novas admissões ficam suspensas. Falha de medição
-bloqueia coleta nova. Reportar falta de RAM; não reduzir para fila sequencial
-nem fechar programas automaticamente. O iniciado permanece recuperável.
+AtÃ© trÃªs pipelines usam as portas 8087, 8088 e 8089 com estados separados.
+Uma falha preserva sua posiÃ§Ã£o enquanto as outras progridem. Antes de novas
+admissÃµes/ondas, sÃ£o necessÃ¡rios 5.632 MiB disponÃ­veis no Windows; abaixo de
+512 MiB durante execuÃ§Ã£o, novas admissÃµes ficam suspensas. Falha de mediÃ§Ã£o
+bloqueia coleta nova. Reportar falta de RAM; nÃ£o reduzir para fila sequencial
+nem fechar programas automaticamente. O iniciado permanece recuperÃ¡vel.
 
-O arquivamento emite manifesto imutável antes da criação remota. O agente
+O arquivamento emite manifesto imutÃ¡vel antes da criaÃ§Ã£o remota. O agente
 reencontra pasta/arquivo em resposta perdida. conferir-drive.mts compara
-metadados e os bytes baixados pelo conector, ou HTTPS temporário permitido,
-sem gravar URL/token. O comprovante é correlacionado por associação, lote e
-solicitação e persistido antes de liberar a entrega. Nenhum sucesso de upload
-isolado basta. CSV original de nove colunas, JSON nativo de verificações e
+metadados e os bytes baixados pelo conector, ou HTTPS temporÃ¡rio permitido,
+sem gravar URL/token. O comprovante Ã© correlacionado por associaÃ§Ã£o, lote e
+solicitaÃ§Ã£o e persistido antes de liberar a entrega. Nenhum sucesso de upload
+isolado basta. CSV original de nove colunas, JSON nativo de verificaÃ§Ãµes e
 brutos permanecem distintos, com tamanho e SHA256. V1 conserva o runbook
-anterior, somente no motor 01, sem conversão de recibo.
+anterior, somente no motor 01, sem conversÃ£o de recibo.
 
-A instalação permanece em homologação até revisão, migração, preparação dos
-motores e atualização da mesma automação. A coleta foi pausada para esta
-mudança; o histórico de ativação do piloto acima não comprova ativação do pool.
+A instalaÃ§Ã£o permanece em homologaÃ§Ã£o atÃ© revisÃ£o, migraÃ§Ã£o, preparaÃ§Ã£o dos
+motores e atualizaÃ§Ã£o da mesma automaÃ§Ã£o. A coleta foi pausada para esta
+mudanÃ§a; o histÃ³rico de ativaÃ§Ã£o do piloto acima nÃ£o comprova ativaÃ§Ã£o do pool.

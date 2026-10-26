@@ -147,7 +147,7 @@ export class CanalArquivos {
   private inicializacoes: Promise<void>[] = []
   constructor(private pasta: string, private emitir: (e: EventoArquivo) => void) {}
   arquivar(s: SolicitacaoDrive): Promise<ComprovanteDrive> {
-    if (this.fechado) return Promise.reject(new Error('Canal encerrado. Preserve a intenção.'))
+    if (this.fechado) return Promise.reject(new Error('Canal encerrado. Preserve a intenÃ§Ã£o.'))
     let aceitar!: Espera['aceitar'], recusar!: Espera['recusar']
     const resposta = new Promise<ComprovanteDrive>((a, r) => { aceitar = a; recusar = r })
     const preparar = async () => {

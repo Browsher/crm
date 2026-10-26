@@ -7,7 +7,7 @@ import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { conferirInvariantes } from '@/src/server/db/migracoes/invariantes'
 import { criarBancoDeTeste, criarUsuario } from './ajuda'
 
-test('0022 atualiza banco povoado em 0021 preservando sessÃµes e atribuindo versÃ£o inicial', async () => {
+test('0022 atualiza banco povoado em 0021 preservando sessões e atribuindo versão inicial', async () => {
   const banco = await criarBancoDeTeste({ semMigracoes: true })
   const pasta = await mkdtemp(join(tmpdir(), 'crm-migracao-0021-'))
   try {
@@ -37,7 +37,7 @@ test('0022 atualiza banco povoado em 0021 preservando sessÃµes e atribuindo ve
       .toEqual([{ nome: 'credencial_por_email', mesmo_dono: true }, { nome: 'sessao_criar', mesmo_dono: true }])
   } finally {
     await banco.derrubar()
-    // mkdtemp cria exclusivamente esta pasta no diretÃ³rio temporÃ¡rio do SO.
+    // mkdtemp cria exclusivamente esta pasta no diretório temporário do SO.
     await rm(pasta, { recursive: true, force: true })
   }
 })

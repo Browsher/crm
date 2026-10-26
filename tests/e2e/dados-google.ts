@@ -27,7 +27,7 @@ export async function prepararGoogle(banco: BancoDeTeste) {
   ]
   for (const [id, resultados] of [[GOOGLE_PEDIDO_DEMO, empresas], [GOOGLE_PEDIDO_OUTRO, [empresas[0]]]] as const) {
     const executor=randomUUID()
-    await banco.sql('INSERT INTO google_execucao(executor_id,gestor_id,pedido_id,contrato) VALUES ($1,$2,$3,1)',[executor,gestorId,id])
+    await banco.sql('INSERT INTO google_execucao(executor_id,gestor_id,pedido_id,vendedor_id,contrato) SELECT $1,$2,id,vendedor_id,1 FROM google_planejamento WHERE id=$3',[executor,gestorId,id])
     await banco.sql(`SELECT google_agente_entregar($2,$3,$4,$5) FROM (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade`,
       [gestorId, id, JSON.stringify(resultados), JSON.stringify(reciboGoogleFixture(id)), executor])
   }

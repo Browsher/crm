@@ -117,7 +117,7 @@ test('Drive fora de ordem nao libera outra solicitacao e conserva intencao', asy
   expect(await reiniciado.arquivar(a)).toEqual(prova(a))
 })
 
-test('canal encerrado recusa novas esperas sem perder a intenção', async () => {
+test('canal encerrado recusa novas esperas sem perder a intenÃ§Ã£o', async () => {
   const pasta = await mkdtemp(resolve(tmpdir(), 'pool-close-')); pastas.push(pasta)
   const canal = new CanalArquivos(pasta, () => {})
   canal.interromper()
