@@ -105,3 +105,43 @@ test('symlink quebrado nao permite gravar journal com caminho externo',async()=>
   await expect(salvarJournal(pasta,j)).rejects.toThrow()
  }finally{await rm(pasta,{recursive:true,force:true})}
 })
+async function travarLeituraWindows(caminho: string) {
+ const filho=spawn('powershell.exe',['-NoProfile','-NonInteractive','-Command',
+  "$f=[System.IO.File]::Open($env:CRM_TESTE_JOURNAL,[System.IO.FileMode]::Open,[System.IO.FileAccess]::Read,[System.IO.FileShare]::ReadWrite); [Console]::Out.WriteLine('pronto'); [Console]::ReadLine() | Out-Null; $f.Dispose()"],
+  {windowsHide:true,env:{...process.env,CRM_TESTE_JOURNAL:caminho},stdio:['pipe','pipe','pipe']})
+ const encerrado=new Promise<void>(r=>filho.once('exit',()=>r()))
+ await new Promise<void>((r,j)=>{filho.stdout.once('data',()=>r());filho.once('error',j);filho.once('exit',()=>j(new Error('Leitor terminou antes da trava')))})
+ let liberacao:Promise<void>|undefined
+ return ()=>liberacao??=(async()=>{
+  if(filho.exitCode===null&&filho.signalCode===null)filho.stdin.end('liberar\n')
+  let limite:ReturnType<typeof setTimeout>|undefined
+  try{await Promise.race([encerrado,new Promise<never>((_,j)=>{limite=setTimeout(()=>{filho.kill();j(new Error('Leitor nao encerrou'))},2000)})])}
+  finally{clearTimeout(limite);await encerrado}
+ })()
+}
+
+test('leitor Windows temporario nao interrompe a substituicao atomica do journal',async()=>{
+ if(process.platform!=='win32')return
+ const pasta=await mkdtemp(join(tmpdir(),'crm-journal-'))
+ let liberar:(()=>Promise<void>)|undefined
+ try{
+  const original=journal();await salvarJournal(pasta,original)
+  liberar=await travarLeituraWindows(join(pasta,'coordenador','journal.json'))
+  const liberarDepois=setTimeout(()=>{void liberar?.()},250)
+  try{await salvarJournal(pasta,{...original,admissaoSuspensa:true});await liberar()}finally{clearTimeout(liberarDepois)}
+  liberar=undefined
+  expect((await lerJournal(pasta))?.admissaoSuspensa).toBe(true)
+ }finally{await liberar?.();await rm(pasta,{recursive:true,force:true})}
+},10000)
+
+test('trava persistente falha com limite e preserva o ultimo journal valido',async()=>{
+ if(process.platform!=='win32')return
+ const pasta=await mkdtemp(join(tmpdir(),'crm-journal-'))
+ let liberar:(()=>Promise<void>)|undefined
+ try{
+  const original=journal();await salvarJournal(pasta,original)
+  liberar=await travarLeituraWindows(join(pasta,'coordenador','journal.json'))
+  await expect(salvarJournal(pasta,{...original,admissaoSuspensa:true})).rejects.toMatchObject({code:'EPERM'})
+  expect(await lerJournal(pasta)).toEqual(original)
+ }finally{await liberar?.();await rm(pasta,{recursive:true,force:true})}
+},10000)

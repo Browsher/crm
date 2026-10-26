@@ -686,3 +686,39 @@ Decisões complementares da implementação:
   O kit foi localizado após mudança para
   `C:/Users/ADM/projetos/01 - Ativos/Conteúdo e automações/Web Scraping/armarinhos`,
   sem copiar ou mover dados.
+
+
+### Validação real isolada da primeira entrega em 26/10/2026
+
+Três perfis de teste iniciaram coletas reais simultaneamente nos motores 01,
+02 e 03. As nove evidências CSV/JSON foram arquivadas no Drive e conferidas
+por download, tamanho e SHA256 antes da entrega. No banco local isolado:
+
+| Perfil/região | Critério adicional | Candidatas analisadas | Empresas entregues |
+| --- | --- | ---: | ---: |
+| Brás | Sem critérios adicionais | 16 | 14 |
+| Pinheiros | Nota mínima 3 | 7 | 6 |
+| Santana | Telefone fixo | 11 | 8 |
+
+Foram 28 empresas exclusivas e três lotes confirmados. Três resultados
+repetidos foram reconhecidos, e três de Santana ficaram pendentes conforme
+as verificações; não contam como entrega. A repetição das três publicações
+retornou `repetida`, preservando todas as contagens. Cada vendedor de teste
+visualizou sua própria entrega e teve acesso negado aos outros dois planos.
+
+Este ensaio valida o primeiro lote de cada perfil, não a capacidade máxima de
+150 candidatas por vendedor. A retomada reutilizou as mesmas pesquisas,
+execuções, lotes e arquivos; não iniciou novas pesquisas. Planos e listas dos
+vendedores reais e a planilha compartilhada não receberam dados de teste.
+Os contextos locais restantes são preservados para auditoria, sem declarar
+atingimento da meta diária. Durante o encerramento, uma medição inferior a
+5.632 MiB suspendeu novas admissões conforme a regra existente.
+
+O ensaio reproduziu uma falha `EPERM` do Windows quando um leitor manteve o
+journal aberto durante a substituição atômica. A gravação agora repete apenas
+a mesma operação de troca nos erros transitórios de compartilhamento, por
+até três segundos nominais. O journal anterior e o temporário permanecem
+preservados se a trava persistir; a falha continua bloqueando a execução.
+Os testes cobrem trava transitória e persistente, além da retomada existente.
+A revisão independente não deixou achados pendentes. Os comprovantes e os
+dados das empresas continuam somente no estado privado do teste.

@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { setTimeout as aguardar } from 'node:timers/promises'
 import { mkdir, open, readFile, realpath, rename, stat, lstat } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
@@ -84,7 +85,15 @@ export async function salvarJournal(pasta:string,journal:Journal):Promise<void>{
   const temporario=destino+'.tmp-'+randomUUID()
   const arquivo=await open(temporario,'wx',0o600)
   try{await arquivo.writeFile(JSON.stringify(journal,null,2),'utf8');await arquivo.sync()}finally{await arquivo.close()}
-  await rename(temporario,destino)
+  // Windows readers may briefly deny replacement while still sharing reads/writes.
+  // Keep the old journal intact and retry only the same atomic rename, with a bound.
+  for(let tentativa=0;;tentativa++){
+    try{await rename(temporario,destino);break}catch(e){
+      const codigo=(e as NodeJS.ErrnoException).code
+      if(process.platform!=='win32'||!['EPERM','EACCES','EBUSY'].includes(codigo??'')||tentativa>=30)throw e
+      await aguardar(100)
+    }
+  }
 }
 async function probe(acao:string,pid?:number):Promise<unknown>{
   const args=['-NoProfile','-NonInteractive','-File',fileURLToPath(new URL('./host.ps1',import.meta.url)),'-Acao',acao]
