@@ -10,3 +10,11 @@ export type ArquivoLocal = { tipo: 'original' | 'resultado' | 'bruto'; caminho: 
 export type SolicitacaoDrive = { associacao: Associacao; solicitacao_id: string; lote_id: string | null; pastaPai: string; pastaNome: string; arquivos: ArquivoLocal[] }
 export type ComprovanteDrive = { associacao: Associacao; solicitacao_id: string; lote_id: string | null; pasta_id: string; arquivos: { tipo: ArquivoLocal['tipo']; nome: string; id: string; pasta_id: string; bytes: number; sha256: string; downloadConferido: true }[] }
 export type MedicaoRam = { ok: true; disponivelMiB: number; instante: string } | { ok: false; motivo: 'medicao_indisponivel' }
+export type DependenciasFluxo = {
+  campanha: string
+  pastaEstado: string
+  comando(programa: 'node' | 'python', args: readonly string[]): Promise<string>
+  admitirColeta(posicao: Posicao): Promise<boolean>
+  arquivar(solicitacao: SolicitacaoDrive): Promise<ComprovanteDrive>
+  persistir(posicao: Posicao): Promise<void>
+}

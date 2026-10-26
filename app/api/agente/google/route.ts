@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   const repo = repositorioGoogle(acesso.usuarioId)
   const comando = entrada.comando
   try {
+    if (comando.acao === 'consultar') return responder({ execucao: await repo.consultar(comando.pedido, comando.executor) })
     if (comando.acao === 'proximo') {
       let r = await repo.proximo(comando.executor)
       if (r.sincronizar) {

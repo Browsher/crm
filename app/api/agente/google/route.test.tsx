@@ -1,9 +1,11 @@
 import { expect, test, vi } from 'vitest'
 import { POST } from './route'
-vi.mock('next/cache', () => ({ revalidatePath: () => {} }))
+const leituras=vi.hoisted(()=>({sync:vi.fn(async()=>({estado:'sincronizado'})),revalidar:vi.fn()}))
+vi.mock('next/cache', () => ({ revalidatePath: leituras.revalidar }))
 vi.mock('@/src/server/google/autenticacao', () => ({ autorizarAgente: () => ({ ok: true, usuarioId: 'gestor' }) }))
-vi.mock('@/src/server/google/planilha/sincronizar', () => ({ sincronizarPedido: async () => ({ estado: 'sincronizado' }) }))
+vi.mock('@/src/server/google/planilha/sincronizar', () => ({ sincronizarPedido: leituras.sync }))
 vi.mock('@/src/features/google/repositorio', () => ({ repositorioGoogle: () => ({
+  consultar: async (pedido: string, executor: string) => ({pedido_id:pedido,executor_id:executor,analisadas:10,entregues:3}),
   reservarLote: async (_p: string, _e: string, lote: { lote_id: string }) => ({ id: lote.lote_id, ordinal: 1 }),
   concluir: async () => ({ motivo_parada: 'sem_novidades', entregues: 0 }),
 }) }))
@@ -19,4 +21,14 @@ test('API confirma encerramento explícito da execução', async () => {
   const r = await POST(req({ acao: 'concluir', motivo: 'sem_novidades' }))
   expect(r.status).toBe(200)
   expect(await r.json()).toMatchObject({ resultado: { motivo_parada: 'sem_novidades' } })
+})
+
+test('API consulta progresso sem sincronizar planilha ou revalidar pagina',async()=>{
+  leituras.sync.mockClear();leituras.revalidar.mockClear()
+  const r=await POST(req({acao:'consultar'}))
+  expect(r.status).toBe(200)
+  expect(await r.json()).toEqual({execucao:{pedido_id:pedido,executor_id:executor,analisadas:10,entregues:3}})
+  expect(leituras.sync).not.toHaveBeenCalled()
+  expect(leituras.revalidar).not.toHaveBeenCalled()
+  expect((await POST(req({acao:'consultar',vendedor:'escolhido'}))).status).toBe(400)
 })

@@ -141,3 +141,26 @@ test('CLI reserva lote com identidade persistida e confirma conclusão explícit
     await rm(pasta, { recursive: true, force: true })
   }
 }, 90000)
+
+test('CLI consulta progresso mesmo com publicacao incerta sem reivindicar outro pedido',async()=>{
+  const pasta=await mkdtemp(join(tmpdir(),'crm-google-consulta-'))
+  const pedido=randomUUID(),executor=randomUUID()
+  await writeFile(join(pasta,'executor.json'),JSON.stringify({id:executor}))
+  await writeFile(join(pasta,'publicacao-pendente.json'),JSON.stringify({pedido,executor,publicacao_sha256:'a'.repeat(64)}))
+  const comandos:unknown[]=[]
+  const servidor=createServer(async(req,res)=>{
+    const partes:Buffer[]=[];for await(const parte of req)partes.push(Buffer.from(parte))
+    comandos.push(JSON.parse(Buffer.concat(partes).toString()))
+    res.setHeader('Content-Type','application/json')
+    res.end(JSON.stringify({execucao:{pedido_id:pedido,executor_id:executor,analisadas:20,entregues:4}}))
+  })
+  await new Promise<void>(r=>servidor.listen(0,'127.0.0.1',r))
+  try{
+    const {port}=servidor.address() as {port:number}
+    const env={...process.env,GOOGLE_CRM_URL:'http://127.0.0.1:'+port,GOOGLE_AGENTE_TOKEN:'fixture'}
+    const {stdout}=await promisify(execFile)(process.execPath,['--import','tsx','scripts/google/agente.mts','consultar','--pedido',pedido,'--pasta',pasta],{env,timeout:20000})
+    expect(JSON.parse(stdout)).toMatchObject({execucao:{pedido_id:pedido,entregues:4}})
+    expect(comandos).toEqual([{acao:'consultar',pedido,executor}])
+    expect(JSON.parse(await readFile(join(pasta,'publicacao-pendente.json'),'utf8')).pedido).toBe(pedido)
+  }finally{await new Promise<void>(r=>servidor.close(()=>r()));await rm(pasta,{recursive:true,force:true})}
+},25000)

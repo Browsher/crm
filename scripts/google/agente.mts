@@ -34,7 +34,15 @@ try {
     await salvar('executor.json', { id: executor })
   }
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(executor)) throw new Error('Identidade do executor inválida. Preserve a pasta para reconciliação.')
-  if (acao === 'proximo') {
+  if (acao === 'consultar') {
+    const pedido = opcoes.get('pedido')
+    const entrada = await lerComando(new Request('http://localhost', {method:'POST',body:JSON.stringify({acao,executor,pedido})}))
+    if (!entrada.ok || entrada.comando.acao !== 'consultar') throw new Error('Informe --pedido com a identidade existente.')
+    const resposta = await enviar(entrada.comando)
+    const estado = resposta.execucao as {pedido_id?:string;executor_id?:string}|null
+    if (!estado || estado.pedido_id !== pedido || estado.executor_id !== executor) throw new Error('Progresso não confirmado. Preserve o mesmo executor e pedido.')
+    console.log(JSON.stringify(resposta))
+  } else if (acao === 'proximo') {
     for (const nome of ['publicacao-pendente.json', 'operacao-pendente.json', 'verificacao-pendente.json']) {
       try { await readFile(resolve(pasta, nome)); throw new Error('Há operação sem confirmação local. Reconcilie o mesmo arquivo antes de pedir outro lote.') }
       catch (erro) { if ((erro as NodeJS.ErrnoException).code !== 'ENOENT') throw erro }
@@ -151,7 +159,7 @@ try {
     if (comando.recibo.versao === 2) await salvar(comando.pedido + '-' + comando.recibo.lote_id + '-retorno.json', resposta)
     await unlink(resolve(pasta, 'publicacao-pendente.json'))
     console.log(JSON.stringify(resposta))
-  } else throw new Error('Use proximo, etapa, reservar_lote, verificar, entregar ou concluir. Consulte docs/operacao/agente-google-crm.md.')
+  } else throw new Error('Use consultar, proximo, etapa, reservar_lote, verificar, entregar ou concluir. Consulte docs/operacao/agente-google-crm.md.')
 } finally {
   await lock.close()
   await unlink(resolve(pasta, 'execucao.lock'))

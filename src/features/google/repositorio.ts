@@ -1,3 +1,4 @@
+import type { ProgressoGoogle } from '@/src/lib/google/progresso'
 import { comoUsuario } from '@/src/server/db/como-usuario'
 import type { AgenteGoogle, PlanoEntrada, PlanoGoogle, ResultadoGoogle, ExecucaoGoogle, LoteGoogle } from './tipos'
 
@@ -117,6 +118,23 @@ export function repositorioGoogle(usuarioId: string) {
     async podeSincronizar(id: string): Promise<boolean> {
       if (!UUID.test(id)) return false
       return comoUsuario(usuarioId,async e=>(await e<{id:string}>('SELECT id FROM google_planejamento WHERE id=$1',[id])).linhas.length===1)
+    },
+    async consultar(pedido: string, executor: string): Promise<ProgressoGoogle | null> {
+      if (!UUID.test(pedido) || !UUID.test(executor)) return null
+      return comoUsuario(usuarioId, async executar => (await executar<{ estado: ProgressoGoogle }>(`
+        SELECT jsonb_build_object('pedido_id',e.pedido_id,'execucao_id',e.id,'executor_id',e.executor_id,'vendedor_id',e.vendedor_id,
+          'contrato',e.contrato,'revisao',e.revisao,'snapshot_sha256',encode(sha256(convert_to(e.snapshot::text,'UTF8')),'hex'),
+          'analisadas',e.analisadas,'entregues',e.entregues,'lotes',e.lotes_reservados,'concluido_em',e.concluido_em::text,'motivo_parada',e.motivo_parada,
+          'vistas',(SELECT coalesce(jsonb_agg(DISTINCT k.identidade ORDER BY k.identidade),'[]') FROM google_lote l
+            CROSS JOIN LATERAL jsonb_array_elements(l.candidatas) c
+            CROSS JOIN LATERAL (VALUES(nullif(c.value->>'google_place_id','')),(CASE WHEN nullif(c.value->>'cnpj','') IS NOT NULL THEN 'cnpj:'||(c.value->>'cnpj') END)) k(identidade)
+            WHERE l.execucao_id=e.id AND k.identidade IS NOT NULL),
+          'lote_pendente',(SELECT jsonb_build_object('id',l.id,'ordinal',l.ordinal,'candidatas',l.candidatas) FROM google_lote l WHERE l.execucao_id=e.id AND l.concluido_em IS NULL),
+          'lotes_confirmados',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',l.id,'ordinal',l.ordinal,'resposta',l.resposta,
+            'origem_sha256',l.recibo->>'origem_sha256','resultado_sha256',l.recibo->>'resultado_sha256') ORDER BY l.ordinal),'[]')
+            FROM google_lote l WHERE l.execucao_id=e.id AND l.concluido_em IS NOT NULL)) AS estado
+        FROM google_execucao e WHERE e.pedido_id=$1 AND e.executor_id=$2 AND e.gestor_id=usuario_atual() AND eh_gestor() AND pode_escrever()
+      `, [pedido, executor])).linhas[0]?.estado ?? null)
     },
     async proximo(executor: string): Promise<{ pedido: Record<string, unknown> | null; agente?: string; ocupado?: boolean; sincronizar?: string }> {
       return comoUsuario(usuarioId, async e => (await e<{ r: { pedido: Record<string, unknown> | null; agente?: string; ocupado?: boolean; sincronizar?: string } }>('SELECT google_agente_proximo($1) AS r', [executor])).linhas[0].r)

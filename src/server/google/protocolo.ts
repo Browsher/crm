@@ -1,5 +1,5 @@
 type Recibo = Record<string, unknown>
-export type ComandoGoogle = ({ acao: 'proximo' } | { acao: 'etapa'; pedido: string; estado: 'coletando' | 'validando' | 'falhou'; motivo: string | null }
+export type ComandoGoogle = ({ acao: 'proximo' } | { acao: 'consultar'; pedido: string } | { acao: 'etapa'; pedido: string; estado: 'coletando' | 'validando' | 'falhou'; motivo: string | null }
   | { acao: 'reservar_lote'; pedido: string; lote: Record<string, unknown> }
   | { acao: 'concluir'; pedido: string; motivo: 'meta_atingida' | 'limite_lotes' | 'sem_novidades' | 'sem_resultados' }
   | { acao: 'entregar'; pedido: string; empresas: Record<string, unknown>[]; recibo: Recibo }) & { executor: string }
@@ -26,6 +26,7 @@ export async function lerComando(request: Request): Promise<{ ok: true; comando:
     const executor = valor.executor
     if (valor.acao === 'proximo' && Object.keys(valor).every(k => ['acao','executor'].includes(k))) return { ok: true, comando: { acao: 'proximo', executor } }
     if (!uuid(valor.pedido)) return { ok: false, status: 400 }
+    if (valor.acao === 'consultar' && Object.keys(valor).every(k => ['acao','pedido','executor'].includes(k))) return { ok: true, comando: { acao: 'consultar', pedido: valor.pedido, executor } }
     if (valor.acao === 'reservar_lote' && Object.keys(valor).every(k => ['acao', 'pedido', 'executor', 'lote'].includes(k))
       && objeto(valor.lote) && uuid(valor.lote.lote_id) && Array.isArray(valor.lote.candidatas) && valor.lote.candidatas.length > 0 && valor.lote.candidatas.length <= 50 && valor.lote.candidatas.every(objeto)
       && Object.keys(valor.lote).every(k => ['lote_id', 'candidatas'].includes(k))) return { ok: true, comando: { acao: 'reservar_lote', pedido: valor.pedido, executor, lote: valor.lote } }
