@@ -1,0 +1,12 @@
+export type MotorId = '01' | '02' | '03'
+export type Motor = { id: MotorId; container: string; origem: string; pastaEstado: string }
+export type Vinculo = { motor: MotorId; executor: string; pedido_id: string; execucao_id: string; vendedor_id: string; revisao: number; snapshot_sha256: string }
+export type VinculoLegado = { motor: '01'; executor: string; pedido_id: string; vendedor_id: string }
+export type Associacao = { contrato: 2; vinculo: Vinculo } | { contrato: 1; vinculo: VinculoLegado }
+export type EtapaLocal = 'retomar' | 'coletar' | 'selecionar' | 'reservar' | 'verificar' | 'arquivar' | 'entregar' | 'concluir' | 'pendente' | 'concluido'
+export type Posicao = { motor: MotorId; associacao: Associacao | null; etapa: EtapaLocal; contexto: string | null; lote: string | null; coleta: number; motivo: string | null }
+export type Journal = { versao: 1; ciclo_id: string; dono: { pid: number; inicio: string }; posicoes: Posicao[]; admissaoSuspensa: boolean }
+export type ArquivoLocal = { tipo: 'original' | 'resultado' | 'bruto'; caminho: string; nome: string; bytes: number; sha256: string }
+export type SolicitacaoDrive = { associacao: Associacao; solicitacao_id: string; lote_id: string | null; pastaPai: string; pastaNome: string; arquivos: ArquivoLocal[] }
+export type ComprovanteDrive = { associacao: Associacao; solicitacao_id: string; lote_id: string | null; pasta_id: string; arquivos: { tipo: ArquivoLocal['tipo']; nome: string; id: string; pasta_id: string; bytes: number; sha256: string; downloadConferido: true }[] }
+export type MedicaoRam = { ok: true; disponivelMiB: number; instante: string } | { ok: false; motivo: 'medicao_indisponivel' }

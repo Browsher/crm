@@ -539,3 +539,26 @@ automática usa somente a API do CRM, sem a liberação administrativa do piloto
 O computador, o Codex e o Docker precisam estar disponíveis para a execução
 local; dias sem planejamento continuam sem coleta. Não houve envio de
 mensagens nem consulta paga ao CNPJ.biz.
+
+## Instalação dos motores paralelos
+
+Configuração versionada em `scripts/google/motores.json`, em homologação.
+O coordenador novo depende da migração 0045 e das demais etapas do plano;
+a existência desses scripts não ativa coletas.
+
+`powershell -NoProfile -File scripts/google/motores.ps1 -Acao Conferir` lê a
+imagem, portas, volumes, limites e cache dos motores 01–03. Retorno ok falso
+indica instalação incompleta; não dispara jobs. O comando Preparar fica para
+a janela de ativação depois da revisão independente, com o original ocioso.
+
+O motor 01 preserva container e volumes atuais. O 02 usa loopback 8088 e
+`crm_google_motor02_data`; o 03 usa loopback 8089 e
+`crm_google_motor03_data`. O cache original é compartilhado com escrita pela
+mesma imagem fixada; os dados de cada motor ficam separados. Nenhum recurso
+divergente é apagado/recriado. Limites do original só mudam após conferir jobs
+inativos, com a mesma imagem e volumes. A preparação repetida é idempotente.
+
+Cada motor usa dois trabalhadores, CPU 2, memória 2 GiB, memória mais swap
+2,5 GiB, pids 512 e shm 64 MiB. O total memória mais swap segue a semântica
+oficial de [restrições Docker](https://docs.docker.com/engine/containers/resource_constraints/).
+Portas, mounts e shm não são ajustados por recriação automática do original.
