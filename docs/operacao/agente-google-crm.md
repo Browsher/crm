@@ -597,6 +597,92 @@ isolado basta. CSV original de nove colunas, JSON nativo de verificações e
 brutos permanecem distintos, com tamanho e SHA256. V1 conserva o runbook
 anterior, somente no motor 01, sem conversão de recibo.
 
-A instalação permanece em homologação até revisão, migração, preparação dos
-motores e atualização da mesma automação. A coleta foi pausada para esta
-mudança; o histórico de ativação do piloto acima não comprova ativação do pool.
+A ativação efetiva do pool e suas conferências estão registradas na atualização
+operacional de 26/10/2026 abaixo. O histórico do piloto é preservado.
+
+
+## Atualização operacional em 26/10/2026
+
+O pool de três motores foi instalado e a mesma rotina foi reativada. A fonte
+da aplicação publicada é `400e405`, com
+[CI aprovado](https://github.com/Browsher/crm/actions/runs/40399058396).
+Deployment `dpl_3kh8aCH8dhgTzrHdwm6weQvS6b8S`, READY, promovido ao
+[CRM](https://crm-prospeccao-bice.vercel.app). Nenhuma variável de destino foi
+alterada. O estado privado `.google-agente` ficou explicitamente excluído
+da carga enviada à Vercel.
+
+A migração 0045 foi a única aplicada nesta etapa: 46 registradas, sem
+pendências/divergências e com invariantes aprovadas. Foram conferidos a FK
+pedido/vendedor, os dois índices de execução aberta e o limite global três.
+Permaneceram 43 empresas, quatro usuários e nenhuma execução aberta.
+O backup criptografado da Railway foi validado e extraído em diretório
+privado; seu dump de 14.300.911 bytes foi lido integralmente por pg_restore,
+sem restaurar um banco. Isso não comprova sincronização remota do Drive
+Desktop nem ensaio de restauração em banco.
+
+Os motores 01–03 passaram em Conferir e na ponte real. O original manteve
+ID e volumes e seus nove jobs anteriores; os dois novos estavam sem jobs.
+A preparação identificou uma incompatibilidade de aspas do PowerShell 5;
+foi reproduzida em teste e corrigida com argumentos diretos, sem shell
+aninhado. O cache original estava completo e foi preservado.
+
+A revisão independente deste incremento encontrou dois problemas:
+retomada do terceiro lote reservado e permissão de RAM para uma coleta
+futura ainda aguardando Drive. Ambos tiveram testes RED→GREEN e correção.
+Nenhum Critical ou Minor adicional foi apontado. A revisão cobriu
+`61600d5..4af5430`; as correções posteriores foram verificadas por testes.
+O redesign anterior foi o baseline já homologado.
+
+Validação local: 1.640 testes unitários, mais o teste de exclusão da carga;
+684 testes de integração e 69 jornadas de navegador. Build, tipos, lint e
+convenções de migração passaram. A verificação operacional acrescentou o
+décimo teste dos motores. O CI da fonte publicada repetiu a suíte completa
+em Linux. Três contextos básicos simultâneos passaram no webhook único,
+sem mensagem, consulta paga CNPJ.biz ou escrita de fixtures no CRM/planilha.
+O grafo e os 17 nós de sincronização da planilha permaneceram preservados.
+
+O login online retornou 200; a rota privada sem sessão retornou 307 para
+login; o endpoint sem token retornou 401. A ação nova consultar respondeu
+com identidade inexistente sem reivindicar pedido. O coordenador real
+detectou RAM abaixo de 5.632 MiB, suspendeu admissão e terminou sem pedidos
+ou jobs novos. A rotina permanece ativa seg–sex às 17h em São Paulo, sexta
+para segunda; o estado efetivo pode ser conferido na mesma automação
+`prospec-o-de-armarinhos-e-variedades`.
+
+Não foram feitas três entregas em listas reais nesta etapa. Os vendedores
+continuam responsáveis pelo próprio planejamento. O ensaio de carga
+isolado anterior e as fixtures cobrem simultaneidade, limites e retomada;
+não garantem 450 empresas distintas na mesma região. O qualificador de
+produtos, tipos de empresa e observações continua pendente por decisão do
+usuário. Falta de RAM deve gerar aviso, sem fechar programas ou reduzir a
+rotina para uma fila sequencial. Suspender a rotina e reconciliar os mesmos
+arquivos é a resposta a falhas; não restaurar singleton com execuções abertas.
+
+Decisões complementares da implementação:
+
+- Fixtures antigas passaram a informar o vendedor do próprio plano, incluindo
+  E2E. Se essa adaptação estiver errada, FK e testes bloqueiam a execução.
+- O wrapper PowerShell trata stderr nativo com exit code explícito. Erro real
+  continua bloqueando preparação, sem remoção de recursos.
+- A localização usa cache e lock curto, com 16 segundos entre consultas novas
+  ao Nominatim. Isso pode atrasar a localização, preservando coletas paralelas.
+- O journal usa exclusão local na porta 8096 e caminhos confinados. Conflito
+  de porta ou processo não confirmado bloqueia admissão e pede diagnóstico.
+- consultar foi separado de proximo para impedir reivindicação ao ler contagens.
+  Ambos preservam autorização e RLS; não houve novo GRANT.
+- O pipeline recebe campanha/pasta explicitamente. Publicação V1 preparada
+  mantém recibos antigos; etapas legadas anteriores exigem o runbook V1.
+- O conferidor aceita download materializado distinto do original ou HTTPS
+  temporário permitido por stdin privado. Mudança do provedor bloqueia
+  conferência em vez de aceitar bytes não comprovados.
+- Só solicitações prontas pertencem à mesma onda; nenhuma permissão fica para
+  uma posição ainda no Drive. Falha exige retomada na próxima invocação.
+- O lint ignora o scratch privado dos agentes; textos foram normalizados em
+  UTF-8/LF e listas fechadas de migrações receberam 0045. Código de planos
+  anteriores permaneceu preservado.
+- A suíte local usou dois trabalhadores e timeout de importação de 60 segundos
+  por CLI devido à compilação no Windows. O CI manteve a configuração original.
+- Produção e kit externo foram conferidos operacionalmente além da revisão.
+  O kit foi localizado após mudança para
+  `C:/Users/ADM/projetos/01 - Ativos/Conteúdo e automações/Web Scraping/armarinhos`,
+  sem copiar ou mover dados.

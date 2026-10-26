@@ -146,3 +146,23 @@ e sincronizado. A automação existente foi atualizada e ativada para
 segunda a sexta às 17h de São Paulo. Nenhuma nova publicação da aplicação,
 migração, alteração de permissões ou mensagem foi necessária.
 O procedimento e os limites estão em [Agente Google](agente-google-crm.md).
+
+
+## Pool Google publicado em 26/10/2026
+
+Fonte `400e405`, [CI aprovado](https://github.com/Browsher/crm/actions/runs/40399058396),
+deployment `dpl_3kh8aCH8dhgTzrHdwm6weQvS6b8S` READY e promovido para
+[crm-prospeccao-bice.vercel.app](https://crm-prospeccao-bice.vercel.app).
+A implantação foi preparada sem trocar o endereço bice, conferida e promovida
+após o CI. A PR #55 continua aberta em rascunho, sem merge.
+
+Somente 0045 foi aplicada: 46 migrações, zero pendentes/divergentes e
+invariantes aprovadas. Empresa/usuário permaneceram em 43/4. Backup
+criptografado conferido e dump lido integralmente sem executar restauração.
+Os três motores locais estão preparados, preservando o original e os volumes.
+
+A mesma automação voltou a ACTIVE, seg–sex 17h de São Paulo. A coleta exige
+5.632 MiB livres no Windows; um teste real com menos RAM bloqueou sem
+reivindicar pedidos ou criar jobs. Não houve três entregas em listas reais
+neste incremento. Detalhes, limites da validação e revisão independente:
+[operação do agente](agente-google-crm.md#atualização-operacional-em-26102026).
