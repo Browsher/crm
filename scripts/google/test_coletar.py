@@ -191,5 +191,42 @@ class PonteTest(unittest.TestCase):
                 self.assertIn('place_id', reader.fieldnames)
                 self.assertEqual(list(reader), [])
 
+    def test_conferencia_aceita_null_somente_como_lista_vazia(self):
+        kit=types.SimpleNamespace(req=lambda *a:(200,b'null'))
+        modulo=types.SimpleNamespace(CONFIG={'base_url':'http://127.0.0.1:8088'},load_kit=lambda:kit)
+        with patch.object(ponte,'carregar_coletor',return_value=modulo):
+            self.assertEqual(ponte.conferir_conexao('fixture','02')['jobs'],0)
+
+    def test_motor_immutavel_e_arquivos_antigos_sao_so_motor_01(self):
+        with tempfile.TemporaryDirectory() as temp:
+            pasta=Path(temp)
+            (pasta/'pedido.json').write_text(json.dumps(PEDIDO),encoding='utf-8')
+            ponte.verificar_inicio(pasta,dict(PEDIDO,motor='01'))
+            with self.assertRaisesRegex(RuntimeError,'motor'):
+                ponte.verificar_inicio(pasta,dict(PEDIDO,motor='02'))
+            (pasta/'pedido.json').write_text(json.dumps(dict(PEDIDO,motor='02')),encoding='utf-8')
+            ponte.verificar_inicio(pasta,dict(PEDIDO,motor='02'))
+
+    def test_reconcilia_job_incerto_pelo_nome_e_pelos_criterios_sem_post(self):
+        with tempfile.TemporaryDirectory() as temp:
+            pasta=Path(temp)
+            pedido=dict(PEDIDO,motor='02')
+            request={'name':'crm-fixture','keywords':[ponte.consulta(pedido)],'lat':'-23.5','lon':'-46.6','lang':'pt','zoom':15,'radius':2500,'depth':1,'max_time':900,'email':True,'fast_mode':False}
+            (pasta/'intencao.json').write_text(json.dumps({'pedido_id':pedido['id'],'motor':'02','request':request,'started_at':'2026-10-26T20:00:00Z'}),encoding='utf-8')
+            (pasta/'pedido.json').write_text(json.dumps(pedido),encoding='utf-8')
+            job={'ID':'job-confirmado','Name':'crm-fixture','Status':'working','Data':dict(request,max_time=900000000000,lat=-23.5,lon=-46.6)}
+            chamadas=[]
+            def req(metodo,rota):
+                chamadas.append((metodo,rota))
+                return 200,json.dumps([job]).encode()
+            meta=ponte.reconciliar_intencao(pasta,pedido,{'id':'02'},types.SimpleNamespace(req=req))
+            self.assertEqual(meta['id'],'job-confirmado')
+            self.assertEqual(meta['motor'],'02')
+            self.assertEqual(chamadas,[('GET','/api/v1/jobs')])
+            job['Data']['keywords']=['outro nicho']
+            with self.assertRaises(RuntimeError):
+                ponte.reconciliar_intencao(pasta,pedido,{'id':'02'},types.SimpleNamespace(req=req))
+            self.assertTrue(all(m=='GET' for m,r in chamadas))
+
 if __name__ == '__main__':
     unittest.main()

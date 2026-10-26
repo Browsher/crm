@@ -562,3 +562,9 @@ Cada motor usa dois trabalhadores, CPU 2, memória 2 GiB, memória mais swap
 2,5 GiB, pids 512 e shm 64 MiB. O total memória mais swap segue a semântica
 oficial de [restrições Docker](https://docs.docker.com/engine/containers/resource_constraints/).
 Portas, mounts e shm não são ajustados por recriação automática do original.
+As consultas de localização do kit continuam no serviço Nominatim existente.
+O cache local reutiliza a mesma região entre vendedores e rodadas; consultas
+novas são serializadas e separadas por pelo menos 16 segundos, conforme a
+[política de uso recorrente](https://operations.osmfoundation.org/policies/nominatim/).
+Esse intervalo limita somente a localização, mantendo as coletas simultâneas.
+O cache e os locks ficam no estado privado, sem versionar coordenadas.

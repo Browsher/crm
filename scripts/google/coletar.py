@@ -9,6 +9,9 @@ import re
 import subprocess
 import time
 from datetime import datetime, timezone
+from contextlib import ExitStack
+from decimal import Decimal, InvalidOperation
+from motores import carregar_motor, travar_motor, travar_execucao, geocodificar_com_cache
 from pathlib import Path
 from urllib.parse import unquote_plus
 from rodadas import priorizar
@@ -26,14 +29,20 @@ def consulta(pedido):
 
 
 def contexto_operacional(pedido):
-    return {'pedido_id': pedido['id'], 'criterios': {k: pedido[k] for k in ('nicho', 'bairro', 'cidade', 'uf')},
+    return {'pedido_id': pedido['id'], 'motor': pedido.get('motor', '01'), 'criterios': {k: pedido[k] for k in ('nicho', 'bairro', 'cidade', 'uf')},
         'bairro': pedido['bairro'] or 'Cidade inteira', 'cidade': pedido['cidade'], 'uf': pedido['uf']}
 
 
-def verificar_inicio(pasta, pedido):
+def verificar_inicio(pasta, pedido, permitir_intencao=False):
     intencao = pasta/'intencao.json'
-    if intencao.exists() and not (pasta/'job.json').exists():
+    if intencao.exists() and not (pasta/'job.json').exists() and not permitir_intencao:
         raise RuntimeError('Reconcilie a criação pendente no motor antes de iniciar outro job; preserve intencao.json.')
+    for nome in ('pedido.json','job.json','intencao.json'):
+        arquivo = pasta/nome
+        if arquivo.exists():
+            dados = json.loads(arquivo.read_text(encoding='utf-8'))
+            if dados.get('motor','01') != pedido.get('motor','01'):
+                raise RuntimeError('A pasta pertence a outro motor. Preserve os arquivos.')
     if (pasta/'pedido.json').exists():
         antigo = json.loads((pasta/'pedido.json').read_text(encoding='utf-8'))
         imutaveis = ('id', 'vendedor_id', 'dia', 'nicho', 'bairro', 'cidade', 'uf', 'snapshot')
@@ -99,7 +108,7 @@ def conferir_recibo(pedido, recibo, original, final):
         raise ValueError('Recibo precisa identificar os dois arquivos confirmados no Drive.')
 
 
-def carregar_coletor(campanha):
+def carregar_coletor(campanha, motor_id='01'):
     campanha = Path(campanha).resolve()
     os.environ['PROSPECCAO_CAMPANHA_DIR'] = str(campanha)
     spec = importlib.util.spec_from_file_location('coletor_existente', campanha/'coletor.py')
@@ -107,24 +116,60 @@ def carregar_coletor(campanha):
     spec.loader.exec_module(modulo)
     if modulo.CONFIG['base_url'].rstrip('/') not in ('http://localhost:8087', 'http://127.0.0.1:8087'):
         raise ValueError('Confira o motor configurado na porta 8087 antes de continuar.')
+    modulo.CONFIG['base_url'] = carregar_motor(motor_id)['origem']
     return modulo
 
 
-def conferir_conexao(campanha):
-    modulo = carregar_coletor(campanha)
-    status, corpo = modulo.load_kit().req('GET', '/api/v1/jobs')
+def listar_jobs(kit):
+    status, corpo = kit.req('GET', '/api/v1/jobs')
     try:
         jobs = json.loads(corpo)
+        if jobs is None and status == 200:
+            jobs = []
         if status != 200 or not isinstance(jobs, list) or any(
-            not isinstance(j, dict) or j.get('Status', j.get('status')) not in
-            ('ok', 'failed', 'working', 'pending', 'queued') for j in jobs
-        ):
+            not isinstance(j, dict) or j.get('Status', j.get('status')) not in ('ok','failed','working','pending','queued') for j in jobs):
             raise ValueError()
     except (ValueError, TypeError):
         raise RuntimeError('Resposta do motor não confirmada.') from None
+    return jobs
+
+
+def conferir_conexao(campanha, motor_id='01'):
+    modulo = carregar_coletor(campanha, motor_id)
+    jobs = listar_jobs(modulo.load_kit())
     return {'ok': True, 'motor': modulo.CONFIG['base_url'], 'jobs': len(jobs),
         'ativos': sum(j.get('Status', j.get('status')) in ('working', 'pending', 'queued') for j in jobs)}
 
+
+def reconciliar_intencao(pasta, pedido, motor, kit):
+    intencao = json.loads((pasta/'intencao.json').read_text(encoding='utf-8'))
+    request = intencao.get('request')
+    if not (pasta/'pedido.json').exists() or intencao.get('pedido_id') != pedido['id'] or intencao.get('motor','01') != motor['id'] or not isinstance(request,dict) or request.get('keywords') != [consulta(pedido)] or not intencao.get('started_at'):
+        raise RuntimeError('Intenção divergente. Reconcilie os arquivos antes de continuar.')
+    def corresponde(job):
+        dados=job.get('Data')
+        if job.get('Name') != request.get('name') or not job.get('ID') or not isinstance(dados,dict):
+            return False
+        for chave,valor in request.items():
+            if chave == 'name':
+                continue
+            if chave in ('lat','lon'):
+                try:
+                    esperado=Decimal(str(valor)); recebido=Decimal(str(dados.get(chave)))
+                    if not esperado.is_finite() or not recebido.is_finite() or esperado != recebido:
+                        return False
+                except InvalidOperation:
+                    return False
+            elif chave == 'max_time':
+                if type(valor) is not int or dados.get(chave) != valor*1000000000:
+                    return False
+            elif dados.get(chave) != valor:
+                return False
+        return True
+    encontrados=[j for j in listar_jobs(kit) if corresponde(j)]
+    if len(encontrados) != 1:
+        raise RuntimeError('Criação incerta sem correspondência única. Preserve a intenção; nenhum novo POST foi enviado.')
+    return {'id':encontrados[0]['ID'],'request':request,'started_at':intencao['started_at'],'pedido_id':pedido['id'],'motor':motor['id']}
 
 def processar_resultados(modulo, raw, mapa, pedido, pasta):
     if pedido.get('contrato') == 2:
@@ -195,16 +240,26 @@ def processar_neutro(raw, pedido, pasta):
     return resumo
 
 
-def coletar(pedido, campanha):
+def coletar(pedido, campanha, motor_id='01'):
+    motor=carregar_motor(motor_id)
+    if pedido.get('motor',motor_id) != motor_id:
+        raise RuntimeError('Pedido pertence a outro motor.')
+    if pedido.get('contrato') != 2 and motor_id != '01':
+        raise RuntimeError('Pedido legado pertence somente ao motor 01.')
+    pedido=dict(pedido,motor=motor_id)
     if not re.fullmatch(r'[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}', pedido.get('id', ''), re.I):
         raise ValueError('Identidade do pedido inválida.')
     if pedido.get('estado') != 'coletando':
         raise ValueError('Pedido não está em coleta. Reconcilie a etapa atual antes de continuar.')
-    modulo = carregar_coletor(campanha)
+    modulo = carregar_coletor(campanha, motor_id)
     pasta = pasta_do_pedido(modulo.HERE, pedido)
     pasta.mkdir(parents=True, exist_ok=True)
-    with modulo.campaign_lock(modulo.HISTORY):
-        verificar_inicio(pasta, pedido)
+    with ExitStack() as locks:
+        locks.enter_context(travar_motor(motor))
+        locks.enter_context(travar_execucao(pasta.parent if pedido.get('contrato') == 2 else pasta))
+        if motor_id == '01':
+            locks.enter_context(modulo.campaign_lock(modulo.HISTORY))
+        verificar_inicio(pasta, pedido, permitir_intencao=True)
         modulo.save_json(pasta/'pedido.json', pedido)
         modulo.save_json(pasta/'contexto-operacional.json', contexto_operacional(pedido))
         if (pasta/'dados_preparados.json').exists() and (pasta/'resumo.json').exists():
@@ -212,20 +267,24 @@ def coletar(pedido, campanha):
         kit = modulo.load_kit()
         meta = modulo.read_json(pasta/'job.json')
         termo = consulta(pedido)
+        if not meta and (pasta/'intencao.json').exists():
+            meta=reconciliar_intencao(pasta,pedido,motor,kit)
+            modulo.save_json(pasta/'job.json',meta)
         if not meta:
-            jobs = json.loads(kit.req('GET', '/api/v1/jobs')[1])
+            jobs = listar_jobs(kit)
             if any(str(j.get('Status', j.get('status', ''))).lower() in ('working', 'pending', 'queued') for j in jobs):
                 raise RuntimeError('Há outra coleta ativa no motor. Preserve o pedido.')
-            coords = kit.geocode(', '.join(v for v in (pedido['bairro'], pedido['cidade'], pedido['uf'], 'Brasil') if v))
+            kit.UA = 'CRM-Prospeccao/1.0 (+https://github.com/Browsher/crm)'
+            coords = geocodificar_com_cache(', '.join(v for v in (pedido['bairro'], pedido['cidade'], pedido['uf'], 'Brasil') if v),kit.geocode)
             if not coords:
                 raise RuntimeError('Geocodificação indisponível. Preserve o pedido.')
             inicio = datetime.now(timezone.utc).isoformat()
             nome = 'crm-' + pedido['id'] + ('-coleta-' + str(pedido.get('rodada', 1)) if pedido.get('contrato') == 2 else '')
             body = {'name': nome, 'keywords': [termo], 'lang': 'pt', 'zoom': 15, 'lat': str(coords[0]), 'lon': str(coords[1]),
                 'fast_mode': False, 'email': True, 'radius': modulo.CONFIG['radius'], 'depth': modulo.CONFIG['depth'], 'max_time': modulo.CONFIG['max_time']}
-            modulo.save_json(pasta/'intencao.json', {'pedido_id': pedido['id'], 'request': body, 'started_at': inicio})
+            modulo.save_json(pasta/'intencao.json', {'pedido_id': pedido['id'], 'motor':motor_id, 'request': body, 'started_at': inicio})
             resposta = json.loads(kit.req('POST', '/api/v1/jobs', body)[1])
-            meta = {'id': resposta['id'], 'request': body, 'started_at': inicio, 'pedido_id': pedido['id']}
+            meta = {'id': resposta['id'], 'request': body, 'started_at': inicio, 'pedido_id': pedido['id'], 'motor':motor_id}
             modulo.save_json(pasta/'job.json', meta)
         if meta.get('pedido_id') != pedido['id'] or meta['request']['keywords'] != [termo]:
             raise RuntimeError('Job divergente. Preserve a pasta para conferência.')
@@ -244,7 +303,7 @@ def coletar(pedido, campanha):
             raw.write_bytes(kit.req('GET', '/api/v1/jobs/'+meta['id']+'/download')[1])
         mapa = modulo.read_json(pasta/'termos_por_input_id.json')
         if mapa is None:
-            logs = subprocess.run(['docker', 'logs', '--since', meta['started_at'], 'gmaps-mooca-prospeccao'], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, check=True)
+            logs = subprocess.run(['docker', 'logs', '--since', meta['started_at'], motor['container']], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, check=True)
             texto = logs.stdout+'\n'+logs.stderr
             (pasta/'motor.log').write_text(texto, encoding='utf-8')
             mapa = {}
@@ -268,6 +327,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('acao', choices=('coletar', 'preparar', 'contexto', 'conferir'))
     parser.add_argument('--pedido')
+    parser.add_argument('--motor',choices=('01','02','03'),default='01')
     parser.add_argument('--campanha')
     parser.add_argument('--coletadas')
     parser.add_argument('--final', '--resultado', dest='final')
@@ -279,7 +339,7 @@ def main():
     if args.acao == 'conferir':
         if not args.campanha:
             parser.error('conferir exige --campanha')
-        print(json.dumps(conferir_conexao(args.campanha)))
+        print(json.dumps(conferir_conexao(args.campanha,args.motor)))
         return
     if not args.pedido:
         parser.error('--pedido é obrigatório para esta ação')
@@ -299,7 +359,7 @@ def main():
     if args.acao == 'coletar':
         if not args.campanha:
             parser.error('--campanha é obrigatório')
-        print(coletar(pedido, args.campanha))
+        print(coletar(pedido, args.campanha,args.motor))
         return
     if not all((args.coletadas, args.final, args.original, args.recibo, args.saida)):
         parser.error('preparar exige --coletadas, --original, --final, --recibo e --saida')
