@@ -32,7 +32,7 @@ test.each(['origem','dados','imagem','porta','id'])('registro recusa %s divergen
   } finally { await rm(pasta,{recursive:true,force:true}) }
 })
 
-async function preparar(cenario: 'normal'|'conflito'|'ocupado') {
+async function preparar(cenario: 'normal'|'conflito'|'ocupado'|'aspas') {
   const pasta=await mkdtemp(join(tmpdir(),'crm-docker-fixture-'))
   const fixture=join(pasta,'fixture.ps1')
   const log=join(pasta,'comandos.jsonl')
@@ -56,6 +56,8 @@ function docker {
     $config=@{Id=('container-'+$posicao);Image=$imagem;State=@{Running=$true};Config=@{Cmd=@('-web','-data-folder','/gmapsdata','-c','2')};HostConfig=@{Memory=2147483648L;MemorySwap=2684354560L;NanoCpus=2000000000L;PidsLimit=512;ShmSize=67108864;PortBindings=@{'8080/tcp'=@(@{HostIp='127.0.0.1';HostPort=$porta})}};Mounts=@(@{Type='volume';Name=$volume;Destination='/gmapsdata';RW=$true},@{Type='volume';Name='mooca-prospeccao_gmaps_cache';Destination='/opt';RW=$true})}
     ConvertTo-Json -InputObject @($config) -Depth 12 -Compress; return
   }
+  if($partes[0] -eq 'exec' -and $env:FIXTURE_CENARIO -eq 'aspas' -and $partes[2] -eq 'sh') { $global:LASTEXITCODE=1; return }
+  if($partes[0] -eq 'exec' -and $partes[2] -eq 'find') { '/opt/browsers/chromium-1228/chrome-linux64/chrome'; return }
   if($partes[0] -eq 'exec') { if($env:FIXTURE_CENARIO -eq 'ocupado'){'working'}else{'cache-ok'}; return }
   'ok'
 }
@@ -90,4 +92,9 @@ test('motor original com job ativo impede criar motores e alterar limites',async
   const {falhou,comandos}=await preparar('ocupado')
   expect(falhou).toBe(true)
   expect(comandos.some(c=>['create','update','rm'].includes(c[0]))).toBe(false)
+},30000)
+
+test('cache pode ser conferido no PowerShell 5 sem aspas de shell aninhadas',async()=>{
+  const {falhou,erro}=await preparar('aspas')
+  expect(falhou,erro).toBe(false)
 },30000)

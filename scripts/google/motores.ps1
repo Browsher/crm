@@ -39,8 +39,11 @@ function Recursos-Corretos {
 }
 function Conferir-Cache {
   param([string]$Nome)
-  $provaCache=Chamar-Docker -Partes @('exec',$Nome,'sh','-c','test -x /opt/ms-playwright-go/node && test -f /opt/ms-playwright-go/package/cli.js && test -n "$(find /opt/browsers -type f -name chrome -print -quit)" && printf cache-ok')
-  if($provaCache -ne 'cache-ok') { throw 'Cache de navegadores não confirmado. Não iniciar jobs.' }
+  $null=Chamar-Docker -Partes @('exec',$Nome,'test','-x','/opt/ms-playwright-go/node')
+  $null=Chamar-Docker -Partes @('exec',$Nome,'test','-f','/opt/ms-playwright-go/package/cli.js')
+  $navegador=Chamar-Docker -Partes @('exec',$Nome,'find','/opt/browsers','-type','f','-name','chrome','-print','-quit')
+  if(!$navegador -or !$navegador.StartsWith('/opt/browsers/') -or $navegador.Contains("`n")) { throw 'Cache de navegadores nao confirmado. Nao iniciar jobs.' }
+  $null=Chamar-Docker -Partes @('exec',$Nome,'test','-x',$navegador)
 }
 Push-Location (Resolve-Path (Join-Path $PSScriptRoot '../..'))
 try {
