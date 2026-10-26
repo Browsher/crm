@@ -1,4 +1,5 @@
-import { mkdir, stat } from 'node:fs/promises'
+import { mkdir, stat, rename } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { resolve, dirname } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import type { ProgressoGoogle } from '../../src/lib/google/progresso'
@@ -105,13 +106,23 @@ export async function executarPedido(inicial:Posicao,deps:DependenciasFluxo):Pro
         }
       }
       const conclusaoLocal=resolve(base,'conclusao.json')
+      if(e.lote_pendente&&await existe(conclusaoLocal)){
+        // A reservation proves conclusion has not committed. Preserve the premature intent for audit.
+        await rename(conclusaoLocal,resolve(base,'conclusao-prematura-'+randomUUID()+'.json'))
+        const operacao=resolve(deps.pastaEstado,'operacao-pendente.json')
+        if(await existe(operacao)){
+          const op=await lerJson(operacao)
+          if(!objeto(op.comando)||op.comando.acao!=='concluir'||op.comando.pedido!==v.pedido_id||op.comando.executor!==v.executor)throw falha()
+          await rename(operacao,resolve(base,'operacao-prematura-'+randomUUID()+'.json'))
+        }
+      }
       if(await existe(conclusaoLocal)&&(!e.concluido_em||await existe(resolve(deps.pastaEstado,'operacao-pendente.json')))){
         const c=await lerJson(conclusaoLocal)
         if(typeof c.arquivarBrutos!=='boolean'||(e.concluido_em&&e.motivo_parada!==c.motivo))throw falha()
         await concluir(String(c.motivo),c.arquivarBrutos);return p
       }
       if(e.concluido_em){await persistir('concluido',{lote:null,motivo:e.motivo_parada});return p}
-      if(e.entregues>=50||e.lotes>=3||e.analisadas>=150){await concluir(await decidir(e,0),false);return p}
+      if(!e.lote_pendente&&(e.entregues>=50||e.lotes>=3||e.analisadas>=150)){await concluir(await decidir(e,0),false);return p}
       if(p.etapa==='coletar'){
         const pasta=rodadaPasta(p.coleta)
         const existente=await existe(resolve(pasta,'job.json'))||await existe(resolve(pasta,'intencao.json'))||await existe(resolve(pasta,'dados_preparados.json'))

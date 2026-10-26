@@ -13,7 +13,7 @@ import { executarPedido } from '../scripts/google/fluxo.mts'
 import type { Posicao, SolicitacaoDrive, ComprovanteDrive, DependenciasFluxo, MotorId } from '../scripts/google/coordenador-tipos.mts'
 const executar=promisify(execFile)
 const candidatas=(n:number)=>Array.from({length:n},(_,i)=>({google_place_id:'place-'+i,nome_fantasia:'Loja '+i,telefone:null,cnpj:null}))
-async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false,motor:MotorId='01'){
+async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false,motor:MotorId='01',falharReservaEm=1){
  const raiz=await mkdtemp(join(tmpdir(),'crm-fluxo-'))
  const pastaEstado=join(raiz,'estado'),campanha=join(raiz,'campanha')
  await mkdir(pastaEstado,{recursive:true});await mkdir(campanha)
@@ -41,7 +41,7 @@ async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],pe
     if(!lote){lote={id:String(c.lote.lote_id),ordinal:lotes.length+1,candidatas:c.lote.candidatas as Record<string,unknown>[],concluido:false,recibo:null,entregues:0};lotes.push(lote)}
     expect(lotes.length).toBeLessThanOrEqual(3)
     expect(lotes.reduce((n,l)=>n+l.candidatas.length,0)).toBeLessThanOrEqual(150)
-    if(perderReserva&&!reservaPerdida){reservaPerdida=true;req.socket.destroy();return}
+    if(perderReserva&&!reservaPerdida&&lote.ordinal===falharReservaEm){reservaPerdida=true;req.socket.destroy();return}
     res.end(JSON.stringify({lote}));return
   }
   if(c.acao==='etapa'){res.end('{"resultado":"ok"}');return}
@@ -53,6 +53,7 @@ async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],pe
     if(perderEntrega&&!perdido){perdido=true;req.socket.destroy();return}
     res.end(JSON.stringify({resultado:repetida?'repetida':'ok'}));return
   }
+  if(c.acao==='concluir'&&lotes.some(l=>!l.concluido)){res.statusCode=409;res.end('{}');return}
   if(c.acao==='concluir'){motivo=c.motivo;encerrado=true;if(perderConclusao&&!conclusaoPerdida){conclusaoPerdida=true;req.socket.destroy();return};res.end(JSON.stringify({resultado:{motivo_parada:motivo,entregues}}));return}
   res.statusCode=400;res.end('{}')
  })
@@ -284,4 +285,39 @@ test('pool real conserva tres pipelines e recibos com uma falha isolada', async 
     expect(fixtures[2].arquivos[0].associacao.vinculo.motor).toBe('03')
     expect(fixtures[0].arquivos[0].lote_id).not.toBe(fixtures[2].arquivos[0].lote_id)
   } finally { soltar(); await Promise.all(fixtures.map(f => f.limpar())) }
+}, 90000)
+
+
+test('retoma resposta perdida da terceira reserva antes de concluir orçamento', async () => {
+  const f = await fixture([candidatas(150)], [0, 0, 0], false, true, false, '01', 3)
+  try {
+    expect((await executarPedido(f.posicao, f.deps)).etapa).toBe('pendente')
+    expect(f.lotes).toHaveLength(3)
+    expect(f.lotes[2].concluido).toBe(false)
+    expect((await executarPedido(f.posicao, f.deps)).etapa).toBe('concluido')
+    expect(f.lotes[2].concluido).toBe(true)
+    expect(f.motivo).toBe('limite_lotes')
+  } finally { await f.limpar() }
+}, 90000)
+test.each(['verificar', 'drive'] as const)('terceiro lote retoma falha de %s e preserva conclusão prematura', async etapa => {
+  const f = await fixture([candidatas(150)], [0, 0, 0])
+  const original = f.deps.comando, upload = f.deps.arquivar
+  let verificacoes = 0, uploads = 0
+  f.deps.comando = async (programa, args) => {
+    if (etapa === 'verificar' && args.includes('verificar') && ++verificacoes === 3) throw new Error('Interrupção antes da verificação')
+    return original(programa, args)
+  }
+  f.deps.arquivar = async s => { if (etapa === 'drive' && ++uploads === 3) throw new Error('Interrupção no Drive'); return upload(s) }
+  try {
+    expect((await executarPedido(f.posicao, f.deps)).etapa).toBe('pendente')
+    expect(f.lotes[2].concluido).toBe(false)
+    const v = f.posicao.associacao!.vinculo
+    if (f.posicao.associacao!.contrato !== 2) throw new Error('Fixture V2')
+    const base = join(f.deps.pastaEstado, 'pedidos', v.pedido_id, f.posicao.associacao!.vinculo.execucao_id)
+    await writeFile(join(base, 'conclusao.json'), JSON.stringify({ motivo: 'limite_lotes', arquivarBrutos: false }))
+    await writeFile(join(f.deps.pastaEstado, 'operacao-pendente.json'), JSON.stringify({ comando: { acao: 'concluir', pedido: v.pedido_id, executor: v.executor, motivo: 'limite_lotes' } }))
+    expect((await executarPedido(f.posicao, f.deps)).etapa).toBe('concluido')
+    expect(f.lotes[2].concluido).toBe(true)
+    expect(f.lotes).toHaveLength(3)
+  } finally { await f.limpar() }
 }, 90000)

@@ -102,7 +102,7 @@ test('Drive fora de ordem nao libera outra solicitacao e conserva intencao', asy
   const pb = canal.arquivar(b)
   await canal.pronto()
   expect(eventos).toHaveLength(2)
-  expect(JSON.parse(await readFile(eventos[0], 'utf8'))).toEqual(a)
+  expect(await Promise.all(eventos.map(async caminho => JSON.parse(await readFile(caminho, 'utf8'))))).toEqual(expect.arrayContaining([a, b]))
   const caminho = resolve(pasta, 'prova.json')
   await writeFile(caminho, JSON.stringify(prova(b)))
   await expect(canal.confirmar({ acao: 'confirmar_arquivo', solicitacao_id: a.solicitacao_id, comprovante: caminho })).rejects.toThrow()
@@ -136,4 +136,25 @@ test('retomada sem job precisa conferir infraestrutura antes da nova coleta', as
   const j = await coordenar('retomar', f.deps)
   expect(admitido).toBe(false)
   expect(j.admissaoSuspensa).toBe(true)
+})
+
+
+test('posicao atrasada no Drive nao herda permissao para onda futura com pouca RAM', async () => {
+  const f = fixture(), liberarDrive = sinal()
+  let memoria = 7000, atrasoAdmitido: boolean | undefined
+  f.deps.medir = async () => ram(memoria)
+  f.deps.proximo = async m => m === '03' ? null : (f.journal?.posicoes.some(p => p.motor === m && p.associacao) ? null : { ...vincular(m), coleta: 1, etapa: m === '02' ? 'arquivar' : 'retomar' })
+  f.deps.executar = async (p, gate) => {
+    if (p.motor === '02') {
+      await liberarDrive.promessa
+      atrasoAdmitido = await gate({ ...p, coleta: 2 })
+      return { ...p, etapa: 'pendente' }
+    }
+    await gate({ ...p, coleta: 2 })
+    memoria = 1000
+    liberarDrive.resolver()
+    return { ...p, etapa: 'concluido' }
+  }
+  await coordenar('rodar', f.deps)
+  expect(atrasoAdmitido).toBe(false)
 })

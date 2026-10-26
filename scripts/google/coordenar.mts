@@ -43,8 +43,11 @@ export async function coordenar(acao: 'rodar' | 'retomar', d: ServicosPool): Pro
     const j: Journal = acao === 'retomar' && anterior ? { ...anterior, dono: await d.dono(), admissaoSuspensa: false } :
       { versao: 1, ciclo_id: randomUUID(), dono: await d.dono(), posicoes: ids.map(vazia), admissaoSuspensa: false }
     let fila = Promise.resolve()
+    const mudancas = new Set<() => void>()
+    const avisarMudanca = () => { for (const r of mudancas) r(); mudancas.clear() }
+    const esperarMudanca = () => new Promise<void>(r => { mudancas.add(r) })
     const salvar = () => { const copia = structuredClone(j); fila = fila.then(() => d.salvar(copia)); return fila }
-    const persistir: Persistir = async p => { j.posicoes[ids.indexOf(p.motor)] = structuredClone(p); await salvar() }
+    const persistir: Persistir = async p => { j.posicoes[ids.indexOf(p.motor)] = structuredClone(p); avisarMudanca(); await salvar() }
     const avisar = (motivo: string) => d.evento({ evento: 'bloqueio', motivo })
     const medir = async () => {
       const m = await d.medir()
@@ -64,23 +67,28 @@ export async function coordenar(acao: 'rodar' | 'retomar', d: ServicosPool): Pro
       }, d.intervaloMs ?? 5000)
     }
     const grants = new Set<string>()
+    const prontas = new Map<string, Posicao>()
     let admissao = Promise.resolve()
     const chave = (p: Posicao, coleta = p.coleta) => identidade(p) + ':' + coleta
     const admitir: Gate = p => {
+      prontas.set(chave(p), p)
+      j.posicoes[ids.indexOf(p.motor)] = { ...p, etapa: 'coletar' }
+      avisarMudanca()
       const executar = async () => {
         if (j.admissaoSuspensa) return false
-        if (grants.has(chave(p))) { grants.delete(chave(p)); return true }
+        if (grants.has(chave(p))) { grants.delete(chave(p)); prontas.delete(chave(p)); return true }
+        // Initial pipelines reach the first collection barrier before a wave is admitted.
+        while (j.posicoes.some(outro => pendente(outro) && outro.coleta === 0 && outro.etapa === 'retomar')) await esperarMudanca()
         await d.aguardarColetas?.()
         if (j.admissaoSuspensa) return false
         const m = await medir()
         const r = admitirOnda(m)
         if (r.ok && !await d.conferir()) { j.admissaoSuspensa = true; avisar('motores_indisponiveis'); await salvar(); return false }
         if (!r.ok) { j.admissaoSuspensa = true; avisar(r.motivo); await salvar(); return false }
-        for (const atual of j.posicoes.filter(pendente)) {
-          const n = atual.motor === p.motor ? p.coleta : atual.etapa === 'coletar' ? atual.coleta : atual.coleta + 1
-          if (n > 0 && n <= 3) grants.add(chave(atual, n))
-        }
+        // Only actual waiting requests belong to this wave, never a future collection in Drive/verification.
+        for (const k of prontas.keys()) grants.add(k)
         grants.delete(chave(p))
+        prontas.delete(chave(p))
         return true
       }
       const resposta = admissao.then(executar)
