@@ -7,7 +7,7 @@ import { PASTA_MIGRACOES } from '@/src/server/db/migracoes/arquivos'
 import { comAdmin } from '@/src/server/db/admin'
 import { criarBancoDeTeste, criarUsuario } from './ajuda'
 
-test('0026 inicializa dez empresas por autor usando último contato e ignora autor nulo', async () => {
+test('0026 inicializa dez empresas por autor usando Ãºltimo contato e ignora autor nulo', async () => {
   const banco = await criarBancoDeTeste({ semMigracoes: true })
   const pasta = await mkdtemp(join(tmpdir(), 'crm-migracao-0026-'))
   try {
@@ -22,7 +22,7 @@ test('0026 inicializa dez empresas por autor usando último contato e ignora aut
       await c.query('BEGIN')
       await c.query('ALTER TABLE contato DISABLE TRIGGER contato_auditoria')
       for (let i = 0; i < 12; i++) {
-        const { rows } = await c.query('INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ($1,\'Histórica\',\'11999999999\') RETURNING id', [String(i+1).padStart(14,'0')])
+        const { rows } = await c.query('INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ($1,\'HistÃ³rica\',\'11999999999\') RETURNING id', [String(i+1).padStart(14,'0')])
         ids.push(rows[0].id)
         await c.query("INSERT INTO contato(empresa_id,tipo,criado_por,criado_em) VALUES ($1,'ligacao',$2,'2026-01-01'::timestamptz+$3*interval '1 day')", [ids[i],autor,i])
       }
@@ -30,7 +30,7 @@ test('0026 inicializa dez empresas por autor usando último contato e ignora aut
       await c.query('ALTER TABLE contato ENABLE TRIGGER contato_auditoria')
       await c.query('COMMIT')
     })
-    expect(await aplicar(banco.urlAdmin,PASTA_MIGRACOES)).toEqual({ ok:true, aplicadas:['0026_empresa_recentes.sql','0027_grupos_importacao.sql', '0028_comercial.sql', '0029_funil_comandos.sql', '0030_funil_avanco.sql', '0031_vendas_carteira_agenda.sql', '0032_whatsapp_vinculo.sql', '0033_empresa_identificacao_parcial.sql', '0034_empresa_origem_google.sql', '0035_grupo_metadados.sql', '0036_prospeccao_grupo.sql', '0037_prospeccao_catalogo_grupos.sql', '0038_busca_empresas.sql', '0039_busca_papel_vigente.sql', '0040_google_planejamento.sql', '0041_google_agentes_planilha.sql', '0042_google_criterios_rodadas.sql', '0043_prospeccao_pessoal.sql', '0044_busca_filtros_completos.sql'] })
+    expect(await aplicar(banco.urlAdmin,PASTA_MIGRACOES)).toEqual({ ok:true, aplicadas:['0026_empresa_recentes.sql','0027_grupos_importacao.sql', '0028_comercial.sql', '0029_funil_comandos.sql', '0030_funil_avanco.sql', '0031_vendas_carteira_agenda.sql', '0032_whatsapp_vinculo.sql', '0033_empresa_identificacao_parcial.sql', '0034_empresa_origem_google.sql', '0035_grupo_metadados.sql', '0036_prospeccao_grupo.sql', '0037_prospeccao_catalogo_grupos.sql', '0038_busca_empresas.sql', '0039_busca_papel_vigente.sql', '0040_google_planejamento.sql', '0041_google_agentes_planilha.sql', '0042_google_criterios_rodadas.sql', '0043_prospeccao_pessoal.sql', '0044_busca_filtros_completos.sql', '0045_google_execucoes_paralelas.sql'] })
     const linhas = await banco.sql<{empresa_id:string}>('SELECT empresa_id FROM empresa_recente WHERE usuario_id=$1 ORDER BY acessada_em DESC,empresa_id', [autor])
     expect(linhas.map(r => r.empresa_id)).toEqual([ids[0],...ids.slice(3).reverse()])
     expect(await banco.sql('SELECT empresa_id FROM empresa_recente WHERE usuario_id=$1',[outro])).toEqual([{empresa_id:ids[0]}])

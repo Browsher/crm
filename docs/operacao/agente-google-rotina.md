@@ -7,7 +7,7 @@ Use um único coordenador determinístico para os três motores. Não dispare su
 Leia o journal privado em .google-agente/coordenador/journal.json. Se houver posição pendente, use retomar; caso contrário, rodar. Execute com terminal interativo mantendo stdin aberto:
 
 ```powershell
-node --env-file=.env.google-agente.local --import tsx scripts/google/coordenar.mts rodar --campanha "C:/Users/ADM/projetos/05 - IA e automações/Web Scraping/armarinhos" --pasta .google-agente
+node --env-file=.env.google-agente.local --import tsx scripts/google/coordenar.mts rodar --campanha "C:/Users/ADM/projetos/01 - Ativos/Conteúdo e automações/Web Scraping/armarinhos" --pasta .google-agente
 ```
 
 Troque somente rodar por retomar quando necessário. O arquivo privado carrega a origem do CRM e os tokens somente no processo. Nunca imprima seus valores. O coordenador segura a exclusão inclusive enquanto aguarda o Drive. Não termine esse processo para atender outro vendedor. Não crie outro executor para escapar de uma pendência.
