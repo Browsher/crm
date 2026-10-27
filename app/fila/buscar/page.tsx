@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { HistoricoBuscas } from '@/src/components/crm/historico-buscas'
+import { lerEmpresasPessoais } from '@/src/server/prospeccao-pessoal'
+import { EmpresasBancoRecentes } from './empresas-recentes'
 import { FormularioBusca } from './formulario'
 import { BuscaDialogo } from '@/src/components/crm/busca-dialogo'
 import { ConteudoBusca } from '../../empresas/busca/conteudo'
@@ -20,8 +22,9 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
   const google = params.fonte === 'google'
   if (google) return PaginaGoogle({ searchParams: Promise.resolve(params) })
   const repo = repositorioBusca(eu.usuarioId)
-  const [limite, historico, busca] = await Promise.all([repo.meuLimite(), repo.listar(),
-    typeof params.busca === 'string' ? repo.ler(params.busca) : Promise.resolve(null)])
+  const [limite, historico, busca, recentes] = await Promise.all([repo.meuLimite(), repo.listar(),
+    typeof params.busca === 'string' ? repo.ler(params.busca) : Promise.resolve(null),
+    lerEmpresasPessoais(eu.usuarioId, { origem: 'banco' }).catch(() => ({ ok: false as const }))])
   if (typeof params.busca === 'string' && !busca) notFound()
   const configurado = Boolean(process.env.CASA_DOS_DADOS_API_KEY?.trim())
   const restante = Math.max(0, (limite?.limite_diario ?? 0) - (limite?.usado ?? 0))
@@ -36,6 +39,8 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
         {limite?.pausado ? <p className={styles.aviso}>Suas buscas estão pausadas pelo gestor.</p> : restante === 0 ? <p className={styles.aviso}>Sem limite disponível. Solicite ao gestor a liberação ou aguarde o próximo dia.</p> : null}
       </aside>
       <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} buscaConcluidaId={busca?.id} />
+      {recentes.ok ? <EmpresasBancoRecentes key={recentes.dados.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.dados.empresas.slice(0, 11)} />
+        : <p role="alert">Não foi possível carregar suas empresas recentes. Atualize a página para tentar novamente.</p>}
       {busca && <Card className={styles.painel}><h2>{busca.nome}</h2>
         <p className={styles.ajuda}>{busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas. Confira os resultados no pop-up.</p>
         <BuscaDialogo key={busca.id} nome={busca.nome} rotulo="Ver resultados" abrirInicialmente

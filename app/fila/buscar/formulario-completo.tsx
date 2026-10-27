@@ -87,7 +87,7 @@ function OperacaoBusca({bloqueado,restante,chaveInicial}:Props) {
         <div className={styles.listaTexto}><label htmlFor="pagina-banco">Página de resultados</label><Input id="pagina-banco" name="pagina" type="number" min={1} max={Math.floor(1000000/Math.max(1,Number(quantidade)))+1} value={pagina} onChange={e=>setPagina(e.target.value)}/><input type="hidden" name="offset" value={(Number(pagina)-1)*Number(quantidade)}/><small>Comece em 1. Mantenha a quantidade ao avançar a página.</small></div>
       </div><label className={styles.check}><input type="checkbox" checked={f.socios} onChange={e=>mudar('socios',e.target.checked)}/>Incluir dados completos dos sócios</label><small>Você verá nome e função. Os demais dados ficam disponíveis ao gestor.</small></fieldset>
     </GrupoFiltro>
-    <div className={styles.rodape}><div><strong>Sua pesquisa fica salva no histórico</strong><p>Depois de consultar, confira os resultados e selecione as empresas que quer importar.</p></div><div><Button type="submit" disabled={travado||!chave||(modoAbertura==='ultimosDias'&&!f.aberturaUltimosDias)}>{pendente?'Buscando empresas…':'Buscar empresas'}</Button></div></div>
+    <div className={styles.rodape}><div><Button type="submit" disabled={travado||!chave||(modoAbertura==='ultimosDias'&&!f.aberturaUltimosDias)}>{pendente?'Buscando empresas…':'Buscar empresas'}</Button></div></div>
     {modoAbertura==='ultimosDias'&&!f.aberturaUltimosDias&&<p role="status">Informe a quantidade de dias no cartão Capital e data de abertura para buscar.</p>}
     {pendente&&<p role="status">Aguarde a conclusão. A consulta não será repetida automaticamente.</p>}
   </form>

@@ -68,6 +68,7 @@ test('perfil e reserva vigente preservam a consulta pessoal até a próxima aqui
   const contexto=JSON.parse(new URL(page.url()).searchParams.get('pessoal')!)
   expect(contexto).toMatchObject({origem:'google',nicho:'Lojas de brinquedos'})
   await empresa().getByRole('button',{name:'Reservar para ligar',exact:true}).click()
+  await expect(page).toHaveURL(/\/fila\?/)
   await expect(page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})).toBeVisible()
   await page.goto(consulta)
   await empresa().getByRole('link',{name:'Continuar atendimento',exact:true}).click()

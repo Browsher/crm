@@ -84,3 +84,12 @@ estável. [CI aprovado](https://github.com/Browsher/crm/actions/runs/40531948103
 1.711 unitários, 713 integrações e 72 jornadas. Revisão independente sem pendências.
 Testes e implantação não consumiram créditos. Limitações da observação online
 estão no [registro de produção](producao-vercel.md).
+
+
+## Empresas recentes no Banco de empresas
+
+Abaixo do formulário, Todas as minhas empresas mostra até 11 empresas individuais já importadas pelo vendedor, da origem banco, por primeiro recebimento mais recente. Reimportar o mesmo cadastro não duplica o card nem muda essa data. O grupo exibido é o primeiro grupo próprio de importação; o nome completo continua no pop-up.
+
+O carrossel manual exibe três cards quadrados no computador, dois em larguras intermediárias e um no celular. Nome e grupo ficam em uma linha com reticências (até 36 e 40 caracteres), além de bairro/cidade/UF, data e selo Cliente quando aplicável. Ver empresa abre um resumo com os textos completos; Abrir ficha completa conserva a consulta pessoal e as permissões das ações e contatos existentes.
+
+O último card Ver todas buscas leva a /fila/localizar?origem=banco. Quando há menos empresas, são mostradas apenas as existentes, com o mesmo atalho. Histórico de buscas permanece separado. Ler e navegar não consulta o fornecedor nem consome créditos. A migração [0048](../db/0048.md) acrescenta somente grupoOrigem à consulta pessoal protegida.

@@ -1,6 +1,6 @@
 export const CAMPOS_PESSOAIS = ['origem','nicho','endereco','nome','cnpj','cnae','uf','cidade','cep','disponibilidade','porte','aberturaDe','aberturaAte','pagina'] as const
 export type FiltrosPessoais = Partial<Record<typeof CAMPOS_PESSOAIS[number],string>>
-export type EmpresaPessoal = {id:string;nome:string;cnpj:string|null;cnae:string|null;cep:string|null;porte:string|null;abertura:string|null;bairro:string|null;cidade:string|null;uf:string|null;origens:string[];nichos:string[];regioes:string[];entrada:string;situacao:string}
+export type EmpresaPessoal = {id:string;nome:string;cnpj:string|null;cnae:string|null;cep:string|null;porte:string|null;abertura:string|null;bairro:string|null;cidade:string|null;uf:string|null;origens:string[];nichos:string[];regioes:string[];entrada:string;situacao:string;grupoOrigem?:string|null}
 export type ConsultaPessoal = {empresas:EmpresaPessoal[];total:number;nichos:string[];bairros:string[]}
 export function lerFiltrosPessoais(bruto:unknown):{ok:true;filtros:FiltrosPessoais}|{ok:false} {
   if(!bruto||typeof bruto!=='object'||Array.isArray(bruto))return {ok:false}
