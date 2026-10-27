@@ -65,7 +65,7 @@ Aliases existentes:
 | --- | --- |
 | Superfícies | `--card` e `--popover` → `--background`; respectivos `*-foreground` → `--foreground`. |
 | Ações secundárias | `--secondary` e `--accent` → `--muted`; respectivos `*-foreground` → `--foreground`. |
-| Navegação lateral | `--sidebar` → `--surface-muted`; texto → `--foreground`; seleção → `--success-background`; texto da seleção → `--primary`. O shell também aplica esses valores diretamente. |
+| Navegação lateral | `--sidebar` → `--surface-muted`; texto → `--foreground`; seleção → `--success-background`; texto da seleção → `--primary`. Esses aliases não são consumidos pelo shell auditado: a composição aplica `--background` na superfície, `--muted-foreground` nos links e `--success` no texto selecionado. |
 | Compatibilidade de superfícies | `--ui-background` → `--background`; `--ui-surface` → `--surface-muted`; `--ui-foreground` → `--foreground`; `--ui-muted-foreground` → `--muted-foreground`. |
 | Compatibilidade de controles | `--ui-border` → `--border`; `--ui-border-control` → `--input`; `--ui-primary` → `--primary`; `--ui-primary-foreground` → `--primary-foreground`; `--ui-focus` → `--ring`. |
 | Compatibilidade de estados | `--ui-success`/`--ui-warning` e seus fundos → tokens de sucesso/atenção; `--ui-danger` → `--destructive`; `--ui-danger-background` → `--danger-background`. |
@@ -249,6 +249,8 @@ Padrão definido para estados vazios com próxima ação:
 - Reutilizar essa composição nos estados vazios equivalentes das demais telas, com adaptação ao celular e os mesmos tokens.
 
 Na Carteira, a composição conserva o título, a explicação, o rótulo “Puxar a próxima empresa” e o destino `/fila`. A preferência determina a apresentação visual; o fluxo comercial permanece o existente.
+
+Prévia navegável: [Design system padrão em HTML](design-system-padrao.html), com temas claro/escuro, exemplos interativos e dados fictícios para avaliação antes da adoção.
 
 ## Verificação e próximos passos
 
