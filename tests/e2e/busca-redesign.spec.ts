@@ -51,13 +51,13 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   await expect(page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true })).toBeVisible()
   await expect(page.getByRole('checkbox', { name: 'Selecionar Comércio sem telefone fictício', exact: true })).toBeDisabled()
   const conferir = () => comBancoGrupos(async c => (await c.query(
-    `SELECT b.estado,b.fornecedor,b.quantidade,jsonb_array_length(b.empresas) AS retornadas,
+    `SELECT b.estado,b.fornecedor,b.quantidade,(b.empresas->0->>'bloqueada_por_repeticao')::boolean bloqueada,jsonb_array_length(b.empresas) AS retornadas,
       (SELECT count(*)::int FROM busca_empresa WHERE usuario_id=b.usuario_id AND nome=b.nome) AS tentativas
      FROM busca_empresa b WHERE b.id=$1`, [buscaId])).rows[0])
-  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, retornadas: 2, tentativas: 1 })
+  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
   await page.reload()
   expect(await chamadas()).toBe(chamadasDepois)
-  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, retornadas: 2, tentativas: 1 })
+  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
   await page.getByRole('checkbox', { name: 'Selecionar Luminárias Horizonte fictícia', exact: true }).check()
   await page.getByRole('button', { name: 'Importar selecionadas', exact: true }).click()
   await expect(page.getByRole('status')).toContainText('1 empresas novas')

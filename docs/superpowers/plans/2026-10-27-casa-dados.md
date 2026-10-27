@@ -55,7 +55,7 @@
 - [x] RED cliente com fixture fictícia baseada na resposta observada, falhas HTTP401/403/429, tamanho/timeout, falta de chave, uma chamada e completo explícito.
 - [x] GREEN normalização contatos/endereço/CNAE/porte/abertura/capital/sócios; manter formato aceito pelo banco e limite de detalhes.
 - [x] RED/ GREEN UI, mensagens e origem; desativar seleção de repetidas; limitar opções suportadas e página; remover pré-contagem.
-- [ ] Adaptar E2E loopback/guardas/fixtures para Casa, zerando chave real herdada; preservar casos históricos CNPJ. Testar por regressão significativa.
+- [x] Adaptar E2E loopback/guardas/fixtures para Casa, zerando chave real herdada; preservar casos históricos CNPJ. Testar por regressão significativa.
 
 ### Task4: Entrega e validação final
 
@@ -64,6 +64,6 @@
 - [x] Concluir a mesma reserva com normalização dos bytes reais salvos, sem novo HTTP; reexecutar reserva sem compra.
 - [x] Importar uma empresa se importável; reconfirmar idempotência, fonte, grupo pessoal, histórico gestor, RLS, dados manuais e carteira/reserva inalterados.
 - [x] Conferir saldo antes/depois sem inventar cobrança não aferida. Restaurar cota inicial; não liberar outros vendedores.
-- [ ] Revisão independente nova do delta completo e agregados; corrigir achados com RED→GREEN.
+- [x] Revisão independente nova do delta completo e agregados; corrigir achados com RED→GREEN.
 - [ ] CI exata final; configurar chave sensível por stdin na Vercel correta; publicar app já autorizado, verificar URL/fonte e guardas.
 - [ ] Verificar interface online só com sessão real, ou declarar limite dessa observação. PR55 atualizado, sem merge; relatório explícito se não houver empresa importável.
