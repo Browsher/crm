@@ -8,10 +8,11 @@ import { useTemaCrm } from './tema'
 import styles from './busca-dialogo.module.css'
 
 type Resultado = { ok: true; conteudo: ReactNode } | { ok: false; erro: string }
-export function BuscaDialogo({ nome, carregarAcao }: { nome: string; carregarAcao: () => Promise<Resultado> }) {
+type Props = { nome: string; carregarAcao: () => Promise<Resultado>; abrirInicialmente?: boolean; conteudoInicial?: ReactNode; rotulo?: string }
+export function BuscaDialogo({ nome, carregarAcao, abrirInicialmente = false, conteudoInicial, rotulo = 'Ver busca' }: Props) {
   const tema = useTemaCrm()
-  const [aberto, setAberto] = useState(false)
-  const [conteudo, setConteudo] = useState<ReactNode>(null)
+  const [aberto, setAberto] = useState(abrirInicialmente)
+  const [conteudo, setConteudo] = useState<ReactNode>(conteudoInicial ?? null)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
   const pedido = useRef(0)
@@ -36,7 +37,7 @@ export function BuscaDialogo({ nome, carregarAcao }: { nome: string; carregarAca
     else { pedido.current++; setConteudo(null) }
   }
   return <Dialog open={aberto} onOpenChange={mudar}>
-    <DialogTrigger asChild><Button type="button" variant="outline" aria-label={`Ver busca: ${nome}`}>Ver busca</Button></DialogTrigger>
+    <DialogTrigger asChild><Button type="button" variant="outline" aria-label={`${rotulo}: ${nome}`}>{rotulo}</Button></DialogTrigger>
     <DialogContent theme={tema} className={styles.dialogo}>
       <DialogHeader className={styles.cabecalho}><DialogTitle>{nome}</DialogTitle><DialogDescription>Confira as empresas e os filtros salvos nesta busca.</DialogDescription></DialogHeader>
       <div className={styles.corpo} aria-busy={carregando}>

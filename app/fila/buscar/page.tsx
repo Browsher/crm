@@ -3,10 +3,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
-import { mensagemBusca } from '@/src/features/busca-empresas/mensagens'
 import { HistoricoBuscas } from '@/src/components/crm/historico-buscas'
 import { FormularioBusca } from './formulario'
-import { ResultadosBusca } from './resultados'
+import { BuscaDialogo } from '@/src/components/crm/busca-dialogo'
+import { ConteudoBusca } from '../../empresas/busca/conteudo'
+import { lerDetalheBuscaAcao } from '../../empresas/busca/detalhe-acao'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 import { Button } from '@/src/components/ui/button'
 import { Card } from '@/src/components/ui/card'
@@ -26,7 +27,7 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
   const restante = Math.max(0, (limite?.limite_diario ?? 0) - (limite?.usado ?? 0))
   const bloqueado = !configurado || Boolean(limite?.pausado) || restante === 0
   return <main className={styles.pagina} style={{maxWidth:1420,marginInline:'auto'}}>
-    <CabecalhoPagina titulo="Banco de empresas" descricao="Encontre novas empresas para os seus grupos." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><Button asChild variant="outline"><Link href="#historico-banco">Ver histórico de buscas</Link></Button></>} />
+    <CabecalhoPagina titulo="Banco de empresas" descricao="Encontre novas empresas para os seus grupos." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><Button asChild variant="outline"><Link href="#historico-banco">Ver histórico de buscas</Link></Button><Button asChild variant="outline"><Link href="/fila/localizar?origem=banco">Localizar todas as empresas</Link></Button></>} />
     {process.env.CRM_E2E === '1' && process.env.CASA_DOS_DADOS_API_KEY === 'chave-apenas-e2e' && <p className={styles.ajuda} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
       <aside aria-label="Seu limite de hoje" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-5 py-3 text-sm">
         <p><strong>{limite?.usado ?? 0} de {limite?.limite_diario ?? 0}</strong> empresas solicitadas hoje. {restante} disponíveis.</p>
@@ -36,10 +37,10 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
       </aside>
       <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} buscaConcluidaId={busca?.id} />
       {busca && <Card className={styles.painel}><h2>{busca.nome}</h2>
-        <p className={styles.ajuda}>{busca.filtros.palavra || 'CNAE ' + busca.filtros.cnae} · {busca.filtros.uf}{busca.filtros.cidade ? ' / ' + busca.filtros.cidade : ''} · {busca.filtros.quantidade} solicitadas</p>
-        {busca.estado === 'reservada' ? <p role="status">Consulta em processamento ou sem confirmação. Atualize esta página para conferir. Ela não será repetida automaticamente.</p>
-          : busca.estado === 'falhou' ? <p role="alert">{busca.motivo ? mensagemBusca(busca.motivo) : 'Não foi possível concluir a consulta.'}</p>
-          : <ResultadosBusca key={busca.id} busca={busca} bloqueada={Boolean(limite?.pausado)} />}
+        <p className={styles.ajuda}>{busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas. Confira os resultados no pop-up.</p>
+        <BuscaDialogo key={busca.id} nome={busca.nome} rotulo="Ver resultados" abrirInicialmente
+          conteudoInicial={<ConteudoBusca busca={busca} gestor={false} bloqueada={Boolean(limite?.pausado)} />}
+          carregarAcao={lerDetalheBuscaAcao.bind(null, busca.id)} />
       </Card>}
       <section id="historico-banco" className="scroll-mt-6"><Card className={styles.painel}><HistoricoBuscas buscas={historico} /></Card></section>
   </main>

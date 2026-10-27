@@ -21,6 +21,7 @@ test('acesso à busca e localização convivem no redesign da Prospecção', asy
   await page.getByRole('link', { name: 'Voltar às opções', exact: true }).click()
   await page.getByRole('link', { name: 'Buscar novas empresas', exact: true }).click()
   await expect(page).toHaveURL('/fila/buscar?fonte=banco')
+  await expect(page.getByRole('link', { name: 'Localizar todas as empresas', exact: true })).toHaveAttribute('href', '/fila/localizar?origem=banco')
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     for (const tema of ['light', 'dark']) {
@@ -48,6 +49,8 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   const buscaId = new URL(page.url()).searchParams.get('busca')!
   const chamadas = async () => (await (await fetch(process.env.CNPJ_BIZ_MOCK_URL + '/estatisticas')).json()).consultas
   const chamadasDepois = await chamadas()
+  const popup = page.getByRole('dialog', { name: 'Nova consulta integrada fictícia', exact: true })
+  await expect(popup).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true })).toBeVisible()
   await expect(page.getByRole('checkbox', { name: 'Selecionar Comércio sem telefone fictício', exact: true })).toBeDisabled()
   const conferir = () => comBancoGrupos(async c => (await c.query(
@@ -56,6 +59,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
      FROM busca_empresa b WHERE b.id=$1`, [buscaId])).rows[0])
   expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
   await page.reload()
+  await expect(popup).toBeVisible()
   expect(await chamadas()).toBe(chamadasDepois)
   expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
   await page.getByRole('checkbox', { name: 'Selecionar Luminárias Horizonte fictícia', exact: true }).check()

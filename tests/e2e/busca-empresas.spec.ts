@@ -86,6 +86,7 @@ test('vendedor escolhe fonte, confere contatos e importa; gestor acompanha e pau
   await expect(page.getByRole('checkbox', { name: 'Selecionar Loja iluminação fictícia CNPJ', exact: true })).toBeDisabled()
   await page.screenshot({ path: testInfo.outputPath('buscar-empresas-desktop.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('dialog').getByRole('button', { name: 'Fechar', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Voltar às opções', exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await page.screenshot({ path: testInfo.outputPath('buscar-empresas-mobile.png'), fullPage: true })

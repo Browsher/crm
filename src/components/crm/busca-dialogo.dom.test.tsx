@@ -35,3 +35,20 @@ test('falha de leitura permite tentar novamente no mesmo pop-up', async () => {
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Empresas salvas')
   expect(carregar).toHaveBeenCalledTimes(2)
 })
+
+test('resultado inicial abre sem action extra e não reabre após revalidação', async () => {
+  const carregar = vi.fn().mockResolvedValue({ ok: true, conteudo: 'Resultado relido' })
+  host = document.createElement('div'); document.body.append(host); root = createRoot(host)
+  const props = { nome: 'Resultado recém-salvo', carregarAcao: carregar, abrirInicialmente: true, conteudoInicial: <p>Resultado já salvo</p>, rotulo: 'Ver resultados' }
+  await act(async () => root.render(<BuscaDialogo {...props} />))
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Resultado já salvo')
+  expect(carregar).not.toHaveBeenCalled()
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
+  await act(async () => root.render(<BuscaDialogo {...props} conteudoInicial={<p>Revalidado</p>} />))
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  const gatilho = host.querySelector<HTMLButtonElement>('[aria-label="Ver resultados: Resultado recém-salvo"]')!
+  expect(gatilho).not.toBeNull()
+  await act(async () => gatilho.click())
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Resultado relido')
+  expect(carregar).toHaveBeenCalledTimes(1)
+})
