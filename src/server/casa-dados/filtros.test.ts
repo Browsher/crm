@@ -45,5 +45,11 @@ test('página substitui offset arbitrário sem solicitar empresas extras', () =>
   expect(prepararConsultaCasa({ ...base(), quantidade: 10, offset: 3 })).toMatchObject({ ok: false })
 })
 test('capital, abertura, natureza, situação e portes conservam os valores', () => {
-  expect(pedido(completo({ capitalMinimo: '1000.50', capitalMaximo: '5000', aberturaDe: '2020-01-01', aberturaAte: '2025-01-01', naturezas: ['2062'], portes: ['ME', 'EPP'], tipos: ['2'], situacoes: ['ativa'], ddds: ['11'], semEmailContabil: true }))).toMatchObject({ capital_social: { minimo: 1000.5, maximo: 5000 }, data_abertura: { inicio: '2020-01-01', fim: '2025-01-01' }, codigo_natureza_juridica: ['2062'], porte_empresa: { codigos: ['01', '03'] }, matriz_filial: 'MATRIZ', ddd: ['11'], mais_filtros: { excluir_email_contab: true } })
+  expect(pedido(completo({ capitalMinimo: '1000', capitalMaximo: '5000', aberturaDe: '2020-01-01', aberturaAte: '2025-01-01', naturezas: ['2062'], portes: ['ME', 'EPP'], tipos: ['2'], situacoes: ['ativa'], ddds: ['11'], semEmailContabil: true }))).toMatchObject({ capital_social: { minimo: 1000, maximo: 5000 }, data_abertura: { inicio: '2020-01-01', fim: '2025-01-01' }, codigo_natureza_juridica: ['2062'], porte_empresa: { codigos: ['01', '03'] }, matriz_filial: 'MATRIZ', ddd: ['11'], mais_filtros: { excluir_email_contab: true } })
+})
+
+
+test('capital fracionário é recusado sem arredondar ou consumir cota', () => {
+  expect(prepararConsultaCasa(completo({ capitalMinimo: '1000.50' }))).toMatchObject({ ok: false })
+  expect(prepararConsultaCasa(completo({ capitalMaximo: '5000.01' }))).toMatchObject({ ok: false })
 })

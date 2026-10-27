@@ -60,7 +60,7 @@ function OperacaoBusca({bloqueado,restante,chaveInicial}:Props) {
     </GrupoFiltro>
     <GrupoFiltro titulo="Capital e data de abertura" descricao="Defina faixas para refinar o perfil das empresas.">
       <fieldset disabled={travado}><div className={styles.grade}>
-        <label>Capital mínimo (R$)<Input type="number" min="0" step="0.01" value={f.capitalMinimo} onChange={e=>mudar('capitalMinimo',e.target.value)}/></label><label>Capital máximo (R$)<Input type="number" min="0" step="0.01" value={f.capitalMaximo} onChange={e=>mudar('capitalMaximo',e.target.value)}/></label>
+        <label>Capital mínimo (R$, sem centavos)<Input type="number" min="0" step="1" value={f.capitalMinimo} onChange={e=>mudar('capitalMinimo',e.target.value)}/></label><label>Capital máximo (R$, sem centavos)<Input type="number" min="0" step="1" value={f.capitalMaximo} onChange={e=>mudar('capitalMaximo',e.target.value)}/></label>
         <label>Abertura a partir de<Input type="date" value={f.aberturaDe} onChange={e=>mudar('aberturaDe',e.target.value)}/></label><label>Abertura até<Input type="date" value={f.aberturaAte} onChange={e=>mudar('aberturaAte',e.target.value)}/></label>
       </div></fieldset>
     </GrupoFiltro>

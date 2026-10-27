@@ -58,7 +58,7 @@ export async function iniciarCnpjBizDeTeste() {
       try {
         const filtros = JSON.parse(corpo)
         consultas++
-        if (filtros.busca_textual?.texto?.includes('falha simulada')) { resposta.writeHead(403).end('{}'); return }
+        if (filtros.busca_textual?.some((b: { texto?: string[] }) => b.texto?.includes('falha simulada'))) { resposta.writeHead(403).end('{}'); return }
         resposta.end(JSON.stringify({ total: 2, cnpjs: empresasCasa.slice(0, Math.min(2, Number(filtros.limite) || 1)) }))
       } catch { resposta.writeHead(400).end('{}') }
       return

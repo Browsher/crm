@@ -20,7 +20,7 @@ export function ResultadosBusca({ busca, bloqueada }: { busca: BuscaSalva; bloqu
     {estado.grupoId && <p role="status">{estado.inseridas} empresas novas. A lista reúne {estado.vinculadas} empresas.</p>}
     {grupo && <Button variant="outline" asChild><Link href={`/fila?grupo=${grupo}`}>Prospectar esta lista</Link></Button>}
     {!busca.empresas.length ? <p>Nenhuma empresa encontrada com esses filtros. Ajuste os critérios em uma nova busca.</p> : <>
-      <p>Selecione as empresas que deseja importar. Empresas e contatos já cadastrados na base global ficam bloqueados para evitar repetição.</p>
+      <p>Selecione as empresas que deseja importar. {busca.fornecedor === 'Casa dos Dados' ? 'Empresas e contatos já cadastrados na base global ficam bloqueados para evitar repetição.' : 'Cadastros existentes serão vinculados à lista, preservando os dados e o responsável atual.'}</p>
       <fieldset disabled={bloqueada || pendente}>
         <legend className={styles.ajuda}>Empresas encontradas</legend>
         <ul>{busca.empresas.map(e => <li key={e.cnpj} className={styles.selecao}>

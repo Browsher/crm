@@ -29,6 +29,7 @@ export function prepararConsultaCasa(f: FiltrosBusca): Resultado {
   if (!Number.isSafeInteger(f.quantidade) || f.quantidade < 1 || f.quantidade > 100 || !Number.isSafeInteger(f.offset) || f.offset < 0 || f.offset > 1_000_000 || f.offset % f.quantidade !== 0) return { ok: false, erro: 'Escolha uma página válida para a quantidade de empresas solicitada.' }
   const a = f.avancados
   if (a && !lerBanco(a).ok) return { ok: false, erro: 'Confira os filtros da pesquisa.' }
+  if (a && [a.capitalMinimo,a.capitalMaximo].some(v=>v && !Number.isSafeInteger(Number(v)))) return { ok: false, erro: 'Informe o capital em reais inteiros, sem centavos. A Casa dos Dados não aceita valores fracionários neste filtro.' }
   const palavras = a?.palavras ?? (f.palavra ? [f.palavra] : [])
   const cnaes = a?.cnaes ?? (f.cnae ? [f.cnae] : [])
   const atividades = a?.atividadeTipo ?? ['principal']
