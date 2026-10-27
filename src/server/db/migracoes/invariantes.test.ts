@@ -56,6 +56,7 @@ const sao = (): Estado => ({
     'public.minhas_empresas_clientes',
     'public.busca_empresa_limite_definir',
     'public.busca_empresa_reservar',
+  'public.busca_empresa_reservar_casa',
     'public.busca_empresa_concluir',
     'public.busca_empresa_importar',
     'public.busca_empresa_grupos_google',
