@@ -84,5 +84,5 @@ test('fechar após resize devolve foco à região se o botão de origem saiu da 
  await act(async()=>cards()[2].querySelector<HTMLButtonElement>('button')!.click())
  await largura(390)
  await act(async()=>document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
- expect(document.activeElement).toBe(host.querySelector('section'))
+ await vi.waitFor(()=>expect(document.activeElement).toBe(host.querySelector('section')))
 })
