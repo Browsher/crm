@@ -65,5 +65,10 @@
 - [x] Importar uma empresa se importável; reconfirmar idempotência, fonte, grupo pessoal, histórico gestor, RLS, dados manuais e carteira/reserva inalterados.
 - [x] Conferir saldo antes/depois sem inventar cobrança não aferida. Restaurar cota inicial; não liberar outros vendedores.
 - [x] Revisão independente nova do delta completo e agregados; corrigir achados com RED→GREEN.
-- [ ] CI exata final; configurar chave sensível por stdin na Vercel correta; publicar app já autorizado, verificar URL/fonte e guardas.
-- [ ] Verificar interface online só com sessão real, ou declarar limite dessa observação. PR55 atualizado, sem merge; relatório explícito se não houver empresa importável.
+- [x] CI exata final; configurar chave sensível por stdin na Vercel correta; publicar app já autorizado, verificar URL/fonte e guardas.
+- [x] Verificar interface online só com sessão real, ou declarar limite dessa observação. PR55 atualizado, sem merge; relatório explícito se não houver empresa importável.
+
+
+## Resultado da execução
+
+Fonte publicada 50643b6, deployment dpl_2LtW8SmkTWP5EAffazDsNWkq6tLr, CI40519067373 aprovado. Passaram 1.682 unitários, 695 integrações e 69 jornadas. Uma empresa real importada para Junior; reimportação zero novas, saldo 1.999, cotas restauradas para zero. Revisão independente final sem achados. Detalhes e limites da observação em docs/operacao/producao-vercel.md e busca-empresas.md. PR55 segue rascunho, sem merge.

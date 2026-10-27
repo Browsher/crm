@@ -63,3 +63,10 @@ Jornada da feature: npm run test:e2e -- --sem-build tests/e2e/busca-empresas.spe
 A operação persistente aa837162-0f27-41b9-b4a9-8843238ef64b solicitou uma empresa com CNAE principal 4755502, ATIVA, Brás, São Paulo/SP e telefone disponível. Uma chamada HTTP completa retornou uma empresa, um telefone, um email e dois sócios. O corpo real foi guardado criptografado e normalizado sem refazer a compra. A importação criou uma empresa e um vínculo em grupo próprio do Junior; a repetição criou zero empresas e manteve o grupo. O gestor vê a busca e os dois sócios protegidos; os outros dois vendedores não veem a busca nem a empresa na consulta pessoal. Junior recebe somente nome e função dos sócios.
 
 Hashes dos 43 cadastros anteriores, quatro usuários, 11 linhas de fila, duas negociações, uma venda, dois grupos e 43 vínculos anteriores coincidiram após a operação. O limite de Junior voltou ao valor inicial zero; os demais não foram habilitados. O saldo aferido após a única compra foi 1.999 créditos. A ativação de novas buscas segue os limites definidos pelo gestor, separada do saldo do fornecedor.
+
+
+A fonte50643b6 foi publicada em dpl_2LtW8SmkTWP5EAffazDsNWkq6tLr, no endereço
+estável do CRM. O [CI final do código publicado](https://github.com/Browsher/crm/actions/runs/40519067373)
+aprovou 1.682 unitários, 695 integrações e 69 jornadas. Revisão independente
+concluída sem achados pendentes. Configuração sensível Production e conferência
+online estão detalhadas em [produção Vercel](producao-vercel.md).

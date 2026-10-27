@@ -166,3 +166,54 @@ A mesma automação voltou a ACTIVE, seg–sex 17h de São Paulo. A coleta exige
 reivindicar pedidos ou criar jobs. Não houve três entregas em listas reais
 neste incremento. Detalhes, limites da validação e revisão independente:
 [operação do agente](agente-google-crm.md#atualização-operacional-em-26102026).
+
+
+## Casa dos Dados em 27/10/2026
+
+Publicado no endereço estável [CRM Prospecção](https://crm-prospeccao-bice.vercel.app),
+deployment dpl_2LtW8SmkTWP5EAffazDsNWkq6tLr, READY, fonte
+50643b6ca072aaac2ea57e044848fef3d501742a da PR55, sem merge.
+O [CI do código publicado](https://github.com/Browsher/crm/actions/runs/40519067373)
+passou com 1.682 testes unitários (dois ignorados), 695 de integração e 69
+jornadas no navegador, além de tipos, lint, convenções, build e conferência Railway.
+
+A publicação foi criada com Production e skip-domain, conferida por projeto,
+commit e estado READY e depois promovida. O endereço estável foi resolvido
+novamente e confirmou o mesmo deployment. A chave CASA_DOS_DADOS_API_KEY foi
+enviada por stdin, tipo sensitive e somente Production. Metadados confirmaram
+15 variáveis; as 14 anteriores foram preservadas. Nenhuma chave ou resposta
+real integra o código enviado. Não há retorno ao CNPJ.biz em novas consultas.
+
+Antes da aplicação, o backup operacional foi criptografado e conferido por
+manifesto, SHA256 e leitura integral do dump com pg_restore sem banco de destino.
+Isso confere o arquivo; não representa ensaio de restauração em banco.
+Foi aplicada somente 0046, totalizando 47 migrações sem pendências/divergências
+e com invariantes aprovadas. O histórico CNPJ.biz conserva sua origem e contratos.
+
+A validação real reservou cota e UUID antes de uma única chamada de pesquisa,
+com resultado completo. Uma empresa de armarinhos, Brás, São Paulo/SP foi
+importada para Junior. Saldo aferido: 2.000 antes, 1.999 depois e 1.999 na
+conferência final. A resposta foi persistida criptografada e normalizada sem
+outra compra. A reimportação criou zero empresas e conservou o grupo; outro
+envio da reserva retornou repetida. Os dois outros vendedores não veem essa
+busca nem a empresa em suas listas pessoais. O gestor vê a origem, quem buscou
+e os dois sócios protegidos; Junior vê somente nome e função.
+
+Hashes dos 43 cadastros anteriores, quatro usuários, 11 linhas da fila, duas
+negociações, uma venda, dois grupos e 43 vínculos anteriores foram preservados.
+A empresa nova não foi transferida automaticamente para carteira ou reserva.
+A cota temporária de Junior voltou a zero; os três vendedores terminam com
+limite zero, sujeitos à liberação normal pelo gestor.
+
+Sete jornadas locais afetadas passaram, incluindo importação Casa, histórico
+CNPJ, refresh sem nova chamada, fichas, pausa, temas e larguras 390/1920.
+As capturas fictícias foram conferidas. A revisão independente final ficou
+sem achados Critical, Important ou Minor: capital inteiro, mock403 e contato
+fictício repetido foram corrigidos com regressões, sem afrouxar a deduplicação.
+
+Na publicação online, login retornou200, Banco de empresas e gestão sem sessão
+redirecionaram307 para login, e API Google sem token retornou401 sem adquirir
+pedido. O transporte do navegador autenticado estava indisponível. A importação
+real foi validada pelas funções nativas sob identidade RLS; as telas autenticadas
+foram validadas no E2E local, sem fabricar sessão online. Não houve outra consulta
+paga, mensagem, alteração de workflow, planilha ou agendamento Google nesta migração.
