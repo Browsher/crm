@@ -18,18 +18,19 @@ export function ResultadosBusca({ busca, bloqueada }: { busca: BuscaSalva; bloqu
     <input type="hidden" name="busca" value={busca.id} />
     {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
     {estado.grupoId && <p role="status">{estado.inseridas} empresas novas. A lista reúne {estado.vinculadas} empresas.</p>}
+    {bloqueada && <Alert variant="warning">Importações pausadas pelo gestor. Você pode conferir as empresas.</Alert>}
     {grupo && <Button variant="outline" asChild><Link href={`/fila?grupo=${grupo}`}>Prospectar esta lista</Link></Button>}
     {!busca.empresas.length ? <p>Nenhuma empresa encontrada com esses filtros. Ajuste os critérios em uma nova busca.</p> : <>
       <p>Selecione as empresas que deseja importar. {busca.fornecedor === 'Casa dos Dados' ? 'Empresas e contatos já cadastrados na base global ficam bloqueados para evitar repetição.' : 'Cadastros existentes serão vinculados à lista, preservando os dados e o responsável atual.'}</p>
-      <fieldset disabled={bloqueada || pendente}>
+      <fieldset>
         <legend className={styles.ajuda}>Empresas encontradas</legend>
-        <ul>{busca.empresas.map(e => <li key={e.cnpj} className={styles.selecao}>
+        <ul className="grid list-none gap-4 p-0">{busca.empresas.map(e => <li key={e.cnpj} className="flex min-w-0 items-start gap-3">
           <label className={styles.marcar}><input type="checkbox" name="cnpjs" value={e.cnpj} aria-label={`Selecionar ${e.razao_social}`}
-            disabled={!e.telefone || e.bloqueada_por_repeticao} checked={selecionadas.includes(e.cnpj)}
+            disabled={bloqueada || pendente || !e.telefone || e.bloqueada_por_repeticao} checked={selecionadas.includes(e.cnpj)}
             onChange={evento => setSelecionadas(v => evento.target.checked ? [...v, e.cnpj] : v.filter(c => c !== e.cnpj))} /></label>
-          <div><EmpresaEncontradaDetalhes empresa={e} />{e.bloqueada_por_repeticao && <p className={styles.aviso}>Empresa ou contato já cadastrado na base global. Importação bloqueada.</p>}</div>
+          <div className="min-w-0 flex-1"><EmpresaEncontradaDetalhes empresa={e} />{e.bloqueada_por_repeticao && <p className={styles.aviso}>Empresa ou contato já cadastrado na base global. Importação bloqueada.</p>}</div>
         </li>)}</ul>
-        <div className={styles.acoes}><Button type="submit" disabled={selecionadas.length === 0}>{pendente ? 'Importando…' : 'Importar selecionadas'}</Button>
+        <div className={styles.acoes}><Button type="submit" disabled={bloqueada || pendente || selecionadas.length === 0}>{pendente ? 'Importando…' : 'Importar selecionadas'}</Button>
           <span>{selecionadas.length} selecionadas</span></div>
       </fieldset>
       <p className={styles.ajuda}>Empresas sem telefone válido permanecem na conferência. Nenhuma empresa entra automaticamente na carteira.</p>
