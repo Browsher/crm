@@ -58,7 +58,7 @@ test('capital fracionário é recusado sem arredondar ou consumir cota', () => {
 test('novas listas CNAE são independentes e não ativam mistura de atividades',()=>{
  const r=pedido(completo({cnaes:['4755502'],cnaesSecundarios:['4742300']}))
  expect(r).toMatchObject({codigo_atividade_principal:['4755502'],codigo_atividade_secundaria:['4742300']})
- expect(r.incluir_atividade_secundaria).not.toBe(true)
+ expect(r.incluir_atividade_secundaria).toBe(false)
  const soSecundario=pedido(completo({cnaes:[],cnaesSecundarios:['4742300']}))
  expect(soSecundario).not.toHaveProperty('codigo_atividade_principal')
  expect(soSecundario).toHaveProperty('codigo_atividade_secundaria',['4742300'])

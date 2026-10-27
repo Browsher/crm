@@ -50,7 +50,7 @@ export function prepararConsultaCasa(f: FiltrosBusca): Resultado {
   const pedido: Record<string, unknown> = { limite: f.quantidade, pagina: f.offset / f.quantidade + 1, ...geo.pedido, mais_filtros: qualidade }
   if (palavras.length) pedido.busca_textual = [{ texto: palavras, tipo_busca: 'radical', razao_social: true, nome_fantasia: true, nome_socio: false }]
   if (a?.cnaesSecundarios !== undefined) {
-    if(cnaes.length) pedido.codigo_atividade_principal=cnaes
+    if(cnaes.length) { pedido.codigo_atividade_principal=cnaes; pedido.incluir_atividade_secundaria=false }
     if(a.cnaesSecundarios.length) pedido.codigo_atividade_secundaria=a.cnaesSecundarios
   } else if (cnaes.length) {
     if (atividades.includes('principal')) { pedido.codigo_atividade_principal = cnaes; pedido.incluir_atividade_secundaria = atividades.includes('secundaria') }

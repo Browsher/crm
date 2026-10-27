@@ -130,7 +130,7 @@ test('novos filtros Casa conservam CNAEs separados, últimos dias e exclusões n
  const [b]=await comBancoGrupos(async c=>(await c.query("SELECT filtros->'avancados' f FROM busca_empresa WHERE id=$1",[id])).rows)
  expect(b.f).toMatchObject({cnaes:['4755502'],cnaesSecundarios:['4742300'],aberturaDe:'',aberturaAte:'',aberturaUltimosDias:'7',excluirMei:true,meiExclusaoDe:'2025-01-01',excluirSimples:true,simplesExclusaoAte:'2026-01-01'})
  const estatisticas=await (await fetch(process.env.CNPJ_BIZ_MOCK_URL+'/estatisticas')).json()
- expect(estatisticas.ultimaCasa).toMatchObject({codigo_atividade_principal:['4755502'],codigo_atividade_secundaria:['4742300'],data_abertura:{ultimos_dias:7},mei:{excluir_optante:true,data_exclusao:{inicio:'2025-01-01'}},simples:{excluir_optante:true,data_exclusao:{fim:'2026-01-01'}}})
+ expect(estatisticas.ultimaCasa).toMatchObject({incluir_atividade_secundaria:false,codigo_atividade_principal:['4755502'],codigo_atividade_secundaria:['4742300'],data_abertura:{ultimos_dias:7},mei:{excluir_optante:true,data_exclusao:{inicio:'2025-01-01'}},simples:{excluir_optante:true,data_exclusao:{fim:'2026-01-01'}}})
  const contexto=await browser.newContext()
  try{
   const g=await contexto.newPage();await g.goto('/login');await g.getByLabel('E-mail').fill('gestore2e@teste.local');await g.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await g.getByRole('button',{name:'Entrar',exact:true}).click();await expect(g).toHaveURL('/gestao')
