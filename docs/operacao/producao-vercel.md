@@ -276,3 +276,25 @@ RED/GREEN. Nenhuma consulta real, migração, variável ou limite foi alterado.
 Login online retornou 200 e as duas páginas privadas retornaram 307 para login.
 A visualização autenticada foi validada no E2E local; não se criou sessão online.
 A PR55 permanece em rascunho, sem merge. O registro posterior é somente documental.
+
+
+## Resultado automático da busca, 27/10/2026
+
+A fonte 06af7223d4d36f1842e8119d65e9ad93edf2a267 foi publicada no deployment
+dpl_78jzMvriTcSJh5ucE24jFkZmDM14 READY e promovida para o endereço estável.
+Projeto, SHA e alias foram conferidos após a promoção. O
+[CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40546516169)
+aprovou 1.725 unitários (dois ignorados), 713 integrações e 75 jornadas,
+além de tipos, lint, convenções, build e conferência Railway.
+
+Nova busca e links com ?busca= abrem o Dialog automaticamente usando o snapshot
+já lido, sem action extra na primeira abertura. Fechar não reabre na revalidação;
+Ver resultados relê sob sessão/RLS. Refresh não repete a aquisição. Histórico
+permanece dentro do Banco de empresas; Localizar todas as empresas aponta para
+as importações pessoais da origem banco. Filtros usados conserva seu nome e
+critérios preenchidos, sem filtros favoritos.
+
+Localmente passaram 200 testes focados e nove jornadas de busca/filtros/importação.
+Revisão independente sem achados. Nenhuma migração, chave, limite ou chamada paga.
+Login online retornou 200 e páginas privadas 307 para login. Fluxo autenticado
+validado no E2E local, sem criar sessão online. PR55 continua sem merge.

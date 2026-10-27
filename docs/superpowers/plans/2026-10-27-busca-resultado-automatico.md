@@ -11,3 +11,7 @@ Execução nesta conversa, worktree crm-redesign, branch codex/redesign-crm e PR
 ## Verificação local
 
 RED confirmado: Dialog não abria com conteúdo inicial. GREEN em seis testes focados de Dialog/histórico/resultados. Typecheck, lint dos arquivos alterados e build E2E passaram. Seis jornadas afetadas passaram (incluindo popup automático após submissão e refresh, histórico, importação e pausa). Revisão independente estática final sem achados Critical/Important/Minor. Nenhuma consulta real ou mudança de configuração.
+
+## Entrega
+
+Fonte 06af7223d4d36f1842e8119d65e9ad93edf2a267 publicada e conferida no deployment dpl_78jzMvriTcSJh5ucE24jFkZmDM14. CI40546516169 aprovado: 1.725 unitários (2 ignorados), 713 integrações e 75 jornadas. Smoke no endereço estável aprovado, apenas sem autenticação; jornadas autenticadas testadas localmente. Sem consulta real ou mudança de configuração. PR55 atualizada e sem merge.
