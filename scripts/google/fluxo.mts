@@ -56,6 +56,12 @@ export async function executarPedido(inicial:Posicao,deps:DependenciasFluxo):Pro
       if(!confirmado.concluido_em)throw falha()
       await persistir('concluido',{motivo:confirmado.motivo_parada});return p
     }
+    let modoAreas=false
+    try{
+      const cfg=await lerJson(resolve(deps.campanha,'campanha.json'))
+      if(cfg.coleta_por_areas!==undefined&&typeof cfg.coleta_por_areas!=='boolean')throw falha()
+      modoAreas=cfg.coleta_por_areas===true&&typeof contexto.bairro==='string'&&!contexto.bairro.trim()
+    }catch(e){if((e as NodeJS.ErrnoException).code!=='ENOENT')throw e}
     const rodadaPasta=(n:number)=>resolve(deps.campanha,'coletas','agentes',v.vendedor_id,v.pedido_id,a.vinculo.execucao_id,'coleta-'+String(n).padStart(2,'0'))
     const brutos=()=>Array.from({length:p.coleta},(_,i)=>resolve(rodadaPasta(i+1),'bruto_original_full.csv'))
     const arquivar=async(lote:string|null)=>{
@@ -142,14 +148,25 @@ export async function executarPedido(inicial:Posicao,deps:DependenciasFluxo):Pro
       }
       if(!lote){
         const pool:Record<string,unknown>[]=[]
+        let inicioUltima=0
         for(let n=1;n<=p.coleta;n++){
           const dados=await lerJson(resolve(rodadaPasta(n),'dados_preparados.json'))
           if(!Array.isArray(dados.all)||!dados.all.every(objeto))throw falha()
+          if(n===p.coleta)inicioUltima=pool.length
           pool.push(...dados.all)
         }
         const poolPath=resolve(base,'pool-'+p.coleta+'.json'),vistas=resolve(base,'vistas-'+e.lotes+'.json')
         await salvarImutavel(poolPath,JSON.stringify({all:pool},null,2));await salvarImutavel(vistas,JSON.stringify(e.vistas))
         lote=resolve(base,'lotes',String(e.lotes+1).padStart(2,'0'),'lote.json')
+        if(modoAreas&&!await existe(lote)){
+          const resumo:unknown=JSON.parse(ultimaLinha(await python('rodadas.py','resumo',['--candidatas',poolPath,'--vistas',vistas,'--inicio-ultima',String(inicioUltima)])))
+          if(!objeto(resumo)||Object.keys(resumo).sort().join(',')!=='disponiveis,novas'||!Number.isSafeInteger(resumo.disponiveis)||Number(resumo.disponiveis)<0||Number(resumo.disponiveis)>50||!Number.isSafeInteger(resumo.novas)||Number(resumo.novas)<0)throw falha()
+          const esgotou=p.coleta>=3||(p.coleta>1&&resumo.novas===0)
+          if(p.coleta>0&&Number(resumo.disponiveis)>0&&Number(resumo.disponiveis)<Math.min(50,150-e.analisadas)&&!esgotou){
+            await persistir('coletar',{coleta:p.coleta+1,lote:null,motivo:null});continue
+          }
+          if(resumo.disponiveis===0&&esgotou){await concluir(await decidir(e,0),true);return p}
+        }
         await persistir(p.etapa,{lote})
         await mkdir(dirname(lote),{recursive:true})
         await python('rodadas.py','selecionar',['--candidatas',poolPath,'--vistas',vistas,'--restante',String(150-e.analisadas),'--saida',lote])

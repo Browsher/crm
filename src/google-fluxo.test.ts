@@ -13,13 +13,13 @@ import { executarPedido } from '../scripts/google/fluxo.mts'
 import type { Posicao, SolicitacaoDrive, ComprovanteDrive, DependenciasFluxo, MotorId } from '../scripts/google/coordenador-tipos.mts'
 const executar=promisify(execFile)
 const candidatas=(n:number)=>Array.from({length:n},(_,i)=>({google_place_id:'place-'+i,nome_fantasia:'Loja '+i,telefone:null,cnpj:null}))
-async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false,motor:MotorId='01',falharReservaEm=1){
+async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false,motor:MotorId='01',falharReservaEm=1,bairro='Brás'){
  const raiz=await mkdtemp(join(tmpdir(),'crm-fluxo-'))
  const pastaEstado=join(raiz,'estado'),campanha=join(raiz,'campanha')
  await mkdir(pastaEstado,{recursive:true});await mkdir(campanha)
  const v={motor,executor:randomUUID(),pedido_id:randomUUID(),execucao_id:randomUUID(),vendedor_id:randomUUID(),revisao:1,snapshot_sha256:'a'.repeat(64)}
  const contexto=join(pastaEstado,'pedido-inicial.json')
- const p={id:v.pedido_id,vendedor_id:v.vendedor_id,executor:v.executor,execucao_id:v.execucao_id,revisao:1,snapshot_sha256:v.snapshot_sha256,contrato:2,motor:v.motor,dia:'2026-10-26',nicho:'Brinquedos',bairro:'Brás',cidade:'São Paulo',uf:'SP',criterios:criteriosVazios(),estado:'coletando'}
+ const p={id:v.pedido_id,vendedor_id:v.vendedor_id,executor:v.executor,execucao_id:v.execucao_id,revisao:1,snapshot_sha256:v.snapshot_sha256,contrato:2,motor:v.motor,dia:'2026-10-26',nicho:'Brinquedos',bairro,cidade:'São Paulo',uf:'SP',criterios:criteriosVazios(),estado:'coletando'}
  await writeFile(contexto,JSON.stringify(p));await writeFile(join(pastaEstado,'executor.json'),JSON.stringify({id:v.executor}))
  let posicao:Posicao={motor,associacao:{contrato:2,vinculo:v},etapa:'retomar',contexto,lote:null,coleta:0,motivo:null}
  const chamadas:string[]=[],entregas:unknown[]=[],arquivos:SolicitacaoDrive[]=[]
@@ -321,3 +321,60 @@ test.each(['verificar', 'drive'] as const)('terceiro lote retoma falha de %s e p
     expect(f.lotes).toHaveLength(3)
   } finally { await f.limpar() }
 }, 90000)
+
+
+test('areas completa saldo antes da primeira reserva e processa tres lotes de 50',async()=>{
+ const novas=(n:number,inicio:number)=>candidatas(n).map((c,i)=>({...c,google_place_id:'place-'+(inicio+i)}))
+ const f=await fixture([novas(39,0),novas(39,39),novas(100,78)],[0,0,0],false,false,false,'01',1,'')
+ try{
+  await writeFile(join(f.deps.campanha,'campanha.json'),JSON.stringify({coleta_por_areas:true}))
+  const final=await executarPedido(f.posicao,f.deps)
+  expect(final.etapa,final.motivo??'').toBe('concluido')
+  expect(f.lotes.map(l=>l.candidatas.length)).toEqual([50,50,50])
+  expect(f.chamadas.indexOf('coletar:2')).toBeLessThan(f.chamadas.indexOf('crm:reservar_lote'))
+  expect(f.motivo).toBe('limite_lotes')
+ }finally{await f.limpar()}
+},120000)
+
+test('areas consome saldo parcial sem repetir terceira coleta quando a segunda nao acrescenta',async()=>{
+ const f=await fixture([candidatas(39),candidatas(39)],[3],false,false,false,'01',1,'')
+ try{
+  await writeFile(join(f.deps.campanha,'campanha.json'),JSON.stringify({coleta_por_areas:true}))
+  expect((await executarPedido(f.posicao,f.deps)).etapa).toBe('concluido')
+  expect(f.lotes.map(l=>l.candidatas.length)).toEqual([39])
+  expect(f.chamadas.indexOf('coletar:2')).toBeLessThan(f.chamadas.indexOf('crm:reservar_lote'))
+  expect(f.chamadas.filter(c=>c.startsWith('coletar:'))).toEqual(['coletar:1','coletar:2'])
+  expect(f.motivo).toBe('sem_novidades')
+ }finally{await f.limpar()}
+},90000)
+
+
+test('areas retoma terceira reserva existente antes de completar qualquer novo pool',async()=>{
+ const f=await fixture([candidatas(150)],[0,0,0],false,true,false,'01',3,'')
+ try{
+  await writeFile(join(f.deps.campanha,'campanha.json'),JSON.stringify({coleta_por_areas:true}))
+  const pendente=await executarPedido(f.posicao,f.deps)
+  expect(pendente.etapa).toBe('pendente')
+  const ids=f.lotes.map(l=>l.id)
+  expect(f.lotes.map(l=>l.candidatas.length)).toEqual([50,50,50])
+  const pronto=await executarPedido(pendente,f.deps)
+  expect(pronto.etapa,pronto.motivo??'').toBe('concluido')
+  expect(f.lotes.map(l=>l.id)).toEqual(ids)
+  expect(f.chamadas.filter(c=>c.startsWith('coletar:'))).toEqual(['coletar:1'])
+  expect(f.motivo).toBe('limite_lotes')
+ }finally{await f.limpar()}
+},120000)
+
+
+test('areas abre terceira fonte mesmo depois de consumir todas as novidades da segunda',async()=>{
+ const novas=(inicio:number)=>candidatas(50).map((c,i)=>({...c,google_place_id:'place-'+(inicio+i)}))
+ const f=await fixture([novas(0),novas(50),novas(100)],[0,0,0],false,false,false,'01',1,'')
+ try{
+  await writeFile(join(f.deps.campanha,'campanha.json'),JSON.stringify({coleta_por_areas:true}))
+  const pronto=await executarPedido(f.posicao,f.deps)
+  expect(pronto.etapa,pronto.motivo??'').toBe('concluido')
+  expect(f.lotes.map(l=>l.candidatas.length)).toEqual([50,50,50])
+  expect(f.chamadas.filter(c=>c.startsWith('coletar:'))).toEqual(['coletar:1','coletar:2','coletar:3'])
+  expect(f.motivo).toBe('limite_lotes')
+ }finally{await f.limpar()}
+},120000)

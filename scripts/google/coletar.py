@@ -14,7 +14,8 @@ from decimal import Decimal, InvalidOperation
 from motores import carregar_motor, travar_motor, travar_execucao, geocodificar_com_cache
 from pathlib import Path
 from urllib.parse import unquote_plus
-from rodadas import priorizar
+from rodadas import priorizar, identidades
+from consultas import areas_ativas, opcao_booleana, gerar_consultas, conferir_consultas
 
 
 def sha256(arquivo):
@@ -144,8 +145,9 @@ def conferir_conexao(campanha, motor_id='01'):
 def reconciliar_intencao(pasta, pedido, motor, kit):
     intencao = json.loads((pasta/'intencao.json').read_text(encoding='utf-8'))
     request = intencao.get('request')
-    if not (pasta/'pedido.json').exists() or intencao.get('pedido_id') != pedido['id'] or intencao.get('motor','01') != motor['id'] or not isinstance(request,dict) or request.get('keywords') != [consulta(pedido)] or not intencao.get('started_at'):
+    if not (pasta/'pedido.json').exists() or intencao.get('pedido_id') != pedido['id'] or intencao.get('motor','01') != motor['id'] or not isinstance(request,dict) or not intencao.get('started_at'):
         raise RuntimeError('Intenção divergente. Reconcilie os arquivos antes de continuar.')
+    conferir_consultas(pedido, consulta(pedido), intencao)
     def corresponde(job):
         dados=job.get('Data')
         if job.get('Name') != request.get('name') or not job.get('ID') or not isinstance(dados,dict):
@@ -169,11 +171,11 @@ def reconciliar_intencao(pasta, pedido, motor, kit):
     encontrados=[j for j in listar_jobs(kit) if corresponde(j)]
     if len(encontrados) != 1:
         raise RuntimeError('Criação incerta sem correspondência única. Preserve a intenção; nenhum novo POST foi enviado.')
-    return {'id':encontrados[0]['ID'],'request':request,'started_at':intencao['started_at'],'pedido_id':pedido['id'],'motor':motor['id']}
+    return {'id':encontrados[0]['ID'],'request':request,'started_at':intencao['started_at'],'pedido_id':pedido['id'],'motor':motor['id'], **({'consulta_versao':intencao['consulta_versao']} if 'consulta_versao' in intencao else {})}
 
 def processar_resultados(modulo, raw, mapa, pedido, pasta):
     if pedido.get('contrato') == 2:
-        return processar_neutro(raw, pedido, pasta)
+        return processar_neutro(raw, pedido, pasta, areas_ativas(pedido, getattr(modulo, 'CONFIG', {})))
     with raw.open(encoding='utf-8-sig', newline='') as stream:
         reader = csv.DictReader(stream)
         campos_brutos = reader.fieldnames or []
@@ -199,7 +201,7 @@ def processar_resultados(modulo, raw, mapa, pedido, pasta):
     return resumo
 
 
-def processar_neutro(raw, pedido, pasta):
+def processar_neutro(raw, pedido, pasta, limitar=False):
     with raw.open(encoding='utf-8-sig', newline='') as stream:
         linhas = list(csv.DictReader(stream))
     empresas = []
@@ -222,6 +224,17 @@ def processar_neutro(raw, pedido, pasta):
             'site': linha.get('website') or linha.get('site') or '', 'situacao_google': linha.get('status') or '',
             'link_maps': linha.get('link') or linha.get('link_maps') or '', 'dados_brutos': linha})
     empresas = priorizar(empresas, pedido.get('criterios', {}))
+    if limitar:
+        distintas, vistas = [], set()
+        for empresa in empresas:
+            chaves = identidades(empresa)
+            if not chaves or chaves.intersection(vistas):
+                continue
+            distintas.append(empresa)
+            vistas.update(chaves)
+            if len(distintas) == 150:
+                break
+        empresas = distintas
     campos = ['telefone', 'cnpj', 'razao_social', 'nome_fantasia', 'contato_nome', 'email', 'cep', 'cnae_principal', 'google_place_id']
     for nome, selecionadas in [('empresas_novas.csv', empresas[:50]), ('empresas_sinalizadas.csv', empresas)]:
         with (pasta/nome).open('w', encoding='utf-8-sig', newline='') as stream:
@@ -229,13 +242,22 @@ def processar_neutro(raw, pedido, pasta):
             writer.writeheader()
             writer.writerows(selecionadas)
     (pasta/'bruto_completo.csv').write_bytes(raw.read_bytes())
-    dados = {'fields': campos, 'all': empresas, 'selected': empresas[:50], 'raw_rows': linhas,
+    dados = {'fields': campos, 'all': empresas, 'selected': empresas[:50],
         'output_files': {'selected': 'empresas_novas.csv', 'all': 'empresas_sinalizadas.csv', 'raw': 'bruto_completo.csv'}}
+    if not limitar:
+        dados['raw_rows'] = linhas
+    dados_bytes = json.dumps(dados, ensure_ascii=False, indent=2).encode('utf-8') if limitar else None
+    if dados_bytes is not None and len(dados_bytes) > 9000000:
+        raise RuntimeError('Intermediário excede 9.000.000 bytes. Bruto preservado; etapa pendente.')
     resumo = {'registros_brutos': len(linhas), 'candidatas_preparadas': len(empresas), 'novas_selecionadas': 0,
         'meta': 50, 'contrato': 2, 'snapshot_sha256': pedido.get('snapshot_sha256'), 'revisao': pedido.get('revisao')}
     for nome, valor in [('dados_preparados.json', dados), ('resumo.json', resumo)]:
         temporario = pasta/(nome + '.tmp')
-        temporario.write_text(json.dumps(valor, ensure_ascii=False, indent=2), encoding='utf-8')
+        if limitar:
+            conteudo = dados_bytes if nome == 'dados_preparados.json' else json.dumps(valor, ensure_ascii=False, indent=2).encode('utf-8')
+            temporario.write_bytes(conteudo)
+        else:
+            temporario.write_text(json.dumps(valor, ensure_ascii=False, indent=2), encoding='utf-8')
         temporario.replace(pasta/nome)
     return resumo
 
@@ -252,6 +274,8 @@ def coletar(pedido, campanha, motor_id='01'):
     if pedido.get('estado') != 'coletando':
         raise ValueError('Pedido não está em coleta. Reconcilie a etapa atual antes de continuar.')
     modulo = carregar_coletor(campanha, motor_id)
+    modo_areas = areas_ativas(pedido, getattr(modulo, 'CONFIG', {}))
+    email = opcao_booleana(getattr(modulo, 'CONFIG', {}), 'coletar_email', True) if pedido.get('contrato') == 2 else True
     pasta = pasta_do_pedido(modulo.HERE, pedido)
     pasta.mkdir(parents=True, exist_ok=True)
     with ExitStack() as locks:
@@ -280,14 +304,17 @@ def coletar(pedido, campanha, motor_id='01'):
                 raise RuntimeError('Geocodificação indisponível. Preserve o pedido.')
             inicio = datetime.now(timezone.utc).isoformat()
             nome = 'crm-' + pedido['id'] + ('-coleta-' + str(pedido.get('rodada', 1)) if pedido.get('contrato') == 2 else '')
-            body = {'name': nome, 'keywords': [termo], 'lang': 'pt', 'zoom': 15, 'lat': str(coords[0]), 'lon': str(coords[1]),
-                'fast_mode': False, 'email': True, 'radius': modulo.CONFIG['radius'], 'depth': modulo.CONFIG['depth'], 'max_time': modulo.CONFIG['max_time']}
-            modulo.save_json(pasta/'intencao.json', {'pedido_id': pedido['id'], 'motor':motor_id, 'request': body, 'started_at': inicio})
+            consultas = gerar_consultas(termo, coords, modulo.CONFIG['radius'], pedido.get('rodada', 1)) if modo_areas else [termo]
+            body = {'name': nome, 'keywords': consultas, 'lang': 'pt', 'zoom': 15, 'lat': str(coords[0]), 'lon': str(coords[1]),
+                'fast_mode': False, 'email': email, 'radius': modulo.CONFIG['radius'], 'depth': modulo.CONFIG['depth'], 'max_time': modulo.CONFIG['max_time']}
+            estrategia = {'consulta_versao': 1} if modo_areas else {}
+            modulo.save_json(pasta/'intencao.json', {'pedido_id': pedido['id'], 'motor':motor_id, 'request': body, 'started_at': inicio, **estrategia})
             resposta = json.loads(kit.req('POST', '/api/v1/jobs', body)[1])
-            meta = {'id': resposta['id'], 'request': body, 'started_at': inicio, 'pedido_id': pedido['id'], 'motor':motor_id}
+            meta = {'id': resposta['id'], 'request': body, 'started_at': inicio, 'pedido_id': pedido['id'], 'motor':motor_id, **estrategia}
             modulo.save_json(pasta/'job.json', meta)
-        if meta.get('pedido_id') != pedido['id'] or meta['request']['keywords'] != [termo]:
+        if meta.get('pedido_id') != pedido['id']:
             raise RuntimeError('Job divergente. Preserve a pasta para conferência.')
+        conferir_consultas(pedido, termo, meta)
         raw = pasta/'bruto_original_full.csv'
         if not raw.exists():
             for _ in range(110):

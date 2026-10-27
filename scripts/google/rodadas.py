@@ -59,6 +59,21 @@ def selecionar_lote(candidatas, vistas, restante):
     return selecionadas
 
 
+def resumir_pool(candidatas, vistas, inicio_ultima):
+    if not isinstance(candidatas, list) or not all(isinstance(e, dict) for e in candidatas) or not isinstance(vistas, (list, set, tuple)) or not all(isinstance(v, str) for v in vistas) or type(inicio_ultima) is not int or not 0 <= inicio_ultima <= len(candidatas):
+        raise ValueError('Resumo do pool inválido.')
+    conhecidas = set()
+    for e in candidatas[:inicio_ultima]:
+        conhecidas.update(identidades(e))
+    novas = 0
+    for e in candidatas[inicio_ultima:]:
+        ids = identidades(e)
+        if ids and not ids.intersection(conhecidas):
+            novas += 1
+        conhecidas.update(ids)
+    return {'disponiveis': len(selecionar_lote(candidatas, vistas, 150)), 'novas': novas}
+
+
 def decidir_continuacao(entregues, analisadas, lotes, novidades):
     if any(type(n) is not int or n < 0 for n in (entregues, analisadas, lotes, novidades)) or entregues > 50 or analisadas > 150 or lotes > 3:
         raise ValueError('Contadores inválidos. Reconcilie a execução com o CRM.')
@@ -73,16 +88,24 @@ def decidir_continuacao(entregues, analisadas, lotes, novidades):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('acao', choices=('selecionar', 'decidir'))
+    parser.add_argument('acao', choices=('selecionar', 'decidir', 'resumo'))
     parser.add_argument('--candidatas')
     parser.add_argument('--vistas')
     parser.add_argument('--restante', type=int)
     parser.add_argument('--saida')
+    parser.add_argument('--inicio-ultima', type=int)
     for campo in ('entregues', 'analisadas', 'lotes', 'novidades'):
         parser.add_argument('--' + campo, type=int)
     args = parser.parse_args()
     if args.acao == 'decidir':
         print(decidir_continuacao(args.entregues, args.analisadas, args.lotes, args.novidades))
+        return
+    if args.acao == 'resumo':
+        if not args.candidatas or not args.vistas:
+            parser.error('resumo exige --candidatas e --vistas')
+        dados = json.loads(Path(args.candidatas).read_text(encoding='utf-8-sig'))
+        vistas = json.loads(Path(args.vistas).read_text(encoding='utf-8-sig'))
+        print(json.dumps(resumir_pool(dados['all'], vistas, args.inicio_ultima if args.inicio_ultima is not None else dados.get('inicio_ultima', 0))))
         return
     if not args.candidatas or not args.saida or args.restante is None:
         parser.error('selecionar exige --candidatas, --restante e --saida')

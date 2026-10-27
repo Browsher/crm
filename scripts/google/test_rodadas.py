@@ -1,8 +1,28 @@
 import unittest
+import json
+import tempfile
+import subprocess
+import sys
+from pathlib import Path
 from rodadas import selecionar_lote, decidir_continuacao, identidades, priorizar
 
 
 class RodadasTest(unittest.TestCase):
+    def test_cli_resumo_distingue_saldo_de_novidades_da_ultima_coleta(self):
+        casos=[
+            ([{'google_place_id':'a'},{'google_place_id':'b'}],['a','b'],1,{'disponiveis':0,'novas':1}),
+            ([{'google_place_id':'a'},{'google_place_id':'b'}],[],1,{'disponiveis':2,'novas':1}),
+            ([{'google_place_id':'a'},{'google_place_id':'a'}],[],1,{'disponiveis':1,'novas':0}),
+            ([{'google_place_id':'a'},{'google_place_id':'a'}],['a'],1,{'disponiveis':0,'novas':0}),
+            ([{'google_place_id':'a'},{'google_place_id':'b','cnpj':'11222333000181'},{'google_place_id':'c','cnpj':'11222333000181'}],[],2,{'disponiveis':2,'novas':0}),
+        ]
+        for pool,vistas,inicio,esperado in casos:
+            with self.subTest(esperado=esperado),tempfile.TemporaryDirectory() as temp:
+                p=Path(temp);(p/'pool.json').write_text(json.dumps({'all':pool,'inicio_ultima':inicio}),encoding='utf-8');(p/'vistas.json').write_text(json.dumps(vistas),encoding='utf-8')
+                r=subprocess.run([sys.executable,str(Path(__file__).with_name('rodadas.py')),'resumo','--candidatas',str(p/'pool.json'),'--vistas',str(p/'vistas.json')],capture_output=True,text=True)
+                self.assertEqual(r.returncode,0,r.stderr)
+                self.assertEqual(json.loads(r.stdout),esperado)
+
     def test_preferencias_ordenam_sem_descartar_empresas(self):
         a = {'google_place_id':'a','dados_brutos':{'review_count':'2'},'endereco':''}
         b = {'google_place_id':'b','dados_brutos':{'review_count':'30'},'endereco':'Rua recebida'}

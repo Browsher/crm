@@ -722,3 +722,80 @@ preservados se a trava persistir; a falha continua bloqueando a execução.
 Os testes cobrem trava transitória e persistente, além da retomada existente.
 A revisão independente não deixou achados pendentes. Os comprovantes e os
 dados das empresas continuam somente no estado privado do teste.
+
+
+### Coleta por áreas para cidade inteira (opcional)
+
+A configuração operacional `coleta_por_areas: true` habilita uma estratégia
+experimental somente para pedidos V2 sem bairro. Cada coleta pesquisa quatro
+pontos distintos com o mesmo nicho, cidade, UF e termos adicionais, dentro do
+raio original. As três coletas usam até doze pontos diferentes. A opção vem
+desligada; pedidos com bairro e pedidos V1 mantêm a consulta anterior.
+
+Nesse modo, o fluxo completa o conjunto de candidatas antes de reservar um
+lote de 50, quando ainda há fontes e novidades. Se a segunda coleta apenas
+repetir empresas já encontradas, processa o saldo parcial e encerra sem uma
+terceira pesquisa. Empresas já analisadas não apagam a prova de que a última
+fonte trouxe novidades. Reservas, publicações e arquivamentos pendentes
+continuam sendo retomados antes de iniciar trabalho novo.
+
+A preparação conserva até 150 identidades por coleta e recusa JSON acima de
+9.000.000 bytes UTF-8. O tamanho é calculado sobre os mesmos bytes gravados,
+inclusive no Windows. O CSV bruto integral permanece preservado. Isso não
+aumenta os limites de três lotes, 150 analisadas e 50 entregues por vendedor.
+
+`coletar_email` é uma opção operacional booleana com padrão `true`. No ensaio
+de volume isolado de 26/10, o usuário autorizou `false` para reduzir visitas
+a sites, tempo e memória. Essa cobertura não valida a coleta de e-mails e não
+altera o padrão da rotina normal. A campanha real permanece sem o novo modo.
+
+#### Resultado do ensaio por áreas sem e-mails em 26/10/2026
+
+A carga máxima de 450 candidatas **não foi validada**. Três coletas começaram
+simultaneamente nos motores existentes, com quatro consultas por coleta, cidade
+inteira e e-mails desligados. Os perfis fictícios exigiam nota mínima 5 e pelo
+menos 100 avaliações; farmácias também exigiam telefone fixo e roupas exigiam
+fixo e site. Esses filtros seletivos exercitam as verificações sem aumentar o
+teto de 50 empresas entregues.
+
+| Perfil isolado | Lotes confirmados | Candidatas analisadas | Empresas entregues | Estado final |
+| --- | ---: | ---: | ---: | --- |
+| Restaurantes | 2 de 50 | 100 | 2 | Próxima coleta pendente por RAM |
+| Farmácias | 0 | 0 | 0 | Mesmo job aguardando confirmação da API |
+| Lojas de roupas | 0 | 0 | 0 | Mesmo job aguardando confirmação da API |
+
+Restaurantes recebeu 112 registros brutos e preparou 112 candidatas. Cinco
+arquivos únicos foram arquivados no Drive, com seis conferências de arquivos
+por download, tamanho e SHA256 nos dois comprovantes. Os reenvios das duas
+publicações retornaram `repetida` e mantiveram 2 empresas, 100 resultados e
+2 exclusividades. Nenhum lote reservado ficou sem confirmação. A RLS expôs
+apenas as duas entregas ao vendedor correspondente e bloqueou os outros planos.
+
+A RAM física disponível começou em 6.057 MiB e chegou a 1.018 MiB durante as
+três coletas. A tentativa seguinte encontrou 4.079 MiB, abaixo dos 5.632 MiB
+exigidos, e foi bloqueada. Os três motores registraram pressão no limite de
+memória, mas os deltas de `oom` e `oom_kill` foram zero. Não atribuir a
+pendência somente à RAM nem declarar ausência de pressão a partir de OOM zero.
+
+Nos motores 02 e 03, o log `scrapemate exited` apareceu após cerca de três
+minutos, mas a API permaneceu em `working`, com navegador e driver ainda vivos.
+O polling nativo expirou às 22h15 de 26/10 (São Paulo); o coordenador
+encerrou às 22h15min40s e preservou as intenções, IDs, CSVs e journal. A revisão
+independente considera bloqueio na limpeza do navegador a hipótese mais
+sustentada, sem confirmar a chamada exata: o log precede o fechamento global
+e a gravação de `ok` no [webrunner da revisão usada](https://github.com/gosom/google-maps-scraper/blob/549e4b5e61c7103685ef8392f246ebdba783ed03/runner/webrunner/webrunner.go),
+e o [fechamento Playwright](https://github.com/gosom/scrapemate/blob/v1.4.0/adapters/fetchers/jshttp/jshttp.go)
+não possui um prazo global. CSV estável e esse log não comprovam conclusão.
+Snapshots diagnósticos de 84 e 112 registros não foram usados como entregas.
+
+Os dois jobs incertos continuam preservados; não forçar status, reiniciar
+motores ativos ou abrir outra pesquisa para substituí-los. A capacidade máxima
+permanece pendente até resolver o encerramento do scraper e recuperar memória
+suficiente. Container, imagem, limites e volumes foram preservados. A campanha
+real manteve os mesmos hashes; CRM de produção e planilha compartilhada não
+receberam os dados do ensaio. O novo modo não foi habilitado na campanha real.
+
+A revisão independente final não encontrou divergências nos agregados. Nenhum
+perfil completou três lotes e nenhuma execução foi concluída. A revisão não
+repetiu os downloads: a conferência de bytes/SHA256 foi realizada pelo conferidor
+nativo durante o ensaio e novamente validada pelos comprovantes na auditoria.

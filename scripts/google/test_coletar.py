@@ -17,6 +17,133 @@ SPEC.loader.exec_module(ponte)
 PEDIDO = {'id': '00000000-0000-4000-8000-000000000001', 'nicho': 'Pet shop $()', 'bairro': 'Brás', 'cidade': 'São Paulo', 'uf': 'SP', 'estado': 'coletando'}
 
 class PonteTest(unittest.TestCase):
+    def coletar_fixture(self, cfg=None, bairro='', rodada=1, coords=(-23.55,-46.63), perder_resposta=False):
+        temp=tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        raiz=Path(temp.name)
+        pedido=dict(PEDIDO,contrato=2,vendedor_id='00000000-0000-4000-8000-000000000002',execucao_id='00000000-0000-4000-8000-000000000003',bairro=bairro,rodada=rodada)
+        corpos=[]
+        def req(metodo,rota,body=None):
+            if metodo=='POST':
+                corpos.append(body)
+                if perder_resposta and len(corpos)==1:raise ConnectionError('Resposta perdida depois da criação')
+                return 201,b'{"id":"job-fixture"}'
+            if rota=='/api/v1/jobs':
+                jobs=[] if not corpos else [{'ID':'job-fixture','Name':corpos[0]['name'],'Status':'ok','Data':dict(corpos[0],lat=float(corpos[0]['lat']),lon=float(corpos[0]['lon']),max_time=corpos[0]['max_time']*1000000000)}]
+                return 200,json.dumps(jobs).encode()
+            if rota.endswith('/download'):return 200,b'place_id,title,phone\nA,Loja,1133334444\n'
+            return 200,b'{"Status":"ok"}'
+        modulo=types.SimpleNamespace(HERE=raiz,HISTORY=raiz/'historico.json',CONFIG=dict(radius=20000,depth=5,max_time=900,**(cfg or {})),
+            campaign_lock=lambda _:nullcontext(),load_kit=lambda:types.SimpleNamespace(req=req,geocode=lambda _:coords),
+            save_json=lambda p,v:p.write_text(json.dumps(v),encoding='utf-8'),read_json=lambda p:json.loads(p.read_text(encoding='utf-8')) if p.exists() else None)
+        with patch.object(ponte,'carregar_coletor',return_value=modulo),patch.object(ponte,'travar_motor',return_value=nullcontext()),patch.object(ponte,'travar_execucao',return_value=nullcontext()),patch.object(ponte,'geocodificar_com_cache',return_value=coords),patch.object(ponte.subprocess,'run',return_value=types.SimpleNamespace(stdout='',stderr='')):
+            if perder_resposta:
+                with self.assertRaises(ConnectionError):ponte.coletar(pedido,raiz)
+            pasta=ponte.coletar(pedido,raiz)
+        self.ultima_quantidade_posts=len(corpos)
+        return corpos[0],pasta,pedido
+
+    def test_optin_busca_quatro_areas_com_mesmo_termo_literal(self):
+        from urllib.parse import urlparse,unquote
+        body,pasta,pedido=self.coletar_fixture({'coleta_por_areas':True})
+        self.assertEqual(len(body['keywords']),4)
+        self.assertEqual(len(set(body['keywords'])),4)
+        for u in body['keywords']:
+            self.assertEqual(urlparse(u).hostname,'www.google.com')
+            self.assertIn(ponte.consulta(pedido),unquote(urlparse(u).path))
+        self.assertEqual(json.loads((pasta/'job.json').read_text(encoding='utf-8'))['consulta_versao'],1)
+
+    def test_resposta_post_perdida_reconcilia_grade_sem_criar_outro_job(self):
+        _,pasta,_=self.coletar_fixture({'coleta_por_areas':True},perder_resposta=True)
+        self.assertEqual(self.ultima_quantidade_posts,1)
+        self.assertEqual(json.loads((pasta/'job.json').read_text(encoding='utf-8'))['id'],'job-fixture')
+        self.assertEqual(json.loads((pasta/'job.json').read_text(encoding='utf-8'))['consulta_versao'],1)
+
+    def test_reconciliacao_da_grade_reusa_mesmo_job_e_versao(self):
+        body,pasta,pedido=self.coletar_fixture({'coleta_por_areas':True})
+        data=dict(body,max_time=body['max_time']*1000000000,lat=float(body['lat']),lon=float(body['lon']))
+        chamadas=[]
+        def req(metodo,rota):
+            chamadas.append((metodo,rota));return 200,json.dumps([{'ID':'job-fixture','Name':body['name'],'Status':'ok','Data':data}]).encode()
+        try:meta=ponte.reconciliar_intencao(pasta,pedido,{'id':'01'},types.SimpleNamespace(req=req))
+        except RuntimeError:meta=None
+        self.assertIsNotNone(meta,'Uma grade salva válida deve reconciliar sem outro POST')
+        self.assertEqual(meta['consulta_versao'],1)
+        self.assertEqual(meta['id'],'job-fixture')
+        self.assertEqual(chamadas,[('GET','/api/v1/jobs')])
+        intencao=json.loads((pasta/'intencao.json').read_text(encoding='utf-8'))
+        intencao['request']['keywords'][0]='https://example.com/fora-do-pedido'
+        (pasta/'intencao.json').write_text(json.dumps(intencao),encoding='utf-8')
+        chamadas.clear()
+        with self.assertRaises(RuntimeError):ponte.reconciliar_intencao(pasta,pedido,{'id':'01'},types.SimpleNamespace(req=req))
+        self.assertEqual(chamadas,[])
+
+    def test_rodadas_usam_areas_diferentes_sem_alterar_pedido(self):
+        consultas=[]
+        for rodada in (1,2,3):
+            b,_,_=self.coletar_fixture({'coleta_por_areas':True},rodada=rodada)
+            consultas.extend(b['keywords'])
+        self.assertEqual(len(set(consultas)),12)
+
+    def test_bairro_e_modo_antigo_preservam_consulta_unica(self):
+        for cfg,bairro in [({},''),({'coleta_por_areas':True},'Brás')]:
+            body,_,pedido=self.coletar_fixture(cfg,bairro=bairro)
+            self.assertEqual(body['keywords'],[ponte.consulta(pedido)])
+            self.assertTrue(body['email'])
+
+    def test_email_opcional_so_quando_configurado_no_ensaio(self):
+        body,_,_=self.coletar_fixture({'coleta_por_areas':True,'coletar_email':False})
+        self.assertFalse(body['email'])
+
+    def test_coordenada_nao_finita_e_flag_invalida_nao_criam_post(self):
+        for cfg,coords in [({'coleta_por_areas':True},(float('nan'),-46.6)),({'coleta_por_areas':'sim'},(-23.5,-46.6)),({'coletar_email':'nao'},(-23.5,-46.6))]:
+            with self.assertRaises(ValueError):
+                self.coletar_fixture(cfg,coords=coords)
+
+    def test_recorte_do_modo_areas_preserva_csv_e_candidatas_distintas(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz=Path(temp);raw=raiz/'bruto_original_full.csv'
+            linhas=['place_id,title,phone']+[f'A{i},Loja {i},1133334444' for i in range(170)]+['A0,Repetida,1133334444']
+            raw.write_text('\n'.join(linhas)+'\n',encoding='utf-8');antes=raw.read_bytes()
+            pedido=dict(PEDIDO,contrato=2,bairro='')
+            modulo=types.SimpleNamespace(CONFIG={'coleta_por_areas':True})
+            ponte.processar_resultados(modulo,raw,{},pedido,raiz)
+            dados=json.loads((raiz/'dados_preparados.json').read_text(encoding='utf-8'))
+            self.assertEqual(len(dados['all']),150)
+            self.assertEqual(len({e['google_place_id'] for e in dados['all']}),150)
+            self.assertNotIn('raw_rows',dados)
+            self.assertEqual(raw.read_bytes(),antes)
+            self.assertEqual((raiz/'bruto_completo.csv').read_bytes(),antes)
+
+    def test_limite_utf8_confere_os_mesmos_bytes_gravados_no_windows(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz=Path(temp);base=raiz/'base';base.mkdir();destino=raiz/'final';destino.mkdir()
+            modulo=types.SimpleNamespace(CONFIG={'coleta_por_areas':True});pedido=dict(PEDIDO,contrato=2,bairro='')
+            def gravar(pasta,preenchimento):
+                raw=pasta/'bruto_original_full.csv'
+                raw.write_text('place_id,title,phone,descriptions\n'+''.join(f'A{i},Loja,1133334444,'+'x'*preenchimento+'\n' for i in range(40)),encoding='utf-8')
+                return raw
+            ponte.processar_resultados(modulo,gravar(base,0),{},pedido,base)
+            dados=json.loads((base/'dados_preparados.json').read_text(encoding='utf-8'))
+            tamanho_base=len(json.dumps(dados,ensure_ascii=False,indent=2).encode('utf-8'))
+            preenchimento=(9000000-1000-tamanho_base)//80
+            raw=gravar(destino,preenchimento)
+            try:ponte.processar_resultados(modulo,raw,{},pedido,destino)
+            except RuntimeError:
+                self.assertFalse((destino/'dados_preparados.json').exists())
+            else:self.assertLessEqual((destino/'dados_preparados.json').stat().st_size,9000000)
+            self.assertTrue(raw.exists())
+
+    def test_intermediario_extenso_fica_pendente_com_bruto_preservado(self):
+        with tempfile.TemporaryDirectory() as temp:
+            raiz=Path(temp);raw=raiz/'bruto_original_full.csv'
+            raw.write_text('place_id,title,phone,descriptions\n'+''.join(f'A{i},Loja,1133334444,'+'x'*120000+'\n' for i in range(40)),encoding='utf-8')
+            before=raw.read_bytes()
+            with self.assertRaisesRegex(RuntimeError,'bytes'):
+                ponte.processar_resultados(types.SimpleNamespace(CONFIG={'coleta_por_areas':True}),raw,{},dict(PEDIDO,contrato=2,bairro=''),raiz)
+            self.assertEqual(raw.read_bytes(),before)
+            self.assertFalse((raiz/'dados_preparados.json').exists())
+
     def test_conferencia_le_somente_jobs_sem_criar_coleta(self):
         chamadas = []
         def req(metodo, rota):
