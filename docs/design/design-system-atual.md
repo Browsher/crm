@@ -250,7 +250,7 @@ Padrão definido para estados vazios com próxima ação:
 
 Na Carteira, a composição conserva o título, a explicação, o rótulo “Puxar a próxima empresa” e o destino `/fila`. A preferência determina a apresentação visual; o fluxo comercial permanece o existente.
 
-Prévia navegável: [Design system padrão em HTML](design-system-padrao.html), com temas claro/escuro, exemplos interativos e dados fictícios para avaliação antes da adoção.
+Referência visual aprovada pelo usuário em 27/10/2026: [Design system padrão em HTML](design-system-padrao.html), com temas claro/escuro, exemplos interativos e dados fictícios. O HTML permanece como referência histórica da aparência aprovada.
 
 ## Verificação e próximos passos
 
@@ -265,7 +265,7 @@ Verificações deste levantamento:
 5. Conferência dos caminhos e das referências de fonte usados no documento.
 6. Revisão independente somente leitura concluída: nenhum Critical, um Important sobre a descrição de fontes em celular/toque e apontamentos Minor de referências, nome de componente e evidência textual. O autor corrigiu esses pontos no documento e confirmou as exceções com o segundo ensaio de CSS; não houve segunda revisão independente. As contagens e os contrastes foram recalculados pelo revisor e coincidiram. Integridade UTF-8 sem BOM/controles, referências e suíte existente de prosa verificadas antes do registro da entrega.
 
-A próxima etapa sugerida é revisar as diferenças D01 a D14, escolher quais serão corrigidas e escrever a especificação da padronização. A prévia navegável e a adoção por etapas vêm depois dessa decisão. Nenhum item desta lista autoriza mudança de domínio, consulta paga ou ação de produção.
+Após a aprovação do HTML, a adoção foi organizada no [plano de padronização dos elementos do CRM](../superpowers/plans/2026-10-27-padronizacao-elementos-crm.md), com dez tarefas em quatro lotes revisáveis. A primeira aplicação de tela será o card de estado vazio da Carteira. O plano cobre D01 a D14, define verificações e preserva os contratos existentes. As diferenças deste inventário continuam pendentes de implementação; este registro não autoriza mudança de domínio, consulta paga ou ação de produção.
 
 Contratos preservados nas etapas seguintes: Casa dos Dados; inclusão automática das empresas elegíveis; cota por vendedor, histórico, UUID e deduplicação; RLS e documentos de sócios exclusivos do gestor; Google, planejamento pessoal, workflow universal e planilha compartilhada; gestão, usuários, reservas e Carteira. O vendedor continua vendo nome e função dos sócios.
 
