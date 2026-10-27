@@ -252,3 +252,27 @@ Online, login retornou 200, páginas privadas 307 para login e API Google sem
 token 401. Os controles autenticados foram validados no E2E local, sem criar
 sessão online. Chaves e 15 variáveis foram preservadas, assim como Google,
 workflow, planilha e os limites 100. A PR55 segue em rascunho, sem merge.
+
+
+## Histórico de buscas em pop-up, 27/10/2026
+
+A fonte c9993c30dfd8d5488165a6491d4faf41693384fd foi publicada no deployment
+dpl_Brn1P2QEkcPT3ddvThrV4PPHg1Gm, READY, e promovida para o endereço estável.
+Projeto, SHA e resolução do alias foram conferidos novamente após a promoção.
+O [CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40541679880)
+aprovou 1.722 unitários (dois ignorados), 713 integrações e 75 jornadas,
+além de tipos, lint, convenções, build e conferência Railway. Localmente,
+1.723 unitários passaram (um ignorado) e seis jornadas afetadas passaram.
+
+Ver busca abre os resultados persistidos em Dialog shadcn sem navegar ou
+repetir a consulta. Ver mais revela cards de cadastro, endereço/CEP, contatos,
+atividades/tributação e nomes/funções dos sócios. Dados restritos permanecem
+exclusivos do gestor no servidor. Importação, pausa, duplicidade e telefone
+válido continuam protegidos. Formulário e foco são preservados ao fechar.
+
+O layout foi conferido em 1920x1080 e 390px, claro/escuro. Revisão independente
+sem achados restantes; o espaço do botão Fechar teve regressão geométrica
+RED/GREEN. Nenhuma consulta real, migração, variável ou limite foi alterado.
+Login online retornou 200 e as duas páginas privadas retornaram 307 para login.
+A visualização autenticada foi validada no E2E local; não se criou sessão online.
+A PR55 permanece em rascunho, sem merge. O registro posterior é somente documental.
