@@ -2,7 +2,7 @@ import type { QueryResultRow } from 'pg'
 import { comoUsuario } from '@/src/server/db/como-usuario'
 import type { BuscaSalva, FiltrosBusca, LimiteBusca, ResultadoFornecedor } from './tipos'
 
-export type FalhaBanco = 'sem_permissao' | 'operacao_invalida'
+export type FalhaBanco = 'sem_permissao' | 'operacao_invalida' | 'empresa_repetida'
 export type ResumoBusca = Omit<BuscaSalva, 'empresas'> & { retornadas: number }
 export type GrupoGoogle = { id: string; nome: string; criado_em: string; total: number }
 export type RepositorioBusca = Pick<ReturnType<typeof repositorioBusca>, 'reservar' | 'concluir'>
@@ -10,10 +10,11 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 function motivo(erro: unknown): FalhaBanco {
   const codigo = (erro as { code?: string }).code
   if (codigo === '42501') return 'sem_permissao'
+  if (codigo === '23505') return 'empresa_repetida'
   if (codigo === '22023') return 'operacao_invalida'
   throw erro
 }
-const COLUNAS = `b.id,b.nome,b.usuario_id,u.nome AS vendedor,b.criado_em::text,b.filtros,b.estado,b.motivo,b.grupo_id`
+const COLUNAS = `b.id,b.nome,b.fornecedor,b.usuario_id,u.nome AS vendedor,b.criado_em::text,b.filtros,b.estado,b.motivo,b.grupo_id`
 const USADO = `(SELECT coalesce(sum(b.quantidade),0)::int FROM busca_empresa b WHERE b.usuario_id=u.id
   AND (b.criado_em AT TIME ZONE 'America/Sao_Paulo')::date = (clock_timestamp() AT TIME ZONE 'America/Sao_Paulo')::date)`
 const LIMITES = `SELECT u.id AS usuario_id,u.nome AS vendedor,coalesce(l.limite_diario,0) AS limite_diario,
@@ -25,7 +26,7 @@ export function repositorioBusca(usuarioId: string) {
     async reservar(chave: string, nome: string, filtros: FiltrosBusca): Promise<{ ok: true; repetida: boolean } | { ok: false; motivo: FalhaBanco | 'limite' | 'pausada' }> {
       try {
         const [r] = await executar<{ resultado: 'ok' | 'repetida' | 'limite' | 'pausada' }>(
-          'SELECT busca_empresa_reservar($1,$2,$3) AS resultado', [chave, nome, JSON.stringify(filtros)])
+          'SELECT busca_empresa_reservar_casa($1,$2,$3) AS resultado', [chave, nome, JSON.stringify(filtros)])
         if (r.resultado === 'ok' || r.resultado === 'repetida') return { ok: true, repetida: r.resultado === 'repetida' }
         return { ok: false, motivo: r.resultado }
       } catch (erro) { return { ok: false, motivo: motivo(erro) } }

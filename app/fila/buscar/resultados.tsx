@@ -20,14 +20,14 @@ export function ResultadosBusca({ busca, bloqueada }: { busca: BuscaSalva; bloqu
     {estado.grupoId && <p role="status">{estado.inseridas} empresas novas. A lista reúne {estado.vinculadas} empresas.</p>}
     {grupo && <Button variant="outline" asChild><Link href={`/fila?grupo=${grupo}`}>Prospectar esta lista</Link></Button>}
     {!busca.empresas.length ? <p>Nenhuma empresa encontrada com esses filtros. Ajuste os critérios em uma nova busca.</p> : <>
-      <p>Selecione as empresas que deseja importar. Cadastros existentes serão vinculados à lista, preservando os dados e o responsável atual.</p>
+      <p>Selecione as empresas que deseja importar. Empresas e contatos já cadastrados na base global ficam bloqueados para evitar repetição.</p>
       <fieldset disabled={bloqueada || pendente}>
         <legend className={styles.ajuda}>Empresas encontradas</legend>
         <ul>{busca.empresas.map(e => <li key={e.cnpj} className={styles.selecao}>
           <label className={styles.marcar}><input type="checkbox" name="cnpjs" value={e.cnpj} aria-label={`Selecionar ${e.razao_social}`}
-            disabled={!e.telefone} checked={selecionadas.includes(e.cnpj)}
+            disabled={!e.telefone || e.bloqueada_por_repeticao} checked={selecionadas.includes(e.cnpj)}
             onChange={evento => setSelecionadas(v => evento.target.checked ? [...v, e.cnpj] : v.filter(c => c !== e.cnpj))} /></label>
-          <EmpresaEncontradaDetalhes empresa={e} />
+          <div><EmpresaEncontradaDetalhes empresa={e} />{e.bloqueada_por_repeticao && <p className={styles.aviso}>Empresa ou contato já cadastrado na base global. Importação bloqueada.</p>}</div>
         </li>)}</ul>
         <div className={styles.acoes}><Button type="submit" disabled={selecionadas.length === 0}>{pendente ? 'Importando…' : 'Importar selecionadas'}</Button>
           <span>{selecionadas.length} selecionadas</span></div>

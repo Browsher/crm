@@ -89,7 +89,7 @@ try {
   Object.assign(ambiente, { GOOGLE_AGENTE_TOKEN: GOOGLE_TOKEN_E2E, GOOGLE_AGENTE_USUARIO_ID: google.gestorId })
   Object.assign(ambiente, { GOOGLE_PLANILHA_ID:'planilha-somente-e2e',GOOGLE_PLANILHA_ABA_ID:'123',GOOGLE_PLANILHA_CLIENT_EMAIL:sheets.email,GOOGLE_PLANILHA_PRIVATE_KEY:sheets.chave,GOOGLE_PLANILHA_MOCK_URL:sheets.url })
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
-  Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
+  Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CASA_DOS_DADOS_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
   const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, '--import',pathToFileURL(resolve('scripts/e2e/google-planilha-preload.mjs')).href,'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
   let erroServidor: Error | undefined
   servidor.on('error', (erro) => { erroServidor = erro })

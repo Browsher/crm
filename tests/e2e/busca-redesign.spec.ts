@@ -51,19 +51,19 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   await expect(page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true })).toBeVisible()
   await expect(page.getByRole('checkbox', { name: 'Selecionar Comércio sem telefone fictício', exact: true })).toBeDisabled()
   const conferir = () => comBancoGrupos(async c => (await c.query(
-    `SELECT b.estado,b.quantidade,jsonb_array_length(b.empresas) AS retornadas,
+    `SELECT b.estado,b.fornecedor,b.quantidade,jsonb_array_length(b.empresas) AS retornadas,
       (SELECT count(*)::int FROM busca_empresa WHERE usuario_id=b.usuario_id AND nome=b.nome) AS tentativas
      FROM busca_empresa b WHERE b.id=$1`, [buscaId])).rows[0])
-  expect(await conferir()).toEqual({ estado: 'concluida', quantidade: 2, retornadas: 2, tentativas: 1 })
+  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, retornadas: 2, tentativas: 1 })
   await page.reload()
   expect(await chamadas()).toBe(chamadasDepois)
-  expect(await conferir()).toEqual({ estado: 'concluida', quantidade: 2, retornadas: 2, tentativas: 1 })
+  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, retornadas: 2, tentativas: 1 })
   await page.getByRole('checkbox', { name: 'Selecionar Luminárias Horizonte fictícia', exact: true }).check()
   await page.getByRole('button', { name: 'Importar selecionadas', exact: true }).click()
   await expect(page.getByRole('status')).toContainText('1 empresas novas')
   const empresa = await comBancoGrupos(async c => (await c.query('SELECT id FROM empresa WHERE cnpj=$1', ['99887766000105'])).rows[0])
   await page.goto('/fila/localizar/' + empresa.id)
-  await expect(page.getByRole('heading', { name: 'Dados cadastrais do CNPJ.biz' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
   // Importar não transfere posse. A ficha abaixo usa uma posse criada somente
   // na fixture, como as demais jornadas de Carteira; o fluxo de reserva tem E2E próprio.
   await comBancoGrupos(async c => {
@@ -75,9 +75,9 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   })
   await page.goto('/carteira/' + empresa.id)
   const dados = page.getByRole('tabpanel', { name: 'Dados da empresa', exact: true })
-  await expect(dados.getByRole('heading', { name: 'Dados cadastrais do CNPJ.biz' })).toBeVisible()
+  await expect(dados.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
   await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Dados cadastrais do CNPJ.biz' })).not.toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).not.toBeVisible()
   await page.getByRole('tab', { name: 'Dados da empresa', exact: true }).click()
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
@@ -92,9 +92,9 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
     const gestor = await contextoGestor.newPage()
     await entrar(gestor, 'gestore2e')
     await gestor.goto('/empresas/' + empresa.id)
-    await expect(gestor.getByRole('tabpanel', { name: 'Dados da empresa', exact: true }).getByRole('heading', { name: 'Dados cadastrais do CNPJ.biz' })).toBeVisible()
+    await expect(gestor.getByRole('tabpanel', { name: 'Dados da empresa', exact: true }).getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
     await gestor.getByRole('tab', { name: 'Histórico', exact: true }).click()
-    await expect(gestor.getByRole('heading', { name: 'Dados cadastrais do CNPJ.biz' })).not.toBeVisible()
+    await expect(gestor.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).not.toBeVisible()
     await gestor.goto('/empresas/busca')
     await expect(gestor.getByRole('navigation', { name: 'Localização atual' })).toContainText('Busca de empresas')
     for (const width of [1440, 390]) {

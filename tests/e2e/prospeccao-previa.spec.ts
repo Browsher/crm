@@ -30,7 +30,7 @@ test('central abre consulta pessoal e nicho restringe bairros; Enter recolhe os 
   await expect(page.getByLabel('Situação cadastral',{exact:true})).toHaveCount(0)
   await expect(page.getByLabel('CEP informado',{exact:true})).toHaveCount(0)
 })
-test('banco tem seis cartões, contagem e sugestão do nome conectadas à busca simulada',async({page})=>{
+test('banco tem seis cartões, paginação e sugestão do nome conectadas à Casa simulada',async({page})=>{
   await entrar(page)
   await page.goto('/fila/buscar?fonte=banco')
   await expect(page.getByRole('button',{name:'Atividade e nome',exact:true})).toHaveAttribute('aria-expanded','true')
@@ -46,8 +46,8 @@ test('banco tem seis cartões, contagem e sugestão do nome conectadas à busca 
   await page.getByRole('button',{name:'Sugerir nome',exact:true}).click()
   await expect(page.getByLabel('Nome da lista',{exact:true})).toHaveValue('iluminação · Centro · São Paulo/SP')
   await page.getByLabel('Quantidade de empresas',{exact:true}).fill('2')
-  await page.getByRole('button',{name:'Contar resultados',exact:true}).click()
-  await expect(page.getByRole('status')).toContainText('2 empresas encontradas')
+  await expect(page.getByRole('button',{name:'Contar resultados',exact:true})).toHaveCount(0)
+  await expect(page.getByLabel('Página de resultados',{exact:true})).toHaveValue('1')
   await page.getByRole('button',{name:'Buscar empresas',exact:true}).click()
   await expect(page).toHaveURL(/busca=[0-9a-f-]{36}/)
   await expect(page.getByRole('heading',{name:'Luminárias Horizonte fictícia',exact:true})).toBeVisible()

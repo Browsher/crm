@@ -1,13 +1,13 @@
 'use client'
 
-import { useActionState, useId, useRef, useState, type ReactNode } from 'react'
+import { useActionState, useId, useState, type ReactNode } from 'react'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Button } from '@/src/components/ui/button'
 import { Alert } from '@/src/components/ui/alert'
-import { bancoInicial, sugerirNomeBanco, ESTADOS_BR, PORTES_BANCO, SITUACOES_BANCO, REGIMES_BANCO, CONTATOS_BANCO, type FiltrosBanco } from '@/src/lib/banco-empresas'
-import { buscarEmpresasAcao, contarEmpresasAcao, type EstadoBusca } from './acoes'
+import { bancoInicial, sugerirNomeBanco, ESTADOS_BR, PORTES_BANCO, SITUACOES_BANCO, CONTATOS_BANCO, type FiltrosBanco } from '@/src/lib/banco-empresas'
+import { buscarEmpresasAcao, type EstadoBusca } from './acoes'
 import styles from './banco.module.css'
 
 type Props={bloqueado:boolean;restante:number;chaveInicial:string;buscaConcluidaId?:string}
@@ -29,16 +29,13 @@ function OperacaoBusca({bloqueado,restante,chaveInicial}:Props) {
   const [f,setF]=useState(bancoInicial)
   const [nome,setNome]=useState('Empresas · Brasil')
   const [quantidade,setQuantidade]=useState(String(Math.max(1,Math.min(20,restante))))
-  const [offset,setOffset]=useState('0')
-  const [contando,setContando]=useState(false)
-  const [contagem,setContagem]=useState<string|null>(null)
-  const formulario=useRef<HTMLFormElement>(null)
+  const [pagina,setPagina]=useState('1')
   const [regioes,setRegioes]=useState<{estado:string;cidade:string;bairros:string[]}[]>([{estado:'',cidade:'',bairros:[]}])
-  function mudar<K extends keyof FiltrosBanco>(campo:K,valor:FiltrosBanco[K]) {setF(v=>({...v,[campo]:valor}));setContagem(null)}
+  function mudar<K extends keyof FiltrosBanco>(campo:K,valor:FiltrosBanco[K]) {setF(v=>({...v,[campo]:valor}))}
   const completos={...f,regioes:regioes.filter(r=>r.estado||r.cidade||r.bairros.length)}
-  function regiao(indice:number,campo:'estado'|'cidade'|'bairros',valor:string|string[]) {setRegioes(v=>v.map((r,i)=>i===indice?{...r,[campo]:valor,...(campo==='estado'?{cidade:'',bairros:[]}:campo==='cidade'?{bairros:[]}: {})}:r));setContagem(null)}
-  const travado=bloqueado||pendente||contando
-  return <form action={acao} ref={formulario} className={styles.formulario}>
+  function regiao(indice:number,campo:'estado'|'cidade'|'bairros',valor:string|string[]) {setRegioes(v=>v.map((r,i)=>i===indice?{...r,[campo]:valor,...(campo==='estado'?{cidade:'',bairros:[]}:campo==='cidade'?{bairros:[]}: {})}:r))}
+  const travado=bloqueado||pendente
+  return <form action={acao} className={styles.formulario}>
     <input type="hidden" name="chave" value={chave}/><input type="hidden" name="avancados" value={JSON.stringify(completos)}/>
     {estado.erro&&<Alert variant="danger">{estado.erro}</Alert>}
     <GrupoFiltro titulo="Atividade e nome" descricao="Escolha o segmento e como identificar as empresas." primeiro>
@@ -59,7 +56,7 @@ function OperacaoBusca({bloqueado,restante,chaveInicial}:Props) {
       </fieldset>
     </GrupoFiltro>
     <GrupoFiltro titulo="Perfil da empresa" descricao="Defina porte, estabelecimento, situação cadastral e regime tributário.">
-      <fieldset disabled={travado}><Escolhas titulo="Porte" opcoes={PORTES_BANCO.map(p=>[p,p] as const)} valor={f.portes} mudar={v=>mudar('portes',v as FiltrosBanco['portes'])}/><Escolhas titulo="Estabelecimento" opcoes={[[ '2','Matriz'],['1','Filial']]} valor={f.tipos} mudar={v=>mudar('tipos',v as FiltrosBanco['tipos'])}/><Escolhas titulo="Situação cadastral" opcoes={SITUACOES_BANCO.map(s=>[s,s[0].toUpperCase()+s.slice(1)] as const)} valor={f.situacoes} mudar={v=>mudar('situacoes',v as FiltrosBanco['situacoes'])}/><Escolhas titulo="Regime tributário" opcoes={REGIMES_BANCO.map(r=>[r,r] as const)} valor={f.regimes} mudar={v=>mudar('regimes',v as FiltrosBanco['regimes'])}/></fieldset>
+      <fieldset disabled={travado}><Escolhas titulo="Porte" opcoes={PORTES_BANCO.map(p=>[p,p] as const)} valor={f.portes} mudar={v=>mudar('portes',v as FiltrosBanco['portes'])}/><Escolhas titulo="Estabelecimento" opcoes={[[ '2','Matriz'],['1','Filial']]} valor={f.tipos} mudar={v=>mudar('tipos',v as FiltrosBanco['tipos'])}/><Escolhas titulo="Situação cadastral" opcoes={SITUACOES_BANCO.map(s=>[s,s[0].toUpperCase()+s.slice(1)] as const)} valor={f.situacoes} mudar={v=>mudar('situacoes',v as FiltrosBanco['situacoes'])}/><Escolhas titulo="Regime tributário" opcoes={[['Simples Nacional','Optante pelo Simples Nacional']]} valor={f.regimes} mudar={v=>mudar('regimes',v as FiltrosBanco['regimes'])}/></fieldset>
     </GrupoFiltro>
     <GrupoFiltro titulo="Capital e data de abertura" descricao="Defina faixas para refinar o perfil das empresas.">
       <fieldset disabled={travado}><div className={styles.grade}>
@@ -68,16 +65,16 @@ function OperacaoBusca({bloqueado,restante,chaveInicial}:Props) {
       </div></fieldset>
     </GrupoFiltro>
     <GrupoFiltro titulo="Contatos e qualidade" descricao="Defina os contatos necessários. Telefones e emails repetidos são evitados sempre.">
-      <fieldset disabled={travado}><div className={styles.grade}><label>Contato disponível<NativeSelect value={f.contato} onChange={e=>mudar('contato',e.target.value as FiltrosBanco['contato'])}>{CONTATOS_BANCO.map(([v,t])=><option key={v} value={v}>{t}</option>)}</NativeSelect></label><ListaTexto titulo="DDDs" valor={f.ddds} mudar={v=>mudar('ddds',v)} exemplo="Ex.: 11, 21…"/></div><label className={styles.check}><input type="checkbox" checked={f.semEmailContabil} onChange={e=>mudar('semEmailContabil',e.target.checked)}/>Evitar emails de contabilidade</label><p className={styles.ajuda}>Telefones e emails repetidos e empresas já exportadas são excluídos sempre.</p></fieldset>
+      <fieldset disabled={travado}><div className={styles.grade}><label>Contato disponível<NativeSelect value={f.contato} onChange={e=>mudar('contato',e.target.value as FiltrosBanco['contato'])}>{CONTATOS_BANCO.filter(([v])=>v!=='telefoneoucelularouemail').map(([v,t])=><option key={v} value={v}>{t}</option>)}</NativeSelect></label><ListaTexto titulo="DDDs" valor={f.ddds} mudar={v=>mudar('ddds',v)} exemplo="Ex.: 11, 21…"/></div><label className={styles.check}><input type="checkbox" checked={f.semEmailContabil} onChange={e=>mudar('semEmailContabil',e.target.checked)}/>Evitar emails de contabilidade</label><p className={styles.ajuda}>A consulta ignora empresas já visualizadas na conta do fornecedor. Antes da importação, o CRM verifica CNPJ, telefones e emails repetidos na base global.</p></fieldset>
     </GrupoFiltro>
     <GrupoFiltro titulo="Resultados e dados retornados" descricao="Defina quantas empresas receber e como continuar uma pesquisa.">
       <fieldset disabled={travado}><div className={styles.grade}>
         <div className={styles.nomeLista}><label htmlFor="nome-lista-banco">Nome da lista</label><div><Input id="nome-lista-banco" name="nome" maxLength={100} value={nome} onChange={e=>setNome(e.target.value)} autoComplete="off" aria-describedby="nome-lista-banco-ajuda"/><Button type="button" variant="outline" onClick={()=>setNome(sugerirNomeBanco(completos as FiltrosBanco))}>Sugerir nome</Button></div><small id="nome-lista-banco-ajuda">Padrão: Nicho · Bairro · Cidade/UF. Você pode editar.</small></div>
         <div className={styles.listaTexto}><label htmlFor="quantidade-banco">Quantidade de empresas</label><Input id="quantidade-banco" name="quantidade" type="number" min={1} max={Math.max(1,Math.min(100,restante))} value={quantidade} onChange={e=>setQuantidade(e.target.value)}/><small>De 1 a 100, dentro do seu limite diário.</small></div>
-        <div className={styles.listaTexto}><label htmlFor="offset-banco">Pular resultados</label><Input id="offset-banco" name="offset" type="number" min={0} max={1000000} value={offset} onChange={e=>setOffset(e.target.value)}/><small>Comece em 0. Para continuar, pule as empresas já consultadas.</small></div>
+        <div className={styles.listaTexto}><label htmlFor="pagina-banco">Página de resultados</label><Input id="pagina-banco" name="pagina" type="number" min={1} max={Math.floor(1000000/Math.max(1,Number(quantidade)))+1} value={pagina} onChange={e=>setPagina(e.target.value)}/><input type="hidden" name="offset" value={(Number(pagina)-1)*Number(quantidade)}/><small>Comece em 1. Mantenha a quantidade ao avançar a página.</small></div>
       </div><label className={styles.check}><input type="checkbox" checked={f.socios} onChange={e=>mudar('socios',e.target.checked)}/>Incluir dados completos dos sócios</label><small>Você verá nome e função. Os demais dados ficam disponíveis ao gestor.</small></fieldset>
     </GrupoFiltro>
-    <div className={styles.rodape}><div><strong>Sua pesquisa fica salva no histórico</strong><p>Depois de consultar, confira os resultados e selecione as empresas que quer importar.</p></div><div><Button type="button" variant="outline" disabled={travado} onClick={async()=>{setContando(true);try{const r=await contarEmpresasAcao(new FormData(formulario.current!));setContagem(r.erro??`${new Intl.NumberFormat('pt-BR').format(r.quantidade??0)} empresas encontradas.`)}catch{setContagem('Não foi possível contar. Tente novamente.')}finally{setContando(false)}}}>{contando?'Contando…':'Contar resultados'}</Button><Button type="submit" disabled={travado||!chave}>{pendente?'Buscando empresas…':'Buscar empresas'}</Button></div></div>
-    {contagem&&<p role="status">{contagem}</p>}{pendente&&<p role="status">Aguarde a conclusão. A consulta não será repetida automaticamente.</p>}
+    <div className={styles.rodape}><div><strong>Sua pesquisa fica salva no histórico</strong><p>Depois de consultar, confira os resultados e selecione as empresas que quer importar.</p></div><div><Button type="submit" disabled={travado||!chave}>{pendente?'Buscando empresas…':'Buscar empresas'}</Button></div></div>
+    {pendente&&<p role="status">Aguarde a conclusão. A consulta não será repetida automaticamente.</p>}
   </form>
 }

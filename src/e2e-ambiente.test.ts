@@ -36,3 +36,10 @@ test('E2E não herda chave CNPJ.biz real nem no build nem no servidor', () => {
   expect(ambienteDoServidor(fonte, 'postgres://app_teste:teste@localhost:5432/teste_0123456789ab').CNPJ_BIZ_API_KEY).toBe('')
   expect(fonte.CNPJ_BIZ_API_KEY).toBe('chave-ficticia-real-do-pai')
 })
+
+test('E2E não herda chave Casa dos Dados real nem no build nem no servidor', () => {
+  const fonte: NodeJS.ProcessEnv = { NODE_ENV: 'test', CASA_DOS_DADOS_API_KEY: 'chave-ficticia-real-do-pai' }
+  expect(ambienteDoBuild(fonte).CASA_DOS_DADOS_API_KEY).toBe('')
+  expect(ambienteDoServidor(fonte, 'postgres://app_teste:teste@localhost:5432/teste_0123456789ab').CASA_DOS_DADOS_API_KEY).toBe('')
+  expect(fonte.CASA_DOS_DADOS_API_KEY).toBe('chave-ficticia-real-do-pai')
+})

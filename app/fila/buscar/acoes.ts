@@ -3,32 +3,26 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { exigir } from '@/src/server/autenticacao/guarda'
-import { criarClienteCnpjBiz } from '@/src/server/cnpj-biz/cliente'
+import { criarClienteCasaDados } from '@/src/server/casa-dados/cliente'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { iniciarBusca } from '@/src/features/busca-empresas/servico'
 import { mensagemBusca } from '@/src/features/busca-empresas/mensagens'
 import { validarFiltros } from '@/src/features/busca-empresas/filtros'
+import { prepararConsultaCasa } from '@/src/server/casa-dados/filtros'
 
 export type EstadoBusca = { erro: string | null }
 export type EstadoImportarBusca = { erro: string | null; grupoId: string | null; inseridas: number; vinculadas: number }
 
-export async function contarEmpresasAcao(form:FormData):Promise<{erro:string|null;quantidade?:number}> {
-  const eu=await exigir('vendedor')
-  const validacao=validarFiltros(Object.fromEntries(form.entries()))
-  if(!validacao.ok)return {erro:mensagemBusca('filtros_invalidos')}
-  const limite=await repositorioBusca(eu.usuarioId).meuLimite()
-  if(limite?.pausado)return {erro:mensagemBusca('pausada')}
-  if(!limite||limite.limite_diario<=limite.usado)return {erro:mensagemBusca('limite')}
-  const r=await criarClienteCnpjBiz(process.env.CNPJ_BIZ_API_KEY).contar(validacao.filtros)
-  return r.ok?{erro:null,quantidade:r.quantidade}:{erro:mensagemBusca(r.motivo)}
-}
-
 export async function buscarEmpresasAcao(_anterior: EstadoBusca, form: FormData): Promise<EstadoBusca> {
   const eu = await exigir('vendedor')
+  const validacao = validarFiltros(Object.fromEntries(form.entries()))
+  if (!validacao.ok) return { erro: mensagemBusca('filtros_invalidos') }
+  const consulta = prepararConsultaCasa(validacao.filtros)
+  if (!consulta.ok) return { erro: consulta.erro }
   let r
   try {
-    r = await iniciarBusca({ repo: repositorioBusca(eu.usuarioId), cliente: criarClienteCnpjBiz(process.env.CNPJ_BIZ_API_KEY),
-      configurado: Boolean(process.env.CNPJ_BIZ_API_KEY?.trim()) }, String(form.get('chave') ?? ''),
+    r = await iniciarBusca({ repo: repositorioBusca(eu.usuarioId), cliente: criarClienteCasaDados(process.env.CASA_DOS_DADOS_API_KEY),
+      configurado: Boolean(process.env.CASA_DOS_DADOS_API_KEY?.trim()) }, String(form.get('chave') ?? ''),
       String(form.get('nome') ?? ''), Object.fromEntries(form.entries()))
   } catch {
     return { erro: 'Não foi possível salvar a busca. Confira o histórico antes de iniciar outra consulta.' }

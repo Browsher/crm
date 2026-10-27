@@ -41,3 +41,12 @@ test('falha do fornecedor fica persistida e abre histórico com motivo estável'
   expect(await iniciarBusca({ ...deps, cliente }, chave, 'Lojas SP', entrada)).toEqual({ ok: true, id: chave })
   expect(deps.repo.concluir).toHaveBeenCalledWith(chave, { ok: false, motivo: 'tempo_esgotado' })
 })
+
+
+test('incompatibilidade do fornecedor é recusada antes de reservar cota e fazer HTTP', async () => {
+  const deps = dependencias()
+  const cliente = { ...deps.cliente, validar: vi.fn(() => false) }
+  expect(await iniciarBusca({ ...deps, cliente }, chave, 'Lojas SP', entrada)).toEqual({ ok: false, motivo: 'filtros_invalidos' })
+  expect(deps.repo.reservar).not.toHaveBeenCalled()
+  expect(cliente.buscar).not.toHaveBeenCalled()
+})

@@ -17,6 +17,12 @@ const empresas = [
     telefones: [], atividades_principal: ['47.42-3-00 - Comércio varejista de material elétrico'] },
 ]
 
+const empresasCasa = empresas.map(e => ({ cnpj: e.cnpj, razao_social: e.razao_social, nome_fantasia: e.nome_fantasia,
+  data_abertura: e.data_abertura + 'T00:00:00Z', situacao_cadastral: { situacao_atual: e.situacao }, porte_empresa: { codigo: '01', descricao: 'Micro Empresa' },
+  endereco: { ...e.endereco, cidade: undefined, estado: undefined, municipio: e.endereco.cidade.nome, uf: e.endereco.estado.sigla },
+  contato_telefonico: e.telefones.map(t => ({ completo: t, ddd: t.slice(0, 2), numero: t.slice(2) })), contato_email: [{ email: e.email, valido: true }],
+  atividade_principal: { codigo: '4742300', descricao: 'Comércio varejista de material elétrico' }, bloqueado: false }))
+
 export async function prepararBuscaDemo(banco: BancoDeTeste) {
   const [{ id }] = await banco.sql<{ id: string }>("SELECT id FROM usuario WHERE email='redesigne2e@teste.local'")
   await banco.sql('INSERT INTO busca_empresa_limite(usuario_id,limite_diario) VALUES($1,20)', [id])
@@ -45,6 +51,18 @@ export async function iniciarCnpjBizDeTeste() {
   const servidor = createServer(async (pedido, resposta) => {
     resposta.setHeader('Content-Type', 'application/json')
     if (pedido.method === 'GET' && pedido.url === '/estatisticas') { resposta.end(JSON.stringify({ consultas })); return }
+    if (pedido.url === '/v5/cnpj/pesquisa?tipo_resultado=completo') {
+      if (pedido.method !== 'POST' || pedido.headers['api-key'] !== 'chave-apenas-e2e') { resposta.writeHead(403).end('{}'); return }
+      let corpo = ''
+      for await (const parte of pedido) { corpo += parte; if (corpo.length > 20_000) { resposta.writeHead(413).end('{}'); return } }
+      try {
+        const filtros = JSON.parse(corpo)
+        consultas++
+        if (filtros.busca_textual?.texto?.includes('falha simulada')) { resposta.writeHead(403).end('{}'); return }
+        resposta.end(JSON.stringify({ total: 2, cnpjs: empresasCasa.slice(0, Math.min(2, Number(filtros.limite) || 1)) }))
+      } catch { resposta.writeHead(400).end('{}') }
+      return
+    }
     if (pedido.method !== 'POST' || pedido.headers.authorization !== 'Bearer chave-apenas-e2e') { resposta.writeHead(403).end('{}'); return }
     if (pedido.url === '/api/v2/atividades/buscar') { resposta.end(JSON.stringify([{ atividade_id: 1, codigo: '47.42-3-00' }])); return }
     if (pedido.url === '/api/v2/naturezas-juridicas/buscar') { resposta.end(JSON.stringify([{natureza_juridica_id:10,codigo:'206-2',nome:'Sociedade Empresária Limitada'}])); return }

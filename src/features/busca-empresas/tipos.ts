@@ -7,6 +7,7 @@ export type FiltrosBusca = {
   quantidade: number; offset: number
 }
 export type EmpresaEncontrada = {
+  bloqueada_por_repeticao?: boolean
   detalhes?: DetalhesBanco
   cnpj: string; razao_social: string; nome_fantasia: string | null; email: string | null
   telefone: string | null; cep: string | null; cnae_principal: string | null
@@ -17,8 +18,9 @@ export type EmpresaEncontrada = {
 export type FalhaFornecedor = 'nao_configurado' | 'credencial_invalida' | 'sem_creditos' | 'fornecedor_ocupado' |
   'fornecedor_indisponivel' | 'tempo_esgotado' | 'resposta_invalida' | 'cnae_nao_encontrado'
 export type ResultadoFornecedor = { ok: true; empresas: EmpresaEncontrada[] } | { ok: false; motivo: FalhaFornecedor }
-export type ClienteBusca = { buscar(filtros: FiltrosBusca): Promise<ResultadoFornecedor> }
+export type ClienteBusca = { validar?(filtros: FiltrosBusca): boolean; buscar(filtros: FiltrosBusca): Promise<ResultadoFornecedor> }
 export type BuscaSalva = {
+  fornecedor?: 'CNPJ.biz' | 'Casa dos Dados'
   id: string; nome: string; usuario_id: string; vendedor: string; criado_em: string
   filtros: FiltrosBusca; estado: 'reservada' | 'concluida' | 'falhou'
   motivo: FalhaFornecedor | null; empresas: EmpresaEncontrada[]; grupo_id: string | null
