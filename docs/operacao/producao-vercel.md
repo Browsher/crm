@@ -298,3 +298,44 @@ Localmente passaram 200 testes focados e nove jornadas de busca/filtros/importa�
 Revisão independente sem achados. Nenhuma migração, chave, limite ou chamada paga.
 Login online retornou 200 e páginas privadas 307 para login. Fluxo autenticado
 validado no E2E local, sem criar sessão online. PR55 continua sem merge.
+
+
+## Carrossel do Banco de empresas, 27/10/2026
+
+A fonte 8be28a0453c66fd3589a026b156f3010931f9039 foi publicada no deployment
+dpl_9C7cTPEPWhS9ZstQ2kvYnvkBqquo READY e promovida para o endereço estável.
+Projeto, SHA e alias foram conferidos após a promoção. O
+[CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40561324107)
+aprovou 1.737 testes unitários (dois ignorados), 716 integrações e 77 jornadas,
+além de tipos, lint, convenções, build e conferência Railway.
+
+Todas as minhas empresas substitui o anúncio do rodapé do formulário com até
+11 empresas pessoais importadas da origem banco, nome em destaque e grupo de
+origem. Três cards quadrados por vez no desktop, dois na faixa intermediária
+e um no celular; o último Ver todas buscas abre /fila/localizar?origem=banco.
+Nome e grupo usam uma linha com reticências e preservam o texto completo no
+Dialog. Somente Cliente aparece como selo; a situação comercial continua no
+banco e nas telas existentes. Nenhuma consulta é disparada ao navegar.
+
+A revisão independente encontrou sobreposição entre identidade, metadados e
+botão em cards estreitos. O caso foi reproduzido e corrigido com teste
+geométrico RED/GREEN; os três cards acima de 670px foram preservados. Não
+houve achados menores ou comportamentos deixados sem julgamento. A correção
+foi verificada por testes; não se executou uma segunda revisão. O CI também
+revelou um assert de foco anterior ao evento assíncrono do FocusScope: o teste
+agora aguarda a condição, com retorno de foco confirmado no navegador após
+resize que remove o gatilho. Localmente passaram 1.738 unitários (um ignorado),
+20 integrações focadas e 15 jornadas afetadas, mais a jornada de foco ampliada.
+
+Backup criptografado novo foi conferido por hash e leitura integral do dump,
+sem restauração em banco. Aplicou-se somente 0048, com 49 migrações, zero
+pendências/divergências e invariantes aprovadas. Contagens/hashes das 11 tabelas
+conferidas e as três cotas de 100 sem pausa foram preservados. A consulta sob
+identidade do Junior retornou uma empresa com grupo e sem contatos no resumo;
+nenhuma busca paga, reserva ou importação real foi executada nesta entrega.
+
+Login online retornou 200 e as páginas privadas de vendedor/gestor retornaram
+307 para login. O fluxo autenticado foi conferido no E2E local, sem criar
+sessão online. Imagens da prévia usam dados fictícios. Google, workflow,
+planilha e variáveis não foram alterados. A PR55 segue em rascunho, sem merge;
+o registro posterior à fonte publicada é somente documental.
