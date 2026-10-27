@@ -1,4 +1,5 @@
 import type { QueryResultRow } from 'pg'
+import type { EmpresaBancoRecente } from '@/src/lib/empresas-banco-recentes'
 import { comoUsuario } from '@/src/server/db/como-usuario'
 import type { BuscaSalva, FiltrosBusca, LimiteBusca, ResultadoFornecedor } from './tipos'
 
@@ -43,6 +44,26 @@ export function repositorioBusca(usuarioId: string) {
       return executar<ResumoBusca>(`SELECT ${COLUNAS},jsonb_array_length(b.empresas)::int AS retornadas
         FROM busca_empresa b JOIN usuario u ON u.id=b.usuario_id ORDER BY b.criado_em DESC,b.id DESC LIMIT 50`)
     },
+    async empresasRecentes(): Promise<EmpresaBancoRecente[]> {
+      return executar<EmpresaBancoRecente>(`WITH unicas AS (
+        SELECT DISTINCT ON (item.dados->>'cnpj') b.id busca_id,b.nome grupo,b.criado_em,b.filtros,item.dados,item.indice
+        FROM busca_empresa b CROSS JOIN LATERAL jsonb_array_elements(b.empresas) WITH ORDINALITY item(dados,indice)
+        WHERE b.usuario_id=usuario_atual() AND b.estado='concluida' AND item.dados->>'cnpj' ~ '^[0-9A-Z]{12}[0-9]{2}$'
+        ORDER BY item.dados->>'cnpj',b.criado_em DESC,b.id DESC,item.indice
+      ), recentes AS (
+        SELECT * FROM unicas ORDER BY criado_em DESC,busca_id DESC,indice LIMIT 11
+      ) SELECT r.busca_id::text||':'||(r.dados->>'cnpj') id,r.busca_id AS "buscaId",e.id AS "empresaId",
+        coalesce(nullif(r.dados->>'nome_fantasia',''),nullif(r.dados->>'razao_social',''),'Empresa sem nome') nome,
+        r.grupo AS "grupoOrigem",nullif(r.filtros->>'palavra','') atividade,
+        concat_ws(', ',nullif(concat_ws(' ',r.dados->>'logradouro',r.dados->>'numero'),''),nullif(r.dados->>'complemento',''),nullif(r.dados->>'bairro',''),nullif(concat_ws('/',r.dados->>'cidade',r.dados->>'uf'),'')) endereco,
+        coalesce(r.dados->>'telefone' ~ '^[0-9]{10,11}$',false) AS "comTelefone",coalesce(length(btrim(r.dados->>'email'))>0,false) AS "comEmail",r.dados->>'cnpj' cnpj,r.dados->>'cnae_principal' cnae,r.dados->>'cep' cep,
+        r.dados->>'porte' porte,r.dados->>'data_abertura' abertura,r.dados->>'bairro' bairro,r.dados->>'cidade' cidade,r.dados->>'uf' uf,
+        ARRAY['banco'] origens,ARRAY[coalesce(nullif(r.filtros->>'palavra',''),nullif(r.filtros->>'cnae',''),r.grupo)] nichos,
+        ARRAY[concat_ws(' · ',r.dados->>'bairro',concat_ws('/',r.dados->>'cidade',r.dados->>'uf'))] regioes,r.criado_em::text entrada,
+        CASE WHEN f.vendedor_id=usuario_atual() AND EXISTS(SELECT 1 FROM venda v WHERE v.empresa_id=e.id) THEN 'cliente' ELSE 'consultada' END situacao
+        FROM recentes r LEFT JOIN empresa e ON e.cnpj=r.dados->>'cnpj' LEFT JOIN empresa_fila f ON f.empresa_id=e.id
+        ORDER BY r.criado_em DESC,r.busca_id DESC,r.indice`)
+    },
     async meuLimite(): Promise<LimiteBusca | null> {
       return (await executar<LimiteBusca>(LIMITES + ' WHERE u.id=usuario_atual()'))[0] ?? null
     },
@@ -60,6 +81,13 @@ export function repositorioBusca(usuarioId: string) {
       if (!UUID.test(id) || cnpjs.length < 1 || cnpjs.length > 100 || cnpjs.some(c => !/^[0-9A-Z]{12}[0-9]{2}$/.test(c))) return { ok: false, motivo: 'operacao_invalida' }
       try {
         const [r] = await executar<{ grupo_id: string; inseridas: number; vinculadas: number }>('SELECT * FROM busca_empresa_importar($1,$2)', [id, cnpjs])
+        return { ok: true, grupoId: r.grupo_id, inseridas: r.inseridas, vinculadas: r.vinculadas }
+      } catch (erro) { return { ok: false, motivo: motivo(erro) } }
+    },
+    async incluirAutomaticamente(id: string): Promise<{ ok: true; grupoId: string | null; inseridas: number; vinculadas: number } | { ok: false; motivo: FalhaBanco }> {
+      if (!UUID.test(id)) return { ok: false, motivo: 'operacao_invalida' }
+      try {
+        const [r] = await executar<{ grupo_id: string | null; inseridas: number; vinculadas: number }>('SELECT * FROM busca_empresa_importar($1,NULL)', [id])
         return { ok: true, grupoId: r.grupo_id, inseridas: r.inseridas, vinculadas: r.vinculadas }
       } catch (erro) { return { ok: false, motivo: motivo(erro) } }
     },

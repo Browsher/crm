@@ -2,7 +2,7 @@
 
 ## Ativação
 
-1. Aplicar migrações pendentes pelo procedimento normal de implantação do CRM. A aquisição nasceu em 0038/0039; a integração atual inclui 0040–0047. A 0043 acrescenta consulta pessoal, a 0044 amplia filtros e protege documentos de sócios, a 0046 registra a Casa dos Dados e bloqueia repetição na base global, e a 0047 valida os filtros adicionais.
+1. Aplicar migrações pendentes pelo procedimento normal de implantação do CRM. A aquisição nasceu em 0038/0039; a integração atual inclui 0040–0049. A 0043 acrescenta consulta pessoal, a 0044 amplia filtros e protege documentos de sócios, a 0046 registra a Casa dos Dados e bloqueia repetição na base global, a 0047 valida os filtros adicionais e a 0049 habilita a inclusão automática.
 2. Configurar CASA_DOS_DADOS_API_KEY no ambiente do servidor com a chave da Casa dos Dados. Nunca usar prefixo NEXT_PUBLIC_, commitar a chave ou informar em logs.
 3. Como gestor, abrir Empresas → Busca de empresas e definir limite diário por vendedor. Zero é o padrão. O limite do CRM não consulta nem representa o saldo de créditos da conta.
 4. Como vendedor, abrir Prospecção → Banco de empresas → Buscar novas empresas. Google tem o acesso Planejar buscas na mesma central.
@@ -23,7 +23,9 @@ A API recebe listas globais de UF, município e bairro, sem pares entre eles. S�
 
 A exclusão de empresas visualizadas na conta do fornecedor é fixa. Na importação, o banco confere CNPJ, telefone principal, telefones cadastrais e email contra a base global e contra o lote. A base global privada não é enviada ao fornecedor. Essa rechecagem ocorre com bloqueio transacional para impedir corrida entre importações e outros cadastros.
 
-Confira o resultado e marque as empresas para importar. Empresas sem telefone válido permanecem no histórico; não entram na fila. Na Casa dos Dados, empresa ou contato repetido fica sinalizado e não pode ser selecionado/importado. Importações históricas CNPJ.biz conservam seu comportamento anterior. Reimportar a mesma seleção da mesma busca é idempotente. A seleção não registra interesse comercial e não assume carteira. Use Prospectar esta lista para seguir o atendimento existente.
+Depois de salvar os resultados, as empresas válidas são incluídas automaticamente na lista de prospecção do vendedor. Não é necessário selecionar nem importar manualmente. Empresas sem telefone válido ou com CNPJ/contato repetido permanecem apenas na conferência. A rechecagem ocorre no banco, sob as mesmas travas e regras da inclusão. CNPJ.biz histórico conserva o contrato da seleção explícita. A operação não cria posse, reserva, negociação ou cliente na Carteira; use Prospectar esta lista para iniciar o atendimento.
+
+Salvar a resposta paga e incluir são transações separadas. Se a inclusão falhar ou estiver pausada, o resultado permanece disponível. Concluir inclusão retoma a mesma busca e lista usando apenas os dados persistidos, sem HTTP ao fornecedor ou nova cobrança. Repetir o UUID de uma busca não repete a aquisição. Uma consulta sem empresas válidas não cria lista vazia.
 
 A ficha mostra situação, porte, abertura, endereço e detalhes empresariais da origem, separados do cadastro manual. O complemento conserva a primeira consulta importada. O endereço recebido continua visível mesmo sem correspondência na base de CEP. Na consulta pessoal, a localização pode vir dos dados cadastrais ou da região da coleta; a consulta legada mantém sua base de CEP.
 
@@ -86,10 +88,10 @@ Testes e implantação não consumiram créditos. Limitações da observação o
 estão no [registro de produção](producao-vercel.md).
 
 
-## Empresas recentes no Banco de empresas
+## Últimas buscas no Banco de empresas
 
-Abaixo do formulário, Todas as minhas empresas mostra até 11 empresas individuais já importadas pelo vendedor, da origem banco, por primeiro recebimento mais recente. Reimportar o mesmo cadastro não duplica o card nem muda essa data. O grupo exibido é o primeiro grupo próprio de importação; o nome completo continua no pop-up.
+A seção Últimas buscas mostra até11empresas individuais encontradas nas consultas próprias concluídas, mesmo quando a inclusão ainda está pendente. Usa o snapshot da consulta mais recente de cada CNPJ, em ordem de recebimento. Não mistura buscas alheias nem consultas falhas/em processamento. O histórico de pesquisas, incluindo vazio/falha, continua disponível por Ver histórico de buscas em Dialog.
 
-O carrossel manual exibe três cards quadrados no computador, dois em larguras intermediárias e um no celular. Nome e grupo ficam em uma linha com reticências (até 36 e 40 caracteres), além de bairro/cidade/UF, data e selo Cliente quando aplicável. Ver empresa abre um resumo com os textos completos; Abrir ficha completa conserva a consulta pessoal e as permissões das ações e contatos existentes.
+Três cards quadrados no computador, dois na faixa intermediária e um no celular. Desktop amplo mostra nome/grupo maiores (até80/120caracteres), nicho da busca, endereço, porte, abertura e indicadores de telefone/email. Celular mantém36/40caracteres. Textos continuam em uma linha com reticências. WhatsApp não é presumido. Ver empresa abre só a empresa correspondente, usando dados persistidos e controle de acesso da busca; documentos dos sócios continuam exclusivos do gestor. Os indicadores não enviam contatos efetivos para o resumo dos11cards.
 
-O último card Ver todas buscas leva a /fila/localizar?origem=banco. Quando há menos empresas, são mostradas apenas as existentes, com o mesmo atalho. Histórico de buscas permanece separado. Ler e navegar não consulta o fornecedor nem consome créditos. A migração [0048](../db/0048.md) acrescenta somente grupoOrigem à consulta pessoal protegida.
+O último Ver todas buscas mantém /fila/localizar?origem=banco, com empresas já incluídas. A [0049](../db/0049.md) habilita o modo automático sem novos privilégios; a consulta pessoal da [0048](../db/0048.md) continua preservada. Leitura de cards e histórico não consulta o fornecedor.

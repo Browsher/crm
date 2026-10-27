@@ -25,14 +25,6 @@
 .secao .todas p { color:var(--muted-foreground); font-size:13px; line-height:1.6; }
 .todas>div { align-self:center; }
 .vazio { color:var(--muted-foreground); font-size:13px; margin-bottom:16px!important; }
-.dialogo:global(.ui-dialog-content) { width:min(820px,calc(100vw - 32px)); max-width:820px; max-height:calc(100dvh - 32px); overflow:auto; padding:24px; }
-.dialogo :global(.ui-dialog-header) { padding-right:32px; overflow-wrap:anywhere; }
-.detalhes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
-.detalheCard { display:block; padding:20px; min-width:0; }
-.detalheCard h3 { font-size:14px; font-weight:600; margin:0 0 16px; }
-.detalheCard dl { display:grid; gap:14px; margin:0; }
-.detalheCard dt { color:var(--muted-foreground); font-size:12px; }
-.detalheCard dd { margin:2px 0 0; font-size:14px; overflow-wrap:anywhere; }
 @container(max-width:900px) {
  .secao .card { padding:14px; gap:10px; }
  .marca { height:20px; margin-bottom:6px; }
@@ -46,8 +38,20 @@
 }
 @container(max-width:670px) { .grade { grid-template-columns:repeat(2,minmax(0,1fr)); } .grade>.card:nth-child(n+3) { display:none; } .secao .card { padding:16px; gap:12px; } .marca { margin-bottom:12px; } .metadados { gap:8px; } }
 @container(max-width:480px) { .grade { grid-template-columns:minmax(0,1fr); } .grade>.card:nth-child(n+2) { display:none; } .secao .card { padding:22px; gap:16px; } .secao .card h3.nome { font-size:20px; } .marca { margin-bottom:16px; } .metadados { gap:12px; } }
-@media(max-width:600px) { .detalhes { grid-template-columns:1fr; } .dialogo:global(.ui-dialog-content) { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); padding:20px; } }
 
 @container(max-width:300px) { .secao .card { padding:14px; gap:10px; } .secao .card h3.nome { font-size:18px; } .marca { margin-bottom:8px; } .metadados { gap:8px; font-size:12px; } .recebido { font-size:11px; } }
 
 .secao:focus-visible { outline:2px solid var(--ring); outline-offset:4px; }
+.desktopDados,.desktopAtividade { display:none; }
+@container(min-width:1120px) {
+ .secao .card { padding:18px; gap:12px; }
+ .marca { height:24px; margin-bottom:10px; }
+ .metadados { gap:8px; font-size:13px; line-height:1.4; }
+ .rotulo { display:block; font-size:11px; line-height:1.25; }
+ .recebido { font-size:12px; line-height:1.4; }
+ .desktopDados { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; }
+ .desktopDados>div { min-width:0; }
+ .desktopDados span { display:block; font-size:11px; line-height:1.25; color:var(--muted-foreground); }
+ .desktopDados p { font-size:13px; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ .secao .card p.desktopAtividade { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+}

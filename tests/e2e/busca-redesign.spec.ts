@@ -52,7 +52,9 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   const popup = page.getByRole('dialog', { name: 'Nova consulta integrada fictícia', exact: true })
   await expect(popup).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true })).toBeVisible()
-  await expect(page.getByRole('checkbox', { name: 'Selecionar Comércio sem telefone fictício', exact: true })).toBeDisabled()
+  await expect(popup.getByRole('checkbox')).toHaveCount(0)
+  await expect(popup).toContainText('automaticamente')
+  await expect(popup.getByRole('link', { name: 'Prospectar esta lista', exact: true })).toBeVisible()
   const conferir = () => comBancoGrupos(async c => (await c.query(
     `SELECT b.estado,b.fornecedor,b.quantidade,(b.empresas->0->>'bloqueada_por_repeticao')::boolean bloqueada,jsonb_array_length(b.empresas) AS retornadas,
       (SELECT count(*)::int FROM busca_empresa WHERE usuario_id=b.usuario_id AND nome=b.nome) AS tentativas
@@ -62,9 +64,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   await expect(popup).toBeVisible()
   expect(await chamadas()).toBe(chamadasDepois)
   expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
-  await page.getByRole('checkbox', { name: 'Selecionar Luminárias Horizonte fictícia', exact: true }).check()
-  await page.getByRole('button', { name: 'Importar selecionadas', exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('1 empresas novas')
+  await expect(popup.getByRole('checkbox')).toHaveCount(0)
   const empresa = await comBancoGrupos(async c => (await c.query('SELECT id FROM empresa WHERE cnpj=$1', ['99887766000105'])).rows[0])
   await page.goto('/fila/localizar/' + empresa.id)
   await expect(page.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()

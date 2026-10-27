@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { HistoricoBuscas } from '@/src/components/crm/historico-buscas'
-import { lerEmpresasPessoais } from '@/src/server/prospeccao-pessoal'
+import { HistoricoBuscasDialogo } from '@/src/components/crm/historico-buscas-dialogo'
 import { EmpresasBancoRecentes } from './empresas-recentes'
 import { FormularioBusca } from './formulario'
 import { BuscaDialogo } from '@/src/components/crm/busca-dialogo'
@@ -24,13 +24,13 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
   const repo = repositorioBusca(eu.usuarioId)
   const [limite, historico, busca, recentes] = await Promise.all([repo.meuLimite(), repo.listar(),
     typeof params.busca === 'string' ? repo.ler(params.busca) : Promise.resolve(null),
-    lerEmpresasPessoais(eu.usuarioId, { origem: 'banco' }).catch(() => ({ ok: false as const }))])
+    repo.empresasRecentes().then(empresas => ({ ok: true as const, empresas })).catch(() => ({ ok: false as const }))])
   if (typeof params.busca === 'string' && !busca) notFound()
   const configurado = Boolean(process.env.CASA_DOS_DADOS_API_KEY?.trim())
   const restante = Math.max(0, (limite?.limite_diario ?? 0) - (limite?.usado ?? 0))
   const bloqueado = !configurado || Boolean(limite?.pausado) || restante === 0
   return <main className={styles.pagina} style={{maxWidth:1420,marginInline:'auto'}}>
-    <CabecalhoPagina titulo="Banco de empresas" descricao="Encontre novas empresas para os seus grupos." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><Button asChild variant="outline"><Link href="#historico-banco">Ver histórico de buscas</Link></Button><Button asChild variant="outline"><Link href="/fila/localizar?origem=banco">Localizar todas as empresas</Link></Button></>} />
+    <CabecalhoPagina titulo="Banco de empresas" descricao="Encontre novas empresas para os seus grupos." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><HistoricoBuscasDialogo><HistoricoBuscas buscas={historico} /></HistoricoBuscasDialogo><Button asChild variant="outline"><Link href="/fila/localizar?origem=banco">Localizar todas as empresas</Link></Button></>} />
     {process.env.CRM_E2E === '1' && process.env.CASA_DOS_DADOS_API_KEY === 'chave-apenas-e2e' && <p className={styles.ajuda} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
       <aside aria-label="Seu limite de hoje" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-5 py-3 text-sm">
         <p><strong>{limite?.usado ?? 0} de {limite?.limite_diario ?? 0}</strong> empresas solicitadas hoje. {restante} disponíveis.</p>
@@ -38,15 +38,17 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
         {!configurado && <p className={styles.aviso}>Conexão com o banco de empresas pendente de configuração pelo gestor.</p>}
         {limite?.pausado ? <p className={styles.aviso}>Suas buscas estão pausadas pelo gestor.</p> : restante === 0 ? <p className={styles.aviso}>Sem limite disponível. Solicite ao gestor a liberação ou aguarde o próximo dia.</p> : null}
       </aside>
+      {params.inclusao === 'pendente' && <p role="alert">Sua pesquisa ficou salva. A inclusão automática ficou pendente; use Concluir inclusão nos resultados, sem refazer a busca.</p>}
       <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} buscaConcluidaId={busca?.id} />
-      {recentes.ok ? <EmpresasBancoRecentes key={recentes.dados.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.dados.empresas.slice(0, 11)} />
-        : <p role="alert">Não foi possível carregar suas empresas recentes. Atualize a página para tentar novamente.</p>}
       {busca && <Card className={styles.painel}><h2>{busca.nome}</h2>
         <p className={styles.ajuda}>{busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas. Confira os resultados no pop-up.</p>
         <BuscaDialogo key={busca.id} nome={busca.nome} rotulo="Ver resultados" abrirInicialmente
           conteudoInicial={<ConteudoBusca busca={busca} gestor={false} bloqueada={Boolean(limite?.pausado)} />}
           carregarAcao={lerDetalheBuscaAcao.bind(null, busca.id)} />
       </Card>}
-      <section id="historico-banco" className="scroll-mt-6"><Card className={styles.painel}><HistoricoBuscas buscas={historico} /></Card></section>
+      <section id="historico-banco" className="scroll-mt-6"><Card className={styles.painel}>
+        {recentes.ok ? <EmpresasBancoRecentes key={recentes.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.empresas.slice(0, 11)} />
+          : <p role="alert">Não foi possível carregar suas empresas recentes. Atualize a página para tentar novamente.</p>}
+      </Card></section>
   </main>
 }

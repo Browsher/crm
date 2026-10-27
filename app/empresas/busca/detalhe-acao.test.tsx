@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 const m = vi.hoisted(() => ({ exigir: vi.fn(), repo: vi.fn(), ler: vi.fn(), limite: vi.fn() }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: m.exigir }))
 vi.mock('@/src/features/busca-empresas/repositorio', () => ({ repositorioBusca: m.repo }))
-import { lerDetalheBuscaAcao } from './detalhe-acao'
+import { lerDetalheBuscaAcao, lerEmpresaBuscaAcao } from './detalhe-acao'
 import { isValidElement } from 'react'
 import type { BuscaSalva } from '@/src/features/busca-empresas/tipos'
 
@@ -39,4 +39,17 @@ test('papel do gestor vem da sessão e dispensa limite de vendedor', async () =>
   if (!r.ok || !isValidElement(r.conteudo)) throw new Error('conteúdo ausente')
   expect(r.conteudo.props).toMatchObject({ gestor: true, bloqueada: false })
   expect(m.limite).not.toHaveBeenCalled()
+})
+
+test('empresa recente exige vendedor e vínculo exato na busca acessível, sem consulta paga',async()=>{
+ const alvo={cnpj:'99887766000105',razao_social:'Encontrada'}
+ m.ler.mockResolvedValue({id:'busca',usuario_id:'da-sessao',empresas:[alvo,{cnpj:'11111111000111'}]} as BuscaSalva)
+ const r=await lerEmpresaBuscaAcao('busca',alvo.cnpj)
+ expect(m.exigir).toHaveBeenCalledWith('vendedor')
+ expect(m.repo).toHaveBeenCalledWith('da-sessao')
+ if(!r.ok||!isValidElement(r.conteudo))throw new Error('conteúdo ausente')
+ expect(r.conteudo.props).toMatchObject({gestor:false,bloqueada:true,retornadas:2,busca:{empresas:[alvo]}})
+ expect(await lerEmpresaBuscaAcao('busca','99999999000199')).toMatchObject({ok:false})
+ m.ler.mockResolvedValue({id:'busca',usuario_id:'outro',empresas:[alvo]} as BuscaSalva)
+ expect(await lerEmpresaBuscaAcao('busca',alvo.cnpj)).toMatchObject({ok:false})
 })

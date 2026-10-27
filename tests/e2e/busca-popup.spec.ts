@@ -46,6 +46,7 @@ test('histórico abre sem navegação ou nova coleta; cards, foco, temas e celul
   await page.getByLabel('Nome ou palavra-chave', { exact: true }).fill('Rascunho preservado')
   const antes = await chamadas()
   const url = page.url()
+  await page.getByRole('button', { name: 'Ver histórico de buscas', exact: true }).click()
   const gatilho = page.getByRole('button', { name: 'Ver busca: ' + nome, exact: true })
   await gatilho.click()
   const popup = page.getByRole('dialog', { name: nome, exact: true })
@@ -57,7 +58,9 @@ test('histórico abre sem navegação ou nova coleta; cards, foco, temas e celul
   await expect(popup).not.toContainText('Representante reservado popup')
   for (const tema of ['light', 'dark']) {
     await popup.getByRole('button', { name: 'Fechar', exact: true }).click()
+    await page.getByRole('dialog', { name: 'Histórico de buscas', exact: true }).getByRole('button', { name: 'Fechar', exact: true }).click()
     await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
+    await page.getByRole('button', { name: 'Ver histórico de buscas', exact: true }).click()
     await gatilho.click()
     await popup.getByRole('button', { name: 'Ver mais: ' + empresa.razao_social, exact: true }).click()
     for (const width of [1920, 390]) {
@@ -81,6 +84,7 @@ test('histórico abre sem navegação ou nova coleta; cards, foco, temas e celul
 
 test('vazio, processamento e falha exibem a busca salva, sem consumir consulta', async ({ page }) => {
   await entrar(page); await page.goto('/fila/buscar')
+  await page.getByRole('button', { name: 'Ver histórico de buscas', exact: true }).click()
   const antes = await chamadas()
   for (const [titulo, texto] of [['Pop-up sem empresas', 'Nenhuma empresa encontrada'], ['Pop-up processando', 'Consulta em processamento ou sem confirmação'], ['Pop-up com falha', 'créditos']]) {
     await page.getByRole('button', { name: 'Ver busca: ' + titulo, exact: true }).click()
@@ -96,12 +100,12 @@ test('vazio, processamento e falha exibem a busca salva, sem consumir consulta',
 test('importação e pausa preservadas; gestor vê dados restritos no pop-up', async ({ page, browser }) => {
   test.setTimeout(90_000)
   await entrar(page); await page.goto('/fila/buscar')
+  await page.getByRole('button', { name: 'Ver histórico de buscas', exact: true }).click()
   await page.getByRole('button', { name: 'Ver busca: ' + nome, exact: true }).click()
   const popup = page.getByRole('dialog', { name: nome, exact: true })
-  await expect(popup.getByRole('checkbox', { name: 'Selecionar Sem telefone popup fictícia', exact: true })).toBeDisabled()
-  await popup.getByRole('checkbox', { name: 'Selecionar ' + empresa.razao_social, exact: true }).check()
-  await popup.getByRole('button', { name: 'Importar selecionadas', exact: true }).click()
-  await expect(popup.getByRole('status')).toContainText('1 empresas novas')
+  await expect(popup.getByRole('checkbox')).toHaveCount(0)
+  await popup.getByRole('button', { name: 'Concluir inclusão', exact: true }).click()
+  await expect(popup.getByText('1 empresas novas. A lista reúne 1 empresas.', { exact: true })).toBeVisible()
   await expect(popup.getByRole('link', { name: 'Prospectar esta lista', exact: true })).toBeVisible()
   const contexto = await browser.newContext()
   try {
@@ -115,8 +119,9 @@ test('importação e pausa preservadas; gestor vê dados restritos no pop-up', a
     const limite = gestor.getByRole('form', { name: 'Limite de popupvendedore2e', exact: true })
     await limite.getByRole('checkbox').check(); await limite.getByRole('button', { name: 'Salvar limite', exact: true }).click()
     await expect(limite.getByRole('status')).toHaveText('Limite salvo.')
-    await page.reload(); await page.getByRole('button', { name: 'Ver busca: ' + nome, exact: true }).click()
-    await expect(popup.getByRole('checkbox', { name: 'Selecionar ' + empresa.razao_social, exact: true })).toBeDisabled()
+    await page.reload(); await page.getByRole('button', { name: 'Ver histórico de buscas', exact: true }).click(); await page.getByRole('button', { name: 'Ver busca: ' + nome, exact: true }).click()
+    await expect(popup).toContainText('Inclusões pausadas pelo gestor')
+    await expect(popup.getByRole('checkbox')).toHaveCount(0)
     const ver = popup.getByRole('button', { name: 'Ver mais: ' + empresa.razao_social, exact: true })
     await expect(ver).toBeEnabled(); await ver.click()
     await expect(popup.getByText('01001-000', { exact: true })).toBeVisible()

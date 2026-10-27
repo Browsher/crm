@@ -11,11 +11,11 @@ import { SociosGestor } from '../socios-gestor'
 import styles from '@/src/components/crm/busca-dialogo.module.css'
 
 const estados = { reservada: 'Em processamento', concluida: 'Concluída', falhou: 'Falhou' }
-export function ConteudoBusca({ busca, gestor, bloqueada }: { busca: BuscaSalva; gestor: boolean; bloqueada: boolean }) {
+export function ConteudoBusca({ busca, gestor, bloqueada, retornadas = busca.empresas.length }: { busca: BuscaSalva; gestor: boolean; bloqueada: boolean; retornadas?: number }) {
   const data = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(busca.criado_em))
   return <div className="grid min-w-0 gap-5">
     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-      <div><p className="font-medium">{busca.fornecedor ?? 'CNPJ.biz'}{gestor ? ` · ${busca.vendedor}` : ''}</p><p className="text-muted-foreground">{data} · {busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas</p></div>
+      <div><p className="font-medium">{busca.fornecedor ?? 'CNPJ.biz'}{gestor ? ` · ${busca.vendedor}` : ''}</p><p className="text-muted-foreground">{data} · {busca.filtros.quantidade} solicitadas · {retornadas} retornadas</p></div>
       <Badge variant={busca.estado === 'falhou' ? 'danger' : 'outline'}>{estados[busca.estado]}</Badge>
     </div>
     <CardDetalhes titulo="Filtros usados">
