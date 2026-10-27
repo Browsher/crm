@@ -33,6 +33,17 @@
 .detalheCard dl { display:grid; gap:14px; margin:0; }
 .detalheCard dt { color:var(--muted-foreground); font-size:12px; }
 .detalheCard dd { margin:2px 0 0; font-size:14px; overflow-wrap:anywhere; }
+@container(max-width:900px) {
+ .secao .card { padding:14px; gap:10px; }
+ .marca { height:20px; margin-bottom:6px; }
+ .marca>svg { width:20px; height:20px; }
+ .secao .card h3.nome { font-size:16px; line-height:1.3; }
+ .metadados { gap:6px; font-size:12px; line-height:1.4; }
+ .rotulo { display:block; font-size:10px; line-height:1.25; }
+ .recebido { font-size:11px; line-height:1.4; }
+ .secao .todas h3 { font-size:18px; }
+ .secao .todas p { font-size:12px; line-height:1.4; }
+}
 @container(max-width:670px) { .grade { grid-template-columns:repeat(2,minmax(0,1fr)); } .grade>.card:nth-child(n+3) { display:none; } .secao .card { padding:16px; gap:12px; } .marca { margin-bottom:12px; } .metadados { gap:8px; } }
 @container(max-width:480px) { .grade { grid-template-columns:minmax(0,1fr); } .grade>.card:nth-child(n+2) { display:none; } .secao .card { padding:22px; gap:16px; } .secao .card h3.nome { font-size:20px; } .marca { margin-bottom:16px; } .metadados { gap:12px; } }
 @media(max-width:600px) { .detalhes { grid-template-columns:1fr; } .dialogo:global(.ui-dialog-content) { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); padding:20px; } }

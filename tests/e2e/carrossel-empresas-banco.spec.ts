@@ -56,7 +56,7 @@ test('11 empresas pessoais, nome em destaque, detalhes sem navegar e último ata
  await expect(secao).not.toContainText('ALHEIA')
  await expect(secao).not.toContainText('Somente GOOGLE')
  await expect(page.getByText('Sua pesquisa fica salva no histórico',{exact:true})).toHaveCount(0)
- for(const width of [1920,736,600,390,320]) {
+ for(const width of [1920,736,704,703,702,600,390,320]) {
    await page.setViewportSize({width,height:width===1920?1080:900})
    const espaco = (await secao.boundingBox())!.width
    await expect(cards).toHaveCount(espaco>670?3:espaco>480?2:1)
@@ -66,10 +66,11 @@ test('11 empresas pessoais, nome em destaque, detalhes sem navegar e último ata
      await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBe(0)
      const medidas=await cards.evaluateAll(els=>els.map(el=>{
        const r=el.getBoundingClientRect();const h=el.querySelector('h3')!;const g=el.querySelector('[data-grupo-origem]')!
-       return {quadrado:Math.abs(r.width-r.height)<1,semOverflow:el.scrollHeight<=el.clientHeight+1,linhaNome:getComputedStyle(h).whiteSpace,linhaGrupo:getComputedStyle(g).whiteSpace,nome:Array.from(h.textContent!).length,grupo:Array.from(g.textContent!).length}
+       const [identidade,metadados,acao]=Array.from(el.children).map(e=>e.getBoundingClientRect())
+       return {semSobreposicao:metadados.top>=identidade.bottom-1&&acao.top>=metadados.bottom-1,quadrado:Math.abs(r.width-r.height)<1,semOverflow:el.scrollHeight<=el.clientHeight+1,linhaNome:getComputedStyle(h).whiteSpace,linhaGrupo:getComputedStyle(g).whiteSpace,nome:Array.from(h.textContent!).length,grupo:Array.from(g.textContent!).length}
      }))
-     for(const m of medidas){expect(m.quadrado).toBe(true);expect(m.semOverflow).toBe(true);expect(m.linhaNome).toBe('nowrap');expect(m.linhaGrupo).toBe('nowrap');expect(m.nome).toBeLessThanOrEqual(36);expect(m.grupo).toBeLessThanOrEqual(40)}
-     if(width===1920||width===390)await secao.screenshot({path:info.outputPath(`carrossel-${width}-${tema}.png`)})
+     for(const m of medidas){expect(m.semSobreposicao).toBe(true);expect(m.quadrado).toBe(true);expect(m.semOverflow).toBe(true);expect(m.linhaNome).toBe('nowrap');expect(m.linhaGrupo).toBe('nowrap');expect(m.nome).toBeLessThanOrEqual(36);expect(m.grupo).toBeLessThanOrEqual(40)}
+     if(width===1920||width===736||width===390)await secao.screenshot({path:info.outputPath(`carrossel-${width}-${tema}.png`)})
    }
  }
  await page.setViewportSize({width:1920,height:1080})
