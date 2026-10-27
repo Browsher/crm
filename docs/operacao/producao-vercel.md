@@ -339,3 +339,51 @@ Login online retornou 200 e as páginas privadas de vendedor/gestor retornaram
 sessão online. Imagens da prévia usam dados fictícios. Google, workflow,
 planilha e variáveis não foram alterados. A PR55 segue em rascunho, sem merge;
 o registro posterior à fonte publicada é somente documental.
+
+
+## Últimas buscas e inclusão automática, 27/10/2026
+
+A fonte 473f0df9377d33c305ba1ea63850b1c5790ab883 foi publicada em
+dpl_8a3jRGKywRjoSar6da7EoArMmPn2 READY, promovida e conferida no endereço
+estável. [CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40575608030)
+aprovado em todas as etapas, incluindo 77 jornadas completas. Localmente:
+1.751 unitários e um ignorado, 50 integrações focadas e 15 jornadas afetadas;
+tipos, lint, build e convenções aprovados.
+
+Últimas buscas agora ocupa a seção original e mostra até 11 empresas
+individuais retornadas pelas consultas próprias concluídas, mesmo antes da
+inclusão. Mesmos CNPJs usam o snapshot mais recente. Histórico completo em
+botão/diálogo. Mantidos os cards quadrados 3/2/1 e o último Ver todas buscas
+para /fila/localizar?origem=banco. Desktop amplo acrescenta nicho, endereço,
+porte, abertura e indicadores de contato; nome/grupo permitem 80/120 caracteres,
+sem quebra de linha. Ver empresa abre apenas o resultado escolhido. O resumo
+não recebe contatos efetivos nem documentos dos sócios.
+
+A inclusão acontece depois da persistência da resposta paga. Retomar usa
+somente os resultados salvos, sem nova compra. Revisão independente encontrou
+um Important: grupo criado não comprova inclusão integral de um histórico
+parcial. O caso foi reproduzido e corrigido com testes RED/GREEN de unidade,
+integração e navegador. A0049 registra a conclusão automática em separado e
+permite concluir na mesma lista. Zero Critical, zero Minor e nada deixado sem
+julgamento. Uma rodada de correção, sem segunda revisão.
+
+Após backup criptografado novo, com hash e leitura integral do dump conferidos,
+aplicou-se somente0049:50 migrações, zero pendências/divergências e invariantes
+aprovadas. Hashes/contagens das11tabelas conferidas e as três cotas100 sem pausa
+foram preservados. Só a nova coluna inclusao_automatica_concluida foi excluída
+do hash da busca para comparar o mesmo conteúdo antes/depois da mudança.
+Não se executou restauração do backup em banco.
+
+A busca já paga f198661a-ce21-4a20-9bd6-e71e12eff09c, Empresas · Brasil,
+tinha5resultados do Junior e nenhum grupo. A função nativa sob sua identidade
+incluiu5empresas,5complementos cadastrais e5vínculos em uma única lista.
+Repetição inseriu zero e manteve a lista. Registros anteriores, usuários,
+responsáveis, fila/reservas, negociações, vendas, demais buscas e cotas foram
+preservados. RLS conferida:Junior vê a busca e as5empresas;Jackson eJoão não.
+Nenhuma consulta externa, crédito adicional ou Carteira/reserva real criada.
+
+Fonte/projeto/alias conferidos; login200 e páginas privadas307 para login.
+Jornada autenticada validada no E2E local e dados reais pela identidade nativa
+do banco; não se criou sessão online. A prévia visual usa dados fictícios.
+Google, workflow, planilha e variáveis não foram alterados. PR55 permanece
+em rascunho, sem merge. Este registro posterior é somente documental.
