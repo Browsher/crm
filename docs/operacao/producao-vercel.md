@@ -211,9 +211,44 @@ As capturas fictícias foram conferidas. A revisão independente final ficou
 sem achados Critical, Important ou Minor: capital inteiro, mock403 e contato
 fictício repetido foram corrigidos com regressões, sem afrouxar a deduplicação.
 
-Na publicação online, login retornou200, Banco de empresas e gestão sem sessão
+Na publicação online, login retornou 200, Banco de empresas e gestão sem sessão
 redirecionaram307 para login, e API Google sem token retornou401 sem adquirir
 pedido. O transporte do navegador autenticado estava indisponível. A importação
 real foi validada pelas funções nativas sob identidade RLS; as telas autenticadas
 foram validadas no E2E local, sem fabricar sessão online. Não houve outra consulta
 paga, mensagem, alteração de workflow, planilha ou agendamento Google nesta migração.
+
+
+## Filtros adicionais Casa dos Dados em 27/10/2026
+
+A fonte 153e2968ab8395da39303583c9191b1bc3e06151 foi publicada no deployment
+dpl_DPBxEPjESLJTsgrdD8E2h7vbYtz5, READY, e promovida para o mesmo endereço
+estável do CRM. Projeto, SHA e resolução do alias foram conferidos.
+[CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40531948103)
+aprovou 1.711 unitários (dois ignorados), 713 integrações e 72 jornadas,
+além de tipos, lint, convenções, build e conferência Railway.
+
+O formulário tem listas independentes de CNAEs principais/secundários, abertura
+por período ou últimos dias, exclusão de optantes MEI/Simples e seus períodos
+opcionais de exclusão. Nome ou palavra-chave permanece no modo anterior.
+Valores incompatíveis são recusados no TS e no banco, antes da cota/rede;
+payloads antigos não ganham defaults novos e conservam histórico/replay.
+
+Backup criptografado novo foi conferido por SHA256 e leitura integral do dump,
+sem restauração em banco. Aplicou-se somente 0047, totalizando 48 migrações,
+sem pendências/divergências e com invariantes aprovadas. Comparações de contagem
+e hash preservaram 44 empresas, quatro usuários, 11 linhas de fila, duas negociações,
+uma venda, três grupos, 44 vínculos, uma busca e os complementos protegidos.
+As três cotas permaneceram 100, sem pausa. Nenhuma reserva real ou empresa foi
+criada para testar filtros; não houve chamada paga ao fornecedor.
+
+Dez jornadas locais afetadas passaram. O caso positivo de corpo enviado e
+histórico foi repetido após fixar explicitamente o parâmetro que mantém os
+CNAEs principais separados dos secundários. Revisão independente final sem
+achados remanescentes; o problema do campo inválido recolhido foi reproduzido
+e corrigido com regressões para 0 e 1.5, erro visível e zero HTTP.
+
+Online, login retornou 200, páginas privadas 307 para login e API Google sem
+token 401. Os controles autenticados foram validados no E2E local, sem criar
+sessão online. Chaves e 15 variáveis foram preservadas, assim como Google,
+workflow, planilha e os limites 100. A PR55 segue em rascunho, sem merge.

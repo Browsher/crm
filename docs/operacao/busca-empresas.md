@@ -74,3 +74,13 @@ estável do CRM. O [CI final do código publicado](https://github.com/Browsher/c
 aprovou 1.682 unitários, 695 integrações e 69 jornadas. Revisão independente
 concluída sem achados pendentes. Configuração sensível Production e conferência
 online estão detalhadas em [produção Vercel](producao-vercel.md).
+
+
+## Publicação dos filtros adicionais em 27/10/2026
+
+A migração 0047 foi aplicada e conferida, preservando os dados e as três cotas 100.
+O deployment dpl_DPBxEPjESLJTsgrdD8E2h7vbYtz5 publica a fonte 153e296 no endereço
+estável. [CI aprovado](https://github.com/Browsher/crm/actions/runs/40531948103):
+1.711 unitários, 713 integrações e 72 jornadas. Revisão independente sem pendências.
+Testes e implantação não consumiram créditos. Limitações da observação online
+estão no [registro de produção](producao-vercel.md).
