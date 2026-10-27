@@ -215,7 +215,7 @@ Prioridade indica a ordem sugerida para uma futura padronização visual. Todos 
 | D04 | Média | `app/meu-dia/meu-dia.module.css:4`; `app/carteira/carteira.module.css:4`; `app/usuarios/usuarios.module.css:5`; `app/empresas/empresas.module.css:5`; `app/fila/localizar/pessoal.module.css:1` | A mesma função de painel de filtros usa raios 12 ou 8 px, fundo secundário ou branco, padding 16 ou 20 px e rótulos 13 ou 14 px. Não há variante compartilhada que declare a escolha. |
 | D05 | Média | `src/components/ui/badge.tsx:6`; `src/styles/ui.css:61`; `app/fila/google/google.module.css:7`; `app/whatsapp/whatsapp.module.css:26,27,30,56` | Indicadores de estado usam Badge e etiquetas locais com diferentes paddings, raios e fontes de 11/12 px. Diferenciar estado informativo, filtro pressionável e indicação de leitura exige variantes documentadas. |
 | D06 | Média | `app/globals.css:29,43`; `src/components/ui/button.tsx:24`; `src/styles/tokens.css:34`; módulos de página | Tamanhos e raios não têm uma única fonte. Alturas `xs`/`sm` são elevadas pelo mínimo global; `--radius` não governa o mapa de raios; espaçamentos são repetidos em valores locais. Isso dificulta uma mudança previsível. |
-| D07 | Média | `src/components/crm/estado-vazio.tsx:5`; `app/meu-dia/painel.tsx:172,185`; `app/empresas/page.tsx`; `app/gestao/gestao.module.css:35`; `app/usuarios/usuarios.module.css:24` | EstadoVazio não é utilizado; há vazios alinhados à esquerda/centro, com ou sem moldura, e erros usando estilo de vazio. Falta uma composição comum para mensagem, explicação e próxima ação. |
+| D07 | Média | `src/components/crm/estado-vazio.tsx:5`; `app/carteira/lista.tsx:35`; `app/meu-dia/painel.tsx:172,185`; `app/empresas/page.tsx`; `app/gestao/gestao.module.css:35`; `app/usuarios/usuarios.module.css:24` | EstadoVazio não é utilizado; há vazios alinhados à esquerda/centro, com ou sem moldura, e erros usando estilo de vazio. Carteira vazia apresenta a próxima ação como link sublinhado em um contêiner tracejado. Falta uma composição comum para mensagem, explicação e próxima ação; a direção para esse caso está registrada abaixo. |
 | D08 | Média | `app/design/galeria.module.css:1,12,17,62`; `src/components/crm/shell.module.css:1,20,37,52`; `app/design/galeria.tsx:37,138` | A galeria tem sidebar de 240 px, topbar de 64 px, conteúdo de 1200 px e menu móvel até 640 px; o shell real usa 224/60/1420/820 px. Não mostra tabela, conjunto de checkboxes/radios, todas as variantes/tamanhos, nem o carrossel atual. A amostra de tipografia usa elementos h2/h3 para exemplificar título de página/seção. |
 | D09 | Média | `src/components/ui/input.tsx:10`; `src/components/ui/textarea.tsx:9`; `src/components/ui/native-select.tsx:5`; `src/styles/ui.css:57,58` | Campos não compartilham todos os estados. Input não recebe o fundo de somente leitura da classe `.ui-control`. No ensaio, um NativeSelect editável correspondeu a `:read-only` e recebeu `#FAFBFC`, igual ao textarea somente leitura, pois esse pseudoseletor também alcança select. |
 | D10 | Média | `src/styles/ui.css:36`; `app/globals.css:42`; `app/funil/funil.module.css:19`; `app/fila/google/google.module.css:43`; `app/whatsapp/whatsapp.module.css:58` | Foco usa contornos de 2 ou 3 px e offsets de 2 a 4 px, além dos rings shadcn. Há visibilidade prevista; o acabamento ainda não é único. |
@@ -233,6 +233,22 @@ Prioridade indica a ordem sugerida para uma futura padronização visual. Todos 
 - Um botão que seleciona um registro não precisa ter a aparência de um CTA primário.
 - CSS de cards antigos em Carteira não significa que a lista atual ainda usa esse desenho: `app/carteira/lista.tsx` renderiza Table.
 - `text-neutral-600` e `text-amber-700` em consumidores antigos possuem remapeamento semântico no shell. Sua existência é dívida de migração; não prova, isoladamente, uma cor incorreta na tela.
+
+## Direção para estados vazios com ação
+
+Preferência visual registrada em 27/10/2026 a partir do estado vazio da Carteira. Aplicação na interface pendente.
+
+O exemplo de origem é “Sua carteira está vazia”, com a explicação “Assuma uma empresa da fila para começar” e o link sublinhado “Puxar a próxima empresa”. Esse desenho, identificado em D07, deve evoluir para uma composição de card com o mesmo padrão dos componentes compartilhados.
+
+Padrão definido para estados vazios com próxima ação:
+
+- Usar o `Card` compartilhado, com sua superfície, borda sólida, raio e espaçamento do design system, adaptados aos temas claro e escuro.
+- Organizar título e explicação em `CardHeader`, `CardTitle` e `CardDescription`, mantendo a hierarquia de leitura.
+- Apresentar a próxima ação em `CardFooter`, com a aparência do `Button` compartilhado e seus estados de foco, hover e desabilitado.
+- Para navegação, manter `Link` como elemento da ação, composto com `Button` por `asChild`; preservar destino e comportamento existentes.
+- Reutilizar essa composição nos estados vazios equivalentes das demais telas, com adaptação ao celular e os mesmos tokens.
+
+Na Carteira, a composição conserva o título, a explicação, o rótulo “Puxar a próxima empresa” e o destino `/fila`. A preferência determina a apresentação visual; o fluxo comercial permanece o existente.
 
 ## Verificação e próximos passos
 
