@@ -48,15 +48,17 @@ export async function prepararBuscaDemo(banco: BancoDeTeste) {
 // Importado somente pelo harness. Nunca faz requisições ao fornecedor.
 export async function iniciarCnpjBizDeTeste() {
   let consultas = 0
+  let ultimaCasa:unknown
   const servidor = createServer(async (pedido, resposta) => {
     resposta.setHeader('Content-Type', 'application/json')
-    if (pedido.method === 'GET' && pedido.url === '/estatisticas') { resposta.end(JSON.stringify({ consultas })); return }
+    if (pedido.method === 'GET' && pedido.url === '/estatisticas') { resposta.end(JSON.stringify({ consultas, ultimaCasa })); return }
     if (pedido.url === '/v5/cnpj/pesquisa?tipo_resultado=completo') {
       if (pedido.method !== 'POST' || pedido.headers['api-key'] !== 'chave-apenas-e2e') { resposta.writeHead(403).end('{}'); return }
       let corpo = ''
       for await (const parte of pedido) { corpo += parte; if (corpo.length > 20_000) { resposta.writeHead(413).end('{}'); return } }
       try {
         const filtros = JSON.parse(corpo)
+        ultimaCasa=filtros
         consultas++
         if (filtros.busca_textual?.some((b: { texto?: string[] }) => b.texto?.includes('falha simulada'))) { resposta.writeHead(403).end('{}'); return }
         resposta.end(JSON.stringify({ total: 2, cnpjs: empresasCasa.slice(0, Math.min(2, Number(filtros.limite) || 1)) }))

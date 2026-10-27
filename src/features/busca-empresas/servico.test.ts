@@ -50,3 +50,13 @@ test('incompatibilidade do fornecedor é recusada antes de reservar cota e fazer
   expect(deps.repo.reservar).not.toHaveBeenCalled()
   expect(cliente.buscar).not.toHaveBeenCalled()
 })
+
+
+test('critérios novos contraditórios falham antes da quota e de qualquer consulta',async()=>{
+ const { bancoInicial }=await import('@/src/lib/banco-empresas')
+ const deps=dependencias()
+ const r=await iniciarBusca(deps,chave,'Lojas SP',{avancados:JSON.stringify({...bancoInicial(),excluirMei:true,portes:['MEI']})})
+ expect(r).toEqual({ok:false,motivo:'filtros_invalidos'})
+ expect(deps.repo.reservar).not.toHaveBeenCalled()
+ expect(deps.cliente.buscar).not.toHaveBeenCalled()
+})

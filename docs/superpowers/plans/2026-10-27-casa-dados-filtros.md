@@ -2,7 +2,7 @@
 
 **Objetivo:** implementar os filtros escolhidos pelo usuário, preservando o formato histórico e a operação atual.
 **Desenho:** docs/superpowers/specs/2026-10-27-casa-dados-filtros-design.md.
-**Execução proposta:** nesta conversa, implementação direta com TDD e uma revisão independente final. A implementação depende da aprovação do desenho completo; ainda não iniciada.
+**Execução proposta:** nesta conversa, implementação direta com TDD e uma revisão independente final. Desenho e plano aprovados explicitamente pelo usuário; execução iniciada após essa aprovação.
 
 ## Arquivos e responsabilidades
 

@@ -18,7 +18,19 @@ export const schemaBanco=z.strictObject({
   portes:z.array(z.enum(PORTES_BANCO)).max(4),tipos:z.array(z.enum(['1','2'])).max(2),situacoes:z.array(z.enum(SITUACOES_BANCO)).max(5),regimes:z.array(z.enum(REGIMES_BANCO)).max(7),
   capitalMinimo:valor,capitalMaximo:valor,aberturaDe:data,aberturaAte:data,contato:z.enum(['','email','celular','celulareemail','telefone','telefoneoucelular','telefoneoucelulareemail','telefoneoucelularouemail']),
   ddds:lista(z.string().regex(/^[1-9][0-9]$/)),semEmailContabil:z.boolean(),socios:z.boolean(),
+  cnaesSecundarios:lista(z.string().regex(/^[0-9]{7}$/)).optional(),
+  aberturaUltimosDias:z.string().regex(/^(?:|[1-9][0-9]{0,9})$/).refine(v=>!v||Number(v)<=2147483647).optional(),
+  excluirMei:z.boolean().optional(),excluirSimples:z.boolean().optional(),
+  meiExclusaoDe:data.optional(),meiExclusaoAte:data.optional(),simplesExclusaoDe:data.optional(),simplesExclusaoAte:data.optional(),
 }).refine(a=>!a.capitalMinimo||!a.capitalMaximo||Number(a.capitalMinimo)<=Number(a.capitalMaximo)).refine(a=>!a.aberturaDe||!a.aberturaAte||a.aberturaDe<=a.aberturaAte)
+  .refine(a=>a.cnaesSecundarios===undefined||(a.atividadeTipo.length===1&&a.atividadeTipo[0]==='principal'))
+  .refine(a=>!a.aberturaUltimosDias||(!a.aberturaDe&&!a.aberturaAte))
+  .refine(a=>!a.excluirMei||!a.portes.includes('MEI'))
+  .refine(a=>!a.excluirSimples||!a.regimes.includes('Simples Nacional'))
+  .refine(a=>(!a.meiExclusaoDe&&!a.meiExclusaoAte)||a.excluirMei===true)
+  .refine(a=>(!a.simplesExclusaoDe&&!a.simplesExclusaoAte)||a.excluirSimples===true)
+  .refine(a=>!a.meiExclusaoDe||!a.meiExclusaoAte||a.meiExclusaoDe<=a.meiExclusaoAte)
+  .refine(a=>!a.simplesExclusaoDe||!a.simplesExclusaoAte||a.simplesExclusaoDe<=a.simplesExclusaoAte)
 export type FiltrosBanco=z.infer<typeof schemaBanco>
 export function bancoInicial():FiltrosBanco {return {versao:1,palavras:[],cnaes:[],naturezas:[],atividadeTipo:['principal'],regioes:[],portes:[],tipos:[],situacoes:['ativa'],regimes:[],capitalMinimo:'',capitalMaximo:'',aberturaDe:'',aberturaAte:'',contato:'telefoneoucelular',ddds:[],semEmailContabil:false,socios:false}}
 export function lerBanco(bruto:unknown):{ok:true;filtros:FiltrosBanco}|{ok:false} {
@@ -26,5 +38,5 @@ export function lerBanco(bruto:unknown):{ok:true;filtros:FiltrosBanco}|{ok:false
 }
 export function sugerirNomeBanco(f:FiltrosBanco):string {
   const regiao=f.regioes[0]
-  return [f.palavras[0]||f.cnaes[0]||'Empresas',regiao?.bairros.join(', '),regiao?.cidade?`${regiao.cidade}/${regiao.estado}`:regiao?.estado||'Brasil'].filter(Boolean).join(' · ').slice(0,100)
+  return [f.palavras[0]||f.cnaes[0]||f.cnaesSecundarios?.[0]||'Empresas',regiao?.bairros.join(', '),regiao?.cidade?`${regiao.cidade}/${regiao.estado}`:regiao?.estado||'Brasil'].filter(Boolean).join(' · ').slice(0,100)
 }

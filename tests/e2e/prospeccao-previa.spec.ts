@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { comBancoGrupos } from './dados-grupos'
 async function entrar(page:Page) {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill('redesigne2e@teste.local')
@@ -37,7 +38,7 @@ test('banco tem seis cartões, paginação e sugestão do nome conectadas à Cas
   const local=page.getByRole('button',{name:'Localização',exact:true})
   await expect(local).toHaveAttribute('aria-expanded','false')
   await page.getByLabel('Nome ou palavra-chave',{exact:true}).fill('iluminação')
-  await page.getByLabel('CNAEs',{exact:true}).fill('4742300')
+  await page.getByLabel('CNAEs principais',{exact:true}).fill('4742300')
   await local.click()
   await page.getByLabel('Estado',{exact:true}).selectOption('SP')
   await page.getByLabel('Cidade',{exact:true}).fill('São Paulo')
@@ -98,4 +99,60 @@ test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',asy
       }
     }
   }
+})
+
+
+test('novos filtros Casa conservam CNAEs separados, últimos dias e exclusões no histórico',async({page,browser})=>{
+ test.setTimeout(60000)
+ await entrar(page);await page.goto('/fila/buscar?fonte=banco')
+ await page.getByLabel('CNAEs principais',{exact:true}).fill('4755502')
+ await page.getByLabel('CNAEs secundários',{exact:true}).fill('4742300')
+ await page.getByRole('button',{name:'Capital e data de abertura',exact:true}).click()
+ await page.getByLabel('Abertura a partir de',{exact:true}).fill('2020-01-01')
+ await page.getByLabel('Filtrar abertura por',{exact:true}).selectOption('ultimosDias')
+ await page.getByLabel('Abertas nos últimos dias',{exact:true}).fill('7')
+ await page.getByRole('button',{name:'Perfil da empresa',exact:true}).click()
+ await page.getByRole('checkbox',{name:'MEI',exact:true}).check()
+ await expect(page.getByLabel('Excluir optantes do MEI',{exact:true})).toBeDisabled()
+ await page.getByRole('checkbox',{name:'MEI',exact:true}).uncheck()
+ await page.getByLabel('Excluir optantes do MEI',{exact:true}).check()
+ await expect(page.getByRole('checkbox',{name:'MEI',exact:true})).toBeDisabled()
+ await page.getByLabel('Exclusão do MEI a partir de',{exact:true}).fill('2025-01-01')
+ await page.getByLabel('Excluir optantes do Simples Nacional',{exact:true}).check()
+ await expect(page.getByRole('checkbox',{name:'Optante pelo Simples Nacional',exact:true})).toBeDisabled()
+ await page.getByLabel('Exclusão do Simples até',{exact:true}).fill('2026-01-01')
+ await page.getByRole('button',{name:'Resultados e dados retornados',exact:true}).click()
+ await page.getByLabel('Nome da lista',{exact:true}).fill('Novos filtros Casa fictícios')
+ await page.getByLabel('Quantidade de empresas',{exact:true}).fill('1')
+ await page.getByRole('button',{name:'Buscar empresas',exact:true}).click()
+ await expect(page).toHaveURL(/busca=[0-9a-f-]{36}/)
+ const id=new URL(page.url()).searchParams.get('busca')!
+ const [b]=await comBancoGrupos(async c=>(await c.query("SELECT filtros->'avancados' f FROM busca_empresa WHERE id=$1",[id])).rows)
+ expect(b.f).toMatchObject({cnaes:['4755502'],cnaesSecundarios:['4742300'],aberturaDe:'',aberturaAte:'',aberturaUltimosDias:'7',excluirMei:true,meiExclusaoDe:'2025-01-01',excluirSimples:true,simplesExclusaoAte:'2026-01-01'})
+ const estatisticas=await (await fetch(process.env.CNPJ_BIZ_MOCK_URL+'/estatisticas')).json()
+ expect(estatisticas.ultimaCasa).toMatchObject({codigo_atividade_principal:['4755502'],codigo_atividade_secundaria:['4742300'],data_abertura:{ultimos_dias:7},mei:{excluir_optante:true,data_exclusao:{inicio:'2025-01-01'}},simples:{excluir_optante:true,data_exclusao:{fim:'2026-01-01'}}})
+ const contexto=await browser.newContext()
+ try{
+  const g=await contexto.newPage();await g.goto('/login');await g.getByLabel('E-mail').fill('gestore2e@teste.local');await g.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await g.getByRole('button',{name:'Entrar',exact:true}).click();await expect(g).toHaveURL('/gestao')
+  await g.goto('/empresas/busca?busca='+id)
+  await expect(g.getByText('CNAEs secundários',{exact:true})).toBeVisible()
+  await expect(g.getByText('Abertas nos últimos dias',{exact:true})).toBeVisible()
+  await expect(g.getByText('Excluir optantes do MEI',{exact:true})).toBeVisible()
+  await expect(g.getByText('Exclusão do Simples até',{exact:true})).toBeVisible()
+ }finally{await contexto.close()}
+})
+
+
+for(const dias of ['0','1.5']) test('últimos dias inválido '+dias+' em cartão recolhido informa erro e não faz consulta',async({page})=>{
+ await entrar(page);await page.goto('/fila/buscar?fonte=banco')
+ await page.getByRole('button',{name:'Capital e data de abertura',exact:true}).click()
+ await page.getByLabel(/Filtrar abertura por/).selectOption('ultimosDias')
+ await page.getByLabel(/Abertas nos últimos dias/).fill(dias)
+ await page.getByRole('button',{name:'Capital e data de abertura',exact:true}).click()
+ const antes=await (await fetch(process.env.CNPJ_BIZ_MOCK_URL+'/estatisticas')).json()
+ await page.getByRole('button',{name:'Buscar empresas',exact:true}).click()
+ await expect(page.getByRole('alert').filter({hasText:'Confira'})).toContainText('Confira')
+ const depois=await (await fetch(process.env.CNPJ_BIZ_MOCK_URL+'/estatisticas')).json()
+ expect(depois.consultas).toBe(antes.consultas)
+ await expect(page).not.toHaveURL(/busca=/)
 })

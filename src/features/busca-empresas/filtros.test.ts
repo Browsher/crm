@@ -27,3 +27,11 @@ test('preserva filtros completos e recusa campos desconhecidos ou faixas inverti
   expect(validarFiltros({...entrada,avancados:JSON.stringify({...avancados,capitalMinimo:'30000.00'})}).ok).toBe(false)
   expect(validarFiltros({...entrada,avancados:JSON.stringify({...avancados,ignorarDuplicados:false})}).ok).toBe(false)
 })
+
+
+test('resumo de busca apenas por CNAE secundário conserva o código',async()=>{
+ const {bancoInicial}=await import('@/src/lib/banco-empresas')
+ const r=validarFiltros({avancados:JSON.stringify({...bancoInicial(),cnaesSecundarios:['4742300']})})
+ expect(r.ok).toBe(true)
+ if(r.ok)expect(r.filtros.cnae).toBe('4742300')
+})

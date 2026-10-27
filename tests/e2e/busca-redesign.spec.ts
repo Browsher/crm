@@ -37,7 +37,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   await page.goto('/fila/buscar')
   await expect(page.getByRole('button', { name: 'Buscar empresas', exact: true })).toBeEnabled()
   await page.getByLabel('Nome ou palavra-chave', { exact: true }).fill('iluminação')
-  await page.getByLabel('CNAEs', { exact: true }).fill('4742300')
+  await page.getByLabel('CNAEs principais', { exact: true }).fill('4742300')
   await page.getByRole('button',{name:'Localização',exact:true}).click()
   await page.getByRole('combobox', { name: 'Estado', exact: true }).selectOption('SP')
   await page.getByRole('button',{name:'Resultados e dados retornados',exact:true}).click()

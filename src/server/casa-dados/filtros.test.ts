@@ -53,3 +53,17 @@ test('capital fracionário é recusado sem arredondar ou consumir cota', () => {
   expect(prepararConsultaCasa(completo({ capitalMinimo: '1000.50' }))).toMatchObject({ ok: false })
   expect(prepararConsultaCasa(completo({ capitalMaximo: '5000.01' }))).toMatchObject({ ok: false })
 })
+
+
+test('novas listas CNAE são independentes e não ativam mistura de atividades',()=>{
+ const r=pedido(completo({cnaes:['4755502'],cnaesSecundarios:['4742300']}))
+ expect(r).toMatchObject({codigo_atividade_principal:['4755502'],codigo_atividade_secundaria:['4742300']})
+ expect(r.incluir_atividade_secundaria).not.toBe(true)
+ const soSecundario=pedido(completo({cnaes:[],cnaesSecundarios:['4742300']}))
+ expect(soSecundario).not.toHaveProperty('codigo_atividade_principal')
+ expect(soSecundario).toHaveProperty('codigo_atividade_secundaria',['4742300'])
+})
+test('últimos dias e exclusões são traduzidos sem confundir os dois regimes',()=>{
+ expect(pedido(completo({aberturaUltimosDias:'7',excluirMei:true,meiExclusaoDe:'2026-01-01',excluirSimples:true,simplesExclusaoAte:'2026-10-01'}))).toMatchObject({
+ data_abertura:{ultimos_dias:7},mei:{excluir_optante:true,data_exclusao:{inicio:'2026-01-01'}},simples:{excluir_optante:true,data_exclusao:{fim:'2026-10-01'}}})
+})

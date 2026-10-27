@@ -49,7 +49,10 @@ export function prepararConsultaCasa(f: FiltrosBusca): Resultado {
   if (a?.semEmailContabil) qualidade.excluir_email_contab = true
   const pedido: Record<string, unknown> = { limite: f.quantidade, pagina: f.offset / f.quantidade + 1, ...geo.pedido, mais_filtros: qualidade }
   if (palavras.length) pedido.busca_textual = [{ texto: palavras, tipo_busca: 'radical', razao_social: true, nome_fantasia: true, nome_socio: false }]
-  if (cnaes.length) {
+  if (a?.cnaesSecundarios !== undefined) {
+    if(cnaes.length) pedido.codigo_atividade_principal=cnaes
+    if(a.cnaesSecundarios.length) pedido.codigo_atividade_secundaria=a.cnaesSecundarios
+  } else if (cnaes.length) {
     if (atividades.includes('principal')) { pedido.codigo_atividade_principal = cnaes; pedido.incluir_atividade_secundaria = atividades.includes('secundaria') }
     else pedido.codigo_atividade_secundaria = cnaes
   }
@@ -64,5 +67,9 @@ export function prepararConsultaCasa(f: FiltrosBusca): Resultado {
   if (a?.ddds.length) pedido.ddd = a.ddds
   if (a && (a.capitalMinimo || a.capitalMaximo)) pedido.capital_social = { ...(a.capitalMinimo ? { minimo: Number(a.capitalMinimo) } : {}), ...(a.capitalMaximo ? { maximo: Number(a.capitalMaximo) } : {}) }
   if (a && (a.aberturaDe || a.aberturaAte)) pedido.data_abertura = { ...(a.aberturaDe ? { inicio: a.aberturaDe } : {}), ...(a.aberturaAte ? { fim: a.aberturaAte } : {}) }
+  if(a?.aberturaUltimosDias) pedido.data_abertura={ultimos_dias:Number(a.aberturaUltimosDias)}
+  const periodo=(inicio?:string,fim?:string)=>({...((inicio)?{inicio}:{}),...((fim)?{fim}:{})})
+  if(a?.excluirMei) pedido.mei={excluir_optante:true,...(a.meiExclusaoDe||a.meiExclusaoAte?{data_exclusao:periodo(a.meiExclusaoDe,a.meiExclusaoAte)}:{})}
+  if(a?.excluirSimples) pedido.simples={excluir_optante:true,...(a.simplesExclusaoDe||a.simplesExclusaoAte?{data_exclusao:periodo(a.simplesExclusaoDe,a.simplesExclusaoAte)}:{})}
   return { ok: true, pedido }
 }

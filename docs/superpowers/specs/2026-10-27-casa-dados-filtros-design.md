@@ -4,7 +4,7 @@
 
 O usuário escolheu acrescentar ao Banco de empresas: abertas nos últimos dias; excluir optantes do MEI; excluir optantes do Simples Nacional; período de exclusão de cada regime; e listas separadas de CNAEs principais e secundários. Abertura recente foi citada duas vezes e corresponde a um único recurso.
 
-Nome ou palavra-chave já existe e pesquisa razão social/nome fantasia em modo radical. Permanece como está. Não acrescentar busca por sócio, modo exato, CNPJ, CEP, telefone informado ou outras opções da relação anterior. Limites atuais de100 por vendedor/dia, privacidade, deduplicação e agendamento Google permanecem.
+Nome ou palavra-chave já existe e pesquisa razão social/nome fantasia em modo radical. Permanece como está. Não acrescentar busca por sócio, modo exato, CNPJ, CEP, telefone informado ou outras opções da relação anterior. Limites atuais de 100 por vendedor/dia, privacidade, deduplicação e agendamento Google permanecem.
 
 ## Comportamento proposto
 
@@ -19,7 +19,7 @@ Nome ou palavra-chave já existe e pesquisa razão social/nome fantasia em modo 
 
 Adicionar campos opcionais ao contrato avançado versao1, sem trocar o significado dos campos históricos. cnaes continua como a lista principal nas operações novas; cnaesSecundarios identifica o modo de listas independentes. O formulário novo envia cnaesSecundarios, mesmo vazio, e atividadeTipo=['principal']. Nesse modo, qualquer atividadeTipo divergente é inválido. Payload histórico sem cnaesSecundarios conserva a semântica antiga de atividadeTipo, inclusive principal+secundaria.
 
-Campos opcionais novos: cnaesSecundarios (até20 códigos de7 dígitos, únicos); aberturaUltimosDias (string vazia ou inteiro positivo até2147483647); excluirMei e excluirSimples (booleanos); meiExclusaoDe, meiExclusaoAte, simplesExclusaoDe e simplesExclusaoAte (datas ISO ou vazias).
+Campos opcionais novos: cnaesSecundarios (até 20 códigos de 7 dígitos, únicos); aberturaUltimosDias (string vazia ou inteiro positivo até 2147483647); excluirMei e excluirSimples (booleanos); meiExclusaoDe, meiExclusaoAte, simplesExclusaoDe e simplesExclusaoAte (datas ISO ou vazias).
 
 A leitura/validação de payload antigo não acrescenta defaults novos ao JSON. Isso preserva igualdade e replay por UUID. A sugestão de nome e o resumo CNAE usam o primeiro principal; na ausência, o primeiro secundário. Não mudar a preferência atual de palavra antes do CNAE no nome sugerido.
 
@@ -58,4 +58,4 @@ Após aprovação deste desenho: implementar nesta conversa com TDD, conferir UI
 
 ## Conferência do desenho
 
-Revisor independente, sem contexto anterior e sem alterações de produto, leu desenho/plano e respondeu: nothing important left. Os documentos estão prontos para a aprovação do escopo. A implementação ainda não foi iniciada.
+Revisor independente, sem contexto anterior e sem alterações de produto, leu desenho/plano e respondeu: nothing important left. O usuário aprovou explicitamente o desenho e o plano nesta conversa. A implementação foi iniciada após essa aprovação.

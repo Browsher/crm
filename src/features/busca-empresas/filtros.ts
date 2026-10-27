@@ -9,7 +9,7 @@ export function validarFiltros(entrada: Record<string, unknown>): { ok: true; fi
     const quantidade=String(entrada.quantidade??'10'),offset=String(entrada.offset??'0')
     if(!r.ok||!/^[0-9]{1,3}$/.test(quantidade)||Number(quantidade)<1||Number(quantidade)>100||!/^[0-9]{1,7}$/.test(offset)||Number(offset)>1000000) return {ok:false,motivo:'filtros_invalidos'}
     const f=r.filtros,regiao=f.regioes[0]
-    return {ok:true,filtros:{palavra:f.palavras.join(', ').slice(0,100),cnae:f.cnaes[0]||'',uf:regiao?.estado||'',cidade:regiao?.cidade||'',bairro:regiao?.bairros[0]||'',porte:'',tipo:'',contato:'telefoneoucelular',quantidade:Number(quantidade),offset:Number(offset),avancados:f}}
+    return {ok:true,filtros:{palavra:f.palavras.join(', ').slice(0,100),cnae:f.cnaes[0]||f.cnaesSecundarios?.[0]||'',uf:regiao?.estado||'',cidade:regiao?.cidade||'',bairro:regiao?.bairros[0]||'',porte:'',tipo:'',contato:'telefoneoucelular',quantidade:Number(quantidade),offset:Number(offset),avancados:f}}
   }
   const texto = (campo: string) => typeof entrada[campo] === 'string' ? entrada[campo].trim() : ''
   const palavra = texto('palavra')

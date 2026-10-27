@@ -12,7 +12,7 @@ const MENSAGENS: Record<MotivoBusca, string> = {
   empresa_repetida: 'Esta empresa ou seus contatos já estão na base global. Confira a seleção antes de importar.',
   operacao_invalida: 'A operação não pôde ser confirmada. Confira a seleção e atualize a página.',
   nome_invalido: 'Informe um nome de lista com até 100 caracteres.',
-  filtros_invalidos: 'Confira os códigos, as regiões, as faixas e a quantidade. Cidades precisam de estado e bairros precisam de cidade.',
+  filtros_invalidos: 'Confira os códigos, as regiões, as datas, a quantidade de dias e as combinações dos filtros. Cidades precisam de estado e bairros precisam de cidade.',
   limite: 'O limite diário de empresas consultadas foi atingido. Reduza a quantidade ou solicite ajuste ao gestor.',
   pausada: 'O gestor pausou suas buscas de empresas.',
 }
