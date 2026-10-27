@@ -1,5 +1,6 @@
 -- ver docs/db/0049.md
 BEGIN;
+ALTER TABLE busca_empresa ADD COLUMN inclusao_automatica_concluida boolean NOT NULL DEFAULT false;
 CREATE OR REPLACE FUNCTION busca_empresa_importar(p_id uuid,p_cnpjs text[])
 RETURNS TABLE(grupo_id uuid,inseridas integer,vinculadas integer)
 LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = ''
@@ -37,6 +38,7 @@ BEGIN
     SELECT coalesce(array_agg(DISTINCT e->>'cnpj'),ARRAY[]::text[]) INTO p_cnpjs FROM jsonb_array_elements(v_busca.empresas) e
       WHERE e->>'telefone' ~ '^[0-9]{10,11}$' AND NOT coalesce((e->>'bloqueada_por_repeticao')::boolean,false);
     IF cardinality(p_cnpjs)=0 THEN
+      UPDATE public.busca_empresa b SET inclusao_automatica_concluida=true WHERE b.id=p_id AND NOT b.inclusao_automatica_concluida;
       RETURN QUERY SELECT v_busca.grupo_id,0,(SELECT count(*)::integer FROM public.grupo_importacao_empresa ge WHERE ge.grupo_id=v_busca.grupo_id);
       RETURN;
     END IF;
@@ -83,6 +85,9 @@ BEGIN
   END LOOP;
   SELECT count(*)::integer INTO v_total FROM public.grupo_importacao_empresa ge WHERE ge.grupo_id = v_grupo;
   UPDATE public.grupo_importacao g SET inseridas = g.inseridas + v_novas, vinculadas = v_total WHERE g.id = v_grupo;
+  IF v_automatico THEN
+    UPDATE public.busca_empresa b SET inclusao_automatica_concluida=true WHERE b.id=p_id AND NOT b.inclusao_automatica_concluida;
+  END IF;
   RETURN QUERY SELECT v_grupo,v_novas,v_total;
 END;
 $$;

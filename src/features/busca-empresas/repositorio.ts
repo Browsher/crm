@@ -15,7 +15,7 @@ function motivo(erro: unknown): FalhaBanco {
   if (codigo === '22023') return 'operacao_invalida'
   throw erro
 }
-const COLUNAS = `b.id,b.nome,b.fornecedor,b.usuario_id,u.nome AS vendedor,b.criado_em::text,b.filtros,b.estado,b.motivo,b.grupo_id`
+const COLUNAS = `b.id,b.nome,b.fornecedor,b.usuario_id,u.nome AS vendedor,b.criado_em::text,b.filtros,b.estado,b.motivo,b.grupo_id,b.inclusao_automatica_concluida`
 const USADO = `(SELECT coalesce(sum(b.quantidade),0)::int FROM busca_empresa b WHERE b.usuario_id=u.id
   AND (b.criado_em AT TIME ZONE 'America/Sao_Paulo')::date = (clock_timestamp() AT TIME ZONE 'America/Sao_Paulo')::date)`
 const LIMITES = `SELECT u.id AS usuario_id,u.nome AS vendedor,coalesce(l.limite_diario,0) AS limite_diario,

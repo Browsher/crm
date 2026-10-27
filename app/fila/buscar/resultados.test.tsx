@@ -27,7 +27,14 @@ test('pausa impede selecionar resultado mesmo quando há telefone válido', () =
 })
 
 test('lista já criada mostra inclusão automática e não pede seleção manual',()=>{
- const html=renderToStaticMarkup(<ResultadosBusca busca={{...busca,grupo_id:'grupo',empresas:[{...empresa,telefone:'11988887777'}]}} bloqueada={false}/>)
+ const html=renderToStaticMarkup(<ResultadosBusca busca={{...busca,inclusao_automatica_concluida:true,grupo_id:'grupo',empresas:[{...empresa,telefone:'11988887777'}]}} bloqueada={false}/>)
  expect(html).toContain('automaticamente');expect(html).toContain('Prospectar esta lista')
  expect(html).not.toContain('Importar selecionadas');expect(html).not.toContain('type="checkbox"')
+})
+
+test('busca histórica parcialmente incluída permite completar a lista existente',()=>{
+ const html=renderToStaticMarkup(<ResultadosBusca busca={{...busca,grupo_id:'grupo-parcial',inclusao_automatica_concluida:false,empresas:[{...empresa,telefone:'11988887777'}]}} bloqueada={false}/>)
+ expect(html).toContain('Concluir inclusão')
+ expect(html).not.toContain('já foram adicionadas automaticamente')
+ expect(html).toContain('Prospectar esta lista')
 })

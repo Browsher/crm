@@ -74,12 +74,22 @@ test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retom
   }
  }
  await page.setViewportSize({width:1920,height:1080});await expect(cards).toHaveCount(3)
+ await comBancoGrupos(async c=>{
+  const vendedor=(await c.query('SELECT usuario_id FROM busca_empresa WHERE id=$1',[legado])).rows[0].usuario_id
+  await c.query('BEGIN')
+  try {
+   await c.query("SELECT set_config('app.usuario_id',$1,true),set_config('role','app_usuario',true)",[vendedor])
+   await c.query('SELECT * FROM busca_empresa_importar($1,$2)',[legado,['84200000000000']])
+   await c.query('COMMIT')
+  } catch(e){await c.query('ROLLBACK');throw e}
+ })
+ await page.reload();await expect(cards).toHaveCount(3)
  const antes=await chamadas(),url=page.url(),abrir=cards.first().getByRole('button',{name:`Ver empresa: ${nome}`,exact:true})
  await abrir.click();const d=page.getByRole('dialog',{name:nome,exact:true})
  await expect(d).toBeVisible();await expect(d).toContainText(grupoRecente);await expect(d).toContainText('84.200.000/0000-00')
  await expect(d.getByRole('checkbox')).toHaveCount(0)
  await d.getByRole('button',{name:'Concluir inclusão',exact:true}).click()
- await expect(d.getByText('5 empresas novas. A lista reúne 5 empresas.',{exact:true})).toBeVisible()
+ await expect(d.getByText('4 empresas novas. A lista reúne 5 empresas.',{exact:true})).toBeVisible()
  await expect(d.getByRole('link',{name:'Prospectar esta lista',exact:true})).toBeVisible()
  const conferir=()=>comBancoGrupos(async c=>(await c.query(`SELECT b.grupo_id,(SELECT count(*)::int FROM grupo_importacao_empresa g WHERE g.grupo_id=b.grupo_id) total FROM busca_empresa b WHERE b.id=$1`,[legado])).rows[0])
  expect((await conferir()).total).toBe(5);await expect(page).toHaveURL(url)

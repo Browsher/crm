@@ -74,3 +74,13 @@ test('CNPJ encontrado em duas buscas entra só na primeira lista, com rechecagem
  expect((await automatico(b))[0]).toEqual({grupo_id:null,inseridas:0,vinculadas:0})
  expect(await banco.sql("SELECT (empresas->0->>'bloqueada_por_repeticao')::boolean bloqueada FROM busca_empresa WHERE id=$1",[b])).toEqual([{bloqueada:true}])
 })
+
+test('completa inclusão histórica parcial no mesmo grupo e registra conclusão automática',async()=>{
+ const id=randomUUID();await reservar(id);await concluir(id,[empresa,segunda])
+ const [parcial]=await importar(id)
+ expect(await banco.sql('SELECT inclusao_automatica_concluida concluida FROM busca_empresa WHERE id=$1',[id])).toEqual([{concluida:false}])
+ const [r]=await automatico(id)
+ expect(r).toEqual({grupo_id:parcial.grupo_id,inseridas:1,vinculadas:2})
+ expect(await banco.sql('SELECT inclusao_automatica_concluida concluida FROM busca_empresa WHERE id=$1',[id])).toEqual([{concluida:true}])
+ expect((await automatico(id))[0]).toEqual({...r,inseridas:0})
+})

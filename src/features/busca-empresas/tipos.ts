@@ -20,6 +20,7 @@ export type FalhaFornecedor = 'nao_configurado' | 'credencial_invalida' | 'sem_c
 export type ResultadoFornecedor = { ok: true; empresas: EmpresaEncontrada[] } | { ok: false; motivo: FalhaFornecedor }
 export type ClienteBusca = { validar?(filtros: FiltrosBusca): boolean; buscar(filtros: FiltrosBusca): Promise<ResultadoFornecedor> }
 export type BuscaSalva = {
+  inclusao_automatica_concluida?: boolean
   fornecedor?: 'CNPJ.biz' | 'Casa dos Dados'
   id: string; nome: string; usuario_id: string; vendedor: string; criado_em: string
   filtros: FiltrosBusca; estado: 'reservada' | 'concluida' | 'falhou'

@@ -15,3 +15,7 @@ Spec: ../specs/2026-10-27-ultimas-buscas-correcao.md. Implementação inline e r
 - Pausa/identidade/concorrência são decididas no banco; nenhuma lista vazia.
 - Dialogs encadeados, resposta atrasada/retry/resize e foco não perdem rascunho ou disparam aquisição.
 - Desktop rico deve conservar1:1, uma linha e ausência de sobreposição; celular compacto.
+
+## Revisão e correção
+
+Revisão independente da fonte58d1e83: zero Critical, um Important, zero Minor; nada deixado sem julgamento. Grupo criado não comprova inclusão integral de uma pesquisa antiga parcialmente selecionada. Reproduzido com unitário, integração nativa e navegador antes do ajuste; acrescido marcador transacional na0049 ainda pendente, permitindo Concluir inclusão na mesma lista. Uma rodada de correção, sem re-revisão. Após o ajuste:1.751 unitários aprovados e um ignorado;50 integrações focadas;15 jornadas afetadas. Tipos, lint, build e convenções aprovados. Publicação exige CI integral da fonte exata, backup e conferência de preservação.
