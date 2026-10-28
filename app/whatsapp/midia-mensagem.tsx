@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { Midia } from '@/src/lib/whatsapp-midia'
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/src/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/src/components/ui/dialog'
 import styles from './whatsapp.module.css'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { Button } from '@/src/components/ui/button'
+import { Alert } from '@/src/components/ui/alert'
 
 export function MidiaMensagem({ id, conversa, midia, fonte }: { id: string; conversa: string; midia: Midia; fonte?: string }) {
   const tema = useTemaCrm()
@@ -65,14 +66,14 @@ export function MidiaMensagem({ id, conversa, midia, fonte }: { id: string; conv
         <img src={url} alt={midia.legenda || 'Imagem da conversa'} width={260} height={240} onError={falhouReproducao} />
       </button></DialogTrigger>
       <DialogContent theme={tema} className={styles.imagemDialogo} aria-describedby={undefined}>
-        <DialogTitle>Imagem da conversa</DialogTitle>
+        <DialogHeader><DialogTitle>Imagem da conversa</DialogTitle></DialogHeader>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={url} alt={midia.legenda || 'Imagem ampliada'} width={900} height={675} />
       </DialogContent>
     </Dialog>}
     {url && midia.tipo === 'audio' && <audio aria-label="Áudio da conversa" controls preload="metadata" src={url} onError={falhouReproducao} />}
-    {url && midia.tipo === 'documento' && <a className={styles.midiaBotao} href={url} download={nome}>Baixar {nome}</a>}
+    {url && midia.tipo === 'documento' && <Button asChild variant="outline" className={styles.midiaBotao}><a href={url} download={nome}>Baixar {nome}</a></Button>}
     {midia.legenda && <span>{midia.legenda}</span>}
-    {erro && <p role="alert">{erro}</p>}
+    {erro && <Alert variant="danger">{erro}</Alert>}
   </div>
 }

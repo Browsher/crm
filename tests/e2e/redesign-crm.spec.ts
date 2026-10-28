@@ -240,3 +240,100 @@ test('botão destrutivo mantém contraste de texto nos dois temas e hover', asyn
     await expect.poll(contraste).toBeGreaterThanOrEqual(4.5)
   }
 })
+
+
+test('tarefa 9: atendimento conserva rascunho, campos e geometria nos dois temas', async ({ page }) => {
+  test.setTimeout(120_000)
+  await entrar(page, 'redesigne2e', '/meu-dia')
+  await expect(page.getByLabel('Nome', { exact: true }).locator('xpath=ancestor::form')).toContainText('Filtrar')
+  const filtros = page.getByLabel('Nome', { exact: true }).locator('xpath=ancestor::*[@data-slot="card"]')
+  await expect(filtros).toHaveCSS('border-radius', '10px')
+  await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN }).click()
+  await expect(page.getByRole('article')).toHaveCSS('border-radius', '10px')
+  await page.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
+  await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
+  const nota = page.getByLabel('Nota', { exact: true })
+  const longa = 'Rascunho que deve sobreviver ' + 'anotação longa sem perda '.repeat(45)
+  await nota.fill(longa)
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await page.getByRole('button', { name: 'Cancelar atendimento', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click()
+  await expect(nota).toHaveValue(longa)
+  await expect(page.getByRole('button', { name: 'Cancelar atendimento', exact: true })).toBeFocused()
+  const editor = page.getByRole('region', { name: 'Registrar atendimento', exact: true })
+  for (const width of [1920, 1280, 1100, 1000, 820, 600, 390]) {
+    await page.setViewportSize({ width, height: 1000 })
+    for (const tema of ['light', 'dark']) {
+      await page.getByLabel('Tema da Carteira').selectOption(tema)
+      await expect(editor).toHaveCSS('border-radius', '10px')
+      await expect(editor).toHaveCSS('padding', width <= 820 ? '20px' : '24px')
+      await expect(editor.getByRole('heading', { name: 'Registrar atendimento' })).toHaveCSS('font-size', '18px')
+      await expect(editor.getByRole('heading', { name: 'Registrar atendimento' })).toHaveCSS('line-height', '26px')
+      await expect(nota).toHaveCSS('border-radius', '6px')
+      await expect(nota).toHaveCSS('min-height', '96px')
+      await expect(nota).toHaveCSS('font-size', width <= 820 ? '16px' : '14px')
+      for (const campo of await editor.locator('input:not([type=hidden]):not([type=radio]), textarea, button').all()) {
+        const box = (await campo.boundingBox())!
+        const pai = (await editor.boundingBox())!
+        expect(box.x).toBeGreaterThanOrEqual(pai.x)
+        expect(box.x + box.width).toBeLessThanOrEqual(pai.x + pai.width + 1)
+        expect(box.height).toBeGreaterThanOrEqual(width <= 820 ? 44 : 40)
+      }
+      const titulo = (await editor.getByRole('heading').boundingBox())!
+      const cancelar = (await editor.getByRole('button', { name: 'Cancelar atendimento' }).boundingBox())!
+      expect(titulo.x + titulo.width <= cancelar.x || titulo.y + titulo.height <= cancelar.y).toBe(true)
+      const cabecalho = page.getByRole('article').locator(':scope > header')
+      const caixaCabecalho = (await cabecalho.boundingBox())!
+      for (const grupo of await cabecalho.locator(':scope > div').all()) {
+        const caixaGrupo = (await grupo.boundingBox())!
+        expect(caixaGrupo.x + caixaGrupo.width).toBeLessThanOrEqual(caixaCabecalho.x + caixaCabecalho.width + 1)
+      }
+      await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth)), { message: `Transbordamento na ficha: ${width}px, ${tema}` }).toBe(0)
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/atendimento-${width}-${tema}.png`, fullPage: true, animations: 'disabled' })
+    }
+  }
+  await expect(nota).toHaveValue(longa)
+})
+
+
+test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ browser }) => {
+  const contexto = await browser.newContext({ hasTouch: true, viewport: { width: 1280, height: 1000 } })
+  const page = await contexto.newPage()
+  try {
+    await entrar(page, 'redesigne2e', '/meu-dia')
+    await expect(page.getByLabel('Nome', { exact: true })).toHaveCSS('font-size', '16px')
+    await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN }).click()
+    await page.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
+    const voltar = page.getByRole('navigation', { name: 'Navegação da ficha' }).getByRole('link')
+    const caixaVoltar = (await voltar.boundingBox())!
+    expect(caixaVoltar.height).toBeGreaterThanOrEqual(44)
+    expect(caixaVoltar.width).toBeGreaterThanOrEqual(44)
+    await expect(voltar).toHaveAttribute('href', '/meu-dia')
+    await page.screenshot({ path: '.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/revisao-voltar-toque-1280.png', fullPage: true, animations: 'disabled' })
+    await page.goto('/funil')
+    const card = page.getByRole('button', { name: /Redesign Negociação/ })
+    await expect(card).toHaveAttribute('draggable', 'false')
+    await expect(card).toHaveCSS('border-radius', '10px')
+    await expect(card.locator('strong')).toHaveCSS('font-size', '16px')
+    await card.click()
+    const modal = page.getByRole('dialog')
+    await expect(modal.getByRole('button', { name: /Avançar para/ })).toBeVisible()
+    for (const tema of ['light', 'dark']) {
+      await page.keyboard.press('Escape')
+      await expect(card).toBeFocused()
+      await page.getByLabel('Tema do Funil').selectOption(tema)
+      await card.click()
+      await page.getByRole('button', { name: 'Registrar venda', exact: true }).click()
+      await expect(page.getByLabel('Valor em reais')).toHaveCSS('font-size', '16px')
+      await expect(page.getByLabel('Valor em reais')).toHaveCSS('min-height', '44px')
+      await page.getByLabel('Observação (opcional)').fill('Nota de venda longa '.repeat(60))
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-toque-1280-${tema}.png`, fullPage: true, animations: 'disabled' })
+      await page.keyboard.press('Escape')
+      await page.getByRole('button', { name: 'Descartar', exact: true }).click()
+      await card.click()
+    }
+    await page.keyboard.press('Escape')
+  } finally {
+    await contexto.close()
+  }
+})

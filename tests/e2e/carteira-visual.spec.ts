@@ -20,7 +20,15 @@ async function conferirTamanhos(page: Page, tela: string) {
       await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth)), {
         message: `Transbordamento na Carteira: ${tela}, ${tema}, ${width}px`,
       }).toBe(0)
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-3-captures/carteira-${tela}-${tema}-${width}.png`, fullPage: true })
+      const navFicha = page.getByRole('navigation', { name: 'Navegação da ficha' })
+      if (await navFicha.count()) {
+        const voltar = navFicha.getByRole('link')
+        const caixaVoltar = (await voltar.boundingBox())!
+        expect(caixaVoltar.height).toBeGreaterThanOrEqual(width <= 820 ? 44 : 40)
+        expect(caixaVoltar.width).toBeGreaterThanOrEqual(44)
+        await expect(voltar).toHaveAttribute('data-slot', 'button')
+      }
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/carteira-${tela}-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
     }
   }
 }
@@ -98,12 +106,16 @@ test('ficha preserva rascunho e erro, confirma descarte, atualiza atendimento e 
   await page.getByRole('button', { name: 'Registrar', exact: true }).click()
   await expect(page.getByText('Próximo passo e data andam juntos: preencha os dois ou nenhum.', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho que deve sobreviver')
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await expect(page.getByText('Próximo passo e data andam juntos: preencha os dois ou nenhum.', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho que deve sobreviver')
   await conferirTamanhos(page, 'editor')
   await page.getByRole('link', { name: /Voltar.*carteira/i }).click()
   const dialogo = page.getByRole('dialog')
   await expect(dialogo).toBeVisible()
   await dialogo.getByRole('button', { name: 'Cancelar', exact: true }).click()
   await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho que deve sobreviver')
+  await expect(page.getByRole('link', { name: /Voltar.*carteira/i })).toBeFocused()
   await page.getByRole('link', { name: /Voltar.*carteira/i }).click()
   await dialogo.getByRole('button', { name: 'Descartar e continuar', exact: true }).click()
   await expect(page).toHaveURL('/carteira')
@@ -160,6 +172,7 @@ test('Voltar do navegador pede confirmação e cancelar mantém o rascunho', asy
   await dialogo.getByRole('button', { name: 'Cancelar', exact: true }).click()
   await expect(page).toHaveURL(fichaUrl)
   await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho protegido no histórico real')
+  await expect(page.getByLabel('Nota', { exact: true })).toBeFocused()
   await voltarNoNavegador(page)
   await expect(dialogo).toBeVisible()
   await dialogo.getByRole('button', { name: 'Descartar e continuar', exact: true }).click()

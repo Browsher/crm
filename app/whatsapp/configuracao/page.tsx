@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Button } from '@/src/components/ui/button'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { listarVendedores, listarVinculos } from '@/src/server/whatsapp/vinculos'
 import { FormularioRemover, FormularioVinculo } from './formulario'
@@ -8,7 +9,7 @@ export default async function PaginaConfiguracao() {
   const eu = await exigir('gestor')
   const [vendedores, vinculos] = await Promise.all([listarVendedores(eu.usuarioId), listarVinculos(eu.usuarioId)])
   return <main className={styles.pagina}>
-    <header><Link href="/whatsapp">Voltar ao WhatsApp</Link><h1>Configurar vendedores</h1><p>Associe cada vendedor à sua conexão do WhatsApp.</p></header>
+    <header><Button asChild variant="outline" className="justify-self-start"><Link href="/whatsapp">Voltar ao WhatsApp</Link></Button><h1>Configurar vendedores</h1><p>Associe cada vendedor à sua conexão do WhatsApp.</p></header>
     <section className={styles.cartao} aria-labelledby="titulo-vincular">
       <h2 id="titulo-vincular">Vincular instância</h2>
       <FormularioVinculo vendedores={vendedores} />

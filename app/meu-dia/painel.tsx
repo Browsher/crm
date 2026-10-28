@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { Contato } from '@/src/features/contato/historico'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import { Card } from '@/src/components/ui/card'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { Button } from '@/src/components/ui/button'
 import { urlFichaDoMeuDia, urlMeuDia, type FiltrosMeuDia } from './agenda'
 import { historicoDaAgendaAcao } from './historico-acao'
@@ -60,7 +62,7 @@ type EstadoHistorico =
   | { fase: 'erro'; empresaId: string; motivo: 'falha' }
 
 function Historico({ contatos }: { contatos: Contato[] }) {
-  if (!contatos.length) return <p>Ainda não há uma conversa registrada</p>
+  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma conversa registrada" descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
   return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
     {c.venda ? <><strong>Venda registrada</strong><ResumoVenda venda={c.venda} />{c.nota ? <p>{resumo(c.nota)}</p> : null}<p>Registrado por {c.autor ?? 'sistema'}</p></> : <p>{resumo(c.nota)}</p>}
     <time dateTime={c.criadoEm.toISOString()}>{dataHora(c.criadoEm)}</time>
@@ -169,12 +171,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
     const semFiltro = filtros.nome === '' && filtros.retorno === ''
     if (semFiltro) {
       // Agenda vazia de verdade: "0 de 0 retornos" não ajuda ninguém.
-      return <>{avisoAtivo && aviso}<div className={styles.vazio}>
-        <h2>Nenhum retorno pendente para hoje</h2>
-        <p>Sua carteira não tem clientes atrasados ou com retorno hoje.</p>
-        <Link href="/fila">Ir para Prospecção</Link>
-        <Link href="/carteira">Ver carteira completa</Link>
-      </div></>
+      return <>{avisoAtivo && aviso}<EstadoVazio titulo="Nenhum retorno pendente para hoje" descricao="Sua carteira não tem clientes atrasados ou com retorno hoje." acao={{ rotulo: 'Ir para Prospecção', href: '/fila' }} /><Button asChild variant="outline"><Link href="/carteira">Ver carteira completa</Link></Button></>
     }
     // Busca sem resultado: a contagem continua acima do vazio, como sempre
     // apareceu (a mudança de trazer a contagem para dentro do painel não
@@ -182,11 +179,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
     return <>
       {avisoAtivo && aviso}
       <p className={styles.contagem}>0 de {totalEfetivo} {totalEfetivo === 1 ? 'retorno' : 'retornos'}</p>
-      <div className={styles.vazio}>
-        <h2>Nenhum cliente corresponde à busca</h2>
-        <p>Altere os campos ou limpe os filtros para ver a agenda de hoje.</p>
-        <Link href="/meu-dia">Limpar filtros</Link>
-      </div>
+      <EstadoVazio titulo="Nenhum cliente corresponde à busca" descricao="Altere os campos ou limpe os filtros para ver a agenda de hoje." acao={{ rotulo: 'Limpar filtros', href: '/meu-dia' }} />
     </>
   }
 
@@ -222,7 +215,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
       {avisoAtivo ? <div className={styles.colunaPerfil}>
         {aviso}
       </div> : atual ? <div className={styles.colunaPerfil}>
-        <article className={styles.perfil}>
+        <Card role="article" className={styles.perfil}>
           <Button type="button" variant="ghost" className={styles.voltarMovel} onClick={() => { devolverFoco.current = true; setPerfilMovel(false) }}>Voltar para retornos</Button>
           <header>
             <h2>{nomeEmpresa(atual)}</h2>
@@ -245,7 +238,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
               : <p role="alert">Não foi possível carregar o histórico.</p>}
           </section>} />
           <Button asChild><Link href={urlFichaDoMeuDia(atual.id, filtros)}>Abrir atendimento</Link></Button>
-        </article>
+        </Card>
       </div> : null}
     </div>
   </>
