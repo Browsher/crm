@@ -54,9 +54,8 @@ const listStyles = (variant: TabsVariant) =>
 
 const tabStyles = (variant: TabsVariant) =>
   cn(
-    'relative z-10 inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 px-4 py-2.5 font-medium text-sm outline-none',
+    'ui-tabs-tab relative z-10 inline-flex shrink-0 cursor-pointer select-none items-center justify-center gap-2 px-4 py-2.5 font-medium text-sm',
     'text-muted-foreground transition-colors hover:text-foreground',
-    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     'data-disabled:pointer-events-none data-active:text-foreground data-disabled:text-muted-foreground',
     variant === 'underline' && 'rounded-t-md',
     variant === 'pill' && 'rounded-full',
@@ -71,9 +70,9 @@ const indicatorStyles = (variant: TabsVariant, reduceMotion: boolean) =>
       : 'transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
     variant === 'underline' && 'bg-brand',
     variant === 'pill' &&
-      'rounded-full border border-foreground/15 bg-background shadow-sm dark:bg-foreground/15',
+      'rounded-full border border-foreground/15 bg-background dark:bg-foreground/15',
     variant === 'segment' &&
-      'rounded-md border border-foreground/15 bg-background shadow-sm dark:bg-foreground/15',
+      'rounded-md border border-foreground/15 bg-background dark:bg-foreground/15',
   )
 
 /**
@@ -146,8 +145,7 @@ const TabsPanel = ({
   return (
     <TabsPrimitive.Panel
       className={cn(
-        'min-w-0 pt-4 text-muted-foreground text-sm leading-relaxed outline-none',
-        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'min-w-0 pt-4 text-muted-foreground text-sm leading-relaxed',
         // The outgoing panel leaves the layout the moment it starts to exit;
         // until then it sits in the flow next to the incoming one for a frame.
         'data-ending-style:hidden',

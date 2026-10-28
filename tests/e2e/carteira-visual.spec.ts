@@ -13,14 +13,14 @@ async function entrar(page: Page) {
 async function conferirTamanhos(page: Page, tela: string) {
   for (const tema of ['light', 'dark']) {
     await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
-    for (const width of [390, 820, 1280]) {
+    for (const width of [390, 600, 601, 760, 820, 1920]) {
       await page.setViewportSize({ width, height: 844 })
       // O resize pode anteceder a estabilização do layout no runner. Excesso
       // persistente continua falhando e agora informa quantos pixels sobraram.
       await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth)), {
         message: `Transbordamento na Carteira: ${tela}, ${tema}, ${width}px`,
       }).toBe(0)
-      await page.screenshot({ path: `test-results/carteira-${tela}-${tema}-${width}.png`, fullPage: true })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-3-captures/carteira-${tela}-${tema}-${width}.png`, fullPage: true })
     }
   }
 }
@@ -34,7 +34,8 @@ async function voltarNoNavegador(page: Page) {
   }))
 }
 
-test('carteira filtra registros, conserva filtros na ficha e protege dados de outro vendedor', async ({ page }) => {
+test('Carteira conserva filtros ao abrir e voltar da ficha', async ({ page }) => {
+  test.setTimeout(90_000)
   await entrar(page)
   await expect(page.getByRole('link', { name: 'Ver cliente', exact: true })).toHaveCount(2)
   await expect(page.getByRole('main')).toContainText('2 de 2 empresas')
@@ -58,6 +59,18 @@ test('carteira filtra registros, conserva filtros na ficha e protege dados de ou
   await conferirTamanhos(page, 'ficha')
   await page.getByRole('link', { name: /Voltar.*carteira/i }).click()
   await expect(page).toHaveURL(`/carteira${filtros}`)
+  expect(new URL(page.url()).searchParams.get('nome')).toBe('Aurora')
+  await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Aurora')
+  await expect(page.getByLabel('UF', { exact: true })).toHaveValue('SP')
+  await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('atrasado')
+  await expect(page.getByRole('link', { name: 'Ver cliente', exact: true })).toHaveCount(1)
+  await page.getByRole('link', { name: 'Ver cliente', exact: true }).click()
+  await expect(page).toHaveURL(/\/carteira\/[0-9a-f-]+\?nome=Aurora/)
+  await voltarNoNavegador(page)
+  await expect(page).toHaveURL(`/carteira${filtros}`)
+  await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Aurora')
+  await expect(page.getByLabel('UF', { exact: true })).toHaveValue('SP')
+  await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('atrasado')
   await page.getByLabel('Nome', { exact: true }).fill('')
   await page.getByLabel('UF', { exact: true }).selectOption('RJ')
   await page.getByLabel('Retorno', { exact: true }).selectOption('sem_data')
