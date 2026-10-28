@@ -10,10 +10,10 @@ import type { EmpresaPessoal, FiltrosPessoais } from '@/src/lib/prospeccao-pesso
 const dados={empresas:[],total:0,nichos:['Armarinhos','Brinquedos'],bairros:['Brás · São Paulo/SP']}
 const limpar:(()=>void)[]=[]
 afterEach(()=>{limpar.splice(0).forEach(f=>f());push.mockClear()})
-async function montar(filtros:FiltrosPessoais={origem:'google'},empresas:EmpresaPessoal[]=[]){
+async function montar(filtros:FiltrosPessoais={origem:'google'},empresas:EmpresaPessoal[]=[],recolhido=false){
   const div=document.createElement('div');document.body.append(div)
   const root=createRoot(div)
-  await act(async()=>root.render(<LocalizarPessoal filtros={filtros} dados={{...dados,empresas,total:empresas.length}} recolhido={false}/>))
+  await act(async()=>root.render(<LocalizarPessoal filtros={filtros} dados={{...dados,empresas,total:empresas.length}} recolhido={recolhido}/>))
   limpar.push(()=>{act(()=>root.unmount());div.remove()})
   return div
 }
@@ -51,4 +51,19 @@ test('perfil e continuação preservam filtros pessoais e a página da consulta'
     expect(url.searchParams.has('grupo')).toBe(false)
     expect(url.pathname).toBe(nome==='Ver empresa'?`/fila/localizar/${empresa.id}`:'/fila')
   }
+})
+
+
+test('resultado vazio explica a pesquisa e oferece editar filtros como ação local',async()=>{
+  const div=await montar({origem:'google'},[],true)
+  expect(div.querySelector('form')!.hidden).toBe(true)
+  const titulo=[...div.querySelectorAll('h3')].find(h=>h.textContent==='Nenhuma empresa com esses filtros')
+  expect(titulo).toBeDefined()
+  const card=titulo!.closest('[data-slot="card"]')!
+  expect(card.textContent).toContain('Edite os filtros ou busque novas empresas na Prospecção.')
+  const editar=[...card.querySelectorAll('button')].find(b=>b.textContent==='Editar filtros')!
+  expect(editar).toBeDefined()
+  expect(editar.type).toBe('button')
+  await act(async()=>editar.click())
+  expect(div.querySelector('form')!.hidden).toBe(false)
 })

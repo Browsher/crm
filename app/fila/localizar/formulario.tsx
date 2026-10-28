@@ -4,6 +4,7 @@ import type { ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { Filtros, OpcoesFiltro } from '@/src/features/prospeccao/tipos'
+import { PainelFiltros } from '@/src/components/crm/painel-filtros'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
@@ -39,6 +40,10 @@ export function Formulario({ filtros, opcoes }: { filtros: Filtros; opcoes: Opco
       new FormData(e.currentTarget).forEach((valor,chave) => params.set(chave,String(valor)))
       router.push(`/fila/localizar?${params}`)
     }} className={styles.formulario}>
+      <PainelFiltros className={styles.painelFiltros} descricao={<p id="filtros-dependentes" className={styles.ajuda}>Ao mudar estado ou cidade, a página atualiza as opções seguintes.</p>} acoes={<>
+        <Button type="submit" variant="outline">Consultar</Button>
+        <Button asChild variant="ghost"><Link href={urlConsulta(limparFiltros(filtros),1)}>Limpar filtros</Link></Button>
+      </>}>
       <input type="hidden" name="grupo" value={filtros.grupo ?? ''} />
       <div className={styles.gradeFiltros}>
       <div className={styles.campo}>
@@ -61,11 +66,7 @@ export function Formulario({ filtros, opcoes }: { filtros: Filtros; opcoes: Opco
           </div>
         ))}
       </div>
-      <p id="filtros-dependentes" className={styles.ajuda}>Ao mudar estado ou cidade, a página atualiza as opções seguintes.</p>
-      <div className={styles.acoes}>
-        <Button type="submit" variant="outline">Consultar</Button>
-        <Button asChild variant="ghost"><Link href={urlConsulta(limparFiltros(filtros),1)}>Limpar filtros</Link></Button>
-      </div>
+      </PainelFiltros>
     </form>
   )
 }

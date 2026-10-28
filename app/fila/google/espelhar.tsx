@@ -1,6 +1,8 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import { Choice } from '@/src/components/ui/choice'
+import { Alert } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
@@ -35,11 +37,11 @@ function FormularioEspelhar({ dias, hoje, historico, fechar }: { dias: string[];
     <fieldset disabled={pendente} className={styles.corpoDialogo}>
       <div className={styles.grade}><label>Semana de origem<NativeSelect value={semana} onChange={e => { setSemana(e.target.value); setOrigem(historico.find(p => semanaDe(p.dia)?.[0] === e.target.value)?.id ?? '') }}>{semanas.map(d => <option key={d} value={d}>Semana de {data(d)}</option>)}</NativeSelect></label>
         <label>Dia de origem<NativeSelect value={origem} onChange={e => setOrigem(e.target.value)}>{origens.map(p => <option key={p.id} value={p.id}>{data(p.dia)} · {p.nicho || 'Não definido'} · {p.bairro || p.cidade || 'Sem região'}</option>)}</NativeSelect></label></div>
-      <fieldset className={styles.caixas}><legend>O que copiar</legend>{[['nicho', 'Nicho'], ['criterios', 'Critérios de busca'], ['regiao', 'Região: bairro, cidade e UF']].map(([v, r]) => <label key={v}><input type="checkbox" name="campos" value={v} defaultChecked={v === 'nicho'} />{r}</label>)}</fieldset>
+      <fieldset className={styles.caixas}><legend>O que copiar</legend>{[['nicho', 'Nicho'], ['criterios', 'Critérios de busca'], ['regiao', 'Região: bairro, cidade e UF']].map(([v, r]) => <label key={v}><Choice type="checkbox" name="campos" value={v} defaultChecked={v === 'nicho'} />{r}</label>)}</fieldset>
       <label>Semana de destino<NativeSelect value={semanaDestino} onChange={e => setSemanaDestino(e.target.value)}><option value={dias[0]}>Semana exibida</option><option value={proxima}>Próxima semana</option></NativeSelect></label>
-      <fieldset className={styles.caixas} key={semanaDestino}><legend>Dias de destino</legend>{(semanaDe(semanaDestino) ?? []).map(d => <label key={d}><input type="checkbox" name="destinos" value={d} disabled={d <= hoje || d === selecionado?.dia} />{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'))}, {data(d)}</label>)}</fieldset>
+      <fieldset className={styles.caixas} key={semanaDestino}><legend>Dias de destino</legend>{(semanaDe(semanaDestino) ?? []).map(d => <label key={d}><Choice type="checkbox" name="destinos" value={d} disabled={d <= hoje || d === selecionado?.dia} />{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'))}, {data(d)}</label>)}</fieldset>
     </fieldset>
-    {estado.erro && <p role="alert" className={styles.aviso}>{estado.erro}</p>}{estado.salvo && <p role="status" className={styles.sucesso}>{estado.aviso ?? 'Planejamento espelhado.'}</p>}
+    {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}{estado.salvo && <Alert role="status" variant="success">{estado.aviso ?? 'Planejamento espelhado.'}</Alert>}
     <DialogFooter><Button type="button" variant="outline" disabled={pendente} onClick={fechar}>{estado.salvo ? 'Concluir' : 'Cancelar'}</Button><Button type="submit" disabled={pendente}>{pendente ? 'Espelhando…' : 'Espelhar nos dias escolhidos'}</Button></DialogFooter>
   </form>
 }

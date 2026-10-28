@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { Alert } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
 import { sincronizarPlanoAcao } from './acoes'
 import styles from './google.module.css'
@@ -14,7 +15,7 @@ export function SincronizarPlanejamento({pedido,onSucesso}: {pedido:string;onSuc
   return <form action={acao} className={styles.sincronizar}>
     <input type="hidden" name="pedido" value={pedido} />
     <Button type="submit" variant="outline" size="sm" disabled={pendente}>{pendente?'Conferindo planilha…':'Sincronizar novamente'}</Button>
-    {estado.erro && <p role="alert">{estado.erro}</p>}
-    {estado.sucesso && !onSucesso && <p role="status">Sincronizado com a planilha.</p>}
+    {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
+    {estado.sucesso && !onSucesso && <Alert role="status" variant="success">Sincronizado com a planilha.</Alert>}
   </form>
 }
