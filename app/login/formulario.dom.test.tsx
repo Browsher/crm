@@ -39,3 +39,20 @@ test.each([false, true])('envio pendente impede duplicata na autenticação (tro
   await act(async () => resolver({ erro: 'Tente novamente.' }))
   expect(enviar.disabled).toBe(false)
 })
+
+test.each([false, true])('formulário comunica pendência e associa o erro de autenticação (troca=%s)', async troca => {
+  let resolver!: (resultado: { erro: string }) => void
+  vi.mocked(troca ? trocarSenhaAcao : entrarAcao).mockReturnValue(new Promise(resolve => { resolver = resolve }))
+  await montar(troca)
+  const form = host.querySelector('form')!
+  expect(form.getAttribute('aria-busy')).toBe('false')
+  const senha = host.querySelector<HTMLInputElement>('input[type=password]')!
+  expect(senha.autocomplete).toBe('current-password')
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+  expect(form.getAttribute('aria-busy')).toBe('true')
+  await act(async () => resolver({ erro: 'Tente novamente.' }))
+  expect(form.getAttribute('aria-busy')).toBe('false')
+  const erro = host.querySelector('[role=alert]')!
+  expect(erro.id).not.toBe('')
+  expect(form.getAttribute('aria-describedby')).toBe(erro.id)
+})

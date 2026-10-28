@@ -1,3 +1,6 @@
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
+import { Badge } from '@/src/components/ui/badge'
+import { Alert } from '@/src/components/ui/alert'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/src/components/ui/table'
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import Link from 'next/link'
@@ -23,7 +26,7 @@ export default async function DetalheGrupo({ params, searchParams }: Props) {
   const r = await detalharGrupo(eu.usuarioId, id, pagina)
   if (!r.ok) {
     if (r.motivo === 'nao_encontrado') notFound()
-    return <main className={styles.pagina}><p role="alert">Você não tem permissão para consultar esta lista.</p><Button asChild variant="outline"><Link href="/empresas/grupos">Voltar às listas</Link></Button></main>
+    return <main className={styles.pagina}><Alert variant="danger">Você não tem permissão para consultar esta lista.</Alert><Button asChild variant="outline"><Link href="/empresas/grupos">Voltar às listas</Link></Button></main>
   }
   const { grupo: g, contagens: c } = r
   return <main className={styles.pagina}>
@@ -34,13 +37,13 @@ export default async function DetalheGrupo({ params, searchParams }: Props) {
     <dl className={styles.resumo}>
       <div><dt>Empresas</dt><dd>{c.total}</dd></div><div><dt>Disponíveis</dt><dd>{c.disponiveis}</dd></div><div><dt>Em carteiras</dt><dd>{c.carteiras}</dd></div><div><dt>Reservadas</dt><dd>{c.reservadas}</dd></div><div><dt>Outros impedimentos</dt><dd>{c.outros}</dd></div>
     </dl>
-    {!g.ativo && <p className={styles.aviso}>Lista desativada. Carteiras e reservas atuais são preservadas. Empresas com outra lista ativa podem continuar disponíveis.</p>}
-    {r.empresas.length === 0 ? <div className={styles.vazio}><h2>Nenhuma empresa nesta página</h2><Button asChild variant="outline"><Link href={`/empresas/grupos/${id}?gruposPagina=${gruposPagina}`}>Voltar à primeira página</Link></Button></div> :
+    {!g.ativo && <Alert variant="warning" role="note">Lista desativada. Carteiras e reservas atuais são preservadas. Empresas com outra lista ativa podem continuar disponíveis.</Alert>}
+    {r.empresas.length === 0 ? <EstadoVazio titulo="Nenhuma empresa nesta página" descricao="Volte à primeira página para consultar as empresas desta lista." acao={{ rotulo: 'Voltar à primeira página', href: `/empresas/grupos/${id}?gruposPagina=${gruposPagina}`, variante: 'outline' }} /> :
       <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Empresas da lista"><Table className={`${styles.tabela} crm-registros`}>
         <TableHeader><TableRow><TableHead scope="col">Empresa</TableHead><TableHead scope="col">Atendimento</TableHead><TableHead scope="col">Outras listas</TableHead></TableRow></TableHeader>
         <TableBody>{r.empresas.map(e => <TableRow key={e.id}>
           <TableCell data-label="Empresa"><strong>{nomeEmpresa(e)}</strong><span className={styles.secundario}>{e.cnpj ?? 'Não informado'}</span></TableCell>
-          <TableCell data-label="Atendimento"><strong>{SITUACOES[e.situacao]}</strong>
+          <TableCell data-label="Atendimento"><Badge variant={e.situacao === 'disponivel' ? 'success' : 'outline'}>{SITUACOES[e.situacao]}</Badge>
             {e.responsavel && <span className={styles.secundario}>{e.responsavel}{e.responsavelAtivo === false ? ' (inativo)' : ''}</span>}
             {e.situacao === 'reservada' && <span className={styles.secundario}>{e.reservadoPor}{e.reservadoAte ? ` até ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(e.reservadoAte))}` : ''}</span>}
             {e.situacao === 'em_descanso' && e.elegivelEm && <span className={styles.secundario}>Até {dataGrupo(e.elegivelEm)}</span>}

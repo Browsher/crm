@@ -115,15 +115,47 @@ test('jornada do gestor mantém navegação, grupos ativos e portal escuro', asy
 })
 
 test('acesso e senha provisória seguem o tema do dispositivo em 390px', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  for (const tema of ['light', 'dark'] as const) {
-    await page.emulateMedia({ colorScheme: tema })
-    await page.goto('/login')
-    await capturar(page, `login-mobile-${tema}`)
+  test.setTimeout(90_000)
+  const capturarAcesso = async (nome: string) => {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-8-captures/${nome}.png`, fullPage: true, animations: 'disabled' })
   }
+  for (const largura of [1440, 1280, 1100, 820, 390]) {
+    await page.setViewportSize({ width: largura, height: 900 })
+    for (const tema of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: tema })
+      await page.goto('/login')
+      await expect(page.locator('main.crm-ui')).toHaveCSS('background-color', tema === 'dark' ? 'rgb(28, 36, 45)' : 'rgb(255, 255, 255)')
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('font-size', largura <= 820 ? '24px' : '28px')
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('line-height', largura <= 820 ? '32px' : '36px')
+      await expect(page.getByText('CRM · Gestão comercial', { exact: true })).toHaveCSS('line-height', '18px')
+      await expect(page.getByLabel('E-mail')).toHaveAttribute('autocomplete', 'username')
+      await expect(page.getByLabel('Senha', { exact: true })).toHaveAttribute('autocomplete', 'current-password')
+      await page.getByLabel('E-mail').focus()
+      await expect(page.getByLabel('E-mail')).toHaveCSS('outline-width', '3px')
+      await expect(page.getByLabel('E-mail')).toHaveCSS('outline-offset', '3px')
+      await expect(page.getByLabel('E-mail')).toHaveCSS('font-size', largura <= 820 ? '16px' : '14px')
+      await capturarAcesso(`login-${largura}-${tema}`)
+    }
+  }
+  await page.getByLabel('E-mail').fill('naoexiste-tarefa8@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('senha-incorreta')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page.locator('main').getByRole('alert')).toContainText('não conferem')
+  await expect(page.locator('main').getByRole('alert')).toHaveCSS('background-color', 'rgb(68, 44, 42)')
+  await expect(page.getByLabel('E-mail')).toHaveValue('naoexiste-tarefa8@teste.local')
+  await capturarAcesso('login-erro-390-dark')
   await entrar(page, 'redesignprovisorioe2e', '/trocar-senha')
   await expect(page.getByText('Sua senha é provisória.', { exact: false })).toBeVisible()
-  await capturar(page, 'trocar-senha-mobile-dark')
+  for (const largura of [1280, 820, 390]) {
+    await page.setViewportSize({ width: largura, height: 900 })
+    for (const tema of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: tema })
+      await expect(page.locator('main').getByRole('alert')).toHaveCSS('background-color', tema === 'dark' ? 'rgb(24, 32, 41)' : 'rgb(250, 251, 252)')
+      await expect(page.getByLabel('Nova senha')).toHaveAttribute('autocomplete', 'new-password')
+      await capturarAcesso(`trocar-senha-${largura}-${tema}`)
+    }
+  }
 })
 
 for (const [rota, tema] of [['/carteira', 'Tema da Carteira'], ['/meu-dia', 'Tema do Meu dia']]) {

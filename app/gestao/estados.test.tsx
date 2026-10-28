@@ -7,6 +7,8 @@ test('carregamento anuncia espera sem mostrar zeros', () => {
   const html = renderToStaticMarkup(<Loading />)
   expect(html).toContain('role="status"')
   expect(html).toContain('Carregando')
+  expect(html).toContain('data-slot="card"')
+  expect(html).toContain('data-slot="skeleton"')
 })
 test('falha oferece recuperação sem expor detalhes internos', () => {
   const html = renderToStaticMarkup(<Erro />)
