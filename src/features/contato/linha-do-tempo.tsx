@@ -1,5 +1,6 @@
 import type { Contato } from './historico'
 import { ROTULO, ehTipo } from './tipos'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { ResumoVenda } from '@/src/components/crm/resumo-venda'
 
 function rotulo(tipo: string): string {
@@ -11,9 +12,7 @@ function rotulo(tipo: string): string {
 export function LinhaDoTempo({ contatos }: { contatos: Contato[] }) {
   if (contatos.length === 0) {
     return (
-      <p className="rounded border border-dashed p-3 text-sm text-neutral-600">
-        Nenhum contato registrado nesta empresa ainda.
-      </p>
+      <EstadoVazio nivelTitulo={3} titulo="Nenhum contato registrado nesta empresa ainda." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
     )
   }
   return (

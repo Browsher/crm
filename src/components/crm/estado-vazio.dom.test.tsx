@@ -54,3 +54,33 @@ test('sem ação conserva texto longo completo e dispensa rodapé vazio', async 
   expect(host.querySelector('a, button, [data-slot="card-footer"]')).toBeNull()
   expect(host.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
 })
+
+
+test('ação submit preserva submitter nativo, campos e bloqueio no rodapé', async () => {
+  let envio: FormData | null = null
+  let origem: HTMLElement | null = null
+  const renderizar = (desabilitada = false) => <form onSubmit={evento => {
+    evento.preventDefault()
+    const submitter = (evento.nativeEvent as SubmitEvent).submitter as HTMLButtonElement
+    origem = submitter
+    envio = new FormData(evento.currentTarget, submitter)
+  }}>
+    <input type="hidden" name="contexto" value="versao-preservada" />
+    <EstadoVazio titulo="Nenhuma empresa reservada" descricao="Puxe a próxima empresa."
+      acao={{ rotulo: 'Puxar próxima', tipo: 'submit', name: 'acao', value: 'puxar', variante: 'outline', desabilitada }} />
+  </form>
+  await act(async () => root.render(renderizar()))
+  const botao = host.querySelector('button')!
+  expect(botao.type).toBe('submit')
+  expect(botao.closest('[data-slot="card-footer"]')).not.toBeNull()
+  expect(host.querySelectorAll('form')).toHaveLength(1)
+  await act(async () => botao.click())
+  expect(origem).toBe(botao)
+  expect(envio!.get('acao')).toBe('puxar')
+  expect(envio!.get('contexto')).toBe('versao-preservada')
+  await act(async () => root.render(renderizar(true)))
+  expect(botao.disabled).toBe(true)
+  envio = null
+  await act(async () => botao.click())
+  expect(envio).toBeNull()
+})

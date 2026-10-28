@@ -1,10 +1,9 @@
 'use client'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { ETAPAS_FUNIL, proximaEtapa, type EtapaFunil } from '@/src/lib/comercial'
 import type { NegociacaoResumo } from '@/src/features/funil/consulta'
-import { Button } from '@/src/components/ui/button'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { ModalFunil } from './modal'
 import { ROTULOS_ETAPA } from './rotulos'
 import { etapaAcao } from './acoes'
@@ -56,7 +55,7 @@ export function Quadro({linhas}:{linhas:NegociacaoResumo[]}) {
   return <>
     <p role="status" tabIndex={-1} ref={mensagem} className={styles.aviso}>{aviso}</p>
     {desktop&&!!linhas.length&&<p className={styles.muted}>Arraste para a próxima etapa ou abra a empresa para avançar.</p>}
-    {!linhas.length && <div className={styles.vazio}><h2>Nenhuma negociação aberta</h2><p>Assuma uma empresa na Prospecção para começar.</p><Button asChild><Link href="/fila">Ir para Prospecção</Link></Button></div>}
+    {!linhas.length && <EstadoVazio titulo="Nenhuma negociação aberta" descricao="Assuma uma empresa na Prospecção para começar." acao={{ rotulo: 'Ir para Prospecção', href: '/fila' }} />}
     <div className={styles.quadro} aria-label="Negociações por etapa">{ETAPAS_FUNIL.map(etapa=>{
       const cards=visiveis.filter(l=>l.etapa===etapa)
       return <section key={etapa} className={`${styles.coluna} ${destino===etapa?styles.destino:''}`} aria-label={ROTULOS_ETAPA[etapa]} aria-busy={pendente} onDragOver={e=>{if(desktop&&!bloqueado.current&&arraste.current&&proximaEtapa(arraste.current.etapa)===etapa)e.preventDefault()}} onDrop={e=>void soltar(e,etapa)}><header><h2>{ROTULOS_ETAPA[etapa]}</h2><span aria-label={`${cards.length} negociações`}>{cards.length}</span></header>

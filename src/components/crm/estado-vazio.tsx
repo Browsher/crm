@@ -6,8 +6,9 @@ import styles from './composicoes.module.css'
 
 type VarianteAcao = { variante?: 'default' | 'outline' }
 export type AcaoEstadoVazio = VarianteAcao & (
-  | { rotulo: string; href: string; aoAcionar?: never }
-  | { rotulo: string; aoAcionar: () => void; href?: never; desabilitada?: boolean }
+  | { rotulo: string; href: string; aoAcionar?: never; tipo?: never }
+  | { rotulo: string; aoAcionar: () => void; href?: never; desabilitada?: boolean; tipo?: never }
+  | { rotulo: string; tipo: 'submit'; name: string; value: string; desabilitada?: boolean; href?: never; aoAcionar?: never }
 )
 
 type Props = {
@@ -29,7 +30,9 @@ export function EstadoVazio({ titulo, descricao, acao, icone: Icone = Inbox, niv
       </div>
     </CardHeader>
     {acao ? <CardFooter className={styles.vazioRodape}>
-      {acao.href !== undefined ? <Button asChild variant={acao.variante}>
+      {acao.tipo === 'submit' ? <Button type="submit" name={acao.name} value={acao.value} variant={acao.variante} disabled={acao.desabilitada}>
+        {acao.rotulo}
+      </Button> : acao.href !== undefined ? <Button asChild variant={acao.variante}>
         <Link href={acao.href}>{acao.rotulo}</Link>
       </Button> : <Button type="button" variant={acao.variante} onClick={acao.aoAcionar} disabled={acao.desabilitada}>
         {acao.rotulo}

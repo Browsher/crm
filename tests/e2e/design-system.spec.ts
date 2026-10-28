@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
 import { bancoGruposDoHarness } from './dados-grupos'
 
@@ -310,5 +312,48 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
   } finally {
     await referencia.close()
     await banco.sql('UPDATE empresa SET razao_social = $1 WHERE id = $2', ['Carteira Visual Boreal', '00000000-0000-4000-8000-000000000302'])
+  }
+})
+
+test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const pasta = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-10-captures')
+  await mkdir(pasta, { recursive: true })
+  const perfis = [
+    { conta: 'gestore2e', caminhos: ['/gestao', '/empresas', '/empresas/grupos', '/usuarios', '/empresas/google', '/design', '/whatsapp', '/whatsapp/configuracao'] },
+    { conta: 'designsystemvazioe2e', caminhos: ['/meu-dia', '/fila', '/fila/buscar', '/fila/localizar', '/fila/google', '/funil', '/carteira'] },
+  ] as const
+  for (const { conta, caminhos } of perfis) {
+    const contexto = await browser.newContext({ baseURL: 'http://localhost:3100', viewport: { width: 320, height: 900 } })
+    try {
+      const page = await contexto.newPage()
+      await entrar(page, conta)
+      for (const tema of ['light', 'dark']) {
+        for (const caminho of caminhos) {
+          await page.goto(caminho)
+          expect.soft(new URL(page.url()).pathname, `${conta} ${tema} ${caminho}: guarda e rota`).toBe(caminho)
+          const main = page.getByRole('main')
+          await expect(main).toBeVisible()
+          await expect(main.getByRole('heading', { level: 1 }).first()).toBeVisible()
+          await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
+          await expect(page.locator('html')).toHaveAttribute('data-theme', tema)
+          const geometria = await page.evaluate(() => {
+            const fora = [...document.querySelectorAll<HTMLElement>('main input:not([type="hidden"]), main select, main textarea, main button, main a')].filter(el => {
+              const r = el.getBoundingClientRect()
+              if (!r.width || !r.height || getComputedStyle(el).visibility === 'hidden') return false
+              // Planejamento semanal conserva a rolagem horizontal aprovada.
+              for (let pai = el.parentElement; pai && pai.tagName !== 'MAIN'; pai = pai.parentElement) {
+                if (['auto', 'scroll'].includes(getComputedStyle(pai).overflowX) && pai.scrollWidth > pai.clientWidth) return false
+              }
+              return r.left < -1 || r.right > innerWidth + 1
+            }).map(el => ({ nome: el.getAttribute('aria-label') || el.textContent?.trim().slice(0, 80) || el.getAttribute('name'), esquerda: el.getBoundingClientRect().left, direita: el.getBoundingClientRect().right }))
+            return { largura: innerWidth, documento: document.documentElement.scrollWidth, controlesFora: fora }
+          })
+          expect.soft(geometria.documento, `${conta} ${tema} ${caminho}: reflow`).toBeLessThanOrEqual(320)
+          expect.soft(geometria.controlesFora, `${conta} ${tema} ${caminho}: controles contidos`).toEqual([])
+          await page.screenshot({ path: resolve(pasta, `smoke320-${conta}-${caminho.slice(1).replaceAll('/', '-')}-${tema}.png`), fullPage: true, animations: 'disabled' })
+        }
+      }
+    } finally { await contexto.close() }
   }
 })

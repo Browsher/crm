@@ -10,7 +10,7 @@
 
 **Spec:** [HTML aprovado](../../design/design-system-padrao.html), revisão 97619516457fe28d414fe54371f6610514ca1628. Aprovação do usuário em 27/10/2026. [Inventário e diferenças D01–D14](../../design/design-system-atual.md). A aprovação é da referência visual; dados e ações simuladas do HTML não substituem contratos de negócio.
 
-**Situação:** planejamento para revisão. Nenhuma etapa de implementação foi executada por este documento.
+**Situação em 28/10/2026:** dez implementações e revisões focadas concluídas, até `17554c1`, seguidas da onda única de correções finais `ee2ff959`. Ajuste final reaprovado; E2E completo com 104 passes/0 falhas/0 skips em 6,8 min e revisão ampla/Guidelines de código concluídos. Revisão ampla do conjunto e documental aprovada em `61cb5ee`, com Critical 0, Important 0 e Minor aberto 0. PRs 55/60 e lotes A/B/C integrados; D preparado localmente sobre a main `5feb4df3152bafaf1d35aab01cbaa9a0760b0865`, com PR, CI remoto, revisão humana e merge pendentes. Esta reconciliação documental ainda aguarda revisão própria; publicação permanece fora do plano e sem autorização. O [registro de validação](../../design/2026-10-27-design-system/validacao.md) discrimina resultados, revisões, capturas e limites. Este plano começou como planejamento em 27/10/2026; os checkpoints abaixo distinguem ações locais e integrações remotas comprovadas.
 
 ## Global Constraints
 
@@ -37,7 +37,7 @@
 
 ## Base correta e integração
 
-Conferido em 27/10/2026:
+Histórico conferido em 27/10/2026, preservado como contexto da escolha de execução:
 
 | Referência | Estado observado | Consequência |
 | --- | --- | --- |
@@ -46,13 +46,13 @@ Conferido em 27/10/2026:
 | Fonte publicada | 473f0df9377d33c305ba1ea63850b1c5790ab883 | A diferença até 073a90a é documental. |
 | PR 60 / codex/design-system-atual | Documentação e HTML; ponta 9761951 antes deste plano | Não contém a implementação recente da PR 55. |
 
-**Pré-requisito recomendado para começar o código:** integrar PRs 55 e 60 pelo fluxo normal de revisão/CI, com aprovação para essa integração, e criar o checkout de implementação a partir da main atualizada. Este planejamento não executa merges.
+**Recomendação original, histórica, antes da escolha de execução:** integrar PRs 55 e 60 pelo fluxo normal de revisão/CI, com aprovação para essa integração, e criar o checkout de implementação a partir da main atualizada. Este planejamento não executa merges.
 
-Antes da tarefa 1, conferir novamente estado remoto, mudanças locais e outros chats. Reusar isolamento adequado ou criar worktree gerenciado. Não implementar nesta branch documental enquanto ela estiver baseada na interface antiga.
+**Decisão executada (Ruling 1):** a implementação local isolada partiu da interface recente, com o HTML e a documentação aprovados, sem esperar a integração remota das PRs 55/60. R-021 proíbe PRs empilhadas, não desenvolvimento local. O custo se essa antecipação estiver errada é rebase e adaptação à main antes de integrar. O estado remoto/local foi conferido antes da implementação; a branch usada foi `codex/adotar-design-system`. Naquele momento, PRs 55/60 continuavam abertas, a main observada era antiga e nenhum merge ou deploy estava autorizado. A integração posterior foi autorizada separadamente; publicação continua fora do plano.
 
 Conferir os conteúdos relevantes da base, incluindo tokens, carrossel e inclusão automática. Não exigir que 073a90a seja ancestral da main: squash muda a ancestralidade. Se houver alterações posteriores ao levantamento, atualizar os arquivos/testes afetados do plano.
 
-R-021: não empilhar PRs. Cada lote parte da main após a integração do anterior e contém somente suas alterações.
+Integração conforme R-021: não empilhar PRs. Cada lote parte da main após a integração do anterior e contém somente suas alterações. Em 28/10/2026, PR 55 foi integrada em `204a5272b85accda76a02ab2c2a7a92385e20371`, PR 60 em `e6e1024a8ef5af1a49cd5ad0026bf73b25309320`, A/PR 61 em `0acac602d0792d28a8743d0a6f2abab81d8777c4`, B/PR 62 em `6b5d703b4f33dded3c3c8fe0081e356108feae32` e C/PR 63 em `5feb4df3152bafaf1d35aab01cbaa9a0760b0865`. A/B/C tiveram CI próprio aprovado e merge manual pelo usuário. D está preparado localmente dessa última base; seus gates externos permanecem pendentes. O registro de validação discrimina heads, runs, contagens reais e a tentativa inicial reprovada de A, seguida de reconciliação após o merge manual de 60, sem enfraquecer testes.
 
 ## Review Focus
 
@@ -64,7 +64,7 @@ R-021: não empilhar PRs. Cada lote parte da main após a integração do anteri
 
 ## Entregas e ordem
 
-Cada tarefa tem teste falhando → mudança mínima → teste passando → captura → commit. Um lote vira PR revisável; o próximo começa após a integração do anterior. Execução sugerida: sequencial neste chat, com revisão independente final.
+Método executado: implementação e revisão por agentes distintos, tarefa por tarefa, com coordenação central e revisões independentes por área; testes pesados em sequência. Cada tarefa teve teste falhando → mudança mínima → teste passando → captura → commit, com correções de revisão quando necessárias. A implementação dos lotes ocorreu na branch local, conforme Ruling 1; A/B/C já concluíram PR/CI/revisão humana e integração; os gates de D permanecem pendentes.
 
 | Lote | Tarefas | Resultado visível |
 | --- | --- | --- |
@@ -73,7 +73,7 @@ Cada tarefa tem teste falhando → mudança mínima → teste passando → captu
 | C · Administração | 7 e 8 | Gestão, Empresas, Listas, importação, Usuários e acesso padronizados. |
 | D · Atendimento | 9 e 10 | Meu dia, Funil, fichas e WhatsApp consistentes; revisão final. |
 
-A primeira melhoria direta de tela será o estado vazio da Carteira. A base vem antes para evitar estilizar esse card sobre controles conflitantes.
+A primeira melhoria direta de tela foi o estado vazio da Carteira, depois da fundação dos componentes e tokens comuns.
 
 ## Mapa das diferenças
 
@@ -113,7 +113,7 @@ A primeira melhoria direta de tela será o estado vazio da Carteira. A base vem 
 
 **Nome do caso principal a acrescentar ou estender:** controles mantêm tema e medidas em desktop e toque.
 
-- [ ] Escrever testes de semântica e CSS computado. Exemplo na galeria autenticada:
+- [x] Escrever testes de semântica e CSS computado. Exemplo na galeria autenticada:
 
 ~~~ts
 await page.getByLabel('Tema da galeria').selectOption('light')
@@ -125,10 +125,10 @@ await expect(page.getByLabel('Telefone com erro', { exact: true }))
 
 Cobrir select habilitado com fundo normal; Input/Textarea readOnly com fundo secundário; aria-describedby; clique no label; disabled e link asChild sem button aninhado. Em contexto hasTouch: true, 1280×900, campos têm fonte 16 px e mínimo 44 px; textarea pode ser maior.
 
-- [ ] Rodar RED: npm run test:unit -- src/components/ui/controles.test.tsx. Rodar npm run build:e2e e npm run test:e2e -- --sem-build tests/e2e/design-system.spec.ts. Esperar falha nas novas expectativas, não na preparação/autenticação.
-- [ ] Centralizar tokens e remover a disputa entre .ui-control e utilitários de altura/foco. Restringir somente leitura a input[readonly]/textarea[readonly]. Manter xs/sm/default por compatibilidade, com mínimo 40 px e diferença de padding; ícones ficam quadrados 40/44 px. lg tem mínimo 44 px. Retirar sombras estáticas de campos/botões para seguir a referência plana.
-- [ ] Rodar GREEN, typecheck e lint. Pela abrangência global, rodar design.spec.ts e redesign-crm.spec.ts com build de produção, conferindo temas e navegação contínua. Salvar capturas 1920×1080 e 390×844.
-- [ ] Commit: feat(ui): unificar tokens e controles do design system.
+- [x] Rodar RED: npm run test:unit -- src/components/ui/controles.test.tsx. Rodar npm run build:e2e e npm run test:e2e -- --sem-build tests/e2e/design-system.spec.ts. Esperar falha nas novas expectativas, não na preparação/autenticação.
+- [x] Centralizar tokens e remover a disputa entre .ui-control e utilitários de altura/foco. Restringir somente leitura a input[readonly]/textarea[readonly]. Manter xs/sm/default por compatibilidade, com mínimo 40 px e diferença de padding; ícones ficam quadrados 40/44 px. lg tem mínimo 44 px. Retirar sombras estáticas de campos/botões para seguir a referência plana.
+- [x] Rodar GREEN, typecheck e lint. Pela abrangência global, rodar design.spec.ts e redesign-crm.spec.ts com build de produção, conferindo temas e navegação contínua. Salvar capturas 1920×1080 e 390×844.
+- [x] Commit: feat(ui): unificar tokens e controles do design system.
 
 ### Tarefa 2: Cards de estado e primeiro uso na Carteira
 
@@ -147,7 +147,7 @@ Cobrir select habilitado com fundo normal; Input/Textarea readOnly com fundo sec
 
 **Nome do caso principal a acrescentar ou estender:** estado vazio usa card e ação semântica sem elementos interativos aninhados.
 
-- [ ] Criar teste jsdom para a composição. Depois de renderizar EstadoVazio com a ação de navegação, conferir:
+- [x] Criar teste jsdom para a composição. Depois de renderizar EstadoVazio com a ação de navegação, conferir:
 
 ~~~ts
 const link = host.querySelector('a[href="/fila"]')
@@ -158,10 +158,10 @@ expect(host.querySelector('a button, button a')).toBeNull()
 
 Cobrir ação local acionada uma vez, ausência de ação, h2/h3 e texto longo. Em ListaCarteira, distinguir carteira vazia de filtro sem resultado e preservar rota/rótulos/filtros. No E2E da conta vazia, verificar card sólido, raio 10 px e navegação/foco do CTA.
 
-- [ ] Rodar RED: npm run test:unit -- src/components/crm/estado-vazio.dom.test.tsx app/carteira/lista.test.tsx; rodar a jornada focada após build E2E.
-- [ ] Compor EstadoVazio com CardHeader, título, CardDescription e CardFooter/Button. Aplicar à Carteira vazia e ao filtro sem resultado. Trocar o aviso amber fixo de app/carteira/[id]/page.tsx por Alert semântico com role de erro, mantendo texto/condição.
-- [ ] Rodar GREEN, carteira-visual.spec.ts e design-system.spec.ts. Conferir rota da ficha, filtros e distinção de vazio; capturar os dois estados em claro/escuro.
-- [ ] Commit: feat(ui): padronizar estados vazios e aplicar na Carteira.
+- [x] Rodar RED: npm run test:unit -- src/components/crm/estado-vazio.dom.test.tsx app/carteira/lista.test.tsx; rodar a jornada focada após build E2E.
+- [x] Compor EstadoVazio com CardHeader, título, CardDescription e CardFooter/Button. Aplicar à Carteira vazia e ao filtro sem resultado. Trocar o aviso amber fixo de app/carteira/[id]/page.tsx por Alert semântico com role de erro, mantendo texto/condição.
+- [x] Rodar GREEN, carteira-visual.spec.ts e design-system.spec.ts. Conferir rota da ficha, filtros e distinção de vazio; capturar os dois estados em claro/escuro.
+- [x] Commit: feat(ui): padronizar estados vazios e aplicar na Carteira.
 
 ### Tarefa 3: Filtros, tabelas e badges
 
@@ -180,10 +180,10 @@ Cobrir ação local acionada uma vez, ausência de ação, h2/h3 e texto longo. 
 
 **Nome do caso principal a acrescentar ou estender:** Carteira conserva filtros ao abrir e voltar da ficha.
 
-- [ ] Testar painel com um único formulário, campos e ações. Na Carteira, filtrar/abrir/voltar deve conservar nome/UF/retorno. Conferir caption/cabeçalhos, labels móveis, empresa longa e ausência de dados com Ver cliente alcançável.
-- [ ] Rodar RED dos testes focados e novas expectativas visuais em carteira-visual/design-system.
-- [ ] Extrair a moldura dos filtros e adotar tabela com células 16 px; migrar o empilhamento comum para 600 px, mantendo rótulos. Remover overrides locais de raio/fundo/padding substituídos pela base. Badge informativo usa 12/18 px e raio 6 px.
-- [ ] Rodar GREEN, typecheck e lint; conferir 600/601/760/820 px, além de 1920 e 390 px, filtros, volta do navegador e resultado vazio.
+- [x] Testar painel com um único formulário, campos e ações. Na Carteira, filtrar/abrir/voltar deve conservar nome/UF/retorno. Conferir caption/cabeçalhos, labels móveis, empresa longa e ausência de dados com Ver cliente alcançável.
+- [x] Rodar RED dos testes focados e novas expectativas visuais em carteira-visual/design-system.
+- [x] Extrair a moldura dos filtros e adotar tabela com células 16 px; migrar o empilhamento comum para 600 px, mantendo rótulos. Remover overrides locais de raio/fundo/padding substituídos pela base. Badge informativo usa 12/18 px e raio 6 px.
+- [x] Rodar GREEN, typecheck e lint; conferir 600/601/760/820 px, além de 1920 e 390 px, filtros, volta do navegador e resultado vazio.
 **Asserções e verificação focada**
 
 Após filtrar Aurora, abrir e voltar, asserções da jornada:
@@ -201,7 +201,7 @@ npm run test:e2e -- --sem-build tests/e2e/carteira-visual.spec.ts tests/e2e/desi
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): padronizar filtros e registros da Carteira.
+- [x] Commit: feat(ui): padronizar filtros e registros da Carteira.
 
 ### Tarefa 4: Navegação, sobreposições e galeria real
 
@@ -219,11 +219,11 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** galeria compartilha shell e tema sem perder rascunho no atendimento.
 
-- [ ] Testar o mesmo shell/tema entre Gestão e /design, exclusividade do gestor e nenhuma escrita após entrar na galeria. A fixture da guarda em page.test.tsx deve devolver usuarioId/nome/papel. Testar Tab/setas/Escape, tema do portal, retorno de foco e rascunho ainda presente depois de alternar abas.
-- [ ] Rodar RED de shell/galeria/tabs e jornadas de design/redesign-crm.
-- [ ] Unificar shell e cabeçalho nas medidas globais. A galeria conserva navegação local de seções no conteúdo, sem duplicar navegação principal. Completar controles/estados/tabelas/cards com componentes React; não embutir o HTML por iframe nem copiar seu JavaScript para o aplicativo.
-- [ ] Alinhar foco, espaçamento e superfícies de Tabs/Sheet/Dialog, mantendo Base UI/Motion e dimensões necessárias aos detalhes. Os menus do HTML são exemplos; não ocultar ações hoje visíveis em novos menus. Conservar o comportamento atual de tema entre rotas/Sistema; persistência nova após reload não é requisito desta adoção. Atualizar o seletor da tarefa 1 para Tema do design system quando a galeria usar o controle do shell, mantendo suas asserções.
-- [ ] Rodar GREEN e build E2E. Validar ordem de CSS ao navegar por Usuários, galeria, Carteira e Funil. Vendedor continua sem acesso a /design; a demonstração usa dados fictícios.
+- [x] Testar o mesmo shell/tema entre Gestão e /design, exclusividade do gestor e nenhuma escrita após entrar na galeria. A fixture da guarda em page.test.tsx deve devolver usuarioId/nome/papel. Testar Tab/setas/Escape, tema do portal, retorno de foco e rascunho ainda presente depois de alternar abas.
+- [x] Rodar RED de shell/galeria/tabs e jornadas de design/redesign-crm.
+- [x] Unificar shell e cabeçalho nas medidas globais. A galeria conserva navegação local de seções no conteúdo, sem duplicar navegação principal. Completar controles/estados/tabelas/cards com componentes React; não embutir o HTML por iframe nem copiar seu JavaScript para o aplicativo.
+- [x] Alinhar foco, espaçamento e superfícies de Tabs/Sheet/Dialog, mantendo Base UI/Motion e dimensões necessárias aos detalhes. Os menus do HTML são exemplos; não ocultar ações hoje visíveis em novos menus. Conservar o comportamento atual de tema entre rotas/Sistema; persistência nova após reload não é requisito desta adoção. Atualizar o seletor da tarefa 1 para Tema do design system quando a galeria usar o controle do shell, mantendo suas asserções.
+- [x] Rodar GREEN e build E2E. Validar ordem de CSS ao navegar por Usuários, galeria, Carteira e Funil. Vendedor continua sem acesso a /design; a demonstração usa dados fictícios.
 **Asserções e verificação focada**
 
 Na jornada de atendimento, depois de digitar a nota e alternar a aba:
@@ -241,8 +241,8 @@ npm run test:e2e -- --sem-build tests/e2e/design.spec.ts tests/e2e/design-system
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): alinhar shell e galeria ao padrao aprovado.
-- [ ] Fechar lote A com PR/capturas/CI e revisão do usuário antes do lote B.
+- [x] Commit: feat(ui): alinhar shell e galeria ao padrao aprovado.
+- [x] Fechar lote A com PR/capturas/CI e revisão do usuário antes do lote B. PR 61 integrada manualmente em `0acac602`; CI final run `40708232142` aprovado, após uma tentativa reprovada e reconciliação documental.
 
 ### Tarefa 5: Prospecção, Banco de empresas e localização
 
@@ -263,11 +263,11 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** Choice conserva transporte nativo e detalhes ignoram resposta atrasada.
 
-- [ ] Testar checkbox por clique no label/Espaço, radio por teclado/grupo e envio por FormData. Nos formulários, preservar exclusões, datas, contatos, regiões, UUID e valores ao abrir/recolher filtros. Se A responder depois de selecionar B, os detalhes continuam sendo de B.
-- [ ] Rodar RED das novas expectativas e testes focados. Reusar mocks e banco loopback do harness, que já limpa chaves dos fornecedores.
-- [ ] Migrar filtros, campos, estados e badges. Substituir inputs de escolha por Choice sem mudar handlers/valores. Manter os seis grupos do banco e os textos operacionais. Localização pessoal recebe a mesma base de card com ações próprias.
-- [ ] Preservar carrossel 3/2/1, até 11 empresas, última ação e detalhe selecionado. Não ampliar o resumo com contatos/documentos protegidos. Remover estilo local somente quando o componente/token comum assumir a função.
-- [ ] Rodar GREEN das cinco jornadas após build. Abrir histórico/detalhes, trocar tema e retomar inclusão não acrescentam aquisições no mock. Nome longo não sobrepõe a ação do card; capturas 1920/820/390 px.
+- [x] Testar checkbox por clique no label/Espaço, radio por teclado/grupo e envio por FormData. Nos formulários, preservar exclusões, datas, contatos, regiões, UUID e valores ao abrir/recolher filtros. Se A responder depois de selecionar B, os detalhes continuam sendo de B.
+- [x] Rodar RED das novas expectativas e testes focados. Reusar mocks e banco loopback do harness, que já limpa chaves dos fornecedores.
+- [x] Migrar filtros, campos, estados e badges. Substituir inputs de escolha por Choice sem mudar handlers/valores. Manter os seis grupos do banco e os textos operacionais. Localização pessoal recebe a mesma base de card com ações próprias.
+- [x] Preservar carrossel 3/2/1, até 11 empresas, última ação e detalhe selecionado. Não ampliar o resumo com contatos/documentos protegidos. Remover estilo local somente quando o componente/token comum assumir a função.
+- [x] Rodar GREEN das cinco jornadas após build. Abrir histórico/detalhes, trocar tema e retomar inclusão não acrescentam aquisições no mock. Nome longo não sobrepõe a ação do card; capturas 1920/820/390 px.
 **Asserções e verificação focada**
 
 No teste de Choice, renderizar uma opção telefone marcada dentro de um form e conferir o transporte nativo antes e depois de alternar pelo input. Clique no label e teclado são casos adicionais:
@@ -286,7 +286,7 @@ npm run test:e2e -- --sem-build tests/e2e/busca-redesign.spec.ts tests/e2e/busca
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): padronizar Banco de empresas e localizacao.
+- [x] Commit: feat(ui): padronizar Banco de empresas e localizacao.
 
 ### Tarefa 6: Planejamento e entregas Google
 
@@ -302,10 +302,10 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** critérios Google mantêm payload e medidas no toque amplo.
 
-- [ ] Testar que os critérios em edição são preservados conforme o comportamento atual; cancelar não aplica e salvar conserva payload. Em toque 1280×900, o textarea tem fonte 16 px. Valores e datas bloqueadas continuam corretos.
-- [ ] Rodar RED dos testes focados e das expectativas visuais da jornada Google.
-- [ ] Migrar campos, escolhas, avisos, etiquetas e cards; remover textarea/outline locais concorrentes. Preservar seleção do que espelhar, dias, revisões e estado das entregas.
-- [ ] Rodar GREEN das três jornadas com mock de planilha; nenhuma chamada adicional por mudança visual/cancelamento. Conferir dados ausentes, erro e pausa com os mesmos significados.
+- [x] Testar que os critérios em edição são preservados conforme o comportamento atual; cancelar não aplica e salvar conserva payload. Em toque 1280×900, o textarea tem fonte 16 px. Valores e datas bloqueadas continuam corretos.
+- [x] Rodar RED dos testes focados e das expectativas visuais da jornada Google.
+- [x] Migrar campos, escolhas, avisos, etiquetas e cards; remover textarea/outline locais concorrentes. Preservar seleção do que espelhar, dias, revisões e estado das entregas.
+- [x] Rodar GREEN das três jornadas com mock de planilha; nenhuma chamada adicional por mudança visual/cancelamento. Conferir dados ausentes, erro e pausa com os mesmos significados.
 **Asserções e verificação focada**
 
 Nos critérios, em contexto hasTouch: true e viewport 1280×900:
@@ -324,8 +324,8 @@ npm run test:e2e -- --sem-build tests/e2e/google-planejamento.spec.ts tests/e2e/
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): alinhar planejamento e entregas Google.
-- [ ] Fechar lote B com PR/capturas/CI e revisão do usuário.
+- [x] Commit: feat(ui): alinhar planejamento e entregas Google.
+- [x] Fechar lote B com PR/capturas/CI e revisão do usuário. PR 62 integrada manualmente em `6b5d703b`; CI próprio run `40712768226` aprovado.
 
 ### Tarefa 7: Gestão, Empresas, Listas e importação
 
@@ -344,10 +344,10 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** Empresas conserva filtros e reflow com dados longos.
 
-- [ ] Testar filtros dependentes/paginação e retorno da ficha com contexto, arquivo inválido e conferência sem perder seleção. Loading, erro e zero registros permanecem distintos. Razão social longa e sócios ausentes continuam legíveis e autorizados.
-- [ ] Rodar RED das novas expectativas nas unidades e cinco jornadas existentes.
-- [ ] Migrar filtros/tabelas/cards/badges/mensagens. Aplicar Skeleton nos espaços já usados de carregamento e Alert danger nas falhas. Limpar moldura concorrente de página após conferir CSS computado no shell. Preservar indicadores reais da Gestão.
-- [ ] Rodar GREEN, typecheck e lint. Conferir desktop/celular, ações de gestão alcançáveis e dados sintéticos dos testes.
+- [x] Testar filtros dependentes/paginação e retorno da ficha com contexto, arquivo inválido e conferência sem perder seleção. Loading, erro e zero registros permanecem distintos. Razão social longa e sócios ausentes continuam legíveis e autorizados.
+- [x] Rodar RED das novas expectativas nas unidades e cinco jornadas existentes.
+- [x] Migrar filtros/tabelas/cards/badges/mensagens. Aplicar Skeleton nos espaços já usados de carregamento e Alert danger nas falhas. Limpar moldura concorrente de página após conferir CSS computado no shell. Preservar indicadores reais da Gestão.
+- [x] Rodar GREEN, typecheck e lint. Conferir desktop/celular, ações de gestão alcançáveis e dados sintéticos dos testes.
 **Asserções e verificação focada**
 
 Na consulta de Empresas, manter a seleção dependente e o rótulo acessível após a submissão:
@@ -366,7 +366,7 @@ npm run test:e2e -- --sem-build tests/e2e/gestao.spec.ts tests/e2e/empresas-visu
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): padronizar gestao e cadastros de empresas.
+- [x] Commit: feat(ui): padronizar gestao e cadastros de empresas.
 
 ### Tarefa 8: Usuários, login e troca de senha
 
@@ -383,10 +383,10 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** vendedor continua sem acesso à administração de usuários.
 
-- [ ] Testar foco/erro/pendência de autenticação, radio do papel e diálogos administrativos. Senha provisória aparece uma vez; vendedor não administra; gestor não recebe ação para se desativar/rebaixar.
-- [ ] Rodar RED dos testes de apresentação e conservar as verificações funcionais.
-- [ ] Migrar filtros, tabela, badges, escolhas e mensagens. Manter autocomplete de usuário/senha, possibilidade de colar e cuidados com dados sensíveis. Ações de contexto usam Button; texto auxiliar conserva sua função.
-- [ ] Rodar GREEN e conferir portal escuro, cancelamento com retorno de foco e celular. Executar os testes existentes de autorização/usuários no fechamento; não mudar políticas para acomodar o visual.
+- [x] Testar foco/erro/pendência de autenticação, radio do papel e diálogos administrativos. Senha provisória aparece uma vez; vendedor não administra; gestor não recebe ação para se desativar/rebaixar.
+- [x] Rodar RED dos testes de apresentação e conservar as verificações funcionais.
+- [x] Migrar filtros, tabela, badges, escolhas e mensagens. Manter autocomplete de usuário/senha, possibilidade de colar e cuidados com dados sensíveis. Ações de contexto usam Button; texto auxiliar conserva sua função.
+- [x] Rodar GREEN e conferir portal escuro, cancelamento com retorno de foco e celular. Executar os testes existentes de autorização/usuários no fechamento; não mudar políticas para acomodar o visual.
 **Asserções e verificação focada**
 
 Ao autenticar como vendedor e tentar abrir /usuarios, conservar o redirecionamento de segurança:
@@ -405,8 +405,8 @@ npm run test:e2e -- --sem-build tests/e2e/usuarios-visual.spec.ts tests/e2e/rede
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): alinhar usuarios e acesso ao design system.
-- [ ] Fechar lote C com PR/capturas/CI e revisão do usuário.
+- [x] Commit: feat(ui): alinhar usuarios e acesso ao design system.
+- [x] Fechar lote C com PR/capturas/CI e revisão do usuário. PR 63 integrada manualmente em `5feb4df3`; CI próprio run `40716994573` aprovado.
 
 ### Tarefa 9: Meu dia, atendimento, Funil e fichas
 
@@ -425,10 +425,10 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** cancelar descarte preserva rascunho e empresa selecionada.
 
-- [ ] Testar rascunho/erro após mudar aba, cancelar descarte e retomar; filtros e seleção ao voltar. Conferir empresa do formulário, reserva expirada/sem escrita e alternativa por botão ao arraste.
-- [ ] Rodar RED dos testes visuais novos e manter regras/fluxos existentes.
-- [ ] Migrar molduras, vazios, Choice, campos, avisos e ações. Remover utilitários antigos que alteram raio/padding/fonte dos controles. Conservar lista/ficha, retornos, etapas reais do Funil, confirmação de venda e metadados disponíveis.
-- [ ] Rodar GREEN das cinco jornadas, com restauração de foco e notas longas em 1920/820/390 px. Contatos protegidos continuam dependendo da autorização existente.
+- [x] Testar rascunho/erro após mudar aba, cancelar descarte e retomar; filtros e seleção ao voltar. Conferir empresa do formulário, reserva expirada/sem escrita e alternativa por botão ao arraste.
+- [x] Rodar RED dos testes visuais novos e manter regras/fluxos existentes.
+- [x] Migrar molduras, vazios, Choice, campos, avisos e ações. Remover utilitários antigos que alteram raio/padding/fonte dos controles. Conservar lista/ficha, retornos, etapas reais do Funil, confirmação de venda e metadados disponíveis.
+- [x] Rodar GREEN das cinco jornadas, com restauração de foco e notas longas em 1920/820/390 px. Contatos protegidos continuam dependendo da autorização existente.
 **Asserções e verificação focada**
 
 No diálogo de descarte, depois de preencher a nota e pedir cancelamento:
@@ -446,7 +446,7 @@ npm run test:e2e -- --sem-build tests/e2e/meu-dia.spec.ts tests/e2e/carteira-vis
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): padronizar atendimento e fichas comerciais.
+- [x] Commit: feat(ui): padronizar atendimento e fichas comerciais.
 
 ### Tarefa 10: WhatsApp e consolidação
 
@@ -464,10 +464,10 @@ Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma fa
 
 **Nome do caso principal a acrescentar ou estender:** busca do WhatsApp usa campo comum e mantém seleção e foco.
 
-- [ ] Testar busca com 14 px no desktop e 16 px no toque/celular, raio/foco comum. Cobrir nome longo, conversa sem nome, mídia indisponível, seleção e retorno de foco ao fechar imagem. Nenhuma ação de envio nova.
-- [ ] Rodar RED dos testes focados e das novas expectativas de estilo.
-- [ ] Remover overrides locais da busca e padronizar etiquetas, estados e ações de ficha/configuração. Preservar controles de mídia, limites do histórico, filtros e segredos mascarados.
-- [ ] Rodar GREEN com mock local, typecheck e lint. Revisar --ui-*, valores repetidos e CSS sem consumidor; remover somente o que foi substituído e verificado.
+- [x] Testar busca com 14 px no desktop e 16 px no toque/celular, raio/foco comum. Cobrir nome longo, conversa sem nome, mídia indisponível, seleção e retorno de foco ao fechar imagem. Nenhuma ação de envio nova.
+- [x] Rodar RED dos testes focados e das novas expectativas de estilo.
+- [x] Remover overrides locais da busca e padronizar etiquetas, estados e ações de ficha/configuração. Preservar controles de mídia, limites do histórico, filtros e segredos mascarados.
+- [x] Rodar GREEN com mock local, typecheck e lint. Revisar --ui-*, valores repetidos e CSS sem consumidor; remover somente o que foi substituído e verificado.
 **Asserções e verificação focada**
 
 Depois de carregar a instância de teste e o painel de conversas, em celular/toque:
@@ -487,23 +487,25 @@ npm run test:e2e -- --sem-build tests/e2e/whatsapp-visual.spec.ts
 
 Esperado no GREEN: comandos com saída zero, casos novos executados e nenhuma falha. No RED, a falha precisa demonstrar o requisito antes da alteração.
 
-- [ ] Commit: feat(ui): alinhar WhatsApp e concluir adocao visual.
+- [x] Commit: feat(ui): alinhar WhatsApp e concluir adocao visual.
 - [ ] Fechar lote D somente após o protocolo final abaixo.
 
 ## Fechamento e critérios de conclusão
 
-- [ ] Rodar npm run test:unit, npm run typecheck, npm run lint e npm run db:checar.
-- [ ] Rodar npm run test:integracao no banco descartável, mantendo as proteções locais. Preservar testes de usuários, identidade, Casa dos Dados, filtros adicionais, inclusão automática e prospecção pessoal. Não criar migração para alterar apresentação.
-- [ ] Rodar npm run build:e2e e npm run test:e2e -- --sem-build para a suíte completa. O guia local do Next informa que a ordem de CSS pode diferir do desenvolvimento; validar build de produção.
-- [ ] Capturar áreas reais por papel autorizado em 1920×1080, 1280×900, 820×900, 390×844 e reflow a 320 px. Conferir 600/601 e contêineres 480/670/1120 px; toque amplo, temas, teclado e redução de movimento.
-- [ ] Conferir contraste dos pares efetivamente usados: texto comum ≥4,5:1; controles/foco ≥3:1. Hex de token isolado não certifica a interface.
-- [ ] Fazer revisão Web Design Guidelines com fonte atual e revisão independente final de toda a adoção. Incluir contexto, permissões, respostas atrasadas e falhas; registrar os achados e sua resolução.
-- [ ] Corrigir achados impeditivos com teste RED/GREEN e rever as verificações afetadas. Não declarar conformidade integral de leitor de tela/zoom sem seus ensaios.
-- [ ] No registro de validação, mapear D01–D14 para implementação, testes, capturas e commit. Atualizar o inventário conforme a adoção e preservar o HTML aprovado como referência histórica.
-- [ ] PR do lote D com CI verde e documentação final. A adoção termina quando todos os consumidores mapeados foram verificados, além dos componentes básicos.
-- [ ] Publicação fora do plano. O registro operacional consultado informa publicação manual; revalidar essa condição antes de integração/publicação posterior. Implantação exige solicitação própria e fonte validada.
+- [x] Rodar npm run test:unit, npm run typecheck, npm run lint e npm run db:checar. Unidade: 200 arquivos, 1793 passes/1 skip no head `2a643ff`; 39 unidades afetadas após a correção `17554c1`. Tipos/lint com saída zero repetidos em `ee2ff959`; db:checar aprovado em `17554c1`, sem mudança posterior de banco.
+- [x] Rodar npm run test:integracao no banco descartável, mantendo as proteções locais. Preservar testes de usuários, identidade, Casa dos Dados, filtros adicionais, inclusão automática e prospecção pessoal. Não criar migração para alterar apresentação.
+- [x] Rodar npm run build:e2e e npm run test:e2e -- --sem-build para a suíte completa. Resultado final no head `ee2ff959`: saída 0, 104 passes/0 falhas/0 skips em 6,8 min; primeira rodada não aprovada preservada no registro. O guia local do Next informa que a ordem de CSS pode diferir do desenvolvimento; validar build de produção.
+- [x] Registrar as capturas e medições reais por papel autorizado, distribuídas nas tarefas: desktop, intermediárias, celular e reflow de 320 px; quebras 600/601 e contêineres 480/670/1120; toque amplo, temas, teclado e redução de movimento nos casos cobertos. As dimensões de referência foram 1920×1080, 1280×900, 820×900 e 390×844, além das alturas próprias dos ensaios. Quatro imagens foram selecionadas na validação; não se declara uma matriz exaustiva de áreas/aparelhos/motores.
+- [x] Registrar os pares efetivamente medidos e seus limites de contraste: a ficha escura em 390 px confirmou contraste de 13,059:1 e opacidade 1; os ensaios e pares de tokens estão discriminados na validação. Metas: texto comum ≥4,5:1; controles/foco ≥3:1. Contraste não medido não recebe certificação integral, conforme limite Declined aceito; hex isolado não certifica a interface.
+- [x] Fazer revisão Web Design Guidelines com fonte atual e revisão independente final de toda a adoção. Código e escopo final `ee2ff959` aprovados; revisão ampla do conjunto e suplemento documental aprovados em `61cb5ee`. Esta reconciliação posterior aguarda revisão própria do lote D. Incluir contexto, permissões, respostas atrasadas e falhas; registrar os achados e sua resolução.
+- [x] Corrigir achados impeditivos com teste RED/GREEN e rever as verificações afetadas. Os achados por tarefa e o Minor Google final foram resolvidos e reaprovados; não há achado de produto aberto no escopo revisado. Não declarar conformidade integral de leitor de tela/zoom sem seus ensaios.
+- [x] No registro de validação, mapear D01–D14 para implementação, testes, capturas e commit. Atualizar o inventário conforme a adoção e preservar o HTML aprovado como referência histórica.
+- [ ] PR do lote D com CI verde, revisão humana, documentação final e merge. D está preparado localmente; nenhuma contagem futura de CI é declarada aprovada. A adoção termina quando todos os consumidores mapeados foram verificados, além dos componentes básicos.
+- [ ] Publicação fora do plano e não realizada. O vínculo Git da Vercel foi identificado antes do merge 55; `git.deploymentEnabled.main=false` e o procedimento de publicação manual protegem essa condição, sem alteração de configurações externas. A API após o merge C confirmou produção inalterada. Implantação exige solicitação própria e fonte validada.
 
 ## Limites da implementação
+
+Status do fechamento local: unidade, integração, tipos, lint, db e build aprovados nas revisões discriminadas na validação. A primeira rodada E2E teve cinco falhas e não foi aprovada; a onda única `ee2ff959` teve 6/6 focados e o E2E completo final 104/104, com fixture do dia 28. Revisão ampla/Guidelines de código e scoped final concluídos, sem achado de produto aberto. O servidor registrou três eventos de stream encerrado cedo no E2E final, com jornadas aprovadas; causa não confirmada, observação não impeditiva e não declarada resolvida. O suplemento documental e o conjunto foram aprovados em `61cb5ee`; esta reconciliação posterior aguarda revisão própria. Os seis Rulings originais, os três Rulings de integração e os seis limites Declined permanecem recuperáveis na validação. A/B/C têm checkpoints remotos concluídos; D mantém PR/CI/revisão humana/merge pendentes e publicação fora do plano. Os 17 alertas de dependências do GitHub (2 críticos, 7 altos, 7 moderados e 1 baixo) seguem sem triagem para acompanhamento separado, sem mudanças de dependências ou atribuição de causa.
 
 Aprovar a aparência não autoriza esconder campos, reduzir controles de segurança, converter erro em vazio ou perder informação para fazer o layout caber. Se for necessário alterar action, DTO, repositório, serviço, SQL, cota, RLS, workflow ou planilha, registrar o motivo e reavaliar o escopo antes dessa mudança.
 
@@ -513,10 +515,10 @@ Aprovar a aparência não autoriza esconder campos, reduzir controles de seguran
 - Passos: cada entrega separa teste, mudança, verificação e commit; arquivos e comandos estão indicados.
 - Interfaces: EstadoVazio, PainelFiltros e Choice têm contratos definidos; consumidores preservam as APIs existentes.
 - Revisão: os cinco riscos de Review Focus estão distribuídos nos testes das tarefas responsáveis.
-- Proporção: os exemplos fixam asserções e valores; a implementação dos componentes permanece para a execução.
+- Proporção: os exemplos fixaram asserções e valores, e a implementação dos componentes foi executada nas dez tarefas; resultados e limites permanecem discriminados no registro de validação.
 
 ## Revisão do plano e escolha de execução
 
-As interfaces comuns devem ser estabilizadas no lote A. Recomenda-se execução sequencial aqui no chat, com checkpoints por lote e revisão independente final: as tarefas compartilham componentes/CSS, e esse caminho reduz coordenação e retrabalho.
+Escolha executada: implementação e revisão por agentes distintos em cada tarefa, seguidas de revisão independente do conjunto. As interfaces comuns foram estabilizadas no lote A e os consumidores adotados em sequência. As dez revisões focadas foram concluídas, inclusive a reaprovação do WhatsApp após a rodada de correção `17554c1`.
 
-A alternativa é implementação e revisão por agentes separados em cada tarefa, seguida de revisão do conjunto. A escolha de execução e a revisão deste plano antecedem o código. O pedido atual entrega o planejamento.
+A revisão ampla/Guidelines e a revisão do escopo final, incluindo o suplemento documental, foram aprovadas em `61cb5ee` em 28/10/2026, sem Critical/Important/Minor aberto. Esta reconciliação documental aguarda revisão própria do lote D. PRs 55/60 e os lotes A/B/C estão integrados; D está preparado localmente, com PR, CI remoto, revisão humana e merge pendentes. A implementação não foi publicada. Esta atualização registra a execução do plano originalmente entregue em 27/10/2026, sem apagar suas restrições ou antecipar resultados pendentes.

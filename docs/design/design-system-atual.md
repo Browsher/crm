@@ -1,14 +1,14 @@
 # Design system atual do CRM
 
-Data do levantamento: 27/10/2026. Estado: inventário da implementação e verificação de consistência. As diferenças registradas permanecem para decisão e correção em uma etapa posterior.
+Data do levantamento: 27/10/2026. Estado histórico: inventário da implementação e verificação de consistência naquela revisão. As diferenças originais são preservadas abaixo; a situação posterior está registrada em “Situação da adoção em 28/10/2026”.
 
-**Os elementos ainda não seguem integralmente o mesmo padrão.** Cores, fonte, navegação principal e componentes básicos têm uma base comum. Filtros, etiquetas, mensagens, campos de critérios do Google e a própria galeria apresentam diferenças. Há também um token sem definição e um aviso que usa cores fixas fora do tema.
+**No levantamento de 27/10/2026, os elementos ainda não seguiam integralmente o mesmo padrão.** Cores, fonte, navegação principal e componentes básicos têm uma base comum. Filtros, etiquetas, mensagens, campos de critérios do Google e a própria galeria apresentam diferenças. Há também um token sem definição e um aviso que usa cores fixas fora do tema.
 
 ## Versão e alcance
 
 - Código examinado: `073a90af4a398f93b55a1a5e98ca3b173c4fa6f2`, ponta da branch `codex/redesign-crm` no levantamento.
 - Fonte publicada de referência: `473f0df9377d33c305ba1ea63850b1c5790ab883`. A diferença até `073a90a` contém somente três documentos; a interface é a mesma.
-- [PR 55](https://github.com/Browsher/crm/pull/55): aberto, em rascunho e sem merge na conferência. A `main` e o checkout de campanhas ainda não representam esta interface.
+- [PR 55](https://github.com/Browsher/crm/pull/55): aberta, em rascunho e sem merge na conferência de 27/10/2026. Naquela data, a `main` e o checkout de campanhas ainda não representavam esta interface. A integração posterior está registrada ao final.
 - Varredura: **137 arquivos TSX de aplicação e 31 arquivos CSS**, sem arquivos de teste, em `app/`, `src/components/`, `src/styles/` e `src/features/`. Há **27 arquivos de página** e **14 módulos de componentes básicos de UI**. As contagens representam arquivos e ocorrências no código, não quantidade de elementos renderizados ou cobertura de testes.
 - Conferência manual dos componentes compartilhados e das composições de acesso, Meu dia, Prospecção, Banco de empresas, localização pessoal, planejamento Google, Carteira, Funil, Empresas, Listas, Gestão, Usuários e WhatsApp.
 - Verificação das diferenças por leitura de código, cálculo dos pares de contraste e ensaios locais de CSS em Chromium com elementos fictícios: 1920 × 1080 sem toque, 390 × 844 com toque e 1280 × 900 com toque.
@@ -236,7 +236,7 @@ Prioridade indica a ordem sugerida para uma futura padronização visual. Todos 
 
 ## Direção para estados vazios com ação
 
-Preferência visual registrada em 27/10/2026 a partir do estado vazio da Carteira. Aplicação na interface pendente.
+Preferência visual registrada em 27/10/2026 a partir do estado vazio da Carteira; sua aplicação estava pendente naquele levantamento. A adoção posterior está registrada ao final.
 
 O exemplo de origem é “Sua carteira está vazia”, com a explicação “Assuma uma empresa da fila para começar” e o link sublinhado “Puxar a próxima empresa”. Esse desenho, identificado em D07, deve evoluir para uma composição de card com o mesmo padrão dos componentes compartilhados.
 
@@ -265,12 +265,18 @@ Verificações deste levantamento:
 5. Conferência dos caminhos e das referências de fonte usados no documento.
 6. Revisão independente somente leitura concluída: nenhum Critical, um Important sobre a descrição de fontes em celular/toque e apontamentos Minor de referências, nome de componente e evidência textual. O autor corrigiu esses pontos no documento e confirmou as exceções com o segundo ensaio de CSS; não houve segunda revisão independente. As contagens e os contrastes foram recalculados pelo revisor e coincidiram. Integridade UTF-8 sem BOM/controles, referências e suíte existente de prosa verificadas antes do registro da entrega.
 
-Após a aprovação do HTML, a adoção foi organizada no [plano de padronização dos elementos do CRM](../superpowers/plans/2026-10-27-padronizacao-elementos-crm.md), com dez tarefas em quatro lotes revisáveis. A primeira aplicação de tela será o card de estado vazio da Carteira. O plano cobre D01 a D14, define verificações e preserva os contratos existentes. As diferenças deste inventário continuam pendentes de implementação; este registro não autoriza mudança de domínio, consulta paga ou ação de produção.
+Registro anterior à execução, preservado como histórico: após a aprovação do HTML, a adoção foi organizada no [plano de padronização dos elementos do CRM](../superpowers/plans/2026-10-27-padronizacao-elementos-crm.md), com dez tarefas em quatro lotes revisáveis. A primeira aplicação de tela será o card de estado vazio da Carteira. O plano cobre D01 a D14, define verificações e preserva os contratos existentes. As diferenças deste inventário continuam pendentes de implementação; este registro não autoriza mudança de domínio, consulta paga ou ação de produção.
 
 Contratos preservados nas etapas seguintes: Casa dos Dados; inclusão automática das empresas elegíveis; cota por vendedor, histórico, UUID e deduplicação; RLS e documentos de sócios exclusivos do gestor; Google, planejamento pessoal, workflow universal e planilha compartilhada; gestão, usuários, reservas e Carteira. O vendedor continua vendo nome e função dos sócios.
 
 Referências operacionais da mesma revisão: [busca de empresas][busca] e [produção Vercel][producao]. Referência visual anterior: [capturas e validação do redesign][referencia].
 
+
+## Situação da adoção em 28/10/2026
+
+A execução iniciada em 27/10/2026 avançou para as dez implementações e revisões focadas concluídas, incluindo a correção e reaprovação do WhatsApp no produto local `17554c1`. Unidade completa, integração, tipos, lint, checagem do banco e build tiveram saída zero, nas revisões e condições discriminadas no registro de validação. A primeira rodada E2E não foi aprovada. A onda única em `ee2ff959` corrigiu o Minor do Google gestor e quatro seletores antigos; seus seis casos afetados passaram, com tipos/lint/build aprovados. Em 28/10/2026, a repetição E2E integral em `ee2ff959` passou nas 104 jornadas, sem falhas ou skips, e a revisão ampla/Guidelines de código com o escopo final foi concluída, sem achado de produto aberto. A observação não impeditiva de stream do servidor e a aprovação documental pelo controlador estão discriminadas no registro. As diferenças D01–D14 acima descrevem o levantamento histórico. O [registro de validação da adoção](2026-10-27-design-system/validacao.md) mapeia cada diferença à implementação, evidências e limites, preserva as seis decisões originais e os três Rulings de integração, os seis limites aceitos de cobertura, os CIs próprios de A/B/C e os gates ainda pendentes de D.
+
+A implementação local antecedeu a integração remota pelo Ruling 1. Em 28/10/2026, PRs 55/60 e os lotes A/B/C estão integrados, com CI próprio e merges humanos de A/B/C confirmados. A main está em `5feb4df3152bafaf1d35aab01cbaa9a0760b0865`. O lote D foi preparado localmente dessa base; PR, CI remoto, revisão humana e merge permanecem pendentes. A revisão ampla do conjunto e documental foi aprovada em `61cb5ee`, com Critical 0, Important 0 e Minor aberto 0; esta reconciliação documental ainda aguarda revisão própria. O HTML aprovado e os achados originais permanecem preservados. Publicação continua fora do plano e sem autorização, protegida pela configuração e pelo procedimento de publicação manual herdados. Leitor de tela e zoom real não foram ensaiados.
 [tokens]: https://github.com/Browsher/crm/blob/073a90af4a398f93b55a1a5e98ca3b173c4fa6f2/src/styles/tokens.css
 [globals]: https://github.com/Browsher/crm/blob/073a90af4a398f93b55a1a5e98ca3b173c4fa6f2/app/globals.css
 [ui]: https://github.com/Browsher/crm/blob/073a90af4a398f93b55a1a5e98ca3b173c4fa6f2/src/styles/ui.css

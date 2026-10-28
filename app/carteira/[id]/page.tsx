@@ -64,7 +64,7 @@ export default async function PaginaFicha({ params, searchParams }: {
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
-      <nav aria-label="Navegação da ficha"><Link href={voltarPara} className="text-sm underline">{rotuloVoltar}</Link></nav>
+      <nav aria-label="Navegação da ficha"><Button asChild variant="outline"><Link href={voltarPara}>{rotuloVoltar}</Link></Button></nav>
       <Ficha empresa={empresa} cliente={cliente} contatos={historico.ok ? historico.contatos : []}
         erroHistorico={!historico.ok} voltarPara={voltarPara} dadosCadastrais={<DadosCadastrais dados={cadastrais} />} />
       <RegistrarVisita empresaId={empresa.id} />

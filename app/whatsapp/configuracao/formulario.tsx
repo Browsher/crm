@@ -11,7 +11,7 @@ import { NativeSelect } from '@/src/components/ui/native-select'
 const inicial: EstadoVinculo = { erro: null, sucesso: null }
 
 function Retorno({ estado }: { estado: EstadoVinculo }) {
-  return <>{estado.erro && <Alert variant="danger">{estado.erro}</Alert>}{estado.sucesso && <p role="status">{estado.sucesso}</p>}</>
+  return <>{estado.erro && <Alert variant="danger">{estado.erro}</Alert>}{estado.sucesso && <Alert variant="success" role="status">{estado.sucesso}</Alert>}</>
 }
 
 export function FormularioVinculo({ vendedores }: { vendedores: { id: string; nome: string }[] }) {

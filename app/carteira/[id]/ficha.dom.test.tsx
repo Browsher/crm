@@ -44,7 +44,7 @@ describe('Ficha no navegador', () => {
     expect(tela.innerHTML).toContain('value="devolver"')
   })
 
-  test('cancelar descarte preserva o rascunho e beforeunload o protege', async () => {
+  test('cancelar descarte preserva rascunho e empresa selecionada', async () => {
     const tela = await montar()
     await act(async () => [...tela.querySelectorAll('button')].find(b => b.textContent === 'Registrar atendimento')?.click())
     const nota = tela.querySelector('textarea')!
@@ -64,6 +64,8 @@ describe('Ficha no navegador', () => {
     await act(async () => historico!.click())
     expect(tela.querySelector('textarea')).toBe(nota)
     expect(nota.value).toBe('Não perder')
+    expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('id')).toBe(EMPRESA.id)
+    expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('tipo')).toBe('acompanhamento')
     expect(tela.querySelector('input[name=voltarPara]')?.getAttribute('value')).toBe('/carteira?nome=Aurora')
   })
 
@@ -104,4 +106,14 @@ describe('Ficha no navegador', () => {
     await act(async () => concluir({ erro: 'Falha temporária', ok: false }))
     acao.executar = async () => ({ erro: null, ok: false })
   })
+})
+
+
+test('histórico vazio informa título e explicação sem criar uma operação', async () => {
+  const tela = await montar()
+  await act(async () => [...tela.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Histórico')!.click())
+  const painel = tela.querySelector('[role=tabpanel]:not([hidden])')!
+  expect(painel.querySelector('h3')?.textContent).toBe('Ainda não há uma conversa registrada.')
+  expect(painel.textContent).toContain('Os atendimentos registrados nesta empresa aparecerão aqui.')
+  expect(painel.querySelector('a, button')).toBeNull()
 })
