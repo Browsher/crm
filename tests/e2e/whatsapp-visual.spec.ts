@@ -249,8 +249,9 @@ for (const tema of ['light', 'dark'] as const) {
   test(`foco da primeira e última conversa fica contido no scroller no tema ${tema}`, async ({ page }) => {
     await entrar(page)
     await page.getByLabel('Tema do WhatsApp').selectOption(tema)
-    for (const largura of [1280, 390, 320]) {
-      await page.setViewportSize({ width: largura, height: 900 })
+    // A altura menor também cobre a compressão causada por fontes de fallback.
+    for (const [largura, altura] of [[1280, 900], [1280, 720], [390, 900], [320, 900]]) {
+      await page.setViewportSize({ width: largura, height: altura })
       const lista = page.getByLabel('Lista de conversas', { exact: true })
       const itens = lista.getByRole('button')
       for (const extremo of ['primeira', 'ultima'] as const) {
@@ -263,18 +264,25 @@ for (const tema of ['light', 'dark'] as const) {
         await expect(item).toHaveCSS('outline-width', '3px')
         await expect(item).toHaveCSS('outline-offset', '3px')
         const margens = await item.evaluate(el => {
-          const lista = el.closest('[aria-label="Lista de conversas"]')!
+          const lista = el.closest('[aria-label="Lista de conversas"]')! as HTMLElement
           const item = el.getBoundingClientRect()
           const caixa = lista.getBoundingClientRect()
           const css = getComputedStyle(el)
           const foco = parseFloat(css.outlineWidth) + parseFloat(css.outlineOffset)
-          return { esquerda: item.left - foco - caixa.left, direita: caixa.left + lista.clientWidth - item.right - foco, topo: item.top - foco - caixa.top, base: caixa.top + lista.clientHeight - item.bottom - foco }
+          return {
+            esquerda: item.left - foco - caixa.left, direita: caixa.left + lista.clientWidth - item.right - foco,
+            topo: item.top - foco - caixa.top, base: caixa.top + lista.clientHeight - item.bottom - foco,
+            viewport: { largura: innerWidth, altura: innerHeight },
+            lista: { topo: caixa.top, base: caixa.bottom, clientHeight: lista.clientHeight, scrollHeight: lista.scrollHeight, scrollTop: lista.scrollTop, clientWidth: lista.clientWidth, scrollWidth: lista.scrollWidth, barraVertical: lista.offsetWidth - lista.clientWidth, barraHorizontal: lista.offsetHeight - lista.clientHeight },
+            botao: { topo: item.top, base: item.bottom, altura: item.height, foco },
+          }
         })
-        expect(margens.esquerda).toBeGreaterThanOrEqual(0)
-        expect(margens.direita).toBeGreaterThanOrEqual(0)
-        expect(margens.topo).toBeGreaterThanOrEqual(0)
-        expect(margens.base).toBeGreaterThanOrEqual(0)
-        await capturar(page, `revisao-foco-${extremo}-${largura}-${tema}`)
+        const contexto = JSON.stringify({ extremo, tema, ...margens })
+        expect(margens.esquerda, contexto).toBeGreaterThanOrEqual(0)
+        expect(margens.direita, contexto).toBeGreaterThanOrEqual(0)
+        expect(margens.topo, contexto).toBeGreaterThanOrEqual(0)
+        expect(margens.base, contexto).toBeGreaterThanOrEqual(0)
+        await capturar(page, `revisao-foco-${extremo}-${largura}-${altura}-${tema}`)
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     }
