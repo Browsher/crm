@@ -73,6 +73,11 @@ async function entrar(page: Page) {
   await expect(page).toHaveURL('/gestao')
   await page.goto('/whatsapp')
 }
+async function voltarParaLista(page: Page) {
+  await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+  // A tela restaura o foco no próximo frame antes de uma nova interação.
+  await expect(page.getByLabel('Lista de conversas', { exact: true }).locator('button[aria-current=true]')).toBeFocused()
+}
 async function semColisao(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   const lista = page.getByLabel('Lista de conversas', { exact: true })
@@ -97,7 +102,7 @@ for (const tema of ['light', 'dark'] as const) {
     await page.getByLabel('Tema do WhatsApp').selectOption(tema)
     for (const largura of [1920, 1280, 1200, 820, 390, 320]) {
       await page.setViewportSize({ width: largura, height: 900 })
-      if (largura <= 820 && await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).isVisible()) await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+      if (largura <= 820 && await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).isVisible()) await voltarParaLista(page)
       const indicador = page.getByRole('region', { name: 'Indicadores de atendimento' }).getByRole('article').first()
       await expect(indicador).toHaveCSS('padding', largura <= 820 ? '20px' : '24px')
       await expect(indicador).toHaveCSS('background-color', tema === 'light' ? 'rgb(255, 255, 255)' : 'rgb(28, 36, 45)')
@@ -117,8 +122,9 @@ for (const tema of ['light', 'dark'] as const) {
       await expect(lista.getByRole('button')).toHaveCount(1)
       await lista.getByRole('button').click()
       await expect(page.getByLabel('Mensagens da conversa')).toContainText('segunda conversa')
-      if (largura <= 820) await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+      if (largura <= 820) await voltarParaLista(page)
       await busca.fill('')
+      await expect(busca).toHaveValue('')
       await expect(lista.locator('button[aria-current=true]')).toContainText('Contato Boreal')
       const filtro = page.getByRole('button', { name: 'Sem resposta', exact: true })
       await filtro.focus()
@@ -139,11 +145,11 @@ for (const tema of ['light', 'dark'] as const) {
       })
       expect(colisoes).toBe(0)
       await capturar(page, `nome-longo-${largura}-${tema}`)
-      if (largura <= 820) await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+      if (largura <= 820) await voltarParaLista(page)
       await lista.getByRole('button').filter({ hasText: 'Contato não identificado' }).click()
       await expect(page.getByRole('heading', { name: 'Contato não identificado', exact: true })).toBeVisible()
       await expect(page.getByLabel('Mensagens da conversa')).toContainText('sem identificação disponível')
-      if (largura <= 820) await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+      if (largura <= 820) await voltarParaLista(page)
     }
     await page.setViewportSize({ width: 390, height: 900 })
     const lista = page.getByLabel('Lista de conversas', { exact: true })
