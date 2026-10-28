@@ -8,6 +8,8 @@ import { EtapasImportacao, type EtapaImportacao } from './etapas-importacao'
 import { RelatorioImportacao } from './relatorio'
 import { Input } from '@/src/components/ui/input'
 import { Textarea } from '@/src/components/ui/textarea'
+import { Card, CardContent } from '@/src/components/ui/card'
+import { Alert } from '@/src/components/ui/alert'
 import styles from './importar.module.css'
 
 const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null }
@@ -20,7 +22,7 @@ export function FormularioImportar() {
   const [chave, setChave] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const tituloRef = useRef<HTMLHeadingElement>(null)
-  const erroRef = useRef<HTMLParagraphElement>(null)
+  const erroRef = useRef<HTMLDivElement>(null)
   const focarAoVoltarRef = useRef(false)
   const [estado, acao, pendente] = useActionState(async (_anterior: EstadoImportar, form: FormData) => {
     // A Action ignora o estado anterior: relatório e comprovante continuam na
@@ -66,11 +68,11 @@ export function FormularioImportar() {
         Conferir também é sucesso: impedir esse reset mantém o File para confirmar.
         O input nunca desmonta ao voltar. Apenas reiniciar limpa explicitamente. */}
     <EtapasImportacao etapa={etapa} voltar={() => voltar(true)} bloqueado={pendente} />
-    <div className={styles.painel}>
+    <Card className={styles.painel}><CardContent>
       <h2 ref={tituloRef} tabIndex={-1} className={styles.titulo}>
         {etapa === 'enviar' ? 'Enviar arquivo' : etapa === 'conferir' ? 'Confira antes de importar' : 'Importação concluída'}
       </h2>
-      {erro && <p ref={erroRef} tabIndex={-1} role="alert" className={styles.erro}>{erro}</p>}
+      {erro && <Alert ref={erroRef} tabIndex={-1} variant="danger">{erro}</Alert>}
       <fieldset disabled={pendente}>
         <input type="hidden" name="chave" value={chave} />
         <input type="hidden" name="conferencia" value={limpo ? '' : estado.conferencia ?? ''} />
@@ -139,6 +141,6 @@ export function FormularioImportar() {
         </>}
       </fieldset>
       {pendente && <p role="status" className={styles.pendente}>Aguarde a conclusão antes de sair desta página.</p>}
-    </div>
+    </CardContent></Card>
   </form>
 }

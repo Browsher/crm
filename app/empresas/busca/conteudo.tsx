@@ -1,3 +1,5 @@
+import { Alert } from '@/src/components/ui/alert'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import Link from 'next/link'
 import type { BuscaSalva } from '@/src/features/busca-empresas/tipos'
 import { mensagemBusca } from '@/src/features/busca-empresas/mensagens'
@@ -24,10 +26,10 @@ export function ConteudoBusca({ busca, gestor, bloqueada, retornadas = busca.emp
           Estabelecimento: busca.filtros.tipo === '2' ? 'Matriz' : busca.filtros.tipo === '1' ? 'Filial' : '', 'Contato disponível': busca.filtros.contato, 'Resultados pulados': String(busca.filtros.offset) }).filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
       </dl>}
     </CardDetalhes>
-    {busca.estado === 'reservada' ? <p role="status">Consulta em processamento ou sem confirmação. Feche e abra a busca para conferir novamente. Ela não será repetida automaticamente.</p>
-      : busca.estado === 'falhou' ? <p role="alert">{busca.motivo ? mensagemBusca(busca.motivo) : 'Não foi possível concluir a consulta.'}</p>
+    {busca.estado === 'reservada' ? <Alert role="status">Consulta em processamento ou sem confirmação. Feche e abra a busca para conferir novamente. Ela não será repetida automaticamente.</Alert>
+      : busca.estado === 'falhou' ? <Alert variant="danger">{busca.motivo ? mensagemBusca(busca.motivo) : 'Não foi possível concluir a consulta.'}</Alert>
       : gestor ? <>
-        {!busca.empresas.length ? <p>Nenhuma empresa encontrada com esses filtros. Confira os filtros usados acima.</p> : <ul className={styles.lista}>{busca.empresas.map(e => <li key={e.cnpj}><EmpresaEncontradaDetalhes empresa={e} /></li>)}</ul>}
+        {!busca.empresas.length ? <EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa encontrada com esses filtros" descricao="Confira os filtros usados acima." /> : <ul className={styles.lista}>{busca.empresas.map(e => <li key={e.cnpj}><EmpresaEncontradaDetalhes empresa={e} /></li>)}</ul>}
         <SociosGestor buscaId={busca.id} />
         {busca.grupo_id && <Button asChild variant="outline"><Link href={`/empresas/grupos/${busca.grupo_id}`}>Ver lista importada</Link></Button>}
       </> : <ResultadosBusca busca={busca} bloqueada={bloqueada} />}

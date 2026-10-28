@@ -27,6 +27,7 @@ test('modelo Excel baixado passa pela conferência e só grava ao confirmar', as
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/gestao')
   await page.goto('/empresas/importar')
+  await expect(page.getByRole('main').locator('form [data-slot=card]')).toHaveCount(1)
   await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação de regressão E2E')
   await page.getByLabel('Resumo da lista', { exact: true }).fill('Lista de regressão com contato disponível')
   await page.getByLabel('Origem dos dados', { exact: true }).fill('Coleta fictícia E2E')

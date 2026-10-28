@@ -1,6 +1,7 @@
 'use client'
 import { useActionState, useState } from 'react'
 import { Button } from '@/src/components/ui/button'
+import { Choice } from '@/src/components/ui/choice'
 import { Input } from '@/src/components/ui/input'
 import { Alert } from '@/src/components/ui/alert'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
@@ -31,12 +32,12 @@ function Criacao({ fechar, informarPendencia }: { fechar: () => void; informarPe
     onEscapeKeyDown={e => { if (pendente) e.preventDefault() }} onPointerDownOutside={e => { if (pendente) e.preventDefault() }}>
     <DialogHeader><DialogTitle>{estado.criado ? 'Usuário criado' : 'Novo usuário'}</DialogTitle><DialogDescription>Crie o acesso e entregue a senha provisória à pessoa.</DialogDescription></DialogHeader>
     {estado.criado ? <SenhaProvisoria nome={estado.criado.nome} senha={estado.criado.senhaProvisoria} concluir={fechar} /> :
-      <form action={acao} className={styles.formulario}>
+      <form action={acao} aria-busy={pendente} className={styles.formulario}>
         <label>Nome<Input name="nome" required value={nome} onChange={e => setNome(e.target.value)} disabled={pendente} /></label>
         <label>E-mail<Input name="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} disabled={pendente} /></label>
         <fieldset disabled={pendente}><legend>Papel</legend><div className={styles.acoes}>
-          <label><input type="radio" name="papel" value="vendedor" checked={papel === 'vendedor'} onChange={() => setPapel('vendedor')} /> Vendedor</label>
-          <label><input type="radio" name="papel" value="gestor" checked={papel === 'gestor'} onChange={() => setPapel('gestor')} /> Gestor</label>
+          <label className={styles.escolha}><Choice type="radio" name="papel" value="vendedor" checked={papel === 'vendedor'} onChange={() => setPapel('vendedor')} /> Vendedor</label>
+          <label className={styles.escolha}><Choice type="radio" name="papel" value="gestor" checked={papel === 'gestor'} onChange={() => setPapel('gestor')} /> Gestor</label>
         </div></fieldset>
         {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
         <DialogFooter><Button type="button" variant="outline" disabled={pendente} onClick={fechar}>Cancelar</Button><Button type="submit" disabled={pendente}>{pendente ? 'Criando…' : 'Criar usuário'}</Button></DialogFooter>

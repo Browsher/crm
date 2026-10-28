@@ -9,7 +9,7 @@ export function Linha({ empresa, consulta }: { empresa: EmpresaNaLista; consulta
   const href = `/empresas/${empresa.id}${query ? `?${query}` : ''}`
   return <TableRow>
     <TableCell data-label="Empresa">
-      <strong><Link href={href} className="underline underline-offset-4">{nomeEmpresa(empresa)}</Link></strong>
+      <strong><Link href={href} className={styles.linkEmpresa}>{nomeEmpresa(empresa)}</Link></strong>
       {empresa.razaoSocial && empresa.nomeFantasia && <span className={styles.secundario}>{empresa.nomeFantasia}</span>}
       <span className={styles.documento}>{formatarCnpj(empresa.cnpj)}</span>
     </TableCell>
