@@ -31,6 +31,16 @@ test('modal oferece apenas próximo avanço e última etapa não tem select nem 
   expect(document.body.textContent).not.toContain('Avançar para')
   expect(document.body.textContent).toContain('Registrar venda')
 })
+
+test('abas mostram histórico autorizado e mantêm a alternativa de avanço por botão', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, historico: [{ id: 'contato', em: '2026-10-21T12:00:00Z', tipo: 'acompanhamento', nota: 'Negociar prazo com Aurora', proximoPasso: null, retorno: null }] })
+  await montar()
+  const historico = [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Histórico')
+  expect(historico).toBeTruthy()
+  await act(async () => historico!.click())
+  expect(document.querySelector('[role=tabpanel]:not([hidden])')?.textContent).toContain('Negociar prazo com Aurora')
+  expect([...document.querySelectorAll('button')].some(b => b.textContent === 'Avançar para Em negociação')).toBe(true)
+})
 test('resposta tardia após desmontagem não apresenta dados em outra abertura',async()=>{
   let liberar!:(d:typeof detalhe)=>void
   vi.mocked(detalheAcao).mockReturnValueOnce(new Promise(r=>liberar=r))

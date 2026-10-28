@@ -13,7 +13,7 @@ import styles from './localizar.module.css'
 export function Resultados({ empresas, reserva, filtros = reserva?.filtros, mostrarPerfil = true }: { empresas: ResumoEmpresa[]; filtros?: Filtros; mostrarPerfil?: boolean; reserva?: {contexto:string|null; filtros:Filtros;empresaAtual:string|null} }) {
   if (!empresas.length) return <p role="status">Nenhuma empresa encontrada.</p>
   return (
-    <ul className="flex flex-col gap-3" aria-label="Empresas encontradas">
+    <ul className={styles.resultados} aria-label="Empresas encontradas">
       {empresas.map(empresa => {
         const mensagem = mensagemDisponibilidade(empresa.disponibilidade)
         return (

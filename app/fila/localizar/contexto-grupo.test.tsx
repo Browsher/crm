@@ -12,6 +12,7 @@ vi.mock('../acoes',()=>({ agirNaFilaAcao:vi.fn() }))
 vi.mock('next/navigation',()=>({ useRouter:()=>({push:vi.fn()}) }))
 import Pagina from './page'
 import Fila from '../page'
+import { ContextoGrupo } from './contexto-grupo'
 const grupo='00000000-0000-4000-8000-000000000701'
 beforeEach(()=>{
   vi.clearAllMocks()
@@ -67,4 +68,16 @@ test('grupo malformado oferece todas as listas ativas sem consulta geral',async(
   expect(mocks.recentes).not.toHaveBeenCalled()
   expect(mocks.sugestoes).not.toHaveBeenCalled()
   expect(mocks.grupo).not.toHaveBeenCalled()
+})
+
+test.each([false,true])('consulta pessoal mostra pesquisa atual e mantém filtros ao editar, atendimento=%s',atendimento=>{
+  const pessoal=JSON.stringify({origem:'banco',nicho:'Armarinhos',pagina:'3'})
+  const html=renderToStaticMarkup(<ContextoGrupo resultado={null} atendimento={atendimento} filtros={{nome:'',cnae:null,uf:null,cidade:null,bairro:null,grupo:null,pagina:3,pessoal}}/>)
+  expect(html).toContain('Pesquisa atual')
+  expect(html).not.toContain('Todas as empresas disponíveis')
+  expect(html).not.toContain('Escolher outra lista')
+  const href=html.match(/href="([^"]+)"[^>]*>Alterar filtros/)![1].replaceAll('&amp;','&')
+  const url=new URL(href,'https://crm.test')
+  expect(url.pathname).toBe('/fila/localizar')
+  expect(Object.fromEntries(url.searchParams)).toEqual({pagina:'3',pessoal})
 })

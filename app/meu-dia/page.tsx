@@ -6,6 +6,7 @@ import { agendaDoDia, filtrarAgenda, lerFiltrosMeuDia } from './agenda'
 import { FiltrosForm } from './filtros-form'
 import { PainelMeuDia, type LinhaMeuDia } from './painel'
 import styles from './meu-dia.module.css'
+import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -28,17 +29,14 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
   const agendaDoDiaEstreita: LinhaMeuDia[] = agenda.filter(ehLinhaDoDia)
 
   return <main className={styles.pagina}>
-    <header>
-      <h1>Meu dia</h1>
-      <p>Retornos atrasados e de hoje.</p>
-    </header>
+    <CabecalhoPagina titulo="Meu dia" descricao="Retornos atrasados e de hoje." />
     {!r.ok ? <p role="alert">{textoDoMotivo(r.motivo)}</p> : !leitura.ok ? <div role="alert" className={styles.vazio}>
       <h2>Filtros inválidos</h2>
       <p>Os filtros informados não puderam ser aplicados.</p>
       <Link href="/meu-dia">Limpar filtros</Link>
     </div> : <>
       <FiltrosForm filtros={leitura.filtros} />
-      <PainelMeuDia linhas={linhasDoDia} agenda={agendaDoDiaEstreita} filtros={leitura.filtros} />
+      <PainelMeuDia key={JSON.stringify(leitura.filtros)} linhas={linhasDoDia} agenda={agendaDoDiaEstreita} filtros={leitura.filtros} />
     </>}
   </main>
 }

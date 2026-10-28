@@ -10,3 +10,4 @@ test-results
 .bases
 outputs
 *.pem
+.google-agente

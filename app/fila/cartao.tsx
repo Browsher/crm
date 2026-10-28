@@ -5,6 +5,7 @@ import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 import type { RascunhoContato } from '@/src/features/contato/rascunho'
 import { Button } from '@/src/components/ui/button'
+import { AbasFicha } from '@/src/components/crm/abas-ficha'
 import styles from './atendimento.module.css'
 
 // `agora` entra por parâmetro em vez de a função chamar new Date() dentro: é o
@@ -52,14 +53,14 @@ export function Cartao({ empresa, agora, contatos, bloqueado = false, etapa, onR
             <h2 className="text-lg font-semibold">{nomeEmpresa(empresa)}</h2>
             {empresa.razaoSocial && empresa.nomeFantasia ? <p className="text-sm text-neutral-600">{empresa.nomeFantasia}</p> : null}
           </header>
-          {!expirada && <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          {!expirada && <AbasFicha dados={<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-3 text-sm">
             <dt className="text-neutral-600">Telefone</dt>
-            <dd className="font-medium">{empresa.telefone}</dd>
+            <dd className="font-medium">{empresa.telefone ?? 'Sem telefone informado'}</dd>
             {empresa.contatoNome ? <><dt className="text-neutral-600">Contato</dt><dd>{empresa.contatoNome}</dd></> : null}
             {empresa.email ? <><dt className="text-neutral-600">E-mail</dt><dd>{empresa.email}</dd></> : null}
             <dt className="text-neutral-600">Endereço</dt><dd>{endereco(empresa)}</dd>
             <dt className="text-neutral-600">CNPJ</dt><dd>{empresa.cnpj ?? 'Não informado'}</dd>
-          </dl>}
+          </dl>} historico={<section className="flex flex-col gap-3"><h3 className="text-sm font-medium">O que já aconteceu com esta empresa</h3><LinhaDoTempo contatos={contatos} /></section>} />}
           {expirada ? <p role="status">Reserva expirada. Suas anotações foram preservadas. Tente reservar novamente para registrar.</p> : null}
           {empresa.reservadoAte && !empresa.posse && !expirada ? (
             <p role="timer" aria-label="Tempo restante da reserva" className="text-sm text-amber-700">
@@ -67,10 +68,6 @@ export function Cartao({ empresa, agora, contatos, bloqueado = false, etapa, onR
               conversa esticar.
             </p>
           ) : null}
-          {!expirada && <section className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">O que já aconteceu com esta empresa</h3>
-            <LinhaDoTempo contatos={contatos} />
-          </section>}
           {etapa === 'consultar' && !expirada ? <Button type="button" onClick={onRegistrar}>Registrar resultado</Button> : null}
         </div>
         {etapa === 'registrar' ? <div className={styles.formulario}>{formularioContato}</div> : null}

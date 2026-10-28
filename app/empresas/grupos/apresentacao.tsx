@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Button } from '@/src/components/ui/button'
 import styles from './grupos.module.css'
 
 export function dataGrupo(valor: string) {
@@ -12,8 +13,8 @@ export function PaginacaoGrupos({ pagina, total, caminho, gruposPagina }: { pagi
   if (paginas === 1 && pagina === 1) return null
   const endereco = (n: number) => `${caminho}?pagina=${n}${gruposPagina ? `&gruposPagina=${gruposPagina}` : ''}`
   return <nav aria-label="Paginação" className={styles.paginacao}>
-    {pagina > 1 ? <Link href={endereco(Math.min(pagina - 1, paginas))}>Anterior</Link> : <span aria-disabled="true">Anterior</span>}
+    {pagina > 1 ? <Button asChild variant="outline"><Link href={endereco(Math.min(pagina - 1, paginas))}>Anterior</Link></Button> : <Button variant="outline" disabled>Anterior</Button>}
     <span>Página {pagina} de {paginas}</span>
-    {pagina < paginas ? <Link href={endereco(pagina + 1)}>Próxima</Link> : <span aria-disabled="true">Próxima</span>}
+    {pagina < paginas ? <Button asChild variant="outline"><Link href={endereco(pagina + 1)}>Próxima</Link></Button> : <Button variant="outline" disabled>Próxima</Button>}
   </nav>
 }

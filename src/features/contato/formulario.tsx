@@ -65,10 +65,10 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
   // aviso era fixo por posse e mentia em `interessado`, que assume a empresa em
   // vez de devolvê-la — achado da verificação manual.
   const desfecho = DESFECHO_SUGERIDO[tipo]
-  const CampoTexto = visual === 'fila' ? Input : 'input'
-  const CampoNota = visual === 'fila' ? Textarea : 'textarea'
-  const Rotulo = visual === 'fila' ? Label : 'label'
-  const Botao = visual === 'fila' ? Button : 'button'
+  const CampoTexto = Input
+  const CampoNota = Textarea
+  const Rotulo = Label
+  const Botao = Button
 
   return (
     <form data-visual={visual} action={agir} onSubmit={evento => {
@@ -78,17 +78,17 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
       <input type="hidden" name="posse" value={posse ? 'sim' : 'nao'} />
       {voltarPara ? <input type="hidden" name="voltarPara" value={voltarPara} /> : null}
 
-      {estado.erro ? visual === 'fila' ? (
+      {estado.erro ? (
         <Alert variant="danger">
           <AlertTitle>Não foi possível registrar</AlertTitle>
           <AlertDescription>{estado.erro}</AlertDescription>
         </Alert>
-      ) : <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{estado.erro}</p> : null}
+      ) : null}
 
-      <fieldset className="flex flex-col gap-1">
+      <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">O que aconteceu na ligação</legend>
         {oferecidos.map((t) => (
-          <label key={t} className="flex items-center gap-2 text-sm">
+          <label key={t} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary has-checked:bg-success-background">
             <input type="radio" disabled={pendente || somenteLeitura} name="tipo" value={t} checked={tipo === t} onChange={() => alterar({ tipo: t })} />
             {ROTULO[t]}
           </label>

@@ -7,7 +7,7 @@ for (const papel of ['vendedore2e']) {
     await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
     await expect(page).toHaveURL('/meu-dia')
-    await page.goto('/fila')
+    await page.goto('/fila?atendimento=1')
     await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
     await page.getByRole('link',{name:'Todas as listas ativas',exact:true}).click()
     await expect(page).toHaveURL(/\/fila\/localizar/)
@@ -44,12 +44,12 @@ for (const papel of ['vendedore2e']) {
     expect(new URL(page.url()).searchParams.has('pagina')).toBe(false)
     await expect(page.getByLabel('Bairro', { exact: true })).toBeDisabled()
     await expect(page.getByText('Nenhuma empresa encontrada.')).toBeVisible()
-    await page.goto('/fila/localizar?uf=INVALIDO')
+    await page.goto('/fila/localizar?legado=1&uf=INVALIDO')
     await expect(page.getByRole('main').getByRole('alert')).toContainText('Um dos filtros é inválido')
   })
 }
 
 test('visitante não acessa localização', async ({ page }) => {
-  await page.goto('/fila/localizar?nome=Consulta')
+  await page.goto('/fila/localizar?legado=1&nome=Consulta')
   await expect(page).toHaveURL('/login')
 })

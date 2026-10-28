@@ -1,0 +1,1165 @@
+{
+  "name": "CRM · Prospecção e planejamento",
+  "active": false,
+  "nodes": [
+    {
+      "id": "00000001-0000-4000-8000-000000000001",
+      "name": "Receber lote",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-google-verificar",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "00000002-0000-4000-8000-000000000001",
+      "name": "Validar pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v = $input.first().json.body;\nif (!v || !Array.isArray(v.candidatas) || v.candidatas.length < 1 || v.candidatas.length > 50 || !v.criterios || typeof v.criterios !== 'object' || Array.isArray(v.criterios)) throw new Error('Pedido inválido');\nfor (const k of ['pedido_id','execucao_id','lote_id']) if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v[k])) throw new Error('Identidade inválida');\nif (!Number.isSafeInteger(v.revisao) || v.revisao < 1 || !/^[0-9a-f]{64}$/.test(v.snapshot_sha256)) throw new Error('Snapshot inválido');\nconst c=v.criterios, listas={tipos:['varejista','atacadista','distribuidor','fabricante'],site:['com','sem'],email:['com','sem'],telefone:['whatsapp','fixo']};\nconst textos=['termos','produtos','excluir','prioridades','observacoes'];\nconst chaves=[...textos,...Object.keys(listas),'atendimento','situacao','nota','avaliacoes'];\nif (Object.keys(c).length!==chaves.length || Object.keys(c).some(k=>!chaves.includes(k))) throw new Error('Critérios inválidos');\nfor(const k of textos) if(typeof c[k]!=='string'||Array.from(c[k]).length>2000||/[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f-\\u009f]/.test(c[k])) throw new Error('Texto inválido');\nfor(const [k,opcoes] of Object.entries(listas)) if(!Array.isArray(c[k])||c[k].some(x=>!opcoes.includes(x))||new Set(c[k]).size!==c[k].length) throw new Error('Opção inválida');\nif(!['','priorizar_fisica','fisica','online','ambos'].includes(c.atendimento)||!['','priorizar_funcionamento','funcionamento','excluir_encerradas','excluir_fechadas'].includes(c.situacao)\n || (c.nota!==null&&(!Number.isFinite(c.nota)||c.nota<0||c.nota>5)) || (c.avaliacoes!==null&&(!Number.isSafeInteger(c.avaliacoes)||c.avaliacoes<0))) throw new Error('Critério inválido');\nconst ids=v.candidatas.map(e=>e&&typeof e==='object'&&(e.google_place_id||e.cnpj&&'cnpj:'+e.cnpj));\nif(ids.some(id=>typeof id!=='string'||!id.trim()||id.length>255)||new Set(ids).size!==ids.length) throw new Error('Candidata inválida ou repetida');\nconst etapas=[];\nif(c.nota!==null||c.avaliacoes!==null||(c.situacao&&c.situacao!=='priorizar_funcionamento')) etapas.push('dados_google');\nif(c.site.length===1||c.email.length===1) etapas.push('presenca_digital');\nif(c.produtos||c.tipos.length||c.excluir||c.observacoes||(c.atendimento&&c.atendimento!=='priorizar_fisica')) etapas.push('perfil_comercial');\nif(c.telefone.includes('whatsapp')) etapas.push('whatsapp');\nif(c.telefone.includes('fixo')) etapas.push('fixo');\nreturn [{json:{pedido_id:v.pedido_id,execucao_id:v.execucao_id,lote_id:v.lote_id,revisao:v.revisao,snapshot_sha256:v.snapshot_sha256,criterios:c,candidatas:v.candidatas,verificacoes_requeridas:etapas,evidencias:[],pendencias:[]}}];"
+      }
+    },
+    {
+      "id": "00000003-0000-4000-8000-000000000001",
+      "name": "Verificar dados do Google",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.verificacoes_requeridas.includes('dados_google') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000004-0000-4000-8000-000000000001",
+      "name": "Conferir dados do Google",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$input.first().json, c=v.criterios;\nfor (const e of v.candidatas) {\n const id=e.google_place_id||('cnpj:'+e.cnpj), b=e.dados_brutos||{}, fonte=e.link_maps||b.link||'coleta_google';\n const ev=(criterio,opcao,estado,motivo)=>v.evidencias.push({candidata:id,criterio,opcao:String(opcao),estado,motivo,fonte,horario:new Date().toISOString()});\n for(const [k,campo] of [['nota','review_rating'],['avaliacoes','review_count']]) if(c[k]!==null) {\n  const raw=b[campo]; const n=raw!==undefined&&raw!==null&&String(raw).trim()!==''?Number(raw):NaN;\n  ev(k,c[k],Number.isFinite(n)?(n>=c[k]?'aprovado':'reprovado'):'nao_confirmado',Number.isFinite(n)?'Valor publicado no Google.':'Valor não confirmado pela origem.');\n }\n if(c.situacao&&c.situacao!=='priorizar_funcionamento') {\n  const s=String(e.situacao_google||b.status||'').toLowerCase();\n  const aberto=['operational','open','em funcionamento'].includes(s), temp=['temporarily_closed','temporarily closed'].includes(s), encerrado=['permanently_closed','permanently closed','closed_permanently'].includes(s);\n  const conhecido=aberto||temp||encerrado;\n  const ok=c.situacao==='excluir_encerradas'?!encerrado:aberto;\n  ev('situacao',c.situacao,conhecido?(ok?'aprovado':'reprovado'):'nao_confirmado','Situação informada pela origem Google.');\n }\n}\nreturn [{json:v}];"
+      }
+    },
+    {
+      "id": "00000005-0000-4000-8000-000000000001",
+      "name": "Preparar presença e perfil",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$input.first().json, c=v.criterios;\nfor(const e of v.candidatas) {\n const id=e.google_place_id||('cnpj:'+e.cnpj);\n const ev=(criterio,opcao,estado,motivo)=>v.evidencias.push({candidata:id,criterio,opcao,estado,motivo,fonte:e.link_maps||'coleta_google',horario:new Date().toISOString()});\n for(const k of ['site','email']) if(c[k].length===1) {\n  const opcao=c[k][0], valor=e[k];\n  let presente=k==='email'?/^[^\\s@]+@[^\\s@]+$/.test(String(valor||'')):false;\n  if(k==='site'&&valor) { try {\n   const u=String(valor).match(/^https?:\\/\\/([a-z0-9-]+(?:\\.[a-z0-9-]+)+)(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$/i), host=u?u[1].toLowerCase():'';\n   const terceiros=['instagram.com','facebook.com','fb.com','linkedin.com','google.com','google.com.br','goo.gl','whatsapp.com','wa.me','linktr.ee','youtube.com','youtu.be','tiktok.com'];\n   presente=Boolean(u)&&!terceiros.some(h=>host===h||host.endsWith('.'+h));\n  } catch {} }\n  if(presente) ev(k,opcao,opcao==='com'?'aprovado':'reprovado','Contato publicado na coleta Google.');\n  else v.pendencias.push({candidata:id,criterio:k,opcao});\n }\n for(const k of ['produtos','excluir','observacoes']) if(c[k]) v.pendencias.push({candidata:id,criterio:k,opcao:c[k]});\n for(const opcao of c.tipos) v.pendencias.push({candidata:id,criterio:'tipos',opcao});\n if(c.atendimento&&c.atendimento!=='priorizar_fisica') v.pendencias.push({candidata:id,criterio:'atendimento',opcao:c.atendimento});\n}\nv.qualificador_ativo=false;\nreturn [{json:v}];"
+      }
+    },
+    {
+      "id": "00000006-0000-4000-8000-000000000001",
+      "name": "Qualificação necessária",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.qualificador_ativo === true && $json.pendencias.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000007-0000-4000-8000-000000000001",
+      "name": "Qualificar fontes publicadas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        -160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOOGLE_QUALIFICADOR_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ \"Bearer \" + $env.GOOGLE_QUALIFICADOR_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({pedido_id:$json.pedido_id,execucao_id:$json.execucao_id,lote_id:$json.lote_id,revisao:$json.revisao,snapshot_sha256:$json.snapshot_sha256,criterios:$json.criterios,candidatas:$json.candidatas,pendencias:$json.pendencias}) }}",
+        "options": {
+          "timeout": 60000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "00000008-0000-4000-8000-000000000001",
+      "name": "Conferir retorno da qualificação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        -160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$('Preparar presença e perfil').first().json, r=$input.first().json;\nfor(const k of ['pedido_id','execucao_id','lote_id','revisao','snapshot_sha256']) if(r[k]!==v[k]) throw new Error('Resposta de qualificação divergente');\nif(!Array.isArray(r.evidencias)) throw new Error('Qualificação sem evidências');\nv.evidencias.push(...r.evidencias);\nreturn [{json:v}];"
+      }
+    },
+    {
+      "id": "00000009-0000-4000-8000-000000000001",
+      "name": "Preparar WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$input.first().json;\nv.numeros_whatsapp=[];\nif(v.verificacoes_requeridas.includes('whatsapp')) for(const e of v.candidatas) {\n if(/^[0-9]{10,11}$/.test(e.telefone||'')) v.numeros_whatsapp.push('55'+e.telefone);\n else v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'whatsapp',estado:'reprovado',motivo:'Número não informado ou sem formato válido na coleta.',fonte:'coleta_google',horario:new Date().toISOString()});\n}\nv.numeros_whatsapp=[...new Set(v.numeros_whatsapp)];\nreturn [{json:v}];"
+      }
+    },
+    {
+      "id": "00000010-0000-4000-8000-000000000001",
+      "name": "WhatsApp solicitado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1980,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.numeros_whatsapp.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000011-0000-4000-8000-000000000001",
+      "name": "Consultar registro no WhatsApp",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        -160
+      ],
+      "parameters": {
+        "resource": "chat-api",
+        "instanceName": "CONFIGURAR_INSTANCIA_EVOLUTION",
+        "numbers": "={{ $json.numeros_whatsapp.join(\",\") }}"
+      }
+    },
+    {
+      "id": "00000012-0000-4000-8000-000000000001",
+      "name": "Conferir retorno do WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        -160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$('Preparar WhatsApp').first().json, envelope=$input.first().json;\nif(envelope.success!==true||Object.hasOwn(envelope,'error')||!Array.isArray(envelope.data)) throw new Error('Resposta WhatsApp não confirmada');\nconst respostas=envelope.data;\nif(respostas.some(r=>!r||typeof r.exists!=='boolean'||typeof r.number!=='string')||new Set(respostas.map(r=>r.number)).size!==respostas.length) throw new Error('Resposta WhatsApp inválida ou ambígua');\nfor(const e of v.candidatas) if(/^[0-9]{10,11}$/.test(e.telefone||'')) {\n const r=respostas.find(r=>r.number==='55'+e.telefone);\n v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'whatsapp',contato:e.telefone,estado:r?(r.exists?'aprovado':'reprovado'):'nao_confirmado',motivo:r?'Consulta de registro no WhatsApp.':'Número sem confirmação no retorno.',fonte:'evolution_api',horario:new Date().toISOString()});\n}\nreturn [{json:v}];"
+      }
+    },
+    {
+      "id": "00000013-0000-4000-8000-000000000001",
+      "name": "Telefone fixo solicitado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.verificacoes_requeridas.includes('fixo') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000014-0000-4000-8000-000000000001",
+      "name": "Conferir telefone fixo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        -160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$input.first().json;\nfor(const e of v.candidatas) v.evidencias.push({candidata:e.google_place_id||('cnpj:'+e.cnpj),criterio:'telefone',opcao:'fixo',contato:e.telefone||'',estado:/^[0-9]{2}[2-5][0-9]{7}$/.test(e.telefone||'')?'aprovado':'reprovado',motivo:'Formato de telefone fixo brasileiro conferido.',fonte:'coleta_google',horario:new Date().toISOString()});\nreturn [{json:v}];"
+      }
+    },
+    {
+      "id": "00000015-0000-4000-8000-000000000001",
+      "name": "Responder evidências",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3080,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({pedido_id:$json.pedido_id,execucao_id:$json.execucao_id,lote_id:$json.lote_id,revisao:$json.revisao,snapshot_sha256:$json.snapshot_sha256,evidencias:$json.evidencias}) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-1",
+      "name": "Receber planejamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        800
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-google-planejamento",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-2",
+      "name": "Planilha · Preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const b=$input.first().json.body;\nconst planilha='17uQ8KmuboL808cvb9M9piIhZwCfHYDJRJ5uw2bUAxvU',aba=10151006;\nconst erro=()=>{throw new Error('Planejamento precisa de conferência.');};\nconst uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v);\nif(!b||typeof b!=='object'||Array.isArray(b)||Buffer.byteLength(JSON.stringify(b),'utf8')>128000||b.protocolo!==1||b.planilha_id!==planilha||b.aba_id!==aba||!['conferir','sincronizar'].includes(b.operacao))erro();\nconst c={...b,base:'https://sheets.googleapis.com/v4/spreadsheets/'+planilha,cabecalho:[\"Pedido ID\",\"Revisão\",\"Vendedor ID\",\"Vendedor\",\"Data\",\"Dia da semana\",\"Nicho\",\"Bairro\",\"Cidade\",\"UF\",\"Situação\",\"Atualizado em\",\"Versão\",\"Critérios de busca\"]};\nif(b.operacao==='sincronizar'){\n const linha=v=>Array.isArray(v)&&[13,14].includes(v.length)&&v.every(x=>typeof x==='string')&&v[0]===b.pedido_id;\n if(!uuid(b.pedido_id)||!uuid(b.envio_id)||!Number.isInteger(b.linha)||b.linha<2||b.linha>200000||!Number.isSafeInteger(b.revisao)||b.revisao<1||!Number.isSafeInteger(b.versao)||b.versao<1||!linha(b.celulas)||b.celulas[1]!==String(b.revisao)||b.celulas[12]!==String(b.versao)||!Array.isArray(b.anteriores)||!b.anteriores.every(linha))erro();\n c.intervalo=\"'Planejamento CRM'!A\"+b.linha+':'+(b.celulas.length===14?'N':'M')+b.linha;\n c.leitura=\"'Planejamento CRM'!A\"+b.linha+':N'+b.linha;\n}\nreturn [{json:c}];"
+      }
+    },
+    {
+      "id": "planilha-3",
+      "name": "Planilha · Ler metadados",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        800
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.base + '?fields=spreadsheetId,sheets(properties(sheetId,title,gridProperties))' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-4",
+      "name": "Planilha · Conferir destino",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Preparar').first().json,m=$input.first().json;\nif(m.spreadsheetId!==c.planilha_id||!Array.isArray(m.sheets))throw new Error('Arquivo divergente.');\nconst a=m.sheets.find(s=>s&&s.properties&&s.properties.sheetId===c.aba_id);\nconst g=a&&a.properties.gridProperties;\nif(!a||a.properties.title!=='Planejamento CRM'||!g||!Number.isInteger(g.rowCount)||g.rowCount<1||g.columnCount<14)throw new Error('Aba divergente.');\nreturn [{json:{...c,expandir:c.operacao==='sincronizar'&&g.rowCount<c.linha,ampliar:Math.max(0,(c.linha||0)-g.rowCount)}}];"
+      }
+    },
+    {
+      "id": "planilha-5",
+      "name": "Planilha · Ler cabeçalho",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        1010
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.base + '/values/' + encodeURIComponent(\"'Planejamento CRM'!A1:N1\") + '?valueRenderOption=UNFORMATTED_VALUE' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-6",
+      "name": "Planilha · Validar cabeçalho",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        1010
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Conferir destino').first().json,r=$input.first().json;\nif(JSON.stringify(r.values)!==JSON.stringify([c.cabecalho]))throw new Error('Cabeçalho divergente.');\nreturn [{json:c}];"
+      }
+    },
+    {
+      "id": "planilha-7",
+      "name": "Planilha · Apenas conferir",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        1010
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-6",
+              "leftValue": "={{ $json.operacao === 'conferir' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-8",
+      "name": "Planilha · Confirmar acesso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        1010
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$input.first().json;return [{json:{protocolo:1,estado:'conferido',planilha_id:c.planilha_id,aba_id:c.aba_id,cabecalho:c.cabecalho}}];"
+      }
+    },
+    {
+      "id": "planilha-9",
+      "name": "Planilha · Expandir grade",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        1010
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-8",
+              "leftValue": "={{ $json.expandir }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-10",
+      "name": "Planilha · Ampliar grade",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        1220
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.base + ':batchUpdate' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({requests:[{appendDimension:{sheetId:$json.aba_id,dimension:'ROWS',length:$json.ampliar}}]}) }}",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-11",
+      "name": "Planilha · Ler linha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        1220
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '?includeGridData=true&ranges=' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '&fields=' + encodeURIComponent('spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue))))') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-12",
+      "name": "Planilha · Avaliar linha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        1220
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json;\nfunction lerCelulas(m,c){\n const erro=()=>{throw new Error('Linha precisa de conferência; preserve conteúdo manual.');};\n if(!m||m.spreadsheetId!==c.planilha_id||!Array.isArray(m.sheets))erro();\n const abas=m.sheets.filter(s=>s&&s.properties&&s.properties.sheetId===c.aba_id);\n if(abas.length!==1||abas[0].properties.title!=='Planejamento CRM'||!Array.isArray(abas[0].data)||abas[0].data.length!==1)erro();\n const g=abas[0].data[0];\n if(!g||(g.startRow||0)!==c.linha-1||(g.startColumn||0)!==0)erro();\n const rows=g.rowData===undefined?[]:g.rowData;\n if(!Array.isArray(rows)||rows.length>1||rows.some(r=>!r||typeof r!=='object'||Array.isArray(r)))erro();\n const cells=rows[0]?.values===undefined?[]:rows[0].values;\n if(!Array.isArray(cells)||cells.length>14)erro();\n return cells.map(cell=>{\n  if(!cell||typeof cell!=='object'||Array.isArray(cell))erro();\n  const v=cell.userEnteredValue;\n  if(v===undefined)return '';\n  if(!v||typeof v!=='object'||Array.isArray(v))erro();\n  const keys=Object.keys(v);\n  if(keys.length===0)return '';\n  if(keys.length!==1||keys[0]!=='stringValue'||typeof v.stringValue!=='string')erro();\n  return v.stringValue;\n });\n}\n\nconst valores=lerCelulas($input.first().json,c);\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nconst atual=normalizar(valores);\nconst igual=(a,b)=>JSON.stringify(normalizar(a))===JSON.stringify(normalizar(b));\nif(atual.some(v=>v!=='')&&!igual(atual,c.celulas)&&!c.anteriores.some(a=>igual(atual,a)))throw new Error('Conteúdo manual ou pedido divergente.');\nreturn [{json:{...c,gravar:!igual(atual,c.celulas),values:valores.length?[valores]:[]}}];"
+      }
+    },
+    {
+      "id": "planilha-13",
+      "name": "Planilha · Precisa gravar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        1220
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-12",
+              "leftValue": "={{ $json.gravar }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "planilha-14",
+      "name": "Planilha · Gravar linha",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        1220
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.base + '/values/' + encodeURIComponent($json.intervalo) + '?valueInputOption=RAW' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({range:$json.intervalo,majorDimension:'ROWS',values:[$json.celulas]}) }}",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-15",
+      "name": "Planilha · Relê gravação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        1430
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Planilha · Validar cabeçalho').first().json.base + '?includeGridData=true&ranges=' + encodeURIComponent($('Planilha · Validar cabeçalho').first().json.leitura) + '&fields=' + encodeURIComponent('spreadsheetId,sheets(properties(sheetId,title),data(startRow,startColumn,rowData(values(userEnteredValue))))') }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "options": {
+          "timeout": 18000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "planilha-16",
+      "name": "Planilha · Confirmar gravação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        1430
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Planilha · Validar cabeçalho').first().json;\nfunction lerCelulas(m,c){\n const erro=()=>{throw new Error('Linha precisa de conferência; preserve conteúdo manual.');};\n if(!m||m.spreadsheetId!==c.planilha_id||!Array.isArray(m.sheets))erro();\n const abas=m.sheets.filter(s=>s&&s.properties&&s.properties.sheetId===c.aba_id);\n if(abas.length!==1||abas[0].properties.title!=='Planejamento CRM'||!Array.isArray(abas[0].data)||abas[0].data.length!==1)erro();\n const g=abas[0].data[0];\n if(!g||(g.startRow||0)!==c.linha-1||(g.startColumn||0)!==0)erro();\n const rows=g.rowData===undefined?[]:g.rowData;\n if(!Array.isArray(rows)||rows.length>1||rows.some(r=>!r||typeof r!=='object'||Array.isArray(r)))erro();\n const cells=rows[0]?.values===undefined?[]:rows[0].values;\n if(!Array.isArray(cells)||cells.length>14)erro();\n return cells.map(cell=>{\n  if(!cell||typeof cell!=='object'||Array.isArray(cell))erro();\n  const v=cell.userEnteredValue;\n  if(v===undefined)return '';\n  if(!v||typeof v!=='object'||Array.isArray(v))erro();\n  const keys=Object.keys(v);\n  if(keys.length===0)return '';\n  if(keys.length!==1||keys[0]!=='stringValue'||typeof v.stringValue!=='string')erro();\n  return v.stringValue;\n });\n}\n\nconst m=$input.first().json;\nconst avaliada=$('Planilha · Avaliar linha').first().json;\nconst valores=avaliada.gravar?lerCelulas(m,c):avaliada.values?.[0];\nconst normalizar=l=>{const a=[...l];while(a.length&&a[a.length-1]==='')a.pop();return a;};\nif(!Array.isArray(valores)||JSON.stringify(normalizar(valores))!==JSON.stringify(normalizar(c.celulas)))throw new Error('Gravação não confirmada.');\nreturn [{json:{protocolo:1,estado:'sincronizado',planilha_id:c.planilha_id,aba_id:c.aba_id,pedido_id:c.pedido_id,envio_id:c.envio_id,linha:c.linha,revisao:c.revisao,versao:c.versao,celulas:c.celulas}}];"
+      }
+    },
+    {
+      "id": "planilha-17",
+      "name": "Responder planejamento",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        80,
+        1430
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const v=$input.first().json;\nfor(const p of v.pendencias) v.evidencias.push({...p,estado:'nao_confirmado',motivo:['site','email'].includes(p.criterio)?'A coleta não comprova este critério. Verificação complementar pendente.':'Qualificador de fontes públicas pendente de configuração.',fonte:'qualificacao_pendente',horario:new Date().toISOString()});\nreturn [{json:v}];"
+      },
+      "id": "google-criterios-pendentes",
+      "name": "Registrar critérios pendentes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1550,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://configurar-evolution.invalid/instance/connectionState/CONFIGURAR_INSTANCIA",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "evolutionApi",
+        "options": {
+          "timeout": 15000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "google-evolution-conexao",
+      "name": "Consultar conexão Evolution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2050,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const r=$input.first().json;\nif(!Number.isInteger(r.statusCode)||r.statusCode<200||r.statusCode>=300||r.body?.instance?.state!=='open') throw new Error('Instância WhatsApp desconectada. Preserve o lote.');\nreturn [{json:$('Preparar WhatsApp').first().json}];"
+      },
+      "id": "google-evolution-conferir",
+      "name": "Conferir conexão Evolution",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2250,
+        -100
+      ]
+    }
+  ],
+  "connections": {
+    "Receber lote": {
+      "main": [
+        [
+          {
+            "node": "Validar pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar pedido": {
+      "main": [
+        [
+          {
+            "node": "Verificar dados do Google",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar dados do Google": {
+      "main": [
+        [
+          {
+            "node": "Conferir dados do Google",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar presença e perfil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir dados do Google": {
+      "main": [
+        [
+          {
+            "node": "Preparar presença e perfil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar presença e perfil": {
+      "main": [
+        [
+          {
+            "node": "Qualificação necessária",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualificação necessária": {
+      "main": [
+        [
+          {
+            "node": "Qualificar fontes publicadas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar critérios pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualificar fontes publicadas": {
+      "main": [
+        [
+          {
+            "node": "Conferir retorno da qualificação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir retorno da qualificação": {
+      "main": [
+        [
+          {
+            "node": "Preparar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp solicitado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp solicitado": {
+      "main": [
+        [
+          {
+            "node": "Consultar conexão Evolution",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telefone fixo solicitado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar registro no WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Conferir retorno do WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir retorno do WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Telefone fixo solicitado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telefone fixo solicitado": {
+      "main": [
+        [
+          {
+            "node": "Conferir telefone fixo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder evidências",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir telefone fixo": {
+      "main": [
+        [
+          {
+            "node": "Responder evidências",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receber planejamento": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Preparar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Preparar": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ler metadados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ler metadados": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Conferir destino",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Conferir destino": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ler cabeçalho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ler cabeçalho": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Validar cabeçalho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Validar cabeçalho": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Apenas conferir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Confirmar acesso": {
+      "main": [
+        [
+          {
+            "node": "Responder planejamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ampliar grade": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ler linha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Ler linha": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Avaliar linha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Avaliar linha": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Precisa gravar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Gravar linha": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Relê gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Relê gravação": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Confirmar gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Confirmar gravação": {
+      "main": [
+        [
+          {
+            "node": "Responder planejamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Apenas conferir": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Confirmar acesso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planilha · Expandir grade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Expandir grade": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Ampliar grade",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planilha · Ler linha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planilha · Precisa gravar": {
+      "main": [
+        [
+          {
+            "node": "Planilha · Gravar linha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planilha · Confirmar gravação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar critérios pendentes": {
+      "main": [
+        [
+          {
+            "node": "Preparar WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar conexão Evolution": {
+      "main": [
+        [
+          {
+            "node": "Conferir conexão Evolution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir conexão Evolution": {
+      "main": [
+        [
+          {
+            "node": "Consultar registro no WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {}
+}

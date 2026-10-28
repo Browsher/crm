@@ -1,6 +1,9 @@
 'use client'
 
 import { useActionState } from 'react'
+import { Input } from '@/src/components/ui/input'
+import { Button } from '@/src/components/ui/button'
+import { Alert } from '@/src/components/ui/alert'
 import { trocarSenhaAcao, type EstadoTroca } from './acao'
 
 const inicial: EstadoTroca = { erro: null }
@@ -11,28 +14,27 @@ export function Formulario() {
     <form action={acao} className="flex flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm">
         Senha atual
-        <input name="senhaAtual" type="password" autoComplete="current-password" required className="rounded border px-3 py-2" />
+        <Input name="senhaAtual" type="password" autoComplete="current-password" required />
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Nova senha
-        <input
+        <Input
           name="senhaNova"
           type="password"
           autoComplete="new-password"
           required
           minLength={8}
           maxLength={128}
-          className="rounded border px-3 py-2"
         />
       </label>
       {estado.erro && (
-        <p role="alert" className="text-sm text-red-700">
+        <Alert variant="danger">
           {estado.erro}
-        </p>
+        </Alert>
       )}
-      <button type="submit" disabled={pendente} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
+      <Button type="submit" disabled={pendente}>
         {pendente ? 'Trocando…' : 'Trocar senha'}
-      </button>
+      </Button>
     </form>
   )
 }

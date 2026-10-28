@@ -6,6 +6,8 @@ import { Button } from '@/src/components/ui/button'
 import { importarAcao, type EstadoImportar } from './acao'
 import { EtapasImportacao, type EtapaImportacao } from './etapas-importacao'
 import { RelatorioImportacao } from './relatorio'
+import { Input } from '@/src/components/ui/input'
+import { Textarea } from '@/src/components/ui/textarea'
 import styles from './importar.module.css'
 
 const inicial: EstadoImportar = { erro: null, relatorio: null, inseridas: null, grupoId: null, conferencia: null }
@@ -59,7 +61,7 @@ export function FormularioImportar() {
 
   const totalAceitas = estado.relatorio ? estado.relatorio.novas + estado.relatorio.jaCadastradas : 0
 
-  return <form action={acao} className={styles.formulario} onReset={e => e.preventDefault()}>
+  return <form aria-busy={pendente} action={acao} className={styles.formulario} onReset={e => e.preventDefault()}>
     {/* React pode resetar campos não controlados após uma action bem-sucedida.
         Conferir também é sucesso: impedir esse reset mantém o File para confirmar.
         O input nunca desmonta ao voltar. Apenas reiniciar limpa explicitamente. */}
@@ -76,7 +78,7 @@ export function FormularioImportar() {
           <p>Preencha o modelo Excel e envie o arquivo diretamente. Se preferir, o CSV UTF-8 continua aceito.</p>
           <label className={styles.campo}>
             Nome do grupo
-            <input
+            <Input
               name="nome"
               value={nome}
               maxLength={100}
@@ -91,7 +93,7 @@ export function FormularioImportar() {
             ['descricao', 'Resumo da lista', 500], ['origem', 'Origem dos dados', 500], ['criterios', 'Critérios usados', 2000],
           ] as const).map(([campo, rotulo, limite]) => <label key={campo} className={styles.campo}>
             {rotulo}
-            <textarea name={campo} aria-label={rotulo} value={metadados[campo]} required={campo !== 'criterios'} rows={campo === 'criterios' ? 3 : 2}
+            <Textarea name={campo} aria-label={rotulo} value={metadados[campo]} required={campo !== 'criterios'} rows={campo === 'criterios' ? 3 : 2}
               aria-describedby={`limite-${campo}`} onChange={evento => {
                 setMetadados(anterior => ({ ...anterior, [campo]: evento.target.value }))
                 iniciarOperacao()
@@ -100,7 +102,7 @@ export function FormularioImportar() {
           </label>)}
           <label className={styles.arquivo}>
             Arquivo Excel ou CSV
-            <input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={iniciarOperacao} />
+            <Input ref={inputRef} name="arquivo" type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" required={etapa !== 'concluir'} onChange={iniciarOperacao} />
           </label>
           <details className={styles.orientacoes}>
             <summary>Modelo e orientações de preenchimento</summary>
@@ -130,7 +132,7 @@ export function FormularioImportar() {
           <p>{estado.inseridas} {estado.inseridas === 1 ? 'empresa nova' : 'empresas novas'}.</p>
           <p>{totalAceitas} {totalAceitas === 1 ? 'empresa no grupo' : 'empresas no grupo'}.</p>
           <div className={styles.acoes}>
-            {estado.grupoId && <Button asChild><Link href={`/empresas/grupos/${estado.grupoId}`}>Ver grupo</Link></Button>}
+            {estado.grupoId && <Button asChild><Link href={`/empresas/grupos/${estado.grupoId}`}>Ver lista</Link></Button>}
             <Button asChild><Link href="/empresas">Ver empresas</Link></Button>
             <Button type="button" variant="outline" onClick={reiniciar}>Importar outro arquivo</Button>
           </div>

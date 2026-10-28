@@ -1,0 +1,99 @@
+# Busca de empresas
+
+## Ativação
+
+1. Aplicar migrações pendentes pelo procedimento normal de implantação do CRM. A aquisição nasceu em 0038/0039; a integração atual inclui 0040–0049. A 0043 acrescenta consulta pessoal, a 0044 amplia filtros e protege documentos de sócios, a 0046 registra a Casa dos Dados e bloqueia repetição na base global, a 0047 valida os filtros adicionais e a 0049 habilita a inclusão automática.
+2. Configurar CASA_DOS_DADOS_API_KEY no ambiente do servidor com a chave da Casa dos Dados. Nunca usar prefixo NEXT_PUBLIC_, commitar a chave ou informar em logs.
+3. Como gestor, abrir Empresas → Busca de empresas e definir limite diário por vendedor. Zero é o padrão. O limite do CRM não consulta nem representa o saldo de créditos da conta.
+4. Como vendedor, abrir Prospecção → Banco de empresas → Buscar novas empresas. Google tem o acesso Planejar buscas na mesma central.
+
+Em 27/10/2026, a migração 0046 foi aplicada na Railway após backup criptografado conferido. Uma consulta real autorizada retornou e importou uma empresa para Junior. O saldo aferido passou de 2.000 para 1.999 créditos. A validação de entrega usou as funções nativas com identidade RLS do vendedor; isso não equivale a uma jornada autenticada no navegador online. O limite temporário foi restaurado para zero ao terminar esse ensaio; depois o usuário liberou 100 por dia para cada um dos três vendedores. A publicação do novo cliente é registrada em [produção Vercel](producao-vercel.md).
+
+## Uso
+
+O formulário tem seis cartões: atividade/nome, localização, perfil, capital/abertura, contatos e resultados. Somente o primeiro inicia aberto. Palavras, CNAEs e naturezas aceitam múltiplos códigos separados por vírgula. O formulário novo tem listas independentes de CNAEs principais e secundários; ambos são opcionais. O histórico antigo conserva a seleção de uma lista única em principal/secundária. CNAEs e naturezas jurídicas usam os códigos diretamente, sem consultas auxiliares. As regiões são brasileiras, em Estado > Cidade > Bairro; não há CEP na aquisição. Sem região selecionada, usa Brasil; sem cidade, o estado; sem bairro, a cidade inteira.
+
+Situação inicia em ativa e pode ser alterada, assim como portes, matriz/filial, capital, abertura, DDD e contatos. O filtro de Simples Nacional permite exigir optantes ou excluir optantes. Os demais regimes e o contato telefone OU email não têm equivalente nesta API. MEI deve ser pesquisado separado dos outros portes. Excluir optantes do MEI não pode coexistir com exigir MEI, assim como excluir Simples não pode coexistir com exigir optantes do Simples. Capital mínimo/máximo aceita reais inteiros, sem centavos, conforme o contrato do fornecedor. Quantidade é de 1 a 100, dentro do limite diário; a página começa em 1 e o servidor deriva o deslocamento. Sugerir nome usa Nicho · Bairro · Cidade/UF. A pré-contagem foi retirada: não há endpoint gratuito de contagem documentado neste contrato.
+
+Abertura permite período de datas ou últimos dias (inteiro positivo). Ao trocar o modo, os valores anteriores são apagados; não se combinam período absoluto e relativo. O número de dias fica salvo junto da data da consulta. Selecionar Últimos dias sem informar a quantidade impede o envio no formulário.
+
+As exclusões do MEI e do Simples têm datas opcionais de exclusão, com início e/ou fim. São exibidas quando a exclusão é marcada e limpas ao desmarcar. A aplicação e o banco recusam datas inválidas, períodos invertidos, datas sem sua exclusão ou combinações contraditórias, antes da reserva/cota e do HTTP. Não há chamada extra para resolver CNAEs nem para combinar resultados.
+
+A API recebe listas globais de UF, município e bairro, sem pares entre eles. Só combinações que preservam exatamente as regiões selecionadas são enviadas. Estados inteiros, cidades no mesmo estado e combinações retangulares com os mesmos bairros são aceitos. Regiões cruzadas ou bairros diferentes por cidade são recusados antes da cota e da rede, com orientação para separar as pesquisas.
+
+A exclusão de empresas visualizadas na conta do fornecedor é fixa. Na importação, o banco confere CNPJ, telefone principal, telefones cadastrais e email contra a base global e contra o lote. A base global privada não é enviada ao fornecedor. Essa rechecagem ocorre com bloqueio transacional para impedir corrida entre importações e outros cadastros.
+
+Depois de salvar os resultados, as empresas válidas são incluídas automaticamente na lista de prospecção do vendedor. Não é necessário selecionar nem importar manualmente. Empresas sem telefone válido ou com CNPJ/contato repetido permanecem apenas na conferência. A rechecagem ocorre no banco, sob as mesmas travas e regras da inclusão. CNPJ.biz histórico conserva o contrato da seleção explícita. A operação não cria posse, reserva, negociação ou cliente na Carteira; use Prospectar esta lista para iniciar o atendimento.
+
+Salvar a resposta paga e incluir são transações separadas. Se a inclusão falhar ou estiver pausada, o resultado permanece disponível. Concluir inclusão retoma a mesma busca e lista usando apenas os dados persistidos, sem HTTP ao fornecedor ou nova cobrança. Repetir o UUID de uma busca não repete a aquisição. Uma consulta sem empresas válidas não cria lista vazia. Históricos parcialmente incluídos também podem concluir na mesma lista; o banco registra a conclusão automática separadamente da existência do grupo.
+
+A ficha mostra situação, porte, abertura, endereço e detalhes empresariais da origem, separados do cadastro manual. O complemento conserva a primeira consulta importada. O endereço recebido continua visível mesmo sem correspondência na base de CEP. Na consulta pessoal, a localização pode vir dos dados cadastrais ou da região da coleta; a consulta legada mantém sua base de CEP.
+
+Vendedores veem nome e função dos sócios. Documentos e representantes ficam em tabela própria com RLS de gestor e componente servidor exclusivo do gestor. O JSON de buscas e as fichas compartilhadas são sanitizados no banco, antes de chegarem ao navegador.
+
+## Google
+
+Planejar buscas abre o planejamento semanal, com edição de dias futuros, critérios opcionais e espelhamento. Consultar empresas do Google abre a consulta pessoal com origem Google. Execução, planilha, três lotes de até 50 candidatas e regra de sexta às 17h estão em [operação do agente](agente-google-crm.md). Listas compartilhadas antigas continuam no caminho legado explícito.
+
+Localizar empresas reúne entregas Google, importações próprias do banco e carteira existente, sem repetir empresas. Origem é escolhida na central. Nicho restringe bairros disponíveis, Mais filtros abre o cartão adicional e Enter recolhe os filtros. Situação aparece em tag por empresa. A próxima reserva conserva o escopo pessoal e usa o contexto atômico da fila.
+
+## Limites e falhas
+
+Cota por vendedor em empresas solicitadas no dia de São Paulo. A reserva acontece antes da rede e permanece em falhas, porque a cobrança externa pode ter ocorrido. Não há retry automático. O UUID da operação impede nova chamada ao repetir a mesma submissão.
+
+Busca sem confirmação permanece no histórico. Recarregar consulta só lê o banco. Confira a conta do fornecedor antes de iniciar outra consulta quando houver timeout ou falha de persistência. Pausa impede novas consultas e importações; resultado já solicitado pode ser preservado. Mudança de papel e desativação são verificadas pelo banco.
+
+O histórico do vendedor contém somente suas buscas; o gestor vê as últimas 50 de todos, critérios, retornos e grupo criado. A consulta pessoal pagina 20 empresas únicas e autorizadas. Não há rotina de limpeza automática de buscas nesta entrega.
+
+## Contrato e testes
+
+Contrato atual: [Pesquisa avançada Casa dos Dados](https://docs.casadosdados.com.br/pesquisa-avan%C3%A7ada-de-empresas-16579062e0), consultado em 27/10/2026. POST /v5/cnpj/pesquisa?tipo_resultado=completo. O resultado simples não contém o conjunto de contatos necessário. O cliente não usa mais CNPJ.biz para novas consultas; dados históricos e o normalizador de fixtures legadas são preservados.
+
+A resposta completa real confirmou contato_telefonico (ddd/numero/completo), contato_email (email/valido), situacao_cadastral.situacao_atual, data_abertura com horário, endereço e quadro societário. A normalização remove dados não usados, ignora emails marcados inválidos e jamais inclui mei.cpf no DTO. Não se infere Lucro Real de uma empresa não optante pelo Simples. A devolução de telefone/email não comprova WhatsApp ou interesse comercial.
+
+Cliente HTTP com timeout de 25 segundos para a operação, limite de resposta de 2 MB, sem redirects, cache ou retries. Chave enviada no header api-key somente para https://api.casadosdados.com.br. Telefones e email não são prova de canal validado ou interesse comercial.
+
+Testes unitários cobrem contrato HTTP, filtros e idempotência do serviço; integração cobre RLS, concorrência, pausas e importação; jornada no navegador cobre as duas fontes, conferência, ficha e pausa do gestor. Harness E2E zera CASA_DOS_DADOS_API_KEY e CNPJ_BIZ_API_KEY herdadas e aceita apenas chave fictícia e banco/mock loopback. Email, disparos, campanhas e assinaturas de catálogo permanecem adiados.
+
+Na ficha pública, telefones ficam ocultos até haver posse ou reserva vigente. O gestor tem leitura administrativa. O histórico de uma busca própria preserva os dados obtidos naquela consulta.
+
+## Validação da entrega
+
+Em 2026-10-22, no checkout limpo do commit 2e2f155: 1.326 testes unitários passaram, um ignorado; 604 de integração passaram, um ignorado. Lint, typecheck e checagem de migrações passaram. No checkout de trabalho, build E2E e 11 jornadas afetadas passaram, incluindo Google, importação CNPJ.biz, pausa do gestor, Prospecção, reserva e Carteira. Nenhum crédito externo usado. As falhas prévias de prosa em CONTINUIDADE-CODEX.md e lint em .artifact-work são de arquivos locais fora da branch e foram preservadas.
+
+Jornada da feature: npm run test:e2e -- --sem-build tests/e2e/busca-empresas.spec.ts, após npm run build:e2e.
+
+
+## Validação Casa dos Dados em 27/10/2026
+
+A operação persistente aa837162-0f27-41b9-b4a9-8843238ef64b solicitou uma empresa com CNAE principal 4755502, ATIVA, Brás, São Paulo/SP e telefone disponível. Uma chamada HTTP completa retornou uma empresa, um telefone, um email e dois sócios. O corpo real foi guardado criptografado e normalizado sem refazer a compra. A importação criou uma empresa e um vínculo em grupo próprio do Junior; a repetição criou zero empresas e manteve o grupo. O gestor vê a busca e os dois sócios protegidos; os outros dois vendedores não veem a busca nem a empresa na consulta pessoal. Junior recebe somente nome e função dos sócios.
+
+Hashes dos 43 cadastros anteriores, quatro usuários, 11 linhas de fila, duas negociações, uma venda, dois grupos e 43 vínculos anteriores coincidiram após a operação. O limite de Junior voltou ao valor inicial zero; os demais não foram habilitados. O saldo aferido após a única compra foi 1.999 créditos. A ativação de novas buscas segue os limites definidos pelo gestor, separada do saldo do fornecedor.
+
+
+A fonte50643b6 foi publicada em dpl_2LtW8SmkTWP5EAffazDsNWkq6tLr, no endereço
+estável do CRM. O [CI final do código publicado](https://github.com/Browsher/crm/actions/runs/40519067373)
+aprovou 1.682 unitários, 695 integrações e 69 jornadas. Revisão independente
+concluída sem achados pendentes. Configuração sensível Production e conferência
+online estão detalhadas em [produção Vercel](producao-vercel.md).
+
+
+## Publicação dos filtros adicionais em 27/10/2026
+
+A migração 0047 foi aplicada e conferida, preservando os dados e as três cotas 100.
+O deployment dpl_DPBxEPjESLJTsgrdD8E2h7vbYtz5 publica a fonte 153e296 no endereço
+estável. [CI aprovado](https://github.com/Browsher/crm/actions/runs/40531948103):
+1.711 unitários, 713 integrações e 72 jornadas. Revisão independente sem pendências.
+Testes e implantação não consumiram créditos. Limitações da observação online
+estão no [registro de produção](producao-vercel.md).
+
+
+## Últimas buscas no Banco de empresas
+
+A seção Últimas buscas mostra até11empresas individuais encontradas nas consultas próprias concluídas, mesmo quando a inclusão ainda está pendente. Usa o snapshot da consulta mais recente de cada CNPJ, em ordem de recebimento. Não mistura buscas alheias nem consultas falhas/em processamento. O histórico de pesquisas, incluindo vazio/falha, continua disponível por Ver histórico de buscas em Dialog.
+
+Três cards quadrados no computador, dois na faixa intermediária e um no celular. Desktop amplo mostra nome/grupo maiores (até80/120caracteres), nicho da busca, endereço, porte, abertura e indicadores de telefone/email. Celular mantém36/40caracteres. Textos continuam em uma linha com reticências. WhatsApp não é presumido. Ver empresa abre só a empresa correspondente, usando dados persistidos e controle de acesso da busca; documentos dos sócios continuam exclusivos do gestor. Os indicadores não enviam contatos efetivos para o resumo dos11cards.
+
+O último Ver todas buscas mantém /fila/localizar?origem=banco, com empresas já incluídas. A [0049](../db/0049.md) habilita o modo automático sem novos privilégios; a consulta pessoal da [0048](../db/0048.md) continua preservada. Leitura de cards e histórico não consulta o fornecedor.
+
+Em27/10/2026, a0049 e a fonte473f0df foram publicadas após CI integral, revisão independente corrigida e backup conferido. A busca Empresas · Brasil já paga do Junior teve suas5empresas incluídas sem nova consulta; repetição criou zero. Escopo pessoal e cotas100 preservados. Detalhes no [registro de produção](producao-vercel.md#últimas-buscas-e-inclusão-automática-27102026).

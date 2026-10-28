@@ -8,7 +8,7 @@ vi.mock('@/src/features/prospeccao/repositorio', () => ({ listarOpcoes: async ()
 vi.mock('@/src/features/fila/consulta', () => ({ lerMinhasEmpresas: mocks.minhas }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {} }) }))
 vi.mock('../acoes', () => ({ agirNaFilaAcao: vi.fn() }))
-import Pagina from './page'
+import Pagina from './legado'
 
 const empresa = { id: '00000000-0000-4000-8000-000000000001', razaoSocial: 'Empresa recente', nomeFantasia: null, cnaePrincipal: null, cidade: null, uf: null, bairro: null, disponibilidade: 'outro_vendedor' }
 beforeEach(() => {

@@ -4,11 +4,18 @@
 .pagina h2 { font-size: 1.125rem; font-weight: 600; }
 .cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
-.indicador, .card { border: 1px solid var(--ui-border); border-radius: .75rem; background: var(--ui-surface); padding: 1.25rem; min-width: 0; }
+.indicador, .card { border:1px solid var(--border); border-radius:8px; background:var(--background); padding:24px; min-width:0; }
 .indicador h2 { font-size: .875rem; font-weight: 500; }
 .indicador > strong { display: block; font-size: 2rem; font-weight: 650; margin: .75rem 0 .25rem; font-variant-numeric: tabular-nums; }
 .indicador p { font-size: .75rem; }
-.secao { margin-top: 2rem; }
+.paineis { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr); gap:24px; margin-top:24px; align-items:start; }
+.secao { min-width:0; padding:24px; border:1px solid var(--border); border-radius:8px; background:var(--background); }
+.secao > p, .secao .cabecalho p { margin-top:6px; font-size:13px; }
+.tabela { table-layout:fixed; margin-top:24px; }
+.tabela th { white-space:normal; font-size:11px; color:var(--muted-foreground); }
+.tabela td { white-space:normal; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; padding:16px 8px; }
+.tabela th:first-child { width:30%; }
+.tabela .avatar { width:28px; height:28px; background:var(--success-background); color:var(--success); border:0; }
 .grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
 .vendedor { display: flex; align-items: center; gap: .75rem; }
 .vendedor h3 { font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -16,12 +23,11 @@
 .numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1.5rem; }
 .numeros dt { font-size: .75rem; color: var(--ui-muted-foreground); }
 .numeros dd { font-size: 1.5rem; font-weight: 600; margin-top: .25rem; font-variant-numeric: tabular-nums; }
-.alerta { color: #b45309; }
-:global([data-theme='dark']) .alerta { color: #fbbf24; }
+.alerta { color:var(--warning); }
 .contatos { border-top: 1px solid var(--ui-border); margin-top: 1.25rem; padding-top: 1rem; display: flex; justify-content: space-between; gap: .5rem; font-size: .875rem; }
 .contatos strong { color: var(--ui-foreground); }
-.atividade { list-style: none; margin-top: 1rem; border: 1px solid var(--ui-border); border-radius: .75rem; overflow: hidden; }
-.atividade li { padding: 1rem 1.25rem; display: flex; justify-content: space-between; gap: 1rem; background: var(--ui-surface); }
+.atividade { list-style:none; margin-top:24px; }
+.atividade li { padding:16px 0; display:grid; gap:8px; background:var(--background); }
 .atividade li + li { border-top: 1px solid var(--ui-border); }
 .atividade li > div { min-width: 0; overflow-wrap: anywhere; }
 .atividade span, .atividade time { color: var(--ui-muted-foreground); font-size: .75rem; }
@@ -29,6 +35,7 @@
 .vazio { border: 1px dashed var(--ui-border); border-radius: .75rem; padding: 1.5rem; margin-top: 1rem; }
 .vazio h3 { font-weight: 600; }
 .atalhos { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+@media (max-width:1100px) { .paineis { grid-template-columns:minmax(0,1fr); } }
 @media (max-width: 1000px) { .resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
   .pagina { padding: 1rem; }
