@@ -29,7 +29,7 @@ export default async function PaginaFicha({ params, searchParams }: {
   if (!r.ok) {
     return (
       <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6">
-        <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{textoDoMotivo(r.motivo)}</p>
+        <Alert variant="danger"><AlertDescription>{textoDoMotivo(r.motivo)}</AlertDescription></Alert>
       </main>
     )
   }

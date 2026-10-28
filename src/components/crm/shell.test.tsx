@@ -68,3 +68,14 @@ test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   const saida = html.match(/<form\b[^>]*action="\/sair"[^>]*>([\s\S]*?)<\/form>/)?.[1] ?? ''
   expect(saida.replace(/<[^>]+>/g, '')).toBe('Sair')
 })
+
+
+test('design compartilha navegação e tema do gestor sem expor galeria ao vendedor', () => {
+  const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="design">Galeria visual</ShellCrm>)
+  expect(html).toContain('Tema do design system')
+  expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/design"')
+  expect(html).toContain('href="/usuarios"')
+  expect(html).toContain('Design system')
+  const vendedor = renderToStaticMarkup(<ShellCrm nome="Bia" papel="vendedor" area="carteira">Carteira</ShellCrm>)
+  expect(vendedor).not.toContain('href="/design"')
+})

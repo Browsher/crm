@@ -23,10 +23,10 @@ async function navegar(page: Page, nome: string) {
 
 async function capturar(page: Page, nome: string) {
   await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth))).toBe(0)
-  await page.screenshot({ path: `test-results/redesign-${nome}.png`, fullPage: true, animations: 'disabled' })
+  await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-4-captures/redesign-${nome}.png`, fullPage: true, animations: 'disabled' })
 }
 
-test('jornada contínua do vendedor preserva tema, filtros e rascunho entre layouts', async ({ page }) => {
+test('galeria compartilha shell e tema sem perder rascunho no atendimento: jornada do vendedor', async ({ page }) => {
   test.setTimeout(90_000)
   await entrar(page, 'redesigne2e', '/meu-dia')
   await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN }).click()
@@ -99,6 +99,14 @@ test('jornada do gestor mantém navegação, grupos ativos e portal escuro', asy
   await page.keyboard.press('Escape')
   await expect(abrir).toBeFocused()
   await capturar(page, 'usuarios-desktop-dark')
+  await navegar(page, 'Design system')
+  await expect(page.getByLabel('Tema do design system')).toHaveValue('dark')
+  await expect(page.getByRole('navigation', { name: 'Navegação do CRM' }).locator('[aria-current=page]')).toHaveAttribute('href', '/design')
+  await expect(page.getByRole('table', { name: 'Empresas de demonstração' })).toBeVisible()
+  await capturar(page, 'galeria-desktop-dark')
+  await navegar(page, 'Usuários')
+  await expect(page.getByLabel('Tema de Usuários')).toHaveValue('dark')
+  await expect(page.getByRole('button', { name: 'Novo usuário', exact: true })).toHaveCSS('min-height', '40px')
   await navegar(page, 'WhatsApp')
   await expect(page.getByLabel('Tema do WhatsApp')).toHaveValue('dark')
   await page.getByRole('link', { name: 'Configurar vendedores' }).click()
@@ -128,7 +136,9 @@ for (const [rota, tema] of [['/carteira', 'Tema da Carteira'], ['/meu-dia', 'Tem
     await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
     await expect(page).toHaveURL(/nome=Redesign/)
     await expect(page.getByLabel(tema)).toHaveValue('dark')
-    await page.getByRole('link', { name: 'Limpar filtros', exact: true }).click()
+    const filtros = page.locator('form').filter({ has: page.getByRole('searchbox', { name: 'Nome', exact: true }) })
+    await expect(filtros).toHaveCount(1)
+    await filtros.getByRole('link', { name: 'Limpar filtros', exact: true }).click()
     await expect(page).toHaveURL(rota)
     await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('')
     await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('')
@@ -192,7 +202,7 @@ test('botão destrutivo mantém contraste de texto nos dois temas e hover', asyn
   }
   for (const tema of ['light', 'dark']) {
     await page.mouse.move(0, 0)
-    await page.getByLabel('Tema da galeria').selectOption(tema)
+    await page.getByLabel('Tema do design system').selectOption(tema)
     await expect.poll(contraste).toBeGreaterThanOrEqual(4.5)
     await excluir.hover()
     await expect.poll(contraste).toBeGreaterThanOrEqual(4.5)
