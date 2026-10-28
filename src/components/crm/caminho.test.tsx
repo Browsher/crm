@@ -8,12 +8,12 @@ vi.mock('next/navigation', () => ({ usePathname: () => rota.atual }))
 test.each([
   ['/whatsapp/configuracao', 'whatsapp', 'WhatsApp', 'Configurar vendedores', '/whatsapp'],
   ['/empresas/importar', 'empresas', 'Empresas', 'Importar empresas', '/empresas'],
-  ['/empresas/grupos', 'empresas', 'Empresas', 'Grupos', '/empresas'],
-  ['/empresas/grupos/id-privado', 'empresas', 'Empresas', 'Detalhes do grupo', '/empresas/grupos'],
+  ['/empresas/grupos', 'empresas', 'Empresas', 'Listas', '/empresas'],
+  ['/empresas/grupos/id-privado', 'empresas', 'Empresas', 'Detalhes da lista', '/empresas/grupos'],
   ['/empresas/id-privado', 'empresas', 'Empresas', 'Ficha da empresa', '/empresas'],
   ['/usuarios/vendedores/id-privado', 'usuarios', 'Usuários', 'Perfil do vendedor', '/usuarios'],
   ['/carteira/id-privado', 'carteira', 'Carteira', 'Ficha da empresa', '/carteira'],
-  ['/fila/localizar', 'fila', 'Prospecção', 'Localizar empresa', '/fila'],
+  ['/fila/localizar', 'fila', 'Prospecção', 'Localizar empresas', '/fila'],
   ['/fila/localizar/id-privado', 'fila', 'Prospecção', 'Perfil da empresa', '/fila/localizar'],
 ])('mapeia %s com retorno ao nível existente', (url, area, titulo, atual, retorno) => {
   rota.atual = url

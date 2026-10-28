@@ -9,7 +9,7 @@ async function entrar(page: Page, apelido: string) {
 }
 
 async function reservar(page: Page, nome: string, cnae: string) {
-  await page.goto(`/fila/localizar?nome=${encodeURIComponent(nome)}&cnae=${cnae}`)
+  await page.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(nome)}&cnae=${cnae}`)
   const card = page.getByRole('list', { name: 'Empresas encontradas', exact: true }).getByRole('listitem').filter({ has: page.getByRole('heading', { name: nome, exact: true }) })
   await card.getByRole('button', { name: 'Reservar para ligar', exact: true }).click()
   await expect(page).toHaveURL(/\/fila\?/)
@@ -20,7 +20,7 @@ async function reservar(page: Page, nome: string, cnae: string) {
 test('reserva escolhida troca com confirmação e recusa contexto antigo de outra aba', async ({ page, context }) => {
   await entrar(page, 'reservaAe2e')
   // Nome comum permite que Próxima encontre B usando os mesmos filtros.
-  await page.goto('/fila/localizar?nome=Reserva%20E2E&cnae=7654321')
+  await page.goto('/fila/localizar?legado=1&nome=Reserva%20E2E&cnae=7654321')
   await page.getByRole('list', { name: 'Empresas encontradas', exact: true }).getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'Reserva E2E A', exact: true }) })
     .getByRole('button', { name: 'Reservar para ligar', exact: true }).click()
   await expect(page).toHaveURL(/\/fila\?/)
@@ -67,11 +67,11 @@ test('reserva escolhida troca com confirmação e recusa contexto antigo de outr
   await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
   await expect(page.getByText('11987650102',{exact:true})).not.toBeVisible()
   await expect(page.getByRole('textbox',{name:'Nota',exact:true})).toHaveCount(0)
-  await page.getByRole('main').locator('header nav').getByRole('link',{name:'Localizar empresa',exact:true}).click()
+  await page.getByRole('main').locator('header').filter({has:page.getByRole('heading',{level:1})}).getByRole('link',{name:'Localizar empresa',exact:true}).click()
   await expect(page).toHaveURL(/\/fila\/localizar/)
   await expect(page.getByText('11987650102', { exact: true })).not.toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Nota', exact: true })).toHaveCount(0)
-  await page.goto('/fila/localizar')
+  await page.goto('/fila/localizar?legado=1')
   await expect(page.getByRole('heading', { name: 'Empresas recentes', exact: true })).toBeVisible()
   await expect(page.getByRole('list', { name: 'Empresas encontradas', exact: true }).getByRole('listitem').first().getByRole('heading', { name: 'Reserva E2E B', exact: true })).toBeVisible()
 })

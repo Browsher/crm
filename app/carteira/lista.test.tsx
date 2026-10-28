@@ -30,11 +30,13 @@ const ENDERECO_SP = {
 }
 
 describe('ListaCarteira', () => {
-  test('com empresas, monta uma lista', () => {
+  test('com empresas, monta tabela com as próximas ações reais e sem compra fictícia', () => {
     const saida = renderToStaticMarkup(<ListaCarteira linhas={[UMA]} />)
-    expect(saida).toContain('<ul')
+    expect(saida).toContain('<table')
     expect(saida).toContain('Aurora Comercio LTDA')
     expect(saida).toContain('Ver cliente')
+    expect(saida).toContain('Próximo passo')
+    expect(saida).not.toContain('Última compra')
   })
 
   test('vazia, diz o que fazer em vez de so dizer que esta vazia', () => {

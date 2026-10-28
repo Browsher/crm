@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { MidiaMensagem } from './midia-mensagem'
+import { TemaCrmContext } from '@/src/components/crm/tema'
 
 let raiz: ReturnType<typeof createRoot>
 let host: HTMLDivElement
@@ -20,13 +21,14 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => raiz.unmount()); host.remove(); vi.unstubAllGlobals() })
 test('carrega imagem sob demanda, amplia sem nova consulta e libera blob', async () => {
-  await act(async () => raiz.render(<MidiaMensagem id="ABC" conversa="123@lid" midia={{ tipo: 'imagem', legenda: 'Foto do pedido' }} />))
+  await act(async () => raiz.render(<TemaCrmContext.Provider value="dark"><MidiaMensagem id="ABC" conversa="123@lid" midia={{ tipo: 'imagem', legenda: 'Foto do pedido' }} /></TemaCrmContext.Provider>))
   expect(fetcher).not.toHaveBeenCalled()
   await act(async () => host.querySelector('button')!.click())
   expect(fetcher).toHaveBeenCalledWith('/whatsapp/midia/ABC?conversa=123%40lid', expect.objectContaining({ credentials: 'same-origin' }))
   expect(host.querySelector('img')?.src).toBe('blob:midia')
   await act(async () => host.querySelector('button')!.click())
   expect(document.querySelector('[role="dialog"] img')?.getAttribute('src')).toBe('blob:midia')
+  expect(document.querySelector('[role=dialog]')?.closest('[data-theme]')?.getAttribute('data-theme')).toBe('dark')
   expect(fetcher).toHaveBeenCalledTimes(1)
   await act(async () => raiz.render(null))
   expect(revogar).toHaveBeenCalledWith('blob:midia')

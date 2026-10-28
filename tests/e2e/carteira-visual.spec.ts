@@ -34,7 +34,7 @@ async function voltarNoNavegador(page: Page) {
   }))
 }
 
-test('carteira filtra cards, conserva filtros na ficha e protege dados de outro vendedor', async ({ page }) => {
+test('carteira filtra registros, conserva filtros na ficha e protege dados de outro vendedor', async ({ page }) => {
   await entrar(page)
   await expect(page.getByRole('link', { name: 'Ver cliente', exact: true })).toHaveCount(2)
   await expect(page.getByRole('main')).toContainText('2 de 2 empresas')
@@ -53,6 +53,7 @@ test('carteira filtra cards, conserva filtros na ficha e protege dados de outro 
   await page.getByRole('link', { name: 'Ver cliente', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Carteira Visual Aurora', exact: true })).toBeVisible()
   expect(new URL(page.url()).search).toBe(filtros)
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(page.getByText(`Nota inicial Aurora ${'x'.repeat(300)}`, { exact: true })).toBeVisible()
   await conferirTamanhos(page, 'ficha')
   await page.getByRole('link', { name: /Voltar.*carteira/i }).click()
@@ -114,8 +115,10 @@ test('ficha preserva rascunho e erro, confirma descarte, atualiza atendimento e 
   liberarEnvio()
   await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
   await page.unroute('**/carteira/**')
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(page.getByText('Atendimento salvo pela ficha real', { exact: true })).toBeVisible()
   await page.reload()
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(page.getByText('Atendimento salvo pela ficha real', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
   await page.getByLabel('Nota', { exact: true }).fill('Devolução registrada pela ficha real')
@@ -132,7 +135,7 @@ test('ficha preserva rascunho e erro, confirma descarte, atualiza atendimento e 
 
 test('Voltar do navegador pede confirmação e cancelar mantém o rascunho', async ({ page }) => {
   await entrar(page)
-  await page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'Carteira Visual Aurora', exact: true }) })
+  await page.getByRole('row').filter({ has: page.getByRole('heading', { name: 'Carteira Visual Aurora', exact: true }) })
     .getByRole('link', { name: 'Ver cliente', exact: true }).click()
   await expect(page).toHaveURL(/\/carteira\/[0-9a-f-]+$/)
   const fichaUrl = page.url()

@@ -1,4 +1,5 @@
 export type Filtros = {
+  pessoal?: string
   nome: string
   cnae: string | null
   uf: string | null

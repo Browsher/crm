@@ -19,16 +19,16 @@ export function LinhaDoTempo({ contatos }: { contatos: Contato[] }) {
   return (
     <ol className="flex flex-col gap-2">
       {contatos.map((c) => (
-        <li key={c.id} className="rounded border p-3 text-sm">
+        <li key={c.id} className="grid gap-2 border-l-2 border-border py-2 pl-4 text-sm wrap-anywhere">
           <p className="font-medium">{c.venda ? 'Venda registrada' : rotulo(c.tipo)}</p>
           {c.venda ? <ResumoVenda venda={c.venda} /> : null}
-          {c.nota ? <p className="text-neutral-700">{c.nota}</p> : null}
+          {c.nota ? <p className="whitespace-pre-wrap text-foreground">{c.nota}</p> : null}
           {c.proximoPasso ? (
-            <p className="text-neutral-700">
-              Próximo passo: {c.proximoPasso} — {c.proximoPassoData}
+            <p className="text-foreground">
+              Próximo passo: {c.proximoPasso} · {c.proximoPassoData}
             </p>
           ) : null}
-          <p className="text-neutral-500">
+          <p className="text-muted-foreground">
             {c.autor ?? 'sistema'} · {c.criadoEm.toISOString().slice(0, 10)}
           </p>
         </li>

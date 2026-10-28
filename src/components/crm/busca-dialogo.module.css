@@ -1,0 +1,27 @@
+.dialogo:global(.ui-dialog-content) { width:min(1240px,calc(100vw - 32px)); max-width:1240px; max-height:calc(100dvh - 32px); padding:0; gap:0; overflow:hidden; grid-template-rows:auto minmax(0,1fr); }
+.dialogo .cabecalho:global(.ui-dialog-header) { padding:24px 64px 20px 24px; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+.corpo { overflow:auto; overscroll-behavior:contain; padding:24px; min-width:0; }
+.corpo > * + * { margin-top:20px; }
+.empresa { min-width:0; gap:16px; padding-block:20px; content-visibility:auto; contain-intrinsic-size:auto 240px; }
+.empresa h3 { font-size:16px; font-weight:600; line-height:1.5; }
+.resumo { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.nome { min-width:0; overflow-wrap:anywhere; }
+.grade { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.card { gap:12px; padding-block:16px; min-width:0; }
+.card h4 { font-size:14px; font-weight:600; }
+.empresa dl.dados, .dados { grid-template-columns:1fr; display:grid; gap:12px; font-size:14px; }
+.dados > div { min-width:0; }
+.dados dt { color:var(--muted-foreground); font-size:12px; }
+.dados dd { margin:0; overflow-wrap:anywhere; }
+.contatos { display:flex; flex-wrap:wrap; gap:6px 24px; color:var(--muted-foreground); font-size:14px; overflow-wrap:anywhere; }
+.lista { display:grid; gap:16px; padding:0; margin:0; list-style:none; }
+@media(max-width:600px) {
+ .dialogo:global(.ui-dialog-content) { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); }
+ .dialogo .cabecalho:global(.ui-dialog-header) { padding:20px 56px 16px 16px; }
+ .corpo { padding:16px; }
+ .grade { grid-template-columns:1fr; }
+ .resumo { flex-direction:column; gap:12px; }
+}
+
+.empresa ul { display:grid; gap:6px; margin:0; padding:0; list-style:none; }
+.empresa ul > li { padding:0; border:0; overflow-wrap:anywhere; }

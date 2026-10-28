@@ -11,12 +11,18 @@ import { selecionarGrupo, urlConsulta } from './localizar/navegacao'
 import { lerGrupoProspeccao, listarGruposProspeccao } from '@/src/server/grupos/prospeccao'
 import { GruposProspeccao } from './grupos'
 import { ContextoGrupo } from './localizar/contexto-grupo'
+import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
+import { Button } from '@/src/components/ui/button'
+import { CentralProspeccao } from './central'
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 
 export default async function PaginaFila({ searchParams }: { searchParams: Promise<Record<string,string|string[]|undefined>> }) {
   const eu = await exigir('vendedor')
   const params = await searchParams
   const entrada = lerFiltros(params)
   const r = await lerMinhasEmpresas(eu.usuarioId)
+  const operando = ['atendimento','grupo','pagina','escolher_lista','nome','cnae','uf','cidade','bairro'].some(campo => params[campo] !== undefined)
+  if (!operando) return <CentralProspeccao atendimento={r.ok && r.reserva ? nomeEmpresa(r.reserva) : null} />
   const escolhendo = params.escolher_lista === '1'
   const paginaListas = lerFiltros({pagina:params.listas_pagina})
   const mostrarCatalogo = r.ok && entrada.ok && (!r.reserva || escolhendo)
@@ -28,15 +34,8 @@ export default async function PaginaFila({ searchParams }: { searchParams: Promi
   const historico = r.ok && r.reserva ? await lerHistorico(eu.usuarioId, r.reserva.id) : null
   const contatos = historico?.ok ? historico.contatos : []
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{r.ok && r.reserva ? 'Atendimento' : 'Prospecção'}</h1>
-        <nav className="flex items-center gap-3">
-          <Link href={urlConsulta(filtros,1)} className="text-sm underline">
-            Localizar empresa
-          </Link>
-        </nav>
-      </header>
+    <main className="flex w-full flex-col gap-6">
+      <CabecalhoPagina titulo={r.ok && r.reserva ? 'Atendimento' : 'Prospecção'} descricao="Encontre empresas e dê o próximo passo na conversa." acoes={<><Button asChild><Link href="/fila/buscar">Buscar empresas</Link></Button><Button asChild variant="outline"><Link href={urlConsulta(filtros,1)}>Localizar empresa</Link></Button></>} />
       <div>
         {entrada.ok ? <ContextoGrupo resultado={grupo} filtros={filtros} atendimento escolhendo={params.escolher_lista === '1'} /> : <p role="alert">Filtros inválidos. A busca não foi executada. <Link href="/fila?escolher_lista=1">Todas as listas ativas</Link></p>}
       </div>

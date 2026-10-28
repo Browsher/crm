@@ -20,6 +20,9 @@ describe('formatarCnpj', () => {
 })
 
 describe('formatarTelefone', () => {
+  test('ausência de telefone é informada sem número inventado', () => {
+    expect(formatarTelefone(null)).toBe('Sem telefone informado')
+  })
   test('celular, 11 dígitos', () => {
     expect(formatarTelefone('11987654321')).toBe('(11) 98765-4321')
   })

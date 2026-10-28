@@ -9,30 +9,38 @@
 .resumo>div { min-width:7rem; }
 .resumo dt,.secundario { color:var(--ui-muted-foreground); font-size:.875rem; }
 .resumo dd { margin:.35rem 0 0; font-size:1.5rem; font-weight:650; font-variant-numeric:tabular-nums; }
-.rolagem { overflow-x:auto; min-width:0; border:1px solid var(--ui-border); border-radius:.75rem; background:var(--ui-background); }
+.resumo { padding:24px; border:1px solid var(--border); border-radius:8px; background:var(--background); }
+.pagina h1, .pagina p { overflow-wrap:anywhere; }
+.rolagem { overflow-x:auto; min-width:0; border:1px solid var(--ui-border); border-radius:8px; background:var(--ui-background); }
 .rolagem:focus-visible { outline:2px solid var(--ui-focus); outline-offset:3px; }
-.tabela { width:100%; min-width:650px; border-collapse:collapse; font-size:.875rem; text-align:left; }
-.tabela th { padding:.75rem 1rem; background:var(--ui-surface); color:var(--ui-muted-foreground); font-weight:600; }
+.tabela { width:100%; min-width:0; border-collapse:collapse; font-size:.875rem; text-align:left; }
+.tabela th { padding:.75rem 1rem; background:var(--background); color:var(--ui-muted-foreground); font-weight:600; }
 .tabela td { padding:.85rem 1rem; border-top:1px solid var(--ui-border); vertical-align:top; overflow-wrap:anywhere; max-width:24rem; }
 .tabela td>strong,.tabela td>span { display:block; }
 .tabela td>strong+span,.tabela td>time+span { margin-top:.25rem; }
 .ativo,.desativado { white-space:nowrap; width:fit-content; padding:.1rem .5rem; border-radius:999px; font-size:.8rem; font-weight:600; }
 .ativo { color:var(--ui-success); background:var(--ui-success-background); }
-.desativado { color:var(--ui-muted-foreground); background:var(--ui-surface); border:1px solid var(--ui-border); }
+.desativado { color:var(--ui-muted-foreground); background:var(--background); border:1px solid var(--ui-border); }
 .pagina a { text-underline-offset:3px; }
 .tabela a,.breadcrumb a,.faixa a,.vazio a,.paginacao a { text-decoration:underline; }
 .outros { display:grid; gap:.3rem; margin:0; padding:0; list-style:none; }
-.vazio { display:grid; gap:.6rem; justify-items:start; padding:1.5rem; border:1px dashed var(--ui-border); border-radius:.75rem; }
+.vazio { display:grid; gap:.6rem; justify-items:start; padding:1.5rem; border:1px dashed var(--ui-border); border-radius:8px; }
 .vazio p { margin:0; color:var(--ui-muted-foreground); }
 .paginacao { display:flex; align-items:center; justify-content:space-between; gap:1rem; font-size:.875rem; }
 .paginacao>span { color:var(--ui-muted-foreground); }
 .formulario,.campo { display:grid; gap:.75rem; }
-.aviso { padding:.75rem 1rem; border:1px solid var(--ui-border); border-radius:.5rem; background:var(--ui-surface); }
+.aviso { padding:.75rem 1rem; border:1px solid var(--ui-border); border-radius:.5rem; background:var(--background); }
 .aviso p { margin:.35rem 0; }
 @media (max-width:760px) { .pagina { padding:1.25rem; } .cabecalho { align-items:flex-start; flex-direction:column; } }
 @media (max-width:520px) { .pagina { padding:1rem; } .resumo { gap:1rem; } .resumo>div { flex:1 1 40%; } }
 
 .campo textarea { box-sizing:border-box; max-width:100%; width:100%; border:1px solid var(--ui-border); background:var(--ui-background); color:var(--ui-foreground); border-radius:.5rem; padding:.75rem; resize:vertical; min-height:5rem; }
-.pagina section[aria-label="Contexto da lista"] dl { display:grid; gap:.5rem; }
+.pagina section[aria-label="Contexto da lista"] { padding:24px; border:1px solid var(--border); border-radius:8px; background:var(--background); }
+.pagina section[aria-label="Contexto da lista"] dl { display:grid; grid-template-columns:140px minmax(0,1fr); gap:16px; margin-top:20px; }
+.pagina section[aria-label="Contexto da lista"] dt { color:var(--muted-foreground); }
+.pagina section[aria-label="Contexto da lista"] summary { min-height:44px; padding:12px 0; cursor:pointer; color:var(--primary); }
 .pagina section[aria-label="Contexto da lista"] dd { margin:0 0 .75rem; white-space:pre-wrap; overflow-wrap:anywhere; }
 .pagina section[aria-label="Contexto da lista"] fieldset { display:grid; gap:1rem; min-width:0; border:0; padding:0; margin:1rem 0; }
+@media(max-width:620px) { .pagina section[aria-label="Contexto da lista"] dl { grid-template-columns:minmax(0,1fr); gap:4px; } }
+
+.pagina a[data-slot='button'] { text-decoration: none; min-height: 44px; }

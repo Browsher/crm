@@ -7,7 +7,7 @@ import { listarEmpresas, listarOpcoesEmpresas } from '@/src/features/empresas/li
 
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: vi.fn() }))
 vi.mock('@/src/features/empresas/listagem', () => ({ listarEmpresas: vi.fn(), listarOpcoesEmpresas: vi.fn() }))
-vi.mock('next/navigation', () => ({ redirect: vi.fn(), useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('next/navigation', () => ({ redirect: vi.fn(), useRouter: () => ({ push: vi.fn() }), usePathname: () => '/empresas' }))
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(exigir).mockResolvedValue({ usuarioId: 'gestor', nome: 'Ana', papel: 'gestor' } as Awaited<ReturnType<typeof exigir>>)

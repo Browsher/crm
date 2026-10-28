@@ -3,7 +3,7 @@
 .cabecalho h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 600; }
 .cabecalho p, .ajuda { margin: 0; color: var(--ui-muted-foreground); font-size: 14px; line-height: 21px; }
 .acaoCabecalho { justify-self: start; }
-.painel { display: grid; gap: 20px; padding: 24px; border: 1px solid var(--ui-border); border-radius: 8px; }
+.painel { display: grid; gap: 20px; padding: 24px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; }
 .painel h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
 .formulario { display: grid; gap: 16px; }
 .gradeFiltros { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 16px; }
@@ -11,6 +11,8 @@
 .acoes, .rodapeCartao { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .itemResultado { display: flex; }
 .cartaoEmpresa { display: flex; width: 100%; flex-direction: column; }
+.cartaoEmpresa h2, .cartaoEmpresa dd, .cartaoEmpresa p { overflow-wrap: anywhere; }
+.resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
 .tituloEmpresa { margin: 0; font: inherit; }
 .conteudoCartao { display: grid; gap: 16px; }
 .rodapeCartao { margin-top: auto; }

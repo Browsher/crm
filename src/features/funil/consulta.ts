@@ -65,7 +65,7 @@ export async function lerNegociacao(usuarioId: string, id: string): Promise<Nego
 export async function lerTelefoneNegociacao(usuarioId:string,id:string):Promise<string|null> {
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return null
   return comoUsuario(usuarioId,async executar=>{
-    const r=await executar<{telefone:string}>(`SELECT e.telefone ${ORIGEM} AND n.id=$2`,[usuarioId,id])
-    return r.linhas[0]?.telefone??null
+    const r=await executar<{telefone:string|null}>(`SELECT e.telefone ${ORIGEM} AND n.id=$2`,[usuarioId,id])
+    return r.linhas[0] ? r.linhas[0].telefone ?? '' : null
   })
 }

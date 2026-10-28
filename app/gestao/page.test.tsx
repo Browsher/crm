@@ -18,7 +18,7 @@ test('autoriza gestor, exibe vazio sem atalhos inferiores nem busca de vendedore
   for (const rota of ['/empresas', '/empresas/grupos', '/usuarios']) expect(html).not.toContain(`href="${rota}"`)
   expect(html).not.toContain('<input')
 })
-test('cards usam rótulos distintos, totais e atividade sem inferir venda ou devolução', async () => {
+test('tabela da equipe usa rótulos distintos, totais e atividade sem inferir venda ou devolução', async () => {
   mocks.ler.mockResolvedValue({ vendedores: [
     { id: 'a', nome: 'Ana', clientes: 9, atrasados: 2, hoje: 3, contatosHoje: 7 },
     { id: 'b', nome: 'Bia', clientes: 2, atrasados: 1, hoje: 2, contatosHoje: 4 },
@@ -27,6 +27,8 @@ test('cards usam rótulos distintos, totais e atividade sem inferir venda ou dev
   expect(html).toContain('Retornos hoje')
   expect(html).toContain('Contatos registrados hoje')
   expect(html).toContain('Ana')
+  expect(html).toContain('<table')
+  expect(html).toContain('aria-label="Vendedores ativos"')
   expect(html).not.toContain('/vendedores/')
   expect(html).toContain('Loja')
   expect(html).toContain('interessado')

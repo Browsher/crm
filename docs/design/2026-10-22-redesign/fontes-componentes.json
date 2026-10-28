@@ -1,0 +1,96 @@
+[
+  {
+    "name": "button",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/button.json",
+    "retrievedAt": "2026-10-22T14:33:24.812Z",
+    "dependencies": [
+      "cn",
+      "radix-ui"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/button.tsx"
+    ]
+  },
+  {
+    "name": "badge",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/badge.json",
+    "retrievedAt": "2026-10-22T14:33:24.835Z",
+    "dependencies": [
+      "cn",
+      "radix-ui"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/badge.tsx"
+    ]
+  },
+  {
+    "name": "input",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/input.json",
+    "retrievedAt": "2026-10-22T14:33:24.848Z",
+    "dependencies": [
+      "cn"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/input.tsx"
+    ]
+  },
+  {
+    "name": "card",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/card.json",
+    "retrievedAt": "2026-10-22T14:33:24.864Z",
+    "dependencies": [
+      "cn"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/card.tsx"
+    ]
+  },
+  {
+    "name": "textarea",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/textarea.json",
+    "retrievedAt": "2026-10-22T14:33:24.881Z",
+    "dependencies": [
+      "cn"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/textarea.tsx"
+    ]
+  },
+  {
+    "name": "label",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/label.json",
+    "retrievedAt": "2026-10-22T14:33:24.899Z",
+    "dependencies": [
+      "cn",
+      "radix-ui"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/label.tsx"
+    ]
+  },
+  {
+    "name": "dialog",
+    "url": "https://ui.shadcn.com/r/styles/new-york-v4/dialog.json",
+    "retrievedAt": "2026-10-22T14:33:24.918Z",
+    "dependencies": [
+      "cn",
+      "radix-ui"
+    ],
+    "files": [
+      "registry/new-york-v4/ui/dialog.tsx"
+    ]
+  },
+  {
+    "name": "tabs",
+    "url": "https://smoothui.dev/r/animated-tabs.json",
+    "retrievedAt": "2026-10-22T14:33:25.419Z",
+    "dependencies": [
+      "@base-ui/react",
+      "motion"
+    ],
+    "files": [
+      "index.tsx",
+      "use-active-tab-indicator.ts"
+    ]
+  }
+]

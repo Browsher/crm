@@ -1,0 +1,11 @@
+{
+  "versao": 1,
+  "imagem": "gosom/google-maps-scraper@sha256:e205c02913c5a69c16fc2094b8e5b194a2f655166d2c1126d50548d216e6b1b2",
+  "volumeCache": "mooca-prospeccao_gmaps_cache",
+  "recursos": {"memoriaMiB":2048,"swapTotalMiB":2560,"cpus":2,"pids":512,"shmMiB":64},
+  "motores": [
+    {"id":"01","container":"gmaps-mooca-prospeccao","origem":"http://127.0.0.1:8087","pastaEstado":".google-agente","volumeDados":"mooca-prospeccao_gmaps_data"},
+    {"id":"02","container":"gmaps-crm-motor-02","origem":"http://127.0.0.1:8088","pastaEstado":".google-agente/slots/02","volumeDados":"crm_google_motor02_data"},
+    {"id":"03","container":"gmaps-crm-motor-03","origem":"http://127.0.0.1:8089","pastaEstado":".google-agente/slots/03","volumeDados":"crm_google_motor03_data"}
+  ]
+}
