@@ -1,3 +1,7 @@
+import { mkdirSync } from 'node:fs'
+import { resolve } from 'node:path'
+const capturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-5-captures')
+mkdirSync(capturas, { recursive: true })
 import { expect, test, type Page } from '@playwright/test'
 import { comBancoGrupos } from './dados-grupos'
 async function entrar(page:Page) {
@@ -81,25 +85,73 @@ test('perfil e reserva vigente preservam a consulta pessoal até a próxima aqui
   await expect(page.getByLabel('Nota',{exact:true})).toHaveCount(0)
 })
 
-test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',async({page},info)=>{
+test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',async({page})=>{
   test.setTimeout(120000)
   await page.emulateMedia({reducedMotion:'reduce'})
   await entrar(page)
   for(const [tela,url] of [['central','/fila'],['localizar','/fila/localizar'],['banco','/fila/buscar?fonte=banco'],['google','/fila/google']]) {
     await page.goto(url)
-    for(const largura of [1920,390]) {
+    for(const largura of [1920,820,390]) {
       await page.setViewportSize({width:largura,height:largura===1920?1080:844})
       for(const tema of ['light','dark']) {
         await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
         await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBe(0)
+        if(tela==='central'||tela==='banco') {
+          const cartao=tela==='central'?page.getByRole('heading',{name:'Localizar empresas',exact:true}).locator('..').locator('..').locator('..'):page.getByRole('button',{name:'Atividade e nome',exact:true}).locator('..').locator('..')
+          const css=await cartao.evaluate(el=>{const c=getComputedStyle(el);return {raio:c.borderRadius,borda:c.borderTopWidth,sombra:c.boxShadow}})
+          expect(css).toEqual({raio:'10px',borda:'1px',sombra:'none'})
+        }
+
         if(tela==='localizar'&&largura===1920) {
           const grade=page.getByRole('list').filter({has:page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})})
           await expect.poll(()=>grade.evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(3)
         }
-        await page.screenshot({path:info.outputPath(`${tela}-${largura}-${tema}.png`),fullPage:true})
+        await page.screenshot({path:resolve(capturas, `${tela}-${largura}-${tema}.png`),fullPage:true})
       }
     }
   }
+  // A localização por lista usa o formulário completo, distinto da pesquisa pessoal.
+  await page.goto('/fila/localizar?legado=1&nome=Fictícia&uf=SP&cidade=3550308')
+  await expect(page.getByRole('heading',{name:'Localizar empresa',exact:true})).toBeVisible()
+  const formulario=page.locator('form').filter({has:page.getByRole('button',{name:'Consultar',exact:true})})
+  const consultar=formulario.getByRole('button',{name:'Consultar',exact:true})
+  const limpar=formulario.getByRole('link',{name:'Limpar filtros',exact:true})
+  const nomes=['nome','cnae','uf','cidade','bairro']
+  const valores=await formulario.evaluate(el=>[...new FormData(el as HTMLFormElement).entries()])
+  for(const largura of [1200,1101,1100]) {
+    await page.setViewportSize({width:largura,height:900})
+    for(const tema of ['light','dark']) {
+      await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
+      await page.screenshot({path:resolve(capturas,`localizar-legado-reflow-${largura}-${tema}.png`),fullPage:true})
+      const geometria=await formulario.evaluate(el=>{
+        const campos=Array.from(el.querySelectorAll<HTMLInputElement|HTMLSelectElement>('input:not([type=hidden]),select')).map(c=>c.getBoundingClientRect())
+        const acoes=Array.from(el.querySelectorAll('button,a')).map(c=>c.getBoundingClientRect())
+        const elementoGrade=el.querySelector('input[name=nome]')!.parentElement!.parentElement!
+        const grade=elementoGrade.getBoundingClientRect()
+        return {
+          colunas:getComputedStyle(elementoGrade).gridTemplateColumns.split(' ').length,
+          camposContidos:campos.every(c=>c.left>=grade.left-1&&c.right<=grade.right+1),
+          camposAlcancaveis:campos.every(c=>c.width>0&&c.left>=0&&c.right<=innerWidth),
+          acoesAbaixo:Math.min(...acoes.map(c=>c.top))>=Math.max(...campos.map(c=>c.bottom)),
+          semColisao:campos.every(c=>acoes.every(a=>c.right<=a.left||c.left>=a.right||c.bottom<=a.top||c.top>=a.bottom)),
+          overflow:document.documentElement.scrollWidth-innerWidth,
+        }
+      })
+      expect(geometria,`Reflow legado em ${largura}px/${tema}`).toEqual({colunas:largura>1100?5:2,camposContidos:true,camposAlcancaveis:true,acoesAbaixo:true,semColisao:true,overflow:0})
+      await formulario.locator('[name=nome]').focus()
+      for(let i=0;i<nomes.length;i++) {
+        await expect(formulario.locator(`[name=${nomes[i]}]`)).toBeFocused()
+        await page.keyboard.press('Tab')
+      }
+      await expect(consultar).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(limpar).toBeFocused()
+      await expect(consultar).toBeInViewport()
+      await expect(limpar).toBeInViewport()
+      expect(await formulario.evaluate(el=>[...new FormData(el as HTMLFormElement).entries()])).toEqual(valores)
+    }
+  }
+
 })
 
 

@@ -7,6 +7,8 @@ import { ChevronDown } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
+import { PainelFiltros } from '@/src/components/crm/painel-filtros'
 import { Badge } from '@/src/components/ui/badge'
 import { UFS } from '@/src/features/busca-empresas/filtros'
 import { SITUACOES_PESSOAIS, urlPessoal, type ConsultaPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
@@ -36,7 +38,9 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
   const origem=filtros.origem==='google'?'Buscas no Google':filtros.origem==='banco'?'Banco de empresas':'Google e banco de empresas'
   return <>
     {recolhido&&<div className={styles.resumo}><div><strong>Filtros da pesquisa</strong><p>{[filtros.nicho,filtros.endereco,filtros.nome,filtros.cnpj,filtros.cnae,filtros.cidade,filtros.uf].filter(Boolean).join(' · ')||'Todos os nichos e bairros'}</p></div><Button variant="outline" onClick={()=>setRecolhido(false)} aria-expanded={false} aria-controls="filtros-pessoais">Editar filtros</Button></div>}
-    <form ref={formulario} id="filtros-pessoais" className={styles.filtros} hidden={recolhido} onSubmit={pesquisar}>
+    <form ref={formulario} id="filtros-pessoais" className={styles.formulario} hidden={recolhido} onSubmit={pesquisar}>
+      <PainelFiltros className={styles.filtros} acoes={<div className={styles.acoes}><small>Pressione Enter para pesquisar e recolher os filtros.</small><div><Button asChild variant="outline"><Link href={urlPessoal({origem:filtros.origem})}>Limpar filtros</Link></Button><Button type="submit" disabled={pendente}>{pendente?'Pesquisando…':'Pesquisar empresas'}</Button></div></div>}>
+      <div className={styles.campos}>
       <input type="hidden" name="origem" value={filtros.origem||''}/>
       <div className={styles.principais}>
         <div><label htmlFor="nicho-pessoal">Nicho</label><NativeSelect id="nicho-pessoal" name="nicho" defaultValue={filtros.nicho||''} onChange={e=>{const v=valores();v.nicho=e.target.value;v.endereco='';iniciar(()=>router.push(urlPessoal(v),{scroll:false}))}}><option value="">Todos os nichos</option>{dados.nichos.map(n=><option key={n}>{n}</option>)}</NativeSelect></div>
@@ -62,11 +66,11 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
           </div></section>
         </div>
       </section>
-      <div className={styles.acoes}><small>Pressione Enter para pesquisar e recolher os filtros.</small><div><Button asChild variant="outline"><Link href={urlPessoal({origem:filtros.origem})}>Limpar filtros</Link></Button><Button type="submit" disabled={pendente}>{pendente?'Pesquisando…':'Pesquisar empresas'}</Button></div></div>
+      </div></PainelFiltros>
     </form>
     <section aria-labelledby="minhas-empresas-titulo" aria-busy={pendente} className={styles.resultados}>
       <header className={styles.cabecalho}><div><h2 id="minhas-empresas-titulo">Todas as minhas empresas</h2><p>{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
-      {dados.empresas.length===0?<div className={styles.vazio}>Nenhuma empresa com esses filtros. Edite os filtros ou busque novas empresas na Prospecção.</div>:<ul className={styles.cartoes}>{dados.empresas.map(e=><li key={e.id}>
+      {dados.empresas.length===0?<EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa com esses filtros" descricao="Edite os filtros ou busque novas empresas na Prospecção." acao={{rotulo:'Editar filtros',aoAcionar:()=>setRecolhido(false),variante:'outline'}}/>:<ul className={styles.cartoes}>{dados.empresas.map(e=><li key={e.id}>
         <article className={styles.empresa}><header><h3>{e.nome}</h3><Badge variant={e.situacao==='indisponivel'||e.situacao==='em_descanso'?'warning':'success'}>{SITUACOES_PESSOAIS[e.situacao]||'Em atendimento'}</Badge></header>
           <p>{e.nichos.join(' · ')}</p><p>{[e.bairro,[e.cidade,e.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ')||'Endereço não informado'}</p>
           <div className={styles.meta}>{e.cnpj&&<span>CNPJ {e.cnpj}</span>}{e.cnae&&<span>CNAE {e.cnae}</span>}<span>{e.origens.map(o=>o==='google'?'Google':o==='banco'?'Banco de empresas':'Cadastro existente').join(' · ')}</span></div>

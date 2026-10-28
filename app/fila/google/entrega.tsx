@@ -1,4 +1,7 @@
 import Link from 'next/link'
+import { Alert } from '@/src/components/ui/alert'
+import { Badge } from '@/src/components/ui/badge'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { Card } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
 import { ESTADOS_GOOGLE, type PlanoGoogle, type ResultadoGoogle, type ExecucaoGoogle, type LoteGoogle } from '@/src/features/google/tipos'
@@ -25,14 +28,14 @@ export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lot
       {execucao && <><div><dt>Rodadas</dt><dd>{execucao.lotes_reservados} de até 3</dd></div><div><dt>Candidatas analisadas</dt><dd>{execucao.analisadas} de até 150</dd></div><div><dt>Encerramento</dt><dd>{execucao.motivo_parada ? motivos[execucao.motivo_parada] ?? execucao.motivo_parada : 'Em andamento'}</dd></div></>}
     </dl><p className={styles.ajuda}>Utilização considera atendimento registrado pelo destinatário após a entrega. Abrir a ficha não conta como atendimento.</p>
       {campos.length > 0 ? <details><summary className={styles.botaoResumo}>Ver critérios desta busca</summary><dl className={styles.resumo}>{campos.map(([k,v])=><div key={k}><dt>{nomes[k]}</dt><dd>{valorCriterio(v)}</dd></div>)}</dl></details> : <p className={styles.ajuda}>{recibo?.validacao_conferida === true ? 'Entrega legada, com validação de contatos do fluxo anterior.' : 'Entrega direta, sem critérios extras ou validação obrigatória de WhatsApp.'}</p>}
-      {plano.motivo && <p role={plano.estado === 'falhou' ? 'alert' : undefined}>{plano.motivo}</p>}
+      {plano.motivo && <Alert role={plano.estado === 'falhou' ? 'alert' : 'note'} variant={plano.estado === 'falhou' ? 'danger' : 'default'}>{plano.motivo}</Alert>}
       {gestor && recibo && <div className={styles.acoes}>{['arquivo_original_id', 'arquivo_final_id'].map((campo, i) => typeof recibo[campo] === 'string' && <Button asChild variant="outline" key={campo}><a href={`https://drive.google.com/file/d/${encodeURIComponent(String(recibo[campo]))}/view`} target="_blank" rel="noreferrer">{i === 0 ? 'Arquivo original' : 'Arquivo validado'}</a></Button>)}</div>}
     </Card>
     {gestor && lotes.length > 0 && <Card className={styles.painel}><h2>Rodadas e comprovantes</h2>{lotes.map(l => <div key={l.id}><h3>Rodada {l.ordinal}</h3><p>{l.analisadas} candidatas, {l.resposta?.entregues ?? 0} empresas entregues. {l.concluido_em ? 'Concluída.' : 'Aguardando confirmação.'}</p>{l.recibo && <><div className={styles.acoes}>{['arquivo_original_id','arquivo_resultado_id'].map((k,i) => typeof l.recibo?.[k] === 'string' && <Button key={k} asChild variant="outline"><a href={'https://drive.google.com/file/d/'+encodeURIComponent(String(l.recibo[k]))+'/view'} target="_blank" rel="noreferrer">{i===0?'Arquivo original':'Resultado da rodada'}</a></Button>)}</div><details><summary className={styles.botaoResumo}>Conferir critérios e evidências</summary><pre className={styles.dadosBrutos}>{JSON.stringify({criterios:usado.criterios,evidencias:l.recibo.evidencias},null,2)}</pre></details></>}</div>)}</Card>}
     <section aria-label="Empresas da coleta" className={styles.entregas}>
-      {!resultados.length && <Card className={styles.vazio}><h2>Nenhuma empresa liberada nesta entrega</h2><p>Acompanhe o estado da coleta. Resultados pendentes ou já destinados ficam disponíveis ao gestor.</p></Card>}
+      {!resultados.length && <EstadoVazio titulo="Nenhuma empresa liberada nesta entrega" descricao="Acompanhe o estado da coleta. Resultados pendentes ou já destinados ficam disponíveis ao gestor." acao={{ rotulo: 'Ver planejamento', href: `${gestor ? '/empresas' : '/fila'}/google?semana=${plano.dia}`, variante: 'outline' }} />}
       {resultados.map(r => <Card className={styles.empresa} key={r.id}>
-        <div><span className={styles.situacao}>{estados[r.situacao]}</span><h2>{texto(r.dados.nome_fantasia) || texto(r.dados.razao_social) || 'Empresa sem nome confirmado'}</h2>
+        <div><Badge variant={r.situacao === 'entregue' ? 'success' : r.situacao === 'conflito' ? 'warning' : 'default'}>{estados[r.situacao]}</Badge><h2>{texto(r.dados.nome_fantasia) || texto(r.dados.razao_social) || 'Empresa sem nome confirmado'}</h2>
           <p>{texto(r.dados.endereco) || 'Endereço não informado pela origem'}</p></div>
         <dl className={styles.resumo}><div><dt>Telefone</dt><dd>{texto(r.dados.telefone) || 'Sem telefone informado'}</dd></div><div><dt>Verificação do contato</dt><dd>{(r.canais_verificados ?? []).includes('whatsapp') || (!r.lote_id && r.dados.validado === true) ? 'WhatsApp confirmado' : (r.canais_verificados ?? []).includes('fixo') ? 'Formato de telefone fixo conferido' : 'Não verificado'}</dd></div><div><dt>CNPJ</dt><dd>{texto(r.dados.cnpj) || 'Não informado'}</dd></div>
           <div><dt>Email</dt><dd>{texto(r.dados.email) || 'Não informado'}</dd></div><div><dt>Atendimento após entrega</dt><dd>{r.trabalhada ? 'Registrado' : 'Sem atendimento registrado'}</dd></div></dl>

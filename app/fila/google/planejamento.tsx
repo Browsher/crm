@@ -3,6 +3,8 @@
 import { useActionState, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/src/components/ui/button'
+import { Alert } from '@/src/components/ui/alert'
+import { Badge } from '@/src/components/ui/badge'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { type PlanoGoogle, type PlanoEntrada } from '@/src/features/google/tipos'
@@ -42,7 +44,7 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
   const alterar = (dia: string, campos: Partial<PlanoEntrada>) => setRascunho(anteriores => anteriores.map(p => p.dia === dia ? { ...p, ...campos } : p))
   const temFuturo = dias.some(d => d > hoje)
   return <section className={styles.semana}>
-    <div className={styles.cabecalhoSemana}><div><h2>Planejamento da semana</h2><p className={styles.ajuda}>{dataCurta(dias[0])} a {dataCurta(dias.at(-1)!)}. Sem bairro, a busca cobre a cidade inteira.</p></div>
+    <div className={styles.cabecalhoSemana}><div><h2 className={styles.tituloSecao}>Planejamento da semana</h2><p className={styles.ajuda}>{dataCurta(dias[0])} a {dataCurta(dias.at(-1)!)}. Sem bairro, a busca cobre a cidade inteira.</p></div>
       <div className={styles.acoes}>
         {!editando && <><Button asChild variant="outline"><Link href={mover(-7)}>Semana anterior</Link></Button><Button asChild variant="outline"><Link href={mover(7)}>Próxima semana</Link></Button></>}
         <EspelharPlanejamento dias={dias} hoje={hoje} historico={historico} disabled={editando || !historico.length} />
@@ -57,23 +59,23 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
           const p = editando ? rascunho.find(r => r.dia === dia)! : entrada(dia, plano)
           const editavel = editando && dia > hoje
           const rotulo = diaDaSemana(dia) + ', ' + dataCurta(dia)
-          return <tr key={dia} data-hoje={dia === hoje ? true : undefined}><th scope="row"><span className={styles.data}>{diaDaSemana(dia)}<time dateTime={dia}>{dataCurta(dia)}</time>{dia === hoje && <span className={styles.hoje}>Hoje</span>}</span></th>
+          return <tr key={dia} data-hoje={dia === hoje ? true : undefined}><th scope="row"><span className={styles.data}>{diaDaSemana(dia)}<time dateTime={dia}>{dataCurta(dia)}</time>{dia === hoje && <Badge>Hoje</Badge>}</span></th>
             <td><div className={styles.nichoCelula}>{editavel ? <Input aria-label={'Nicho de ' + rotulo} name={'nicho-' + dia} maxLength={100} value={p.nicho} onChange={e => alterar(dia, { nicho: e.target.value })} disabled={pendente} /> : <span>{p.nicho || <span className={styles.ajuda}>Não definido</span>}</span>}{(editavel || p.nicho) && <DialogoCriterios dia={dia} valor={p.criterios ?? criteriosVazios()} leitura={!editavel || pendente} onAplicar={criterios => alterar(dia, { criterios })} />}</div></td>
             <td>{editavel ? <Input aria-label={'Bairro de ' + rotulo} name={'bairro-' + dia} maxLength={100} value={p.bairro} onChange={e => alterar(dia, { bairro: e.target.value })} disabled={pendente} /> : p.nicho ? p.bairro || 'Cidade inteira' : 'Não definido'}</td>
             <td>{editavel ? <div className={styles.cidadeUf}><Input aria-label={'Cidade de ' + rotulo} name={'cidade-' + dia} maxLength={100} value={p.cidade} onChange={e => alterar(dia, { cidade: e.target.value })} disabled={pendente} /><NativeSelect aria-label={'UF de ' + rotulo} name={'uf-' + dia} value={p.uf} onChange={e => alterar(dia, { uf: e.target.value })} disabled={pendente}><option value="">UF</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></div> : p.cidade ? p.cidade + ' / ' + p.uf : 'Não definido'}</td>
             <td>{p.nicho && p.cidade && p.uf ? p.nicho + ' · ' + (p.bairro || p.cidade) + ' / ' + p.uf : <span className={styles.ajuda}>Montado automaticamente</span>}
-              {plano?.execucao_revisao && plano.execucao_revisao !== plano.revisao && <small className={styles.avisoRevisao}>A busca iniciada usa o planejamento anterior.</small>}</td>
+              {plano?.execucao_revisao && plano.execucao_revisao !== plano.revisao && <Alert role="note" variant="warning" className={styles.avisoRevisao}>A busca iniciada usa o planejamento anterior.</Alert>}</td>
           </tr>
         })}
       </tbody></table></div>
       {editando && <div className={styles.rodapeSemana}><p className={styles.ajuda}>Hoje e dias anteriores ficam bloqueados. Um dia vazio não gera busca.</p><div className={styles.acoes}><Button type="button" variant="outline" disabled={pendente} onClick={() => setEditando(false)}>Cancelar</Button><Button type="submit" disabled={pendente}>{pendente ? 'Salvando…' : 'Salvar planejamento'}</Button></div></div>}
-      {tentou && estado.erro && <p role="alert" className={styles.aviso}>{estado.erro}</p>}
-      {tentou && estado.salvo && <p role="status" className={estado.sincronizacao === 'pendente' ? styles.aviso : styles.sucesso}>{estado.aviso ?? 'Planejamento salvo.'}</p>}
+      {tentou && estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
+      {tentou && estado.salvo && <Alert role="status" variant={estado.sincronizacao === 'pendente' ? 'warning' : 'success'}>{estado.aviso ?? 'Planejamento salvo.'}</Alert>}
     </form>
-    {planos.filter(p => p.dia > hoje && p.sincronizado === false).map(p => <div key={p.id} className={styles.rodapeSemana}>
+    {planos.filter(p => p.dia > hoje && p.sincronizado === false).map(p => <Alert key={p.id} role="note" variant="warning" className={styles.pendenciaPlanilha}>
       <div><strong>Planilha pendente · {dataCurta(p.dia)}</strong><p className={styles.ajuda}>{p.sincronizacao_erro || 'O planejamento está salvo no CRM. Confira a sincronização antes da coleta.'}</p></div>
       <SincronizarPlanejamento pedido={p.id} onSucesso={() => setConferido(true)} />
-    </div>)}
-    {conferido && <p role="status" className={styles.sucesso}>Sincronizado com a planilha.</p>}
+    </Alert>)}
+    {conferido && <Alert role="status" variant="success">Sincronizado com a planilha.</Alert>}
   </section>
 }

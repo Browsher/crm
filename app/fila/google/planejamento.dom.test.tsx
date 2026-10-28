@@ -42,6 +42,7 @@ test('pendência de sincronização permite conferir novamente fora do formulár
   await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-23']} planos={[plano]} hoje="2026-10-22" />))
   expect(Array.from(elemento.querySelectorAll('button')).some(b => b.textContent === 'Sincronizar novamente')).toBe(true)
   expect(elemento.querySelector('form form')).toBeNull()
+  expect(elemento.querySelector('[role="note"]')?.getAttribute('data-slot')).toBe('alert')
 })
 test('critérios abrem em diálogo e cancelar não altera rascunho da semana', async () => {
   raiz = createRoot(elemento)
@@ -56,4 +57,22 @@ test('critérios abrem em diálogo e cancelar não altera rascunho da semana', a
   await act(async () => Array.from(dialogo.querySelectorAll('button')).find(b => b.textContent === 'Cancelar')!.click())
   await act(async () => botao.click())
   expect(document.querySelector<HTMLInputElement>('[role="dialog"] input[value="fixo"]')?.checked).toBe(false)
+})
+
+test('critérios usam controles compartilhados e aplicar preserva payload sem liberar dias bloqueados', async () => {
+  raiz = createRoot(elemento)
+  await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-22', '2026-10-23']} planos={[]} hoje="2026-10-22" />))
+  await act(async () => Array.from(elemento.querySelectorAll('button')).find(b => b.textContent === 'Editar planejamento')!.click())
+  const abrir = () => Array.from(elemento.querySelectorAll('button')).find(b => b.textContent === 'Critérios de busca')!.click()
+  await act(async () => abrir())
+  const dialogo = document.querySelector('[role="dialog"]')!
+  expect(dialogo.querySelector('textarea[name="termos"]')?.getAttribute('data-slot')).toBe('textarea')
+  expect(dialogo.querySelector('input[value="fixo"]')?.getAttribute('data-slot')).toBe('choice')
+  await act(async () => dialogo.querySelector<HTMLInputElement>('input[value="fixo"]')!.click())
+  await act(async () => dialogo.querySelector('form')!.requestSubmit())
+  const payload = JSON.parse(elemento.querySelector<HTMLInputElement>('input[name="dias"]')!.value)
+  expect(payload).toHaveLength(1)
+  expect(payload[0]).toMatchObject({ dia: '2026-10-23', criterios: { telefone: ['fixo'], nota: null, termos: '' } })
+  await act(async () => abrir())
+  expect(document.querySelector<HTMLInputElement>('[role="dialog"] input[value="fixo"]')!.checked).toBe(true)
 })
