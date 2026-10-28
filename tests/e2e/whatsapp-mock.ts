@@ -24,6 +24,8 @@ export async function iniciarWhatsAppDeTeste(banco: BancoDeTeste) {
       { key: { id: 'imagem-aurora', remoteJid: '5511988889991@s.whatsapp.net', fromMe: true }, messageTimestamp: agora - 120, message: { imageMessage: { mimetype: 'image/png', caption: 'Imagem local de teste' } } },
       { key: { id: 'documento-indisponivel', remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, messageTimestamp: agora - 180, message: { documentMessage: { mimetype: 'application/pdf', fileName: 'pedido.pdf' } } },
       { key: { id: 'texto-boreal', remoteJid: '5511988889992@s.whatsapp.net', fromMe: false }, pushName: 'Contato Boreal', messageTimestamp: agora - 240, message: { conversation: 'Mensagem da segunda conversa.' } },
+      { key: { id: 'texto-nome-longo', remoteJid: '5511988889993@s.whatsapp.net', fromMe: false }, pushName: 'Contato com nome muito longo para validar identificação completa sem colidir com horário e ações da conversa', messageTimestamp: agora - 270, message: { conversation: 'Mensagem sintética do contato com nome longo.' } },
+      { key: { id: 'texto-sem-nome', remoteJid: '99988776655@lid', fromMe: false }, messageTimestamp: agora - 280, message: { conversation: 'Mensagem sintética sem identificação disponível.' } },
       ...Array.from({ length: 40 }, (_, indice) => ({ key: { id: `historico-aurora-${indice}`, remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, pushName: 'Contato Aurora', messageTimestamp: agora - 300 - indice * 60, message: { conversation: `Mensagem antiga ${indice + 1} do histórico local de teste.` } })),
     ]
     const servidor = createServer({ key: await readFile(chave), cert: await readFile(certificado) }, async (pedido, resposta) => {

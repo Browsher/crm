@@ -49,6 +49,7 @@ test('falha mostra erro e permite tentar novamente', async () => {
   await act(async () => raiz.render(<MidiaMensagem id="ABC" conversa="123@lid" midia={{ tipo: 'imagem' }} />))
   await act(async () => host.querySelector('button')!.click())
   expect(host.querySelector('[role="alert"]')?.textContent).toContain('indisponível')
+  expect(host.querySelector('[role="alert"]')?.getAttribute('data-slot')).toBe('alert')
   await act(async () => host.querySelector('button')!.click())
   expect(host.querySelector('img')).not.toBeNull()
 })
@@ -75,4 +76,17 @@ test('sair da conversa cancela download sem criar blob depois de desmontar', asy
   expect(signal.aborted).toBe(true)
   await act(async () => concluir(new Response(new Blob(['foto']))))
   expect(criar).not.toHaveBeenCalled()
+})
+
+test('fechar imagem devolve foco à miniatura sem repetir download', async () => {
+  await act(async () => raiz.render(<MidiaMensagem id="ABC" conversa="123@lid" midia={{ tipo: 'imagem' }} />))
+  await act(async () => host.querySelector('button')!.click())
+  const miniatura = host.querySelector<HTMLButtonElement>('[aria-label="Ampliar imagem"]')!
+  miniatura.focus()
+  await act(async () => miniatura.click())
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
+  await new Promise(resolve => setTimeout(resolve, 20))
+  expect(document.activeElement).toBe(miniatura)
+  expect(fetcher).toHaveBeenCalledTimes(1)
 })

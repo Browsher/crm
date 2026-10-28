@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { Button } from '@/src/components/ui/button'
+import { Badge } from '@/src/components/ui/badge'
 import styles from './grupos.module.css'
 
 export function dataGrupo(valor: string) {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(valor))
 }
 export function SituacaoGrupo({ ativo }: { ativo: boolean }) {
-  return <span className={ativo ? styles.ativo : styles.desativado}>{ativo ? 'Ativo' : 'Desativado'}</span>
+  return <Badge variant={ativo ? 'success' : 'outline'}>{ativo ? 'Ativo' : 'Desativado'}</Badge>
 }
 export function PaginacaoGrupos({ pagina, total, caminho, gruposPagina }: { pagina: number; total: number; caminho: string; gruposPagina?: number }) {
   const paginas = Math.max(1, Math.ceil(total / 50))

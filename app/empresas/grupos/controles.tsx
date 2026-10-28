@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { Button } from '@/src/components/ui/button'
+import { Alert } from '@/src/components/ui/alert'
 import { Input } from '@/src/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/src/components/ui/dialog'
 import { useTemaCrm } from '@/src/components/crm/tema'
@@ -46,11 +47,11 @@ function Formulario({ id, nome, ativo, impactoDesativacao, renomear, rotulo, con
       <input type="hidden" name="acao" value={renomear ? 'renomear' : ativo ? 'desativar' : 'reativar'} />
       {renomear ? <label className={styles.campo}>Nome do grupo
         <Input name="nome" required maxLength={100} value={nomeEditado} onChange={e => setNomeEditado(e.target.value)} disabled={pendente} />
-      </label> : <div className={styles.aviso}>
+      </label> : <Alert variant="warning" role="note">
         {ativo ? <><p>{impactoDesativacao} empresas disponíveis deixarão de aparecer para novas prospecções.</p><p>Esta quantidade é um retrato atual e pode mudar até a confirmação.</p></> : <p>Empresas elegíveis voltam à prospecção. Os períodos de descanso permanecem.</p>}
         <p>Carteiras e reservas atuais são preservadas. Empresas com outro grupo ativo podem continuar disponíveis.</p>
-      </div>}
-      {estado.erro && <p role="alert">{estado.erro}</p>}
+      </Alert>}
+      {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
       <DialogFooter>
         <DialogClose asChild><Button type="button" variant="ghost" disabled={pendente}>Cancelar</Button></DialogClose>
         <Button type="submit" variant={!renomear && ativo ? 'destructive' : 'default'} disabled={pendente}>{pendente ? 'Salvando…' : renomear ? 'Salvar nome' : 'Confirmar'}</Button>

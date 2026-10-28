@@ -93,6 +93,7 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   await expect(page.getByText('3 empresas no grupo.', { exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Ver lista', exact: true }).click()
   await expect(page).toHaveURL(/\/empresas\/grupos\/[0-9a-f-]{36}$/)
+  await expect(page.getByRole('main').locator('[data-slot=badge]').first()).toHaveText('Ativo')
   const urlGrupo = page.url()
   await expect(page.getByRole('heading', { name: NOME, exact: true })).toBeVisible()
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(4)
@@ -173,11 +174,11 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   } finally { await contexto.close() }
 })
 
-test('gestão real de grupos cabe em 390, 820 e 1280 nos dois temas com diálogo e página vazia', async ({ page }, testInfo) => {
+test('gestão real de grupos conserva reflow desktop e celular nos dois temas com diálogo e página vazia', async ({ page }) => {
   test.setTimeout(90_000)
   await entrar(page)
   for (const tema of ['light', 'dark']) {
-    for (const width of [390, 820, 1280]) {
+    for (const width of [390, 820, 1100, 1200, 1280, 1920]) {
       await page.setViewportSize({ width, height: 844 })
       await page.goto('/empresas/grupos')
       await page.getByLabel('Tema de Empresas').selectOption(tema)
@@ -191,7 +192,7 @@ test('gestão real de grupos cabe em 390, 820 e 1280 nos dois temas com diálogo
       expect(linhasDasBadges.length).toBeGreaterThan(0)
       expect(linhasDasBadges.every(linhas => linhas === 1)).toBe(true)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: testInfo.outputPath(`grupos-lista-${tema}-${width}.png`), fullPage: true })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-lista-${tema}-${width}.png`, fullPage: true })
       // Playwright rola o container até o link real, inclusive em 390px.
       await page.getByRole('link', { name: `Ver lista ${GRUPOS[0][1]}`, exact: true }).click()
       await expect(page.getByRole('heading', { name: GRUPOS[0][1], exact: true })).toBeVisible()
@@ -203,7 +204,11 @@ test('gestão real de grupos cabe em 390, 820 e 1280 nos dois temas com diálogo
       await expect(resumo(page, 'Reservadas')).toHaveText('1')
       await expect(resumo(page, 'Outros impedimentos')).toHaveText('1')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: testInfo.outputPath(`grupos-detalhe-${tema}-${width}.png`), fullPage: true })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-detalhe-${tema}-${width}.png`, fullPage: true })
+      await expect(page.getByRole('main')).toHaveCSS('padding-left', width <= 820 ? '16px' : '32px')
+      const contexto = page.getByRole('region', { name: 'Contexto da lista' })
+      await expect(contexto).toHaveCSS('border-radius', '10px')
+      await expect(contexto).toHaveCSS('padding-top', width <= 820 ? '20px' : '24px')
       const abrir = page.getByRole('button', { name: 'Desativar grupo', exact: true })
       await abrir.click()
       const dialogo = page.getByRole('dialog')
@@ -217,7 +222,7 @@ test('gestão real de grupos cabe em 390, 820 e 1280 nos dois temas com diálogo
       expect(caixa).not.toBeNull()
       expect(caixa!.x).toBeGreaterThanOrEqual(0)
       expect(caixa!.x + caixa!.width).toBeLessThanOrEqual(width)
-      await page.screenshot({ path: testInfo.outputPath(`grupos-dialogo-${tema}-${width}.png`) })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-dialogo-${tema}-${width}.png` })
       await page.keyboard.press('Escape')
       await expect(dialogo).toHaveCount(0)
       await expect(abrir).toBeFocused()
@@ -225,8 +230,10 @@ test('gestão real de grupos cabe em 390, 820 e 1280 nos dois temas com diálogo
       await page.getByLabel('Tema de Empresas').selectOption(tema)
       await expect(page.locator('.crm-ui').first()).toHaveAttribute('data-theme', tema)
       await expect(page.getByRole('heading', { name: 'Nenhuma lista nesta página' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Nenhuma lista nesta página' })).toHaveCSS('font-size', '16px')
+      await expect(page.getByRole('heading', { name: 'Nenhuma lista nesta página' })).toHaveCSS('line-height', '24px')
       await expect(page.getByText('Volte à primeira página para consultar as listas existentes.')).toBeVisible()
-      await page.screenshot({ path: testInfo.outputPath(`grupos-vazio-${tema}-${width}.png`), fullPage: true })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-vazio-${tema}-${width}.png`, fullPage: true })
       await page.getByRole('link', { name: 'Voltar à primeira página', exact: true }).click()
       await expect(page.getByRole('table')).toBeVisible()
     }

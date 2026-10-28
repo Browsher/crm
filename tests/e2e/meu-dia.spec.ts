@@ -69,7 +69,7 @@ async function tabAte(page: Page, alvo: Locator, maximo = 30) {
 async function conferirTamanhos(page: Page, tela: string) {
   for (const tema of ['light', 'dark'] as const) {
     await page.getByRole('combobox', { name: 'Tema do Meu dia' }).selectOption(tema)
-    for (const width of [390, 820, 1280]) {
+    for (const width of [390, 820, 1280, 1920]) {
       await page.setViewportSize({ width, height: 844 })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 
@@ -83,11 +83,13 @@ async function conferirTamanhos(page: Page, tela: string) {
       // dois lados: nem cortado à direita, nem começando fora à esquerda.
       const abrir = page.getByRole('link', { name: 'Abrir atendimento', exact: true })
       await expect(abrir).toBeVisible()
+      await expect(page.getByRole('article')).toHaveCSS('border-radius', '10px')
+      await expect(page.getByRole('article')).toHaveCSS('padding', width <= 820 ? '20px' : '24px')
       const caixa = (await abrir.boundingBox())!
       expect(caixa.x).toBeGreaterThanOrEqual(0)
       expect(caixa.x + caixa.width).toBeLessThanOrEqual(width)
 
-      await page.screenshot({ path: `test-results/meu-dia-${tela}-${tema}-${width}.png`, fullPage: true })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/meu-dia-${tela}-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
       if (width <= 820) {
         await page.getByRole('button', { name: 'Voltar para retornos', exact: true }).click()
         await expect(lista).toBeVisible()

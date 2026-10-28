@@ -1,3 +1,8 @@
+import { execFileSync } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { resolve } from 'node:path'
+const capturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-5-captures')
+mkdirSync(capturas, { recursive: true })
 import { expect, test, type Page } from '@playwright/test'
 import { comBancoGrupos } from './dados-grupos'
 
@@ -9,7 +14,7 @@ async function entrar(page: Page, apelido = 'redesigne2e') {
   await expect(page).toHaveURL(apelido === 'gestore2e' ? '/gestao' : '/meu-dia')
 }
 
-test('acesso à busca e localização convivem no redesign da Prospecção', async ({ page }, testInfo) => {
+test('acesso à busca e localização convivem no redesign da Prospecção', async ({ page }) => {
   test.setTimeout(60_000)
   await entrar(page)
   await page.goto('/fila')
@@ -27,12 +32,12 @@ test('acesso à busca e localização convivem no redesign da Prospecção', asy
     for (const tema of ['light', 'dark']) {
       await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-      await page.screenshot({ path: testInfo.outputPath(`busca-cnpj-${width}-${tema}.png`), fullPage: true })
+      await page.screenshot({ path: resolve(capturas, `busca-cnpj-${width}-${tema}.png`), fullPage: true })
     }
   }
 })
 
-test('consulta simulada persiste, não repete no refresh e importa dados nas abas', async ({ page, browser }, testInfo) => {
+test('consulta simulada persiste, não repete no refresh e importa dados nas abas', async ({ page, browser }) => {
   test.setTimeout(90_000)
   await entrar(page)
   await page.goto('/fila/buscar')
@@ -88,7 +93,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
     for (const tema of ['light', 'dark']) {
       await page.getByLabel('Tema da Carteira').selectOption(tema)
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-      await page.screenshot({ path: testInfo.outputPath(`ficha-cnpj-${width}-${tema}.png`), fullPage: true })
+      await page.screenshot({ path: resolve(capturas, `ficha-cnpj-${width}-${tema}.png`), fullPage: true })
     }
   }
   const contextoGestor = await browser.newContext()
@@ -106,8 +111,52 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
       for (const tema of ['light', 'dark']) {
         await gestor.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
         await expect.poll(() => gestor.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-        await gestor.screenshot({ path: testInfo.outputPath(`gestao-cnpj-${width}-${tema}.png`), fullPage: true })
+        await gestor.screenshot({ path: resolve(capturas, `gestao-cnpj-${width}-${tema}.png`), fullPage: true })
       }
     }
   } finally { await contextoGestor.close() }
+})
+
+
+test('Choice conserva transporte nativo por label, Espaço e teclado do grupo radio', async ({ page }) => {
+  await entrar(page)
+  await page.goto('/fila/buscar?fonte=banco')
+  await page.getByRole('button', { name: 'Contatos e qualidade', exact: true }).click()
+  const evitar = page.getByLabel('Evitar emails de contabilidade', { exact: true })
+  const formBusca = page.locator('form').filter({ has: evitar })
+  const qualidade = () => formBusca.evaluate(el => JSON.parse(String(new FormData(el as HTMLFormElement).get('avancados'))).semEmailContabil)
+  expect(await qualidade()).toBe(false)
+  await evitar.focus()
+  await page.keyboard.press('Space')
+  expect(await qualidade()).toBe(true)
+  await page.getByText('Evitar emails de contabilidade', { exact: true }).click()
+  expect(await qualidade()).toBe(false)
+  expect((await evitar.locator('..').boundingBox())!.height).toBeGreaterThanOrEqual(44)
+
+  // Como em design-system.spec.ts, Node/tsx evita a transformação JSX do Playwright.
+  // Radio ainda não tem consumidor migrado nestas telas.
+  const html = execFileSync(process.execPath, ['--import', 'tsx', '--eval', `
+    const { createElement: h } = require('react')
+    const { renderToStaticMarkup } = require('react-dom/server')
+    const { Choice } = require('./src/components/ui/choice')
+    process.stdout.write(renderToStaticMarkup(h('form', { id: 'choice-contrato', className: 'crm-ui' },
+      h('label', null, h(Choice, { type: 'radio', name: 'regiao', value: 'SP', defaultChecked: true }), 'São Paulo de teste'),
+      h('label', null, h(Choice, { type: 'radio', name: 'regiao', value: 'RJ' }), 'Rio de Janeiro de teste'),
+    )))
+  `], { encoding: 'utf8' })
+  await page.locator('body').evaluate((body, markup) => body.insertAdjacentHTML('beforeend', markup), html)
+  const form = page.locator('#choice-contrato')
+  const valores = () => form.evaluate(el => [...new FormData(el as HTMLFormElement).entries()])
+  expect(await valores()).toEqual([['regiao', 'SP']])
+  await page.getByLabel('São Paulo de teste', { exact: true }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByLabel('Rio de Janeiro de teste', { exact: true })).toBeChecked()
+  expect(await valores()).toEqual([['regiao', 'RJ']])
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Shift+Tab')
+  const foco = await page.getByLabel('Rio de Janeiro de teste', { exact: true }).evaluate(el => {
+    const css = getComputedStyle(el)
+    return { largura: css.outlineWidth, afastamento: css.outlineOffset, estilo: css.outlineStyle, sombra: css.boxShadow }
+  })
+  expect(foco).toEqual({ largura: '3px', afastamento: '3px', estilo: 'solid', sombra: 'none' })
 })

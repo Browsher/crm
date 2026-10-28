@@ -5,7 +5,7 @@
 .navegacao { display:flex; align-items:center; gap:8px; }
 .contagem { font-size:12px; color:var(--muted-foreground); font-variant-numeric:tabular-nums; margin-right:8px; }
 .grade { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; min-width:0; }
-.secao .card { aspect-ratio:1; display:grid; grid-template-rows:auto minmax(0,1fr) auto; gap:16px; min-width:0; min-height:0; padding:22px; overflow:hidden; border-radius:12px; background:var(--card); }
+.secao .card { aspect-ratio:1; display:grid; grid-template-rows:auto minmax(0,1fr) auto; gap:16px; min-width:0; min-height:0; padding:22px; overflow:hidden; border-radius:var(--radius-card); background:var(--card); }
 .identidade,.metadados { min-width:0; }
 .marca { display:flex; align-items:center; justify-content:space-between; height:28px; margin-bottom:18px; gap:12px; }
 .marca>svg { width:24px; height:24px; color:var(--muted-foreground); }
@@ -41,7 +41,7 @@
 
 @container(max-width:300px) { .secao .card { padding:14px; gap:10px; } .secao .card h3.nome { font-size:18px; } .marca { margin-bottom:8px; } .metadados { gap:8px; font-size:12px; } .recebido { font-size:11px; } }
 
-.secao:focus-visible { outline:2px solid var(--ring); outline-offset:4px; }
+.secao:focus-visible { outline:3px solid var(--ring); outline-offset:3px; }
 .desktopDados,.desktopAtividade { display:none; }
 @container(min-width:1120px) {
  .secao .card { padding:18px; gap:12px; }

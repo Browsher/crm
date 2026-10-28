@@ -23,3 +23,11 @@ test('recibo legado não apresenta validação antiga como uma entrega direta V2
   expect(html).toContain('validação de contatos do fluxo anterior')
   expect(html).not.toContain('Entrega direta')
 })
+
+test('histórico com falha usa aviso e resultados sem empresas orientam a voltar ao planejamento', () => {
+  const html = renderToStaticMarkup(<DetalheEntrega plano={{ ...plano, estado: 'falhou', motivo: 'Falha na coleta' }} recibo={null} resultados={[]} />)
+  expect(html).toContain('data-slot="alert"')
+  expect(html).toContain('role="alert"')
+  expect(html).toContain('Nenhuma empresa liberada nesta entrega')
+  expect(html).toContain('>Ver planejamento</a>')
+})

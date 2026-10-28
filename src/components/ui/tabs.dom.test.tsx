@@ -20,7 +20,7 @@ async function montar() {
   root = createRoot(host)
   await act(async () => root!.render(<TabsRoot defaultValue="dados">
     <TabsList aria-label="Ficha da empresa"><TabsTab value="dados">Dados</TabsTab><TabsTab value="historico">Histórico</TabsTab><TabsIndicator /></TabsList>
-    <TabsPanel value="dados">Dados cadastrais</TabsPanel>
+    <TabsPanel value="dados" keepMounted>Dados cadastrais<input aria-label="Nota" defaultValue="" /></TabsPanel>
     <TabsPanel value="historico">Última ligação registrada</TabsPanel>
   </TabsRoot>))
 }
@@ -47,4 +47,19 @@ test('teclado navega entre abas sem criar paradas extras no Tab', async () => {
   await act(async () => abas[1].click())
   expect(abas[1].tabIndex).toBe(0)
   expect(abas[0].tabIndex).toBe(-1)
+})
+
+
+test('painel keepMounted conserva o rascunho ao trocar por setas e retornar', async () => {
+  await montar()
+  const abas = host.querySelectorAll<HTMLButtonElement>('[role=tab]')
+  const nota = host.querySelector<HTMLInputElement>('[aria-label="Nota"]')!
+  nota.value = 'Rascunho preservado entre abas'
+  await act(async () => abas[0].focus())
+  await act(async () => abas[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })))
+  await act(async () => abas[1].click())
+  expect(nota.isConnected).toBe(true)
+  expect(nota.value).toBe('Rascunho preservado entre abas')
+  await act(async () => abas[0].click())
+  expect(host.querySelector('[aria-label="Nota"]')).toBe(nota)
 })

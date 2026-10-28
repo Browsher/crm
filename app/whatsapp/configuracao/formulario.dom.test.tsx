@@ -56,3 +56,15 @@ test('remoção envia apenas o vínculo e apresenta falha recuperável', async (
   expect(host.querySelector('[role=alert]')?.textContent).toBe('Tente novamente.')
   expect(host.querySelector('button')?.disabled).toBe(false)
 })
+
+test('sucesso usa retorno de estado comum e campos continuam disponíveis', async () => {
+  vi.mocked(salvarVinculoAcao).mockResolvedValue({ erro: null, sucesso: 'Vínculo salvo.' })
+  await montar()
+  await enviar()
+  const retorno = host.querySelector('[role="status"]')
+  expect(retorno?.textContent).toBe('Vínculo salvo.')
+  expect(retorno?.getAttribute('data-slot')).toBe('alert')
+  expect(host.querySelector('button')?.disabled).toBe(false)
+  expect(host.querySelector('input[name="instancia"]')?.getAttribute('type')).not.toBe('password')
+  expect(host.querySelector('input[name="apiKey"]')).toBeNull()
+})

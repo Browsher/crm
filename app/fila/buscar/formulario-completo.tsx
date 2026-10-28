@@ -2,6 +2,7 @@
 
 import { useActionState, useId, useState, type ReactNode } from 'react'
 import { ChevronDown, Plus, X } from 'lucide-react'
+import { Choice } from '@/src/components/ui/choice'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Button } from '@/src/components/ui/button'
@@ -17,7 +18,7 @@ function GrupoFiltro({titulo,descricao,primeiro=false,children}:{titulo:string;d
   return <section className={styles.grupo}><h2><button type="button" aria-expanded={aberto} aria-controls={id} aria-labelledby={id+'-titulo'} aria-describedby={id+'-descricao'} onClick={()=>setAberto(!aberto)}><span><strong id={id+'-titulo'}>{titulo}</strong><small id={id+'-descricao'}>{descricao}</small></span><ChevronDown aria-hidden="true" className={aberto?styles.aberto:''}/></button></h2><div id={id} hidden={!aberto} className={styles.corpo}>{children}</div></section>
 }
 function Escolhas({titulo,opcoes,valor,mudar,bloqueadas=[]}:{bloqueadas?:string[];titulo:string;opcoes:readonly (readonly [string,string])[];valor:string[];mudar:(v:string[])=>void}) {
-  return <fieldset className={styles.escolhas}><legend>{titulo}</legend><div>{opcoes.map(([v,t])=><label key={v}><input type="checkbox" checked={valor.includes(v)} disabled={bloqueadas.includes(v)} onChange={e=>mudar(e.target.checked?[...valor,v]:valor.filter(x=>x!==v))}/><span>{t}</span></label>)}</div></fieldset>
+  return <fieldset className={styles.escolhas}><legend>{titulo}</legend><div>{opcoes.map(([v,t])=><label key={v}><Choice type="checkbox" checked={valor.includes(v)} disabled={bloqueadas.includes(v)} onChange={e=>mudar(e.target.checked?[...valor,v]:valor.filter(x=>x!==v))}/><span>{t}</span></label>)}</div></fieldset>
 }
 function ListaTexto({titulo,valor,mudar,ajuda,exemplo}:{titulo:string;valor:string[];mudar:(v:string[])=>void;ajuda?:string;exemplo:string}) {
   const [texto,setTexto]=useState(''),id=useId()
@@ -25,7 +26,7 @@ function ListaTexto({titulo,valor,mudar,ajuda,exemplo}:{titulo:string;valor:stri
 }
 function ExclusaoRegime({regime,marcado,desabilitado,de,ate,mudar,deMudar,ateMudar}:{regime:'MEI'|'Simples';marcado:boolean;desabilitado:boolean;de:string;ate:string;mudar:(v:boolean)=>void;deMudar:(v:string)=>void;ateMudar:(v:string)=>void}) {
   const nome=regime==='MEI'?'MEI':'Simples Nacional'
-  return <div className="grid gap-3"><label className={styles.check}><input type="checkbox" checked={marcado} disabled={desabilitado} onChange={e=>mudar(e.target.checked)}/>Excluir optantes do {nome}</label>
+  return <div className="grid gap-3"><label className={styles.check}><Choice type="checkbox" checked={marcado} disabled={desabilitado} onChange={e=>mudar(e.target.checked)}/>Excluir optantes do {nome}</label>
     {desabilitado&&<small>Desmarque a seleção de optantes do {nome} para usar esta exclusão.</small>}
     {marcado&&<div className={styles.grade}><label>Exclusão do {regime} a partir de<Input type="date" value={de} onChange={e=>deMudar(e.target.value)}/></label><label>Exclusão do {regime} até<Input type="date" value={ate} onChange={e=>ateMudar(e.target.value)}/></label><small>Datas opcionais para refinar o período de exclusão.</small></div>}
   </div>
@@ -78,14 +79,14 @@ function OperacaoBusca({bloqueado,restante,chaveInicial}:Props) {
       </div></fieldset>
     </GrupoFiltro>
     <GrupoFiltro titulo="Contatos e qualidade" descricao="Defina os contatos necessários. Telefones e emails repetidos são evitados sempre.">
-      <fieldset disabled={travado}><div className={styles.grade}><label>Contato disponível<NativeSelect value={f.contato} onChange={e=>mudar('contato',e.target.value as FiltrosBanco['contato'])}>{CONTATOS_BANCO.filter(([v])=>v!=='telefoneoucelularouemail').map(([v,t])=><option key={v} value={v}>{t}</option>)}</NativeSelect></label><ListaTexto titulo="DDDs" valor={f.ddds} mudar={v=>mudar('ddds',v)} exemplo="Ex.: 11, 21…"/></div><label className={styles.check}><input type="checkbox" checked={f.semEmailContabil} onChange={e=>mudar('semEmailContabil',e.target.checked)}/>Evitar emails de contabilidade</label><p className={styles.ajuda}>A consulta ignora empresas já visualizadas na conta do fornecedor. Antes da importação, o CRM verifica CNPJ, telefones e emails repetidos na base global.</p></fieldset>
+      <fieldset disabled={travado}><div className={styles.grade}><label>Contato disponível<NativeSelect value={f.contato} onChange={e=>mudar('contato',e.target.value as FiltrosBanco['contato'])}>{CONTATOS_BANCO.filter(([v])=>v!=='telefoneoucelularouemail').map(([v,t])=><option key={v} value={v}>{t}</option>)}</NativeSelect></label><ListaTexto titulo="DDDs" valor={f.ddds} mudar={v=>mudar('ddds',v)} exemplo="Ex.: 11, 21…"/></div><label className={styles.check}><Choice type="checkbox" checked={f.semEmailContabil} onChange={e=>mudar('semEmailContabil',e.target.checked)}/>Evitar emails de contabilidade</label><p className={styles.ajuda}>A consulta ignora empresas já visualizadas na conta do fornecedor. Antes da importação, o CRM verifica CNPJ, telefones e emails repetidos na base global.</p></fieldset>
     </GrupoFiltro>
     <GrupoFiltro titulo="Resultados e dados retornados" descricao="Defina quantas empresas receber e como continuar uma pesquisa.">
       <fieldset disabled={travado}><div className={styles.grade}>
         <div className={styles.nomeLista}><label htmlFor="nome-lista-banco">Nome da lista</label><div><Input id="nome-lista-banco" name="nome" maxLength={100} value={nome} onChange={e=>setNome(e.target.value)} autoComplete="off" aria-describedby="nome-lista-banco-ajuda"/><Button type="button" variant="outline" onClick={()=>setNome(sugerirNomeBanco(completos as FiltrosBanco))}>Sugerir nome</Button></div><small id="nome-lista-banco-ajuda">Padrão: Nicho · Bairro · Cidade/UF. Você pode editar.</small></div>
         <div className={styles.listaTexto}><label htmlFor="quantidade-banco">Quantidade de empresas</label><Input id="quantidade-banco" name="quantidade" type="number" min={1} max={Math.max(1,Math.min(100,restante))} value={quantidade} onChange={e=>setQuantidade(e.target.value)}/><small>De 1 a 100, dentro do seu limite diário.</small></div>
         <div className={styles.listaTexto}><label htmlFor="pagina-banco">Página de resultados</label><Input id="pagina-banco" name="pagina" type="number" min={1} max={Math.floor(1000000/Math.max(1,Number(quantidade)))+1} value={pagina} onChange={e=>setPagina(e.target.value)}/><input type="hidden" name="offset" value={(Number(pagina)-1)*Number(quantidade)}/><small>Comece em 1. Mantenha a quantidade ao avançar a página.</small></div>
-      </div><label className={styles.check}><input type="checkbox" checked={f.socios} onChange={e=>mudar('socios',e.target.checked)}/>Incluir dados completos dos sócios</label><small>Você verá nome e função. Os demais dados ficam disponíveis ao gestor.</small></fieldset>
+      </div><label className={styles.check}><Choice type="checkbox" checked={f.socios} onChange={e=>mudar('socios',e.target.checked)}/>Incluir dados completos dos sócios</label><small>Você verá nome e função. Os demais dados ficam disponíveis ao gestor.</small></fieldset>
     </GrupoFiltro>
     <div className={styles.rodape}><div><Button type="submit" disabled={travado||!chave||(modoAbertura==='ultimosDias'&&!f.aberturaUltimosDias)}>{pendente?'Buscando empresas…':'Buscar empresas'}</Button></div></div>
     {modoAbertura==='ultimosDias'&&!f.aberturaUltimosDias&&<p role="status">Informe a quantidade de dias no cartão Capital e data de abertura para buscar.</p>}

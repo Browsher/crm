@@ -2,6 +2,7 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, test, vi } from 'vitest'
+import { ShellCrm } from './shell'
 import { TemaCrmProvider, useControleTemaCrm, useTemaCrm } from './tema'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -33,5 +34,30 @@ test('tema explícito prevalece e Sistema volta a acompanhar a preferência do d
     await act(async () => root.unmount())
     host.remove()
     vi.unstubAllGlobals()
+  }
+})
+
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/design' }))
+
+test('tema escolhido na Gestão acompanha a galeria e volta à Gestão', async () => {
+  const host = document.createElement('div')
+  document.body.append(host)
+  const root = createRoot(host)
+  const tela = (design: boolean) => <TemaCrmProvider><ShellCrm key={design ? 'design' : 'gestao'} nome="Ana" papel="gestor" area={design ? 'design' : 'gestao'}>Conteúdo</ShellCrm></TemaCrmProvider>
+  try {
+    await act(async () => root.render(tela(false)))
+    const seletor = host.querySelector('select')!
+    await act(async () => {
+      seletor.value = 'dark'
+      seletor.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await act(async () => root.render(tela(true)))
+    expect(host.querySelector<HTMLSelectElement>('[aria-label="Tema do design system"]')?.value).toBe('dark')
+    await act(async () => root.render(tela(false)))
+    expect(host.querySelector<HTMLSelectElement>('[aria-label="Tema da Gestão"]')?.value).toBe('dark')
+  } finally {
+    await act(async () => root.unmount())
+    host.remove()
   }
 })

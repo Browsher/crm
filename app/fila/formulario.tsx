@@ -17,6 +17,9 @@ import { useRascunhos } from './rascunhos'
 import { RegistrarVisita } from './localizar/registrar-visita'
 import { EtapasFila } from './etapas'
 import { useTemaFila } from './tema'
+import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
+import { Alert } from '@/src/components/ui/alert'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { Button } from '@/src/components/ui/button'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
 
@@ -79,16 +82,16 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
   }
 
   return <div className="flex flex-col gap-4">
-    {estado.erro && <p role="alert" className="rounded border p-3 text-sm">{estado.erro}</p>}
+    {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
     <p className="text-sm">A próxima empresa respeita os filtros da busca atual.</p>
-    <form action={agir} onSubmit={conferirTroca} className="flex flex-wrap gap-3">
+    <form action={agir} onSubmit={conferirTroca} className={reserva ? 'flex flex-wrap gap-3' : 'grid gap-3'}>
       <CamposReserva filtros={filtros} contexto={contexto} />
-      <Button type="submit" name="acao" value="puxar" variant="outline" disabled={pendente || rascunhos.gravando || buscaBloqueada}>
-        {pendente ? 'Buscando…' : reserva ? 'Próxima' : 'Puxar próxima'}
-      </Button>
+      {reserva ? <Button type="submit" name="acao" value="puxar" variant="outline" disabled={pendente || rascunhos.gravando || buscaBloqueada}>
+        {pendente ? 'Buscando…' : 'Próxima'}
+      </Button> : <EstadoVazio titulo="Nenhuma empresa reservada para você agora." descricao="Puxe a próxima empresa usando os filtros da busca atual."
+        acao={{ rotulo: pendente ? 'Buscando…' : 'Puxar próxima', tipo: 'submit', name: 'acao', value: 'puxar', variante: 'outline', desabilitada: pendente || rascunhos.gravando || buscaBloqueada }} />}
     </form>
-    {!reserva && <p className="text-sm">Nenhuma empresa reservada para você agora.</p>}
-    {estado.filaVazia && !estado.erro && <p className="rounded border p-3 text-sm">Nenhuma empresa disponível agora. As demais estão com alguém ou foram trabalhadas nos últimos 30 dias.</p>}
+    {estado.filaVazia && !estado.erro && <EstadoVazio titulo="Nenhuma empresa disponível agora." descricao="As demais estão com alguém ou foram trabalhadas nos últimos 30 dias." />}
     {reserva && <>
       <RegistrarVisita empresaId={reserva.id} />
       <Atendimento key={reserva.id} empresa={reserva} agora={agora} contatos={contatos} filtros={filtros}
@@ -104,8 +107,8 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
       </form>}
     </>}
     {Object.entries(rascunhos.entradas).filter(([id,e]) => id !== reserva?.id && (e.expirada || rascunhoAlterado(e.valor))).map(([id,entrada]) => (
-      <section key={id} className="rounded border p-4" aria-label={`Anotações de ${entrada.nome}`}>
-        <h2 className="font-semibold">{entrada.nome}</h2>
+      <Card key={id} role="region" aria-label={`Anotações de ${entrada.nome}`}>
+        <CardHeader><CardTitle><h2>{entrada.nome}</h2></CardTitle></CardHeader><CardContent className="grid gap-4">
         <p>Você não tem esta reserva ativa. Suas anotações foram preservadas.</p>
         <FormularioContato empresaId={id} posse={false} rascunho={entrada.valor} bloqueado visual="fila"
           onDraftChange={valor => rascunhos.atualizar(id,entrada.nome,valor)} />
@@ -115,7 +118,7 @@ export function Formulario({ reserva, contatos, contexto = null, filtros = SEM_F
           <Button type="submit" name="acao" value="renovar" variant="outline" disabled={pendente || rascunhos.gravando}>Tentar reservar novamente</Button>
         </form>
         <Button type="button" variant="ghost" className="mt-3" onClick={() => setDescartePendente(id)}>Descartar anotações</Button>
-      </section>
+      </CardContent></Card>
     ))}
     <Dialog open={trocaPendente !== null} onOpenChange={aberto => { if (!aberto) setTrocaPendente(null) }}>
       <DialogContent theme={tema}>

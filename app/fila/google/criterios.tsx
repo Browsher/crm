@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { Button } from '@/src/components/ui/button'
+import { Textarea } from '@/src/components/ui/textarea'
+import { Choice } from '@/src/components/ui/choice'
+import { Alert } from '@/src/components/ui/alert'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
@@ -24,8 +27,8 @@ function EditorCriterios({ valor, leitura, cancelar, aplicar }: { valor: Criteri
   const [c, setC] = useState(() => structuredClone(valor))
   const [erro, setErro] = useState<string | null>(null)
   const alterar = <K extends keyof CriteriosGoogle>(k: K, v: CriteriosGoogle[K]) => setC(anterior => ({ ...anterior, [k]: v }))
-  const texto = (k: 'termos' | 'produtos' | 'excluir' | 'prioridades' | 'observacoes', rotulo: string) => <label>{rotulo}<textarea name={k} rows={2} maxLength={2000} value={c[k]} onChange={e => alterar(k, e.target.value)} className={styles.textarea} /></label>
-  const caixas = (k: 'tipos' | 'site' | 'email' | 'telefone', rotulo: string, opcoes: [string, string][]) => <fieldset className={styles.caixas}><legend>{rotulo}</legend>{opcoes.map(([v, nome]) => <label key={v}><input type="checkbox" name={k} value={v} checked={(c[k] as string[]).includes(v)} onChange={e => alterar(k, (e.target.checked ? [...c[k], v] : c[k].filter(x => x !== v)) as typeof c[typeof k])} />{nome}</label>)}</fieldset>
+  const texto = (k: 'termos' | 'produtos' | 'excluir' | 'prioridades' | 'observacoes', rotulo: string) => <label>{rotulo}<Textarea name={k} rows={2} maxLength={2000} value={c[k]} onChange={e => alterar(k, e.target.value)} /></label>
+  const caixas = (k: 'tipos' | 'site' | 'email' | 'telefone', rotulo: string, opcoes: [string, string][]) => <fieldset className={styles.caixas}><legend>{rotulo}</legend>{opcoes.map(([v, nome]) => <label key={v}><Choice type="checkbox" name={k} value={v} checked={(c[k] as string[]).includes(v)} onChange={e => alterar(k, (e.target.checked ? [...c[k], v] : c[k].filter(x => x !== v)) as typeof c[typeof k])} />{nome}</label>)}</fieldset>
   return <form onSubmit={e => { e.preventDefault(); const r = normalizarCriterios(c); if (!r.ok) { setErro(r.motivo); return }; aplicar(r.valor) }} className={styles.formulario}>
     <div className={styles.corpoDialogo}><fieldset disabled={leitura} className={styles.gruposCriterios}>
       <fieldset className={styles.grupoCriterios}><legend>O que procurar</legend>
@@ -44,7 +47,7 @@ function EditorCriterios({ valor, leitura, cancelar, aplicar }: { valor: Criteri
       </fieldset>
       <fieldset className={styles.grupoCriterios}><legend>Orientações</legend>{texto('prioridades', 'O que priorizar')}{texto('observacoes', 'Outras orientações')}</fieldset>
     </fieldset></div>
-    {erro && <p role="alert" className={styles.aviso}>{erro}</p>}
+    {erro && <Alert variant="danger">{erro}</Alert>}
     <DialogFooter><Button type="button" variant="outline" onClick={cancelar}>{leitura ? 'Fechar' : 'Cancelar'}</Button>{!leitura && <Button type="submit">Aplicar critérios</Button>}</DialogFooter>
   </form>
 }

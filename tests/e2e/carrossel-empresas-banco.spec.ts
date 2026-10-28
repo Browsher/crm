@@ -1,3 +1,7 @@
+import { mkdirSync } from 'node:fs'
+import { resolve } from 'node:path'
+const capturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-5-captures')
+mkdirSync(capturas, { recursive: true })
 import { expect, test, type Page } from '@playwright/test'
 import { comBancoGrupos, bancoGruposDoHarness } from './dados-grupos'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
@@ -45,7 +49,7 @@ async function entrar(page:Page,apelido='carrossele2e'){
 }
 const chamadas=async()=>(await(await fetch(process.env.CNPJ_BIZ_MOCK_URL+'/estatisticas')).json()).consultas
 
-test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retomada automática sem nova aquisição',async({page},info)=>{
+test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retomada automática sem nova aquisição',async({page})=>{
  test.setTimeout(120000)
  const erros:string[]=[];page.on('pageerror',e=>erros.push(e.message))
  await page.setViewportSize({width:1920,height:1080});await entrar(page)
@@ -56,7 +60,7 @@ test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retom
  await expect(cards.first().locator('[data-grupo-origem]')).toHaveText(grupoRecente)
  expect(await comBancoGrupos(async c=>(await c.query('SELECT grupo_id FROM busca_empresa WHERE id=$1',[legado])).rows[0].grupo_id)).toBeNull()
  await expect(secao).not.toContainText('ALHEIA');await expect(secao).not.toContainText('Somente GOOGLE');await expect(secao).not.toContainText('Em atendimento')
- for(const width of [1920,1440,900,800,784,783,782,736,600,390,320]){
+ for(const width of [1920,1440,900,820,800,784,783,782,736,600,390,320]){
   await page.setViewportSize({width,height:width===1920?1080:900});const espaco=(await secao.boundingBox())!.width
   await expect(cards).toHaveCount(espaco>670?3:espaco>480?2:1)
   for(const tema of ['light','dark']){
@@ -70,7 +74,7 @@ test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retom
    for(const m of medidas){expect(m.quadrado).toBe(true);expect(m.semOverflow).toBe(true);expect(m.semSobreposicao).toBe(true);expect(m.linhaNome).toBe('nowrap');expect(m.linhaGrupo).toBe('nowrap');expect(m.nome).toBeLessThanOrEqual(espaco>=1120?80:36);expect(m.grupo).toBeLessThanOrEqual(espaco>=1120?120:40)}
    const extra=cards.first().locator('[data-desktop-dados]')
    if(espaco>=1120)await expect(extra).toBeVisible();else await expect(extra).not.toBeVisible()
-   if([1920,736,390].includes(width))await secao.screenshot({path:info.outputPath(`ultimas-${width}-${tema}.png`)})
+   if([1920,820,390].includes(width))await secao.screenshot({path:resolve(capturas, `ultimas-${width}-${tema}.png`)})
   }
  }
  await page.setViewportSize({width:1920,height:1080});await expect(cards).toHaveCount(3)
@@ -88,6 +92,18 @@ test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retom
  await abrir.click();const d=page.getByRole('dialog',{name:nome,exact:true})
  await expect(d).toBeVisible();await expect(d).toContainText(grupoRecente);await expect(d).toContainText('84.200.000/0000-00')
  await expect(d.getByRole('checkbox')).toHaveCount(0)
+ for(const width of [1920,820,390]) {
+  await page.setViewportSize({width,height:width===1920?1080:900})
+  for(const tema of ['light','dark']) {
+   await page.keyboard.press('Escape')
+   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
+   await abrir.click()
+   await expect(d).toContainText('84.200.000/0000-00')
+   await d.screenshot({path:resolve(capturas,`detalhe-longo-${width}-${tema}.png`)})
+  }
+ }
+ await page.setViewportSize({width:1920,height:1080})
+
  await d.getByRole('button',{name:'Concluir inclusão',exact:true}).click()
  await expect(d.getByText('4 empresas novas. A lista reúne 5 empresas.',{exact:true})).toBeVisible()
  await expect(d.getByRole('link',{name:'Prospectar esta lista',exact:true})).toBeVisible()
@@ -111,4 +127,14 @@ test('sem resultados não cria cards fictícios e conserva o histórico completo
  await expect(secao.getByRole('link',{name:'Ver todas buscas',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Buscar empresas',exact:true})).toBeDisabled()
  await page.getByRole('button',{name:'Ver histórico de buscas',exact:true}).click();await expect(page.getByRole('dialog',{name:'Histórico de buscas',exact:true})).toBeVisible()
  await expect(page.getByRole('dialog')).toContainText('Nenhuma busca no banco de empresas realizada ainda.')
+ for(const width of [1920,820,390]) {
+  await page.setViewportSize({width,height:900})
+  for(const tema of ['light','dark']) {
+   await page.keyboard.press('Escape')
+   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
+   await page.getByRole('button',{name:'Ver histórico de buscas',exact:true}).click()
+   await page.screenshot({path:resolve(capturas,`historico-vazio-${width}-${tema}.png`),fullPage:true})
+  }
+ }
+
 })

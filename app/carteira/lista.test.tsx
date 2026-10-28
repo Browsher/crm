@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 import type { FiltrosCarteira } from './filtros'
 import { ListaCarteira } from './lista'
@@ -110,4 +110,51 @@ describe('ListaCarteira', () => {
     expect(saida).toContain('Nenhum cliente corresponde aos filtros')
     expect(saida).not.toContain('Sua carteira está vazia')
   })
+})
+
+// O contrato do consumidor distingue primeiro uso de recuperação dos filtros.
+test('Carteira vazia oferece navegação primária no rodapé do Card', () => {
+  const saida = renderToStaticMarkup(<ListaCarteira linhas={[]} filtros={{ nome: 'Inexistente', uf: '', retorno: '' }} />)
+  expect(saida).toContain('Sua carteira está vazia')
+  expect(saida).toContain('Assuma uma empresa da fila para começar.')
+  expect(saida).toContain('data-slot="card-footer"')
+  expect(saida).toMatch(/<a[^>]+href="\/fila"[^>]*>Puxar a próxima empresa<\/a>/)
+  expect(saida).toContain('data-variant="default"')
+  expect(saida).not.toContain('Nenhum cliente corresponde aos filtros')
+})
+
+test('Filtro sem resultado preserva filtros e oferece recuperação outline no Card', () => {
+  const filtros = { nome: 'Inexistente', uf: '', retorno: '' } satisfies FiltrosCarteira
+  const saida = renderToStaticMarkup(<ListaCarteira linhas={[UMA]} filtros={filtros} />)
+  expect(saida).toContain('<h3')
+  expect(saida).toContain('Nenhum cliente corresponde aos filtros')
+  expect(saida).toContain('data-slot="card-footer"')
+  expect(saida).toContain('data-variant="outline"')
+  expect(saida).toMatch(/<a[^>]+href="\/carteira"[^>]*>Limpar filtros<\/a>/)
+  expect(filtros).toEqual({ nome: 'Inexistente', uf: '', retorno: '' })
+})
+
+vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: async () => ({ usuarioId: 'vendedor-sintetico' }) }))
+vi.mock('@/src/features/fila/consulta', () => ({ lerMinhasEmpresas: async () => ({ ok: false, motivo: 'sem_permissao' }) }))
+
+test('ficha com consulta recusada apresenta aviso de erro e conserva a mensagem', async () => {
+  const { default: PaginaFicha } = await import('./[id]/page')
+  const saida = renderToStaticMarkup(await PaginaFicha({ params: Promise.resolve({ id: UMA.id }) }))
+  expect(saida).toContain('role="alert"')
+  expect(saida).toContain('data-slot="alert"')
+  expect(saida).toContain('Você não tem permissão para isso agora. Se acabou de trocar a senha, entre de novo.')
+  expect(saida).not.toContain('Sua carteira está vazia')
+})
+
+test('registros mantêm caption, cabeçalhos e rótulos de todas as células no celular', () => {
+  const saida = renderToStaticMarkup(<ListaCarteira linhas={[{ ...UMA, razaoSocial: 'Nome muito longo '.repeat(30) }]} />)
+  expect(saida).toContain('<caption')
+  expect(saida).toContain('Clientes da sua carteira')
+  expect(saida.match(/scope="col"/g)).toHaveLength(6)
+  for (const rotulo of ['Empresa', 'Contato principal', 'Última conversa', 'Próximo passo', 'Retorno', 'Ações']) {
+    expect(saida).toContain(`data-label="${rotulo}"`)
+  }
+  expect(saida).toContain('Contato principal não informado')
+  expect(saida).toContain('Localização não informada')
+  expect(saida).toContain('Ver cliente')
 })

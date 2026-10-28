@@ -1,3 +1,5 @@
+import { Card, CardContent } from '@/src/components/ui/card'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { Button } from '@/src/components/ui/button'
 import { Badge } from '@/src/components/ui/badge'
@@ -19,7 +21,7 @@ const horario = new Intl.DateTimeFormat('pt-BR', {
 export default async function Gestao() {
   const eu = await exigir('gestor')
   const dados = await lerDashboard(eu.usuarioId)
-  if (!dados) return <main className={styles.pagina}><Alert variant="warning">Sem permissão para consultar a equipe.</Alert></main>
+  if (!dados) return <main className={styles.pagina}><Alert variant="danger">Sem permissão para consultar a equipe.</Alert></main>
   const totais = dados.vendedores.reduce((total, vendedor) => ({
     clientes: total.clientes + vendedor.clientes,
     atrasados: total.atrasados + vendedor.atrasados,
@@ -33,25 +35,25 @@ export default async function Gestao() {
         { titulo: 'Retornos hoje', valor: totais.hoje, detalhe: 'Agendados para hoje', alerta: false },
         { titulo: 'Clientes em carteira', valor: totais.clientes, detalhe: 'Com vendedores ativos', alerta: false },
         { titulo: 'Empresas disponíveis', valor: dados.disponiveis, detalhe: 'Prontas para prospecção', alerta: false },
-      ].map(item => <div key={item.titulo} className={styles.indicador}>
+      ].map(item => <Card key={item.titulo} className={styles.indicador}><CardContent>
         <h2>{item.titulo}</h2><strong className={item.alerta ? styles.alerta : undefined}>{item.valor.toLocaleString('pt-BR')}</strong><p>{item.detalhe}</p>
-      </div>)}
+      </CardContent></Card>)}
     </section>
-    <div className={styles.paineis}><section aria-labelledby="titulo-equipe" className={styles.secao}>
+    <div className={styles.paineis}><Card role="region" aria-labelledby="titulo-equipe" className={styles.secao}><CardContent>
       <div className={styles.cabecalho}><div><h2 id="titulo-equipe">Vendedores ativos</h2><p>Retornos agendados e contatos registrados hoje.</p></div><Badge variant="outline">{dados.vendedores.length} ativos</Badge></div>
-      {dados.vendedores.length === 0 ? <div className={styles.vazio}><h3>Nenhum vendedor ativo</h3><p>Gerencie os acessos em Usuários para organizar sua equipe.</p></div> :
+      {dados.vendedores.length === 0 ? <EstadoVazio nivelTitulo={3} titulo="Nenhum vendedor ativo" descricao="Gerencie os acessos em Usuários para organizar sua equipe." /> :
         <Table aria-label="Vendedores ativos" className={`${styles.tabela} crm-registros`}><TableHeader><TableRow><TableHead scope="col">Vendedor</TableHead><TableHead scope="col">Clientes em carteira</TableHead><TableHead scope="col">Retornos atrasados</TableHead><TableHead scope="col">Retornos hoje</TableHead><TableHead scope="col">Contatos registrados hoje</TableHead></TableRow></TableHeader><TableBody>{dados.vendedores.map(v => <TableRow key={v.id}>
           <TableCell data-label="Vendedor"><div className={styles.vendedor}><span className={styles.avatar} aria-hidden="true">{v.nome.trim().slice(0, 1).toUpperCase()}</span><h3>{v.nome}</h3></div></TableCell>
           <TableCell data-label="Clientes em carteira">{v.clientes}</TableCell><TableCell data-label="Retornos atrasados" className={v.atrasados > 0 ? styles.alerta : undefined}>{v.atrasados}</TableCell><TableCell data-label="Retornos hoje">{v.hoje}</TableCell><TableCell data-label="Contatos registrados hoje">{v.contatosHoje}</TableCell>
         </TableRow>)}</TableBody></Table>}
-    </section>
-    <section aria-labelledby="titulo-atividade" className={styles.secao}>
+    </CardContent></Card>
+    <Card role="region" aria-labelledby="titulo-atividade" className={styles.secao}><CardContent>
       <h2 id="titulo-atividade">Atividade recente</h2><p>Últimos registros dos vendedores ativos. Horário de Brasília.</p>
-      {dados.atividade.length === 0 ? <div className={styles.vazio}><p>Nenhum contato registrado pelos vendedores ativos.</p></div> :
+      {dados.atividade.length === 0 ? <EstadoVazio nivelTitulo={3} titulo="Nenhum contato registrado" descricao="Nenhum contato registrado pelos vendedores ativos." /> :
         <ol className={styles.atividade}>{dados.atividade.map(item => <li key={item.id}>
           <div><strong>{item.vendedor}</strong><p>{item.empresa}</p><span>{Object.hasOwn(tipos, item.tipo) ? tipos[item.tipo] : 'Contato registrado'}</span></div>
           <time dateTime={item.em}>{horario.format(new Date(item.em))}</time>
         </li>)}</ol>}
-    </section></div>
+    </CardContent></Card></div>
   </main>
 }

@@ -2,14 +2,14 @@ import { expect, test, type Page } from '@playwright/test'
 import { hojeEmSaoPaulo, semanaDe } from '../../src/features/google/regras'
 
 test.describe.configure({timeout:90000})
-async function entrar(page:Page,gestor=false) {
+async function entrar(page:Page,gestor=false,apelido='redesigne2e') {
   await page.goto('/login')
-  await page.getByLabel('E-mail').fill(gestor?'gestore2e@teste.local':'redesigne2e@teste.local')
+  await page.getByLabel('E-mail').fill(gestor?'gestore2e@teste.local':apelido+'@teste.local')
   await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026')
   await page.getByRole('button',{name:'Entrar',exact:true}).click()
   await expect(page).toHaveURL(gestor?'/gestao':'/meu-dia')
 }
-test('semana salva critérios na planilha compartilhada e recupera resposta incerta',async({page,request},info)=>{
+test('semana salva critérios na planilha compartilhada e recupera resposta incerta',async({page,request})=>{
   await entrar(page)
   await page.goto('/fila/google')
   await page.getByRole('link',{name:'Próxima semana',exact:true}).click()
@@ -32,23 +32,37 @@ test('semana salva critérios na planilha compartilhada e recupera resposta ince
   await expect(page.getByRole('status')).toContainText('Salvo no CRM')
   await page.getByRole('button',{name:'Sincronizar novamente',exact:true}).click()
   await expect(page.getByText('Sincronizado com a planilha.',{exact:true})).toBeVisible()
+  await expect(page.getByText('Sincronizado com a planilha.',{exact:true})).toHaveAttribute('data-slot','alert')
   await page.evaluate(()=>window.scrollTo(0,0))
-  await page.screenshot({path:info.outputPath('agentes-vendedor-desktop.png'),fullPage:true})
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.screenshot({path:'.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-6-captures/agentes-vendedor-desktop.png',fullPage:true})
   await page.setViewportSize({width:390,height:844})
   await page.getByRole('combobox',{name:/Tema/}).selectOption('dark')
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await page.evaluate(()=>window.scrollTo(0,0))
-  await page.screenshot({path:info.outputPath('agentes-vendedor-mobile.png'),fullPage:true})
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.screenshot({path:'.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-6-captures/agentes-vendedor-mobile.png',fullPage:true})
 })
-test('gestor pausa o agente de um vendedor sem separar a equipe compartilhada',async({page},info)=>{
+test('gestor pausa o agente de um vendedor sem separar a equipe compartilhada',async({page,browser})=>{
   await entrar(page,true)
   await page.goto('/empresas/google')
   await expect(page.getByRole('heading',{name:'Agentes dos vendedores',exact:true})).toBeVisible()
   const agente=page.locator('article').filter({has:page.getByRole('heading',{name:'Outro vendedor da coleta',exact:true})})
   await agente.getByRole('button',{name:'Pausar novas buscas',exact:true}).click()
   await expect(agente.getByRole('button',{name:'Retomar novas buscas',exact:true})).toBeVisible()
+  await expect(agente.getByText('Agente atualizado.',{exact:true})).toHaveAttribute('data-slot','alert')
+  await expect(agente.getByText('Novas buscas pausadas',{exact:true})).toHaveAttribute('data-slot','badge')
+  const sessao = await browser.newContext()
+  try {
+    const pessoal = await sessao.newPage()
+    await entrar(pessoal,false,'googleoutroe2e')
+    await pessoal.goto('/fila/google')
+    await expect(pessoal.getByRole('status')).toContainText('Novas buscas pausadas pelo gestor.')
+    await expect(pessoal.getByRole('status')).toHaveAttribute('data-slot','alert')
+  } finally { await sessao.close() }
   await page.evaluate(()=>window.scrollTo(0,0))
-  await page.screenshot({path:info.outputPath('agentes-gestor-desktop.png'),fullPage:true})
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.screenshot({path:'.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-6-captures/agentes-gestor-desktop.png',fullPage:true})
   await agente.getByRole('button',{name:'Retomar novas buscas',exact:true}).click()
   await expect(agente.getByRole('button',{name:'Pausar novas buscas',exact:true})).toBeVisible()
 })

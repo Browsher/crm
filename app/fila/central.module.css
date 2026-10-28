@@ -1,9 +1,9 @@
 .pagina{width:100%;max-width:1420px;margin-inline:auto;display:grid;gap:24px;align-content:start}
-.atividades{display:grid;gap:20px}.destaque,.opcao,.retomar{border:1px solid var(--border);border-radius:8px;background:var(--card);padding:24px}
-.destaque{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,.85fr);gap:24px;align-items:center;border-left:4px solid var(--primary)}
-.apresentacao{display:flex;gap:16px;align-items:flex-start;min-width:0}.apresentacao h2{font-size:20px;line-height:28px;font-weight:600}.apresentacao p,.opcao p{color:var(--muted-foreground);margin-top:6px;max-width:55ch;overflow-wrap:anywhere}
+.atividades{display:grid;gap:24px}.destaque,.opcao,.retomar{border:1px solid var(--border);border-radius:var(--radius-card);background:var(--card);padding:var(--card-padding)}
+.destaque{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,.85fr);gap:24px;align-items:center}
+.apresentacao{display:flex;gap:16px;align-items:flex-start;min-width:0}.apresentacao h2{font-size:18px;line-height:26px;font-weight:600}.apresentacao p,.opcao p{color:var(--muted-foreground);margin-top:8px;max-width:55ch;overflow-wrap:anywhere}
 .icone{display:grid;place-items:center;flex:none;width:42px;height:42px;background:var(--accent);color:var(--primary);border-radius:8px}.icone svg{width:22px;height:22px}
-.buscaOrigem{display:flex;gap:10px;align-items:end}.buscaOrigem label{display:grid;gap:6px;font-size:13px;flex:1;min-width:0}.opcoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.opcao{display:flex;align-items:start;flex-direction:column;gap:16px}.opcao>svg{width:24px;height:24px;color:var(--muted-foreground)}.opcao h2{font-weight:600;font-size:17px}.opcao p{font-size:13px}.opcao>a{margin-top:auto}
-.retomar{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px 22px}.retomar h2{font-size:14px;line-height:22px}.retomar p{font-size:13px}.retomar .icone{width:36px;height:36px}
+.buscaOrigem{display:flex;gap:12px;align-items:end}.buscaOrigem label{display:grid;gap:8px;font-size:14px;flex:1;min-width:0}.opcoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.opcao{display:flex;align-items:start;flex-direction:column;gap:16px}.opcao>svg{width:24px;height:24px;color:var(--muted-foreground)}.opcao h2{font-weight:600;font-size:16px;line-height:24px}.opcao p{font-size:14px}.opcao>a{margin-top:auto}
+.retomar{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:var(--card-padding)}.retomar h2{font-size:16px;line-height:24px}.retomar p{font-size:14px}.retomar .icone{width:36px;height:36px}
 @media(max-width:1150px){.destaque{grid-template-columns:1fr}}
-@media(max-width:760px){.destaque,.opcao{padding:20px}.opcoes{grid-template-columns:1fr}.buscaOrigem,.retomar{align-items:stretch;flex-direction:column}.buscaOrigem label{width:100%}.retomar>a{width:100%}}
+@media(max-width:820px){.opcoes{grid-template-columns:1fr}.buscaOrigem,.retomar{align-items:stretch;flex-direction:column}.buscaOrigem label{width:100%}.retomar>a{width:100%}}

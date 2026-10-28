@@ -66,6 +66,7 @@ test('erro fica no diálogo com nome editado e permite tentar de novo; sucesso f
   vi.mocked(alterarGrupoAcao).mockResolvedValueOnce({ erro: 'Sem permissão.', sucesso: false }).mockResolvedValueOnce({ erro: null, sucesso: true })
   await act(async () => input.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
   expect(document.querySelector('[role=alert]')?.textContent).toContain('Sem permissão')
+  expect(document.querySelector('[role=alert]')?.getAttribute('data-slot')).toBe('alert')
   expect(input.value).toBe('Novo nome')
   expect(document.querySelector('[role=dialog]')?.contains(document.activeElement)).toBe(true)
   await act(async () => input.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))

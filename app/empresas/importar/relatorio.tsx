@@ -1,5 +1,6 @@
 import type { Relatorio } from '@/src/features/empresas/servico'
 import { textoDaRecusa, textoDoEndereco } from '@/src/features/empresas/mensagens'
+import { Alert } from '@/src/components/ui/alert'
 import styles from './importar.module.css'
 
 export function RelatorioImportacao({ relatorio: r }: { relatorio: Relatorio }) {
@@ -10,7 +11,7 @@ export function RelatorioImportacao({ relatorio: r }: { relatorio: Relatorio }) 
       <div><dt>Já cadastradas</dt><dd>{r.jaCadastradas}</dd></div>
       <div><dt>Linhas recusadas</dt><dd>{r.recusadas.length}</dd></div>
     </dl>
-    {textoDoEndereco(r) && <p role="status" className={styles.aviso}>{textoDoEndereco(r)}</p>}
+    {textoDoEndereco(r) && <Alert variant="warning" role="status">{textoDoEndereco(r)}</Alert>}
     {r.recusadas.length > 0 && <section aria-label="Linhas recusadas">
       <h3>Corrija estas linhas na planilha</h3>
       <ul className={styles.recusas}>{r.recusadas.map(rec => <li key={`${rec.linha}-${rec.tipo}`}>{textoDaRecusa(rec)}</li>)}</ul>

@@ -6,7 +6,8 @@
 .painel { display: grid; gap: 20px; padding: 24px; background: var(--background); border: 1px solid var(--border); border-radius: 8px; }
 .painel h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
 .formulario { display: grid; gap: 16px; }
-.gradeFiltros { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 16px; }
+.gradeFiltros { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.formulario .painelFiltros .gradeFiltros { flex: 1 0 100%; gap: 16px; }
 .campo { display: grid; gap: 8px; min-width: 0; }
 .acoes, .rodapeCartao { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .itemResultado { display: flex; }

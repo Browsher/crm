@@ -1,3 +1,5 @@
+import { Search, Wallet } from 'lucide-react'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import Link from 'next/link'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
@@ -34,11 +36,9 @@ function localizacao(empresa: EmpresaComigo): string {
 
 export function ListaCarteira({ linhas, filtros = SEM_FILTROS }: { linhas: EmpresaComigo[]; filtros?: FiltrosCarteira }) {
   if (linhas.length === 0) {
-    return <div className={styles.vazio}>
-      <h2>Sua carteira está vazia</h2>
-      <p>Assuma uma empresa da fila para começar.</p>
-      <Link href="/fila">Puxar a próxima empresa</Link>
-    </div>
+    return <EstadoVazio titulo="Sua carteira está vazia"
+      descricao="Assuma uma empresa da fila para começar."
+      icone={Wallet} acao={{ rotulo: 'Puxar a próxima empresa', href: '/fila' }} />
   }
 
   const filtradas = filtrarCarteira(linhas, filtros)
@@ -48,15 +48,13 @@ export function ListaCarteira({ linhas, filtros = SEM_FILTROS }: { linhas: Empre
       <h2 id="titulo-clientes">Clientes</h2>
       <p className={styles.contagem}>{filtradas.length} de {linhas.length} {linhas.length === 1 ? 'empresa' : 'empresas'}</p>
     </div>
-    {filtradas.length === 0 ? <div className={styles.vazio}>
-      <h3>Nenhum cliente corresponde aos filtros</h3>
-      <p>Altere os campos ou limpe os filtros para ver sua carteira.</p>
-      <Link href="/carteira">Limpar filtros</Link>
-    </div> : <>
+    {filtradas.length === 0 ? <EstadoVazio titulo="Nenhum cliente corresponde aos filtros"
+      descricao="Altere os campos ou limpe os filtros para ver sua carteira."
+      nivelTitulo={3} icone={Search} acao={{ rotulo: 'Limpar filtros', href: '/carteira', variante: 'outline' }} /> : <>
       {semPasso > 0 ? <p className={styles.aviso}>
         {semPasso} {semPasso === 1 ? 'cliente sem próximo passo' : 'clientes sem próximo passo'}.
       </p> : null}
-      <div className={styles.registros}><Table className={styles.tabela}>
+      <Table className={`crm-registros ${styles.tabela}`}>
         <TableCaption className="sr-only">Clientes da sua carteira</TableCaption>
         <TableHeader><TableRow>{['Empresa', 'Contato principal', 'Última conversa', 'Próximo passo', 'Retorno', 'Ações'].map(titulo => <TableHead key={titulo} scope="col">{titulo}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{filtradas.map(empresa => <TableRow key={empresa.id}>
@@ -73,9 +71,9 @@ export function ListaCarteira({ linhas, filtros = SEM_FILTROS }: { linhas: Empre
               {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
             </TableCell>
             <TableCell data-label="Retorno"><Badge variant={empresa.situacaoRetorno === 'atrasado' ? 'warning' : empresa.situacaoRetorno === 'hoje' ? 'success' : 'outline'}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</Badge></TableCell>
-            <TableCell><Button asChild variant="outline" size="sm"><Link href={urlFicha(empresa.id, filtros)}>Ver cliente</Link></Button></TableCell>
+            <TableCell data-label="Ações"><Button asChild variant="outline" size="sm"><Link href={urlFicha(empresa.id, filtros)}>Ver cliente</Link></Button></TableCell>
         </TableRow>)}</TableBody>
-      </Table></div>
+      </Table>
     </>}
   </section>
 }
