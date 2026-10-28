@@ -14,6 +14,8 @@
 
 ## Global Constraints
 
+- Os mapas Modify indicam os alvos de responsabilidade a inspecionar e alterar quando necessário ao resultado descrito. Uma mudança específica exigida no texto continua obrigatória. Quando o resultado vem do componente/CSS compartilhado e um alvo já preserva seu contrato, registrar a evidência e a ausência de alteração no relatório; não produzir hunk artificial apenas para cumprir a lista.
+
 - Usar os pares claro/escuro do HTML e do inventário. Primária #17634D/#8FD0B9; superfície #FFFFFF/#1C242D; fundo #F5F6F8/#151B22; texto #202A35/#E6EBEF; borda de controle #8793A0/#657787.
 - Fonte Segoe UI, system-ui, sans-serif. Corpo 14/21 px; título de página 28/36 px e 24/32 px no celular; seção 18/26 px; título de card 16/24 px; auxiliar 12/18 px.
 - Controles com mínimo 40 px no desktop e 44 px até 820 px ou com pointer:coarse. Campos com fonte 16 px nesses dois últimos cenários, inclusive em telas largas com toque. Textarea com mínimo padrão de 96 px, conservando rows, conteúdo, cópia e redimensionamento.
@@ -98,7 +100,8 @@ A primeira melhoria direta de tela será o estado vazio da Carteira. A base vem 
 
 **Files**
 - Modify: src/styles/tokens.css, src/styles/ui.css, app/globals.css.
-- Modify: src/components/ui/button.tsx, src/components/ui/input.tsx, src/components/ui/textarea.tsx, src/components/ui/native-select.tsx, src/components/ui/label.tsx, src/components/ui/card.tsx.
+- Modify: src/components/ui/button.tsx, src/components/ui/input.tsx, src/components/ui/textarea.tsx, src/components/ui/label.tsx, src/components/ui/card.tsx.
+- Verify: src/components/ui/native-select.tsx. O componente já encaminha a classe ui-control e suas props/ref; a correção visual desta tarefa fica no CSS compartilhado, com teste do componente real. Não exige alteração artificial de TSX.
 - Test: src/components/ui/controles.test.tsx.
 - Create/Test: tests/e2e/design-system.spec.ts.
 
@@ -131,7 +134,8 @@ Cobrir select habilitado com fundo normal; Input/Textarea readOnly com fundo sec
 
 **Files**
 - Modify: src/components/crm/estado-vazio.tsx, src/components/crm/composicoes.module.css.
-- Modify: app/carteira/lista.tsx, app/carteira/carteira.module.css, app/carteira/[id]/page.tsx.
+- Modify: app/carteira/lista.tsx, app/carteira/[id]/page.tsx.
+- Verify: app/carteira/carteira.module.css. Os estados migrados usam a composição compartilhada; o CSS antigo ainda atende o aviso de filtros inválidos em page.tsx e fica preservado até a migração dos filtros.
 - Test: app/carteira/lista.test.tsx.
 - Create/Test: src/components/crm/estado-vazio.dom.test.tsx.
 - Extend/Test: tests/e2e/design-system.spec.ts.
