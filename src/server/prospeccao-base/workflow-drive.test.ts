@@ -207,7 +207,8 @@ function pendencia() {
   return r
 }
 test.each([false,true])('salva CSV após conferir saídas e backup, com JS real; seguro=%s', async seguro => {
-  const r = await percurso({ seguro })
+  const humano = 'Texto humano exportação\nObservação humana: Arquivo CRM pendente de conferência no Drive\nÚltima linha humana'
+  const r = await percurso({ seguro, notaExportacao: humano })
   expect(r.erro).toBeNull()
   expect(r.uploads).toEqual(['Enviar CSV atual'])
   const arquivo = r.arquivos.find(a => a.conteudo)!
@@ -224,6 +225,14 @@ test.each([false,true])('salva CSV após conferir saídas e backup, com JS real;
   const notas = b.requests.map(req => req.updateCells as { fields?: string; rows: { values: { note?: string }[] }[] })
     .filter(req => req?.fields === 'note')
   expect(lerManifestoDrive(notas.at(-1)!.rows[0].values[0].note, 'raiz-teste')).toMatchObject({ manifesto: { estado: 'pendente' } })
+  expect(r.notas[3]).toContain(humano)
+  expect(r.notas[3]).not.toMatch(/^Arquivo CRM pendente de conferência no Drive$/m)
+  expect(r.notas[3]).toContain('Situação: concluído')
+  const pendente = lerManifestoDrive(notas.at(-1)!.rows[0].values[0].note, 'raiz-teste')
+  const salvo = lerManifestoDrive(r.notas[3], 'raiz-teste')
+  expect(salvo.ok && salvo.manifesto).toEqual(pendente.ok && {
+    ...pendente.manifesto, estado: 'salvo', arquivoId: arquivo.id,
+  })
 })
 test('raiz inválida bloqueia toda escrita, consultas e leituras da lista', async () => {
   const r = await percurso({ metaRaiz: { id: 'outra' } })

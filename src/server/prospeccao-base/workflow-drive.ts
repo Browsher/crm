@@ -244,7 +244,8 @@ const plano = $('Preparar publicação').first().json.plano
 for (const request of plano.conclusao) {
   if (request.updateCells?.range.sheetId === exportacaoId) {
     const cell = request.updateCells.rows[0].values[0]
-    cell.note = drive.escreverManifestoDrive(c.nota + '\n' + cell.note,c.manifesto)
+    const nota = c.nota.split(/\r?\n/).filter(l => l !== 'Arquivo CRM pendente de conferência no Drive').join('\n')
+    cell.note = drive.escreverManifestoDrive(nota + '\n' + cell.note,c.manifesto)
   }
 }
 return [{json:{...c,requests:plano.conclusao},pairedItem:{item:0}}]

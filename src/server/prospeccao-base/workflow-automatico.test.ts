@@ -243,7 +243,8 @@ test.each(['lote','origemCsvSha256','pastaId','arquivoOriginalId'] as const)('si
   expect(r.vistos).not.toContain('Ler contexto Drive')
 })
 test('lote novo confere origem antes dos efeitos e devolve contrato exato persistindo assinatura', async () => {
-  const r = await percurso(opPublicada())
+  const humano = 'Texto humano exportação\nSegunda linha humana preservada'
+  const r = await percurso({ ...opPublicada(), notaExportacao: humano })
   expect(r.erro).toBeNull()
   expect(r.uploads).toEqual(['Enviar CSV atual'])
   expect(r.resultado[0]?.json).toMatchObject({ versao: 1, estado: 'concluido', lote: sinal().lote, origemCsvSha256: sinal().origemCsvSha256, execucaoId: 'exec-teste', empresasLidas: 11, empresasExportadas: 10, validos: 10, invalidos: 0, pendencias: 0, mensagensEnviadas: 0, arquivoDrive: { pastaId: 'pasta-teste' } })
@@ -253,6 +254,29 @@ test('lote novo confere origem antes dos efeitos e devolve contrato exato persis
   expect(r.notas[3]).toContain('CRM_DRIVE_V1:')
   expect(r.vistos.indexOf('Conferir publicação automática')).toBeLessThan(r.vistos.indexOf('Preservar backup'))
   expect(JSON.stringify(r.resultado)).not.toContain('segredo-teste')
+  expect(r.notas[3]).toContain(humano)
+  const assinatura = r.notas[3].split('\n').find(l => l.startsWith('CRM_AUTOMATICO_V1:'))!
+  expect(JSON.parse(assinatura.slice('CRM_AUTOMATICO_V1:'.length))).toEqual({
+    versao: 1, sinal: sinal(), contagens: { empresasLidas: 11, empresasExportadas: 10, validos: 10, invalidos: 0, pendencias: 0 },
+  })
+  expect(r.vistos.indexOf('Conferir CSV atual')).toBeLessThan(r.vistos.indexOf('Concluir notas'))
+  const bloqueio = /Situação: em processamento|Execução incompleta até conferência final|Arquivo CRM pendente de conferência no Drive/
+  for (const id of [2,3]) for (const nota of r.notasCabecalho[id]) {
+    expect(nota).not.toMatch(bloqueio)
+    expect(nota).toContain('Situação: concluído')
+  }
+  const proximaLiberada = [2,3].every(id => r.notasCabecalho[id].every(n => !bloqueio.test(n)))
+  expect(proximaLiberada).toBe(true)
+  const matriz = fonte(2); matriz[1][0] = '1130000001'; matriz[2][0] = '1130000002'
+  const origem = { ...manifestoOrigem(matriz), lote: 'coleta-proxima', arquivoId: 'original-proximo', nome: 'original-proximo.csv' }
+  const original = { ...arquivoOriginal(matriz), id: origem.arquivoId, name: origem.nome }
+  const proxima = await percurso(retomada(r,{ fonte: matriz, notaOrigem: escreverManifestoDrive('Humano próxima origem',origem), sinal: sinal(origem), arquivos: [...r.arquivos,original], execucaoId: 'exec-proxima' }))
+  expect(proxima.erro).toBeNull()
+  expect(proxima.resultado[0]?.json).toMatchObject({ estado: 'concluido', lote: 'coleta-proxima', empresasExportadas: 2 })
+  expect(proxima.notas[3]).toContain(humano)
+  expect(proxima.notas[3]).not.toMatch(bloqueio)
+  for (const arquivo of r.arquivos) expect(proxima.arquivos.find(a => a.id === arquivo.id)).toEqual(arquivo)
+  for (const numero of r.grades[10151005]) expect(proxima.grades[10151005]).toContainEqual(numero)
 })
 test('repetição salva devolve resposta existente sem Drive/Evolution/escrita', async () => {
   const primeiro = await percurso(opPublicada())
@@ -265,6 +289,9 @@ test('repetição salva devolve resposta existente sem Drive/Evolution/escrita',
   expect(r.vistos).not.toContain('Ler backup')
   expect(r.arquivos).toEqual(primeiro.arquivos)
   expect(r.grades).toEqual(primeiro.grades)
+  expect(r.notas[3]).toBe(primeiro.notas[3])
+  expect(r.notasCabecalho).toEqual(primeiro.notasCabecalho)
+  expect(r.notas[3]).not.toContain('Arquivo CRM pendente de conferência no Drive')
 })
 test('legado 689 com cinco exportados e 19 números preserva dados e os dois CSVs', async () => {
   const original = manifestoOrigem(fonte(10))
