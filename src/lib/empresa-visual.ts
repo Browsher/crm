@@ -25,7 +25,7 @@ export function rotuloSituacao(situacao: SituacaoEmpresa) { return SITUACOES_EMP
 export function acaoEmpresa(e: ResumoEmpresa): AcaoEmpresa | null {
   if (e.referencia.tipo !== 'cadastro' || !e.id || e.id !== e.referencia.empresaId || !Number.isInteger(e.versao) || e.versao! < 1 || e.situacao === 'indisponivel') return null
   if (e.situacao === 'a_contatar' || e.situacao === 'sem_interesse') return { tipo: e.situacao === 'a_contatar' ? 'iniciar' : 'retomar', rotulo: e.situacao === 'a_contatar' ? 'Iniciar atendimento' : 'Retomar atendimento', empresaId: e.id, versao: e.versao! }
-  if (e.situacao === 'atendimento') return { tipo: 'continuar', rotulo: 'Continuar atendimento', href: `/fila/localizar/${encodeURIComponent(e.id)}` }
+  if (e.situacao === 'atendimento') return { tipo: 'continuar', rotulo: 'Continuar atendimento', href: `/fila/atendimento/${encodeURIComponent(e.id)}` }
   if (e.situacao === 'cliente') return { tipo: 'carteira', rotulo: 'Abrir na carteira', href: `/carteira/${encodeURIComponent(e.id)}` }
   return e.negociacaoId ? { tipo: 'funil', rotulo: 'Abrir no funil', href: `/funil?negociacao=${encodeURIComponent(e.negociacaoId)}` } : null
 }

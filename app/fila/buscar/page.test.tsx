@@ -7,6 +7,7 @@ vi.mock('@/src/server/prospeccao-pessoal',()=>({lerEmpresasPessoais:mocks.ler}))
 vi.mock('./empresas-recentes',()=>({EmpresasBancoRecentes:(props:unknown)=>{mocks.recentes(props);return <section>Empresas recentes</section>}}))
 vi.mock('./formulario',()=>({FormularioBusca:()=> <form/>}))
 vi.mock('../google/page',()=>({default:()=> <main>Google</main>}))
+vi.mock('@/src/server/atendimento/consulta',()=>({lerResumosEmpresas:async()=>({ok:true,empresas:[]}),lerResumosBusca:async()=>({ok:true,empresas:[]})}))
 import PaginaBuscar from './page'
 
 test('consulta pessoal é do vendedor e do banco e só envia 11 empresas ao carrossel',async()=>{

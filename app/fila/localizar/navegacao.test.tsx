@@ -1,26 +1,17 @@
 import { expect, test } from 'vitest'
-import { limparFiltros, selecionarGrupo, urlConsulta, urlEscolhaLista } from './navegacao'
-
-test('paginação conserva a lista selecionada', () => {
-  const filtros = { nome:'Aurora', cnae:null, uf:'SP', cidade:null, bairro:null, pagina:3, grupo:'00000000-0000-4000-8000-000000000701' }
-  const url = new URL(urlConsulta(filtros,4), 'https://crm.test')
-  expect(url.searchParams.get('grupo')).toBe(filtros.grupo)
-  expect(url.searchParams.get('pagina')).toBe('4')
+import { selecionarGrupo, urlConsulta, urlEscolhaLista, urlAtendimento, filtrosDaConsulta } from './navegacao'
+test('aposenta grupo e escolha de lista mantendo refinamento e paginação',()=>{
+  const f={...selecionarGrupo('grupo'),nome:'Luz & Cia',pagina:3}
+  expect(urlConsulta(f,4)).toBe('/fila/localizar?nome=Luz+%26+Cia&pagina=4')
+  expect(urlEscolhaLista(f,true)).toBe('/fila/localizar?nome=Luz+%26+Cia&pagina=3')
 })
-
-test('limpar conserva somente a lista e selecionar reinicia os demais filtros', () => {
-  const grupo='00000000-0000-4000-8000-000000000701'
-  expect(limparFiltros({nome:'Luz',cnae:'1234567',uf:'SP',cidade:'3550308',bairro:'Centro',pagina:3,grupo})).toEqual({nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1,grupo})
-  expect(selecionarGrupo(null)).toEqual({nome:'',cnae:null,uf:null,cidade:null,bairro:null,pagina:1,grupo:null})
+test('query antiga com filtros pessoais mantém origem, nicho e página',()=>{
+  const f={origem:'google',nicho:'Luz',pagina:'2'}
+  expect(filtrosDaConsulta({pessoal:JSON.stringify(f),grupo:'velho'})).toEqual(f)
+  expect(urlAtendimento('empresa',f)).toBe('/fila/atendimento/empresa?origem=google&nicho=Luz&pagina=2')
 })
-
-test('abrir e fechar escolha conserva grupo, refinamentos e paginação',()=>{
-  const filtros={nome:'Luz & Cia',cnae:'4742300',uf:'SP',cidade:'3550308',bairro:'Centro',pagina:3,grupo:'00000000-0000-4000-8000-000000000701'}
-  for(const atendimento of [true,false]) {
-    const aberta=new URL(urlEscolhaLista(filtros,atendimento),'https://crm.test')
-    expect(aberta.pathname).toBe(atendimento ? '/fila' : '/fila/localizar')
-    expect(Object.fromEntries(aberta.searchParams)).toEqual({...filtros,pagina:'3',escolher_lista:'1'})
-    const fechada=new URL(urlEscolhaLista(filtros,atendimento,false),'https://crm.test')
-    expect(Object.fromEntries(fechada.searchParams)).toEqual({...filtros,pagina:'3'})
-  }
+test('JSON inválido, filtro alheio e destino externo não se propagam',()=>{
+  expect(filtrosDaConsulta({pessoal:'{'})).toEqual({})
+  expect(filtrosDaConsulta({pessoal:JSON.stringify({voltar:'//fora'})})).toEqual({})
+  expect(urlConsulta(selecionarGrupo(null),1)).not.toContain('grupo=')
 })

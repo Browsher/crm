@@ -8,7 +8,7 @@ import { Textarea } from '@/src/components/ui/textarea'
 import { Alert } from '@/src/components/ui/alert'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { FormularioContato } from '@/src/features/contato/formulario'
-import { rascunhoInicial } from '@/src/features/contato/rascunho'
+import { descartarRascunhoContato, rascunhoInicial } from '@/src/features/contato/rascunho'
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
 import { ROTULOS_ETAPA } from './rotulos'
@@ -61,7 +61,11 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
     if(dirty){setDescarte(destino);return}
     if(destino==='fechar')concluir();else {pedidoTelefone.current++;setModo('resumo')}
   }
-  function descartar() {
+  function descartar(preservar = false) {
+    if (!preservar && modo==='atendimento' && detalhe && !descartarRascunhoContato(detalhe.empresaId)) {
+      setErro('Confirme o envio anterior no atendimento antes de descartar. Você também pode fechar mantendo o rascunho.')
+      return
+    }
     const destino=descarte
     setDescarte(null);setValor('');setData('');setNota('');setMotivo('');setConfirmado(false);setRascunho(rascunhoInicial(true))
     if(destino==='voltar'){sentinela.current=null;history.go(-2);return}
@@ -88,7 +92,7 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
     <DialogHeader><DialogTitle>{indisponivel?'Negociação indisponível':detalhe?.nome??'Negociação'}</DialogTitle><DialogDescription>{!indisponivel&&detalhe?`${detalhe.cidade??'Cidade não cadastrada'}${detalhe.uf?' / '+detalhe.uf:''}`:'Dados da sua negociação'}</DialogDescription></DialogHeader>
     {carregando?<p role="status">Carregando negociação...</p>:null}
     {erro&&<Alert variant="danger" role="alert">{erro}</Alert>}
-    {descarte?<div className={styles.confirmacao} role="alert"><h3>Descartar alterações?</h3><p>As informações não salvas serão perdidas.</p><div className={styles.acoes}><Button onClick={()=>setDescarte(null)}>Continuar editando</Button><Button variant="outline" onClick={descartar}>Descartar</Button></div></div>:null}
+    {descarte?<div className={styles.confirmacao} role="alert"><h3>Descartar alterações?</h3><p>As informações não salvas serão perdidas.</p><div className={styles.acoes}><Button onClick={()=>setDescarte(null)}>Continuar editando</Button>{modo==='atendimento' && <Button variant="outline" onClick={()=>descartar(true)}>Fechar mantendo rascunho</Button>}<Button variant="outline" onClick={()=>descartar()}>Descartar</Button></div></div>:null}
     {indisponivel&&!descarte&&<section className={styles.formulario}><h3>Rascunho preservado</h3><p>Não é possível gravar nesta negociação. Copie o que digitou antes de fechar.</p><Textarea aria-label="Rascunho preservado" readOnly rows={6} value={[valor&&`Valor: ${valor}`,data&&`Data: ${data}`,nota,motivo,rascunho.nota,rascunho.proximoPasso,rascunho.proximoPassoData].filter(Boolean).join('\n')} /><Button variant="outline" onClick={()=>pedir('fechar')}>Fechar rascunho</Button></section>}
     {detalhe&&!descarte&&!indisponivel&&<div className={styles.corpo}>
       {modo==='resumo'?<>

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
-import { registrarContato } from '@/src/features/contato/repositorio'
+import { registrarContatoLegado } from './fixtures/contato-legado'
 import { lerFunil, lerNegociacao } from '@/src/features/funil/consulta'
 import { lerDashboard } from '@/src/features/gestao/consulta'
 
@@ -28,10 +28,10 @@ async function reservar(ator: string) {
 }
 async function assumir(ator: string) {
   expect((await reservar(ator)).linhas[0].resultado).toBe('ok')
-  return registrarContato(ator, empresa, { tipo:'interessado',nota:'Nota de '+ator,proximoPasso:null,proximoPassoData:null,desfecho:'assumir' })
+  return registrarContatoLegado(ator, empresa, { tipo:'interessado',nota:'Nota de '+ator,proximoPasso:null,proximoPassoData:null,desfecho:'assumir' })
 }
 async function devolver(ator: string) {
-  return registrarContato(ator, empresa, { tipo:'sem_interesse',nota:'Devolvida',proximoPasso:null,proximoPassoData:null,desfecho:'devolver' })
+  return registrarContatoLegado(ator, empresa, { tipo:'sem_interesse',nota:'Devolvida',proximoPasso:null,proximoPassoData:null,desfecho:'devolver' })
 }
 async function venda() {
   await banco.sql("INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,12500,gen_random_uuid())", [empresa,a])
@@ -43,7 +43,7 @@ test('reserva não cria ciclo; assumir, repetir e devolver preservam um ciclo e 
   await reservar(a)
   expect(await banco.sql('SELECT * FROM negociacao')).toHaveLength(0)
   expect(await assumir(a)).toEqual({ ok:true })
-  expect(await registrarContato(a,empresa,{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null,desfecho:'assumir'})).toEqual({ok:false,motivo:'ja_e_sua'})
+  expect(await registrarContatoLegado(a,empresa,{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null,desfecho:'assumir'})).toEqual({ok:false,motivo:'ja_e_sua'})
   expect(await banco.sql('SELECT etapa,encerramento FROM negociacao')).toEqual([{etapa:'primeiro_contato',encerramento:null}])
   expect(await devolver(a)).toEqual({ok:true})
   expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:'devolucao'}])
@@ -55,7 +55,7 @@ test('reserva não cria ciclo; assumir, repetir e devolver preservam um ciclo e 
 
 test('erro no contato desfaz assunção e ciclo na mesma transação', async () => {
   await reservar(a)
-  await expect(registrarContato(a,empresa,{tipo:'interessado',nota:null,proximoPasso:'incompleto',proximoPassoData:null,desfecho:'assumir'})).rejects.toMatchObject({code:'23514'})
+  await expect(registrarContatoLegado(a,empresa,{tipo:'interessado',nota:null,proximoPasso:'incompleto',proximoPassoData:null,desfecho:'assumir'})).rejects.toMatchObject({code:'23514'})
   expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:null}])
   expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(0)
 })
@@ -143,7 +143,7 @@ test('negociação e venda não aceitam escrita direta nem executáveis internos
 
 test('duas assunções concorrentes não criam dois ciclos', async () => {
   await reservar(a)
-  const resultados = await Promise.all([1,2].map(()=>registrarContato(a,empresa,{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null,desfecho:'assumir'})))
+  const resultados = await Promise.all([1,2].map(()=>registrarContatoLegado(a,empresa,{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null,desfecho:'assumir'})))
   expect(resultados.filter(r=>r.ok)).toHaveLength(1)
   expect(resultados.filter(r=>!r.ok)).toEqual([{ok:false,motivo:'ja_e_sua'}])
   expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(1)

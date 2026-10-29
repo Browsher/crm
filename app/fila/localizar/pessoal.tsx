@@ -9,15 +9,16 @@ import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { PainelFiltros } from '@/src/components/crm/painel-filtros'
-import { Badge } from '@/src/components/ui/badge'
+import { Cartao } from '../cartao'
+import type { ConsultaAtendimentoPessoal } from '@/src/server/prospeccao-pessoal'
 import { UFS } from '@/src/features/busca-empresas/filtros'
-import { SITUACOES_PESSOAIS, urlPessoal, type ConsultaPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
-import { Reservar } from './reservar'
-import { selecionarGrupo, urlConsulta } from './navegacao'
+import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
+
+
 import styles from './pessoal.module.css'
 
-type Props={filtros:FiltrosPessoais;dados:ConsultaPessoal;recolhido:boolean;reserva?:{contexto:string|null;empresaAtual:string|null}}
-export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props) {
+type Props={filtros:FiltrosPessoais;dados:ConsultaAtendimentoPessoal;recolhido:boolean}
+export function LocalizarPessoal({filtros,dados,recolhido:inicial}:Props) {
   const router=useRouter()
   const [recolhido,setRecolhido]=useState(inicial)
   const [mais,setMais]=useState(false)
@@ -33,8 +34,6 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
     iniciar(()=>router.push(urlPessoal(v,1,true),{scroll:false}))
   }
   const pagina=Number(filtros.pagina||1)
-  const filtrosReserva={...selecionarGrupo(null),pagina,pessoal:JSON.stringify(filtros)}
-  const consulta=urlConsulta(filtrosReserva,pagina)
   const origem=filtros.origem==='google'?'Buscas no Google':filtros.origem==='banco'?'Banco de empresas':'Google e banco de empresas'
   return <>
     {recolhido&&<div className={styles.resumo}><div><strong>Filtros da pesquisa</strong><p>{[filtros.nicho,filtros.endereco,filtros.nome,filtros.cnpj,filtros.cnae,filtros.cidade,filtros.uf].filter(Boolean).join(' · ')||'Todos os nichos e bairros'}</p></div><Button variant="outline" onClick={()=>setRecolhido(false)} aria-expanded={false} aria-controls="filtros-pessoais">Editar filtros</Button></div>}
@@ -58,7 +57,7 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
             <label>Cidade<Input name="cidade" defaultValue={filtros.cidade} maxLength={100} autoComplete="off" placeholder="Ex.: São Paulo…"/></label>
             <label>CEP<Input name="cep" defaultValue={filtros.cep} maxLength={9} inputMode="numeric" autoComplete="off" placeholder="Ex.: 03010-000…"/></label>
           </div></section>
-          <section><h3>Atendimento</h3><div className={styles.grade}><label>Disponibilidade<NativeSelect name="disponibilidade" defaultValue={filtros.disponibilidade||''}><option value="">Todas</option><option value="disponivel">Disponível para prospectar</option><option value="reservada_comigo">Reservada para mim</option><option value="comigo">Sob meu atendimento</option><option value="em_descanso">Em descanso</option></NativeSelect></label></div></section>
+          <section><h3>Atendimento</h3><div className={styles.grade}><label>Disponibilidade<NativeSelect name="disponibilidade" defaultValue={filtros.disponibilidade||''}><option value="">Todas</option><option value="disponivel">A contatar</option><option value="comigo">Em atendimento</option><option value="sem_interesse">Sem interesse</option></NativeSelect></label></div></section>
           <section><h3>Dados cadastrais</h3><div className={styles.grade}>
             <label>Porte<NativeSelect name="porte" defaultValue={filtros.porte||''}><option value="">Todos</option><option value="MEI">MEI</option><option value="ME">Microempresa (ME)</option><option value="EPP">Pequeno porte (EPP)</option><option value="DEMAIS">Demais portes</option><option value="sem">Sem informação</option></NativeSelect></label>
             <label>Abertura a partir de<Input name="aberturaDe" defaultValue={filtros.aberturaDe} type="date" autoComplete="off"/></label>
@@ -71,18 +70,7 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial,reserva}:Props
     <section aria-labelledby="minhas-empresas-titulo" aria-busy={pendente} className={styles.resultados}>
       <header className={styles.cabecalho}><div><h2 id="minhas-empresas-titulo">Todas as minhas empresas</h2><p>{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
       {dados.empresas.length===0?<EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa com esses filtros" descricao="Edite os filtros ou busque novas empresas na Prospecção." acao={{rotulo:'Editar filtros',aoAcionar:()=>setRecolhido(false),variante:'outline'}}/>:<ul className={styles.cartoes}>{dados.empresas.map(e=><li key={e.id}>
-        <article className={styles.empresa}><header><h3>{e.nome}</h3><Badge variant={e.situacao==='indisponivel'||e.situacao==='em_descanso'?'warning':'success'}>{SITUACOES_PESSOAIS[e.situacao]||'Em atendimento'}</Badge></header>
-          <p>{e.nichos.join(' · ')}</p><p>{[e.bairro,[e.cidade,e.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ')||'Endereço não informado'}</p>
-          <div className={styles.meta}>{e.cnpj&&<span>CNPJ {e.cnpj}</span>}{e.cnae&&<span>CNAE {e.cnae}</span>}<span>{e.origens.map(o=>o==='google'?'Google':o==='banco'?'Banco de empresas':'Cadastro existente').join(' · ')}</span></div>
-          <footer><small>Recebida em {new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo'}).format(new Date(e.entrada))}</small><div>
-            <Button asChild variant="outline"><Link href={consulta.replace('/fila/localizar?',`/fila/localizar/${e.id}?`)}>Ver empresa</Link></Button>
-            {e.situacao==='a_contatar'&&reserva&&<Reservar empresaId={e.id} {...reserva} filtros={filtrosReserva}/>}
-            {e.situacao==='reservada'&&<Button asChild><Link href={consulta.replace('/fila/localizar?','/fila?')+'&atendimento=1'}>Continuar atendimento</Link></Button>}
-            {e.situacao==='cliente'&&<Button asChild><Link href={`/carteira/${e.id}`}>Abrir na carteira</Link></Button>}
-            {['primeiro_contato','em_negociacao','proposta_enviada'].includes(e.situacao)&&<Button asChild><Link href="/funil">Abrir no funil</Link></Button>}
-            {e.situacao==='atendimento'&&<Button asChild><Link href={`/carteira/${e.id}`}>Abrir atendimento</Link></Button>}
-          </div></footer>
-        </article>
+        <Cartao empresa={e} filtros={filtros} />
       </li>)}</ul>}
       {(pagina>1||pagina*20<dados.total)&&<nav aria-label="Páginas das minhas empresas" className={styles.paginacao}>{pagina>1&&<Button asChild variant="outline"><Link href={urlPessoal(filtros,pagina-1,true)}>Página anterior</Link></Button>}<span>Página {pagina}</span>{pagina*20<dados.total&&<Button asChild variant="outline"><Link href={urlPessoal(filtros,pagina+1,true)}>Próxima página</Link></Button>}</nav>}
     </section>

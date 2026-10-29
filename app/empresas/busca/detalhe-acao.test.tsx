@@ -3,6 +3,7 @@ const m = vi.hoisted(() => ({ exigir: vi.fn(), repo: vi.fn(), ler: vi.fn(), limi
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: m.exigir }))
 vi.mock('@/src/features/busca-empresas/repositorio', () => ({ repositorioBusca: m.repo }))
 vi.mock('@/src/server/empresas/detalhes', () => ({ lerDetalhesEmpresa: m.detalhes }))
+vi.mock('@/src/server/atendimento/consulta', () => ({ lerResumosBusca: vi.fn(async () => ({ok:true,empresas:[]})) }))
 import { lerDetalheBuscaAcao, lerEmpresaBuscaAcao, lerDetalhesEmpresaAcao } from './detalhe-acao'
 import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
 import { renderToStaticMarkup } from 'react-dom/server'

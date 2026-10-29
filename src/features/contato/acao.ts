@@ -1,62 +1,29 @@
 'use server'
-
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { exigir } from '../../server/autenticacao/guarda'
-import { textoDaFalta, textoDoMotivo } from './mensagens'
-import { destinoDeVolta } from './destino'
-import { validar } from './regras'
+import { lerAtendimento } from '../../server/atendimento/consulta'
+import { validarContatoDireto } from './regras'
 import { registrarContato } from './repositorio'
+import { textoDaFalta, textoDoMotivo } from './mensagens'
 
-export type EstadoContato = { erro: string | null; ok: boolean }
+export type EstadoContato = { erro: string | null; ok: boolean; repetida?: boolean; motivo?: string }
 
-// A action ÚNICA das duas telas. Mora em src/features e não em app/ porque a
-// convenção de action junto da rota serve quando há UMA rota; com duas, pô-la
-// em app/carteira/[id]/ criaria uma dependência de rota para rota que ninguém
-// adivinha lendo /fila.
-//
-// Nenhuma constante é exportada daqui: arquivo 'use server' só exporta função,
-// e constante exportada vira referência de servidor. Os textos moram em
-// mensagens.ts, e o estado inicial mora no componente cliente.
-export async function registrarContatoAcao(
-  _anterior: EstadoContato,
-  form: FormData,
-): Promise<EstadoContato> {
+export async function prepararContatoAcao(empresaId: string) {
+  const eu = await exigir('vendedor')
+  return lerAtendimento(eu.usuarioId, empresaId)
+}
+
+export async function registrarContatoAcao(_anterior: EstadoContato, form: FormData): Promise<EstadoContato> {
   const eu = await exigir('vendedor')
   const empresaId = String(form.get('id') ?? '')
-  // Só a ficha manda `voltarPara`: ela é a única tela cuja ROTA deixa de
-  // existir quando a empresa sai da mão do vendedor. A fila não manda, porque
-  // /fila continua sendo /fila depois de devolver.
-  //
-  // O campo vem do cliente e nunca vai cru para o `redirect`: `destinoDeVolta`
-  // devolve `null` quando não veio destino, e um destino previsto, remontado,
-  // quando veio. Ver src/features/contato/destino.ts.
-  const voltarPara = destinoDeVolta(String(form.get('voltarPara') ?? ''))
-  const r = validar({
-    tipo: String(form.get('tipo') ?? ''),
-    desfecho: String(form.get('desfecho') ?? ''),
-    nota: String(form.get('nota') ?? ''),
-    proximoPasso: String(form.get('proximoPasso') ?? ''),
-    proximoPassoData: String(form.get('proximoPassoData') ?? ''),
-    posse: form.get('posse') === 'sim',
-  })
-  if (!r.ok) return { erro: textoDaFalta(r.falta), ok: false }
-
-  const gravado = await registrarContato(eu.usuarioId, empresaId, r.valor)
-  if (!gravado.ok) return { erro: textoDoMotivo(gravado.motivo), ok: false }
-
-  revalidatePath('/funil')
-  revalidatePath('/fila')
-  revalidatePath('/fila/localizar')
-  revalidatePath('/carteira')
-  revalidatePath(`/carteira/${empresaId}`)
-  revalidatePath('/meu-dia')
-
-  // Devolver tira a empresa da carteira, e `/carteira/[id]` passa a responder
-  // 404 para ela. Sem isto, a ação dava certo e a revalidação da própria rota
-  // renderizava a página que não existe mais — erro na tela depois do sucesso.
-  // `redirect` lança por desenho: nada depois dele executa.
-  if (r.valor.desfecho === 'devolver' && voltarPara) redirect(voltarPara)
-
-  return { erro: null, ok: true }
+  const atual = await lerAtendimento(eu.usuarioId, empresaId)
+  if (!atual.ok) return { ok: false, erro: textoDoMotivo(atual.motivo), motivo: atual.motivo }
+  // A RPC resolve replay antes da fase/versão atuais. Aqui só há estrutura;
+  // uma fase nova não pode impedir a confirmação de um contato anterior.
+  const r = validarContatoDireto({ tipo: String(form.get('tipo') ?? ''), nota: String(form.get('nota') ?? ''), proximoPasso: String(form.get('proximoPasso') ?? ''), proximoPassoData: String(form.get('proximoPassoData') ?? '') }, 'estrutura')
+  if (!r.ok) return { ok: false, erro: textoDaFalta(r.falta), motivo: 'dados_invalidos' }
+  const gravado = await registrarContato(eu.usuarioId, { empresaId, chave: String(form.get('chave') ?? ''), versao: Number(form.get('versao')) }, r.valor)
+  if (!gravado.ok) return { ok: false, erro: textoDoMotivo(gravado.motivo), motivo: gravado.motivo }
+  for (const caminho of ['/funil', '/fila', '/fila/localizar', '/fila/atendimento/' + empresaId, '/carteira', '/carteira/' + empresaId, '/meu-dia']) revalidatePath(caminho)
+  return { erro: null, ok: true, repetida: gravado.repetida }
 }

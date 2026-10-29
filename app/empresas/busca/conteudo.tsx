@@ -9,11 +9,12 @@ import { CardDetalhes } from '@/src/components/crm/card-detalhes'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 import { ResultadosBusca } from '../../fila/buscar/resultados'
+import type { ResumoEmpresa } from '@/src/lib/empresa-visual'
 import { SociosGestor } from '../socios-gestor'
 import styles from '@/src/components/crm/busca-dialogo.module.css'
 
 const estados = { reservada: 'Em processamento', concluida: 'Concluída', falhou: 'Falhou' }
-export function ConteudoBusca({ busca, gestor, bloqueada, retornadas = busca.empresas.length }: { busca: BuscaSalva; gestor: boolean; bloqueada: boolean; retornadas?: number }) {
+export function ConteudoBusca({ busca, gestor, bloqueada, retornadas = busca.empresas.length, resumos = [] }: { busca: BuscaSalva; gestor: boolean; bloqueada: boolean; retornadas?: number; resumos?: ResumoEmpresa[] }) {
   const data = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(busca.criado_em))
   return <div className="grid min-w-0 gap-5">
     <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -32,6 +33,6 @@ export function ConteudoBusca({ busca, gestor, bloqueada, retornadas = busca.emp
         {!busca.empresas.length ? <EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa encontrada com esses filtros" descricao="Confira os filtros usados acima." /> : <ul className={styles.lista}>{busca.empresas.map(e => <li key={e.cnpj}><EmpresaEncontradaDetalhes empresa={e} /></li>)}</ul>}
         <SociosGestor buscaId={busca.id} />
         {busca.grupo_id && <Button asChild variant="outline"><Link href={`/empresas/grupos/${busca.grupo_id}`}>Ver lista importada</Link></Button>}
-      </> : <ResultadosBusca busca={busca} bloqueada={bloqueada} />}
+      </> : <ResultadosBusca busca={busca} bloqueada={bloqueada} resumos={resumos} />}
   </div>
 }

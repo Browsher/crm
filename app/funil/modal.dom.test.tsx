@@ -5,14 +5,28 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { ModalFunil } from './modal'
 import { detalheAcao, vendaAcao, telefoneAcao, etapaAcao } from './acoes'
 vi.mock('./acoes',()=>({detalheAcao:vi.fn(),telefoneAcao:vi.fn(),etapaAcao:vi.fn(),vendaAcao:vi.fn(),devolverAcao:vi.fn()}))
-vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:()=>null}))
+vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({onDraftChange}:{onDraftChange:(r:unknown)=>void})=><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button>}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const detalhe={id:'a',empresaId:'e',nome:'Aurora',cidade:null,uf:null,cnpj:'123',etapa:'primeiro_contato' as const,proximoPasso:null,retorno:null,historico:[]}
-afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();vi.restoreAllMocks()})
+afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();sessionStorage.clear();vi.restoreAllMocks()})
 async function montar(id='a'){host=document.createElement('div');document.body.append(host);root=createRoot(host);const fechar=vi.fn();await act(async()=>root.render(<ModalFunil id={id} fechar={fechar}/>));return fechar}
 async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome);expect(b, nome).toBeTruthy();await act(async()=>b!.click())}
 async function escrever(valor:string){const e=document.querySelector('input')!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(e,valor);e.dispatchEvent(new Event('input',{bubbles:true}))})}
+
+test('descarte externo não perde envio desconhecido e permite fechar mantendo sessão',async()=>{
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+  vi.spyOn(history,'back').mockImplementation(()=>{})
+  const salvo=JSON.stringify({envio:{chave:'original',versao:2,valor:{nota:'Preservar'}}})
+  sessionStorage.setItem('crm:contato:v1:e',salvo)
+  const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Voltar ao resumo');await clicar('Descartar')
+  expect(document.body.textContent).toContain('Confirme o envio anterior')
+  expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
+  await clicar('Fechar mantendo rascunho')
+  expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
+  expect(fechar).not.toHaveBeenCalled()
+  expect(document.body.textContent).toContain('Etapa atual:')
+})
 
 test('modal oferece apenas próximo avanço e última etapa não tem select nem avanço',async()=>{
   vi.mocked(detalheAcao).mockResolvedValue(detalhe)

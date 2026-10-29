@@ -8,7 +8,7 @@ import type { EmpresaComigo } from '@/src/features/fila/consulta'
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn() }) }))
 vi.mock('@/src/components/crm/tema', () => ({ useTemaCrm: () => 'light' }))
 const acao = vi.hoisted(() => ({ executar: (async () => ({ erro: null, ok: false })) as (...args: unknown[]) => Promise<{ erro: string | null; ok: boolean }> }))
-vi.mock('@/src/features/contato/acao', () => ({ registrarContatoAcao: (anterior: unknown, form: unknown) => acao.executar(anterior, form) }))
+vi.mock('@/src/features/contato/acao', () => ({ registrarContatoAcao: (anterior: unknown, form: unknown) => acao.executar(anterior, form), prepararContatoAcao: async () => ({ok:true,fase:'negociacao',empresa:{versao:2,situacao:'primeiro_contato'}}) }))
 
 const { Ficha } = await import('./ficha')
 
@@ -25,6 +25,7 @@ afterEach(async () => {
   host?.remove()
   raiz = null
   host = null
+  sessionStorage.clear()
 })
 
 async function montar() {
@@ -36,12 +37,27 @@ async function montar() {
 }
 
 describe('Ficha no navegador', () => {
+  test('descarte externo preserva comando desconhecido e permite fechar mantendo trabalho', async () => {
+    vi.spyOn(history,'back').mockImplementation(()=>{})
+    const valor={tipo:'acompanhamento',nota:'Sem resposta',proximoPasso:'Retornar',proximoPassoData:'2030-10-01'}
+    const salvo=JSON.stringify({valor,envio:{chave:'original',versao:2,valor}})
+    sessionStorage.setItem('crm:contato:v1:a',salvo)
+    const tela=await montar()
+    const clicar=async(nome:string)=>act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent===nome)!.click())
+    await clicar('Registrar atendimento');await clicar('Cancelar atendimento');await clicar('Descartar e continuar')
+    expect(document.body.textContent).toContain('Confirme o envio anterior')
+    expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
+    await clicar('Fechar mantendo rascunho')
+    expect(tela.querySelector('form')).toBeNull()
+    expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
+    vi.restoreAllMocks()
+  })
   test('abre o editor real e move o foco para a nota', async () => {
     const tela = await montar()
     await act(async () => [...tela.querySelectorAll('button')].find(b => b.textContent === 'Registrar atendimento')?.click())
     expect(tela.querySelector('form[data-visual="fila"]')).not.toBeNull()
     expect(tela.querySelector('textarea')).toBe(document.activeElement)
-    expect(tela.innerHTML).toContain('value="devolver"')
+    expect(tela.querySelector('[name=desfecho]')).toBeNull()
   })
 
   test('cancelar descarte preserva rascunho e empresa selecionada', async () => {
@@ -66,7 +82,7 @@ describe('Ficha no navegador', () => {
     expect(nota.value).toBe('Não perder')
     expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('id')).toBe(EMPRESA.id)
     expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('tipo')).toBe('acompanhamento')
-    expect(tela.querySelector('input[name=voltarPara]')?.getAttribute('value')).toBe('/carteira?nome=Aurora')
+    expect(tela.querySelector('[name=posse]')).toBeNull()
   })
 
   test('voltar do navegador pede confirmação quando existe rascunho', async () => {

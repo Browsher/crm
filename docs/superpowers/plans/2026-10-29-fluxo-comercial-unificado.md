@@ -52,7 +52,7 @@ Entregar uma PR final contra main. Commits intermediários são unidades de revi
 
 - [ ] Ler CLAUDE.md, PREFERENCIAS.md, REGRAS.md e a spec aprovada; conferir branch, arquivos alterados e worktree. Preservar alterações externas.
 - [ ] Separar o ambiente privado sem ler ou registrar segredos. Confirmar o host local pelas guardas existentes; não usar `db:aplicar` com ambiente de produção.
-- [ ] Conferir que a última migração continua `0049_banco_inclusao_automatica.sql`. Os números 0050–0054 abaixo estão reservados neste plano; se a main avançar, renumerar apenas os arquivos novos antes de publicar, sem alterar migrações existentes.
+- [ ] Conferir que a última migração continua `0049_banco_inclusao_automatica.sql`. Os números 0050–0055 abaixo estão reservados neste plano; a 0054 acrescenta a leitura em lote necessária às fontes na tarefa 5 e a aposentadoria passa à 0055. Se a main avançar, renumerar apenas os arquivos novos antes de publicar, sem alterar migrações existentes.
 
 ## Contratos comuns decididos pelo plano
 
@@ -215,6 +215,7 @@ expect(chamadasDeEscritaOuFornecedor).toHaveLength(0)
 ## Task 5: Jornada pessoal direta e retirada da navegação antiga
 
 **Files:**
+- Create: `db/migracoes/0054_resumos_empresas.sql`, `docs/db/0054.md`; Modify: `src/server/atendimento/consulta.ts`, catálogo fechado de funções e testes, `docs/db/0053.md` para o ponteiro do contrato de leitura em lote. Acréscimo decidido durante a execução para evitar leituras individuais por card.
 - Create: `app/fila/atendimento/[id]/page.tsx`, `app/fila/atendimento/acoes.ts`, `app/fila/atendimento/acoes.test.tsx`, `app/fila/atendimento/page.test.tsx`.
 - Modify: `app/fila/page.tsx`, `central.tsx`, `localizar/page.tsx`, `localizar/pessoal.tsx`, `localizar/navegacao.ts`, `localizar/[id]/page.tsx`, `cartao.tsx`, `formulario.tsx`, `rascunhos.tsx`, `src/features/contato/acao.ts`, `formulario.tsx`, `rascunho.ts` e seus testes existentes.
 - Modify: `src/features/contato/repositorio.ts`, `src/features/contato/repositorio.test.ts`, `src/features/contato/regras.ts`, `src/features/contato/um-chamador.test.ts` para concluir a troca do adaptador/validação antigos sem deixar chamadores ativos no contrato de reserva.
@@ -226,6 +227,7 @@ expect(chamadasDeEscritaOuFornecedor).toHaveLength(0)
 **Interfaces:**
 - Consumes: comandos e consultas das tarefas 3/4; formulário envia chave estável e versão lida do servidor.
 - Produces: `iniciarAtendimentoAcao(form:FormData): Promise<ResultadoAtendimento>`; caminho explícito `/fila/atendimento/<empresaId>`, sem selecionar uma próxima empresa global.
+- Produces: `lerResumosEmpresas(usuarioId:string,empresaIds:readonly string[]):Promise<{ok:true;empresas:ResumoEmpresa[]}|{ok:false;motivo:'sem_permissao'|'dados_invalidos'}>`, consumido na renderização dos cards Google/Banco. A RPC `empresas_resumos_ler(uuid[])` devolve o mesmo JSON, autentica vendedor ativo com `pode_ler()`, deduplica no máximo 100 IDs e retorna somente os solicitados com vínculo próprio; alheios/inexistentes são omitidos. Array vazio retorna vazio após autorização. Usa o helper privado em lote uma única vez, sem concedê-lo nem reexpandir histórico por card. Snapshot próprio sem vínculo continua sem identidade/ação comercial. Cobrir autenticação, lista mista, limite, ausência de efeitos e trabalho em lote no banco real.
 - Produces: serializer `urlAtendimento(empresaId:string,filtros:FiltrosPessoais): string`; `urlConsulta` não escreve `grupo=` nem propaga `escolher_lista`/`legado`. Destinos de volta são locais e validados.
 
 - [ ] **Step 1: Escrever testes falhando de jornada e URLs.** Iniciar só muda atendimento; registro após mais de 30 minutos é permitido; duas empresas têm rascunhos separados; uma aba antiga não sobrescreve a outra. IDs alheios e URL `grupo=` não adquirem nada. Ver empresa na consulta/Google/últimas empresas abre o mesmo diálogo e não entra em atendimento.
@@ -332,7 +334,7 @@ expect(textoDoCardGerencial).not.toContain('Retomar atendimento')
 ## Task 9: Transição completa e retirada dos comandos de fila sem consumidor
 
 **Files:**
-- Create: `db/migracoes/0054_aposentar_reserva.sql`, `docs/db/0054.md`, `tests/integracao/atendimento-migracao.test.ts`, `tests/e2e/fluxo-comercial-unificado.spec.ts`, `docs/operacao/fluxo-comercial-unificado.md`.
+- Create: `db/migracoes/0055_aposentar_reserva.sql`, `docs/db/0055.md`, `tests/integracao/atendimento-migracao.test.ts`, `tests/e2e/fluxo-comercial-unificado.spec.ts`, `docs/operacao/fluxo-comercial-unificado.md`.
 - Modify: `src/server/db/migracoes/invariantes.ts`, `src/features/fila/repositorio.ts`, `tests/integracao/fila-reservar.test.ts`, `fila-puxar.test.ts`, `fila-posse.test.ts`, `fila-politicas.test.ts`, `fila-consulta.test.ts`, `contato-registrar.test.ts`, `prospeccao-pessoal.test.ts`, `prospeccao-grupos.test.ts`, `prospeccao-consulta.test.ts`.
 - Modify: `tests/e2e/dados-reserva.ts`, `tests/e2e/dados-google.ts`, `tests/e2e/prospeccao-grupos.spec.ts`, `tests/e2e/prospeccao-previa.spec.ts`, `tests/e2e/reserva.spec.ts`, `scripts/e2e/run.mts` para concluir a troca do preparo legado; preservar cenários de proteção, filtro e histórico nas jornadas novas.
 - Reference: `src/features/contato/um-chamador.test.ts`, testes de política/identidade e documentação das migrações superadas.

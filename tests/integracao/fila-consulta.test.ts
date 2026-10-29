@@ -1,7 +1,7 @@
 import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
-import { registrarContato } from '@/src/features/contato/repositorio'
+import { registrarContatoLegado } from './fixtures/contato-legado'
 import { reservarEmpresa } from '@/src/features/fila/repositorio'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
@@ -50,12 +50,12 @@ async function criarEmpresa(cep: string | null): Promise<string> {
 // caminho é `contato_registrar` com desfecho, e é ele que estes testes devem
 // exercitar — não uma porta que a tela não tem mais.
 const assumir = (usuarioId: string, empresaId: string) =>
-  registrarContato(usuarioId, empresaId, {
+  registrarContatoLegado(usuarioId, empresaId, {
     tipo: 'interessado', desfecho: 'assumir', nota: null, proximoPasso: null, proximoPassoData: null,
   })
 
 const devolver = (usuarioId: string, empresaId: string) =>
-  registrarContato(usuarioId, empresaId, {
+  registrarContatoLegado(usuarioId, empresaId, {
     tipo: 'nao_atendeu', desfecho: 'devolver', nota: null, proximoPasso: null, proximoPassoData: null,
   })
 
@@ -153,7 +153,7 @@ function acompanhar(
   passo: string | null,
   data: string | null,
 ): Promise<{ ok: true } | { ok: false; motivo: string }> {
-  return registrarContato(usuarioId, empresaId, {
+  return registrarContatoLegado(usuarioId, empresaId, {
     tipo: 'acompanhamento',
     desfecho: 'nenhum',
     nota: null,

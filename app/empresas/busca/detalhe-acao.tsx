@@ -5,6 +5,7 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { ConteudoBusca } from './conteudo'
 import { lerDetalhesEmpresa } from '@/src/server/empresas/detalhes'
+import { lerResumosBusca } from '@/src/server/atendimento/consulta'
 import type { ReferenciaEmpresa } from '@/src/lib/empresa-visual'
 import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
 
@@ -17,7 +18,8 @@ export async function lerDetalheBuscaAcao(id: string): Promise<{ ok: true; conte
     if (!busca) return { ok: false, erro: 'Esta busca não está disponível para você. Feche e confira o histórico.' }
     const gestor = eu.papel === 'gestor'
     const limite = gestor ? null : await repo.meuLimite()
-    return { ok: true, conteudo: <ConteudoBusca busca={busca} gestor={gestor} bloqueada={Boolean(limite?.pausado)} /> }
+    const resumos = gestor ? null : await lerResumosBusca(eu.usuarioId, busca.id)
+    return { ok: true, conteudo: <ConteudoBusca busca={busca} gestor={gestor} bloqueada={Boolean(limite?.pausado)} resumos={resumos?.ok ? resumos.empresas : []} /> }
   } catch {
     return { ok: false, erro: 'Não foi possível carregar a busca. Tente novamente.' }
   }

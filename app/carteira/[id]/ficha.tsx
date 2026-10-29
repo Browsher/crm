@@ -9,7 +9,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { FormularioContato } from '@/src/features/contato/formulario'
 import type { Contato } from '@/src/features/contato/historico'
-import { rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
+import { descartarRascunhoContato, rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
 import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
 import type { EmpresaComigo } from '@/src/features/fila/consulta'
 import { useTemaCrm } from '@/src/components/crm/tema'
@@ -52,6 +52,7 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   const [pendente, setPendente] = useState(false)
   const pendenteRef = useRef(false)
   const [descarte, setDescarte] = useState<'fechar' | 'voltar' | { href: string } | null>(null)
+  const [erroDescarte, setErroDescarte] = useState('')
   const editor = useRef<HTMLDivElement>(null)
   const origemDescarte = useRef<HTMLElement | null>(null)
   const sentinela = useRef<string | null>(null)
@@ -135,10 +136,15 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
     }
     removerSentinela(() => setEditando(false))
   }
-  function confirmar() {
+  function confirmar(preservar = false) {
+    if (!preservar && !descartarRascunhoContato(empresa.id)) {
+      setErroDescarte('Confirme o envio anterior no atendimento antes de descartar. Você também pode fechar mantendo o rascunho.')
+      return
+    }
     const voltar = descarte === 'voltar'
     const href = descarte && descarte !== 'fechar' && descarte !== 'voltar' ? descarte.href : null
-    setRascunho(rascunhoInicial(empresa.posse)); setDescarte(null)
+    if (!preservar) setRascunho(rascunhoInicial(empresa.posse))
+    setDescarte(null); setErroDescarte(''); setEditando(false)
     if (voltar) {
       sentinela.current = null
       setEditando(false)
@@ -165,6 +171,6 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
       if (!origemDescarte.current?.isConnected) return
       evento.preventDefault()
       origemDescarte.current.focus()
-    }}><DialogHeader><DialogTitle>Descartar as alterações?</DialogTitle><DialogDescription>As anotações deste atendimento ainda não foram registradas.</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={confirmar}>Descartar e continuar</Button></DialogFooter></DialogContent></Dialog>
+    }}><DialogHeader><DialogTitle>Descartar as alterações?</DialogTitle><DialogDescription>As anotações deste atendimento ainda não foram registradas.</DialogDescription></DialogHeader>{erroDescarte && <Alert variant="danger">{erroDescarte}</Alert>}<DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button variant="outline" onClick={() => confirmar(true)}>Fechar mantendo rascunho</Button><Button onClick={() => confirmar()}>Descartar e continuar</Button></DialogFooter></DialogContent></Dialog>
   </article>
 }

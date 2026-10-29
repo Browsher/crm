@@ -6,7 +6,9 @@ const push=vi.fn()
 vi.mock('next/navigation',()=>({useRouter:()=>({push})}))
 vi.mock('./reservar',()=>({Reservar:()=> <button>Reservar para ligar</button>}))
 import { LocalizarPessoal } from './pessoal'
-import type { EmpresaPessoal, FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
+import type { FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
+import type { ConsultaAtendimentoPessoal } from '@/src/server/prospeccao-pessoal'
+type EmpresaPessoal = ConsultaAtendimentoPessoal['empresas'][number]
 const dados={empresas:[],total:0,nichos:['Armarinhos','Brinquedos'],bairros:['Brás · São Paulo/SP']}
 const limpar:(()=>void)[]=[]
 afterEach(()=>{limpar.splice(0).forEach(f=>f());push.mockClear()})
@@ -41,16 +43,16 @@ test('nicho limpa o bairro anterior ao consultar opções dependentes',async()=>
 
 test('perfil e continuação preservam filtros pessoais e a página da consulta',async()=>{
   const filtros={origem:'google',nicho:'Brinquedos',pagina:'2'}
-  const empresa:EmpresaPessoal={id:'00000000-0000-4000-8000-000000000123',nome:'Minha empresa',cnpj:null,cnae:null,cep:null,porte:null,abertura:null,bairro:null,cidade:null,uf:null,origens:['google'],nichos:['Brinquedos'],regioes:[],entrada:'2026-10-23T12:00:00Z',situacao:'reservada'}
+  const empresa:EmpresaPessoal={id:'00000000-0000-4000-8000-000000000123',nome:'Minha empresa',cnpj:null,cnae:null,cep:null,porte:null,abertura:null,bairro:null,cidade:null,uf:null,origens:['google'],nichos:['Brinquedos'],regioes:[],entrada:'2026-10-23T12:00:00Z',situacao:'atendimento',referencia:{tipo:'cadastro',empresaId:'00000000-0000-4000-8000-000000000123'},versao:2,atividade:null,recebidaEm:null,negociacaoId:null}
   const div=await montar(filtros,[empresa])
-  for(const nome of ['Ver empresa','Continuar atendimento']) {
-    const link=[...div.querySelectorAll('a')].find(a=>a.textContent===nome)!
-    const url=new URL(link.getAttribute('href')!,'http://localhost')
-    expect(url.searchParams.get('pagina')).toBe('2')
-    expect(JSON.parse(url.searchParams.get('pessoal')!)).toEqual(filtros)
-    expect(url.searchParams.has('grupo')).toBe(false)
-    expect(url.pathname).toBe(nome==='Ver empresa'?`/fila/localizar/${empresa.id}`:'/fila')
-  }
+  const continuar=[...div.querySelectorAll('button')].find(b=>b.textContent==='Continuar atendimento')!
+  await act(async()=>continuar.click())
+  const url=new URL(push.mock.calls[0][0],'http://localhost')
+  expect(url.pathname).toBe('/fila/atendimento/'+empresa.id)
+  expect(url.searchParams.get('origem')).toBe('google')
+  expect(url.searchParams.get('pagina')).toBe('2')
+  expect(url.searchParams.get('nicho')).toBe('Brinquedos')
+  expect(url.searchParams.has('grupo')).toBe(false)
 })
 
 

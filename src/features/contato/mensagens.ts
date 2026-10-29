@@ -1,25 +1,14 @@
-import type { Falta } from './regras'
-import type { Motivo } from './repositorio'
-
-// Record, não if encadeado: motivo novo sem texto quebra o build.
-const TEXTO_DO_MOTIVO: Record<Motivo, string> = {
-  sem_permissao: 'Você não tem permissão para isso agora. Se acabou de trocar a senha, entre de novo.',
-  nao_encontrada: 'Esta empresa não está mais na fila. Puxe a próxima.',
-  reserva_expirada: 'O tempo da reserva acabou e a empresa voltou para a fila. O contato não foi registrado.',
-  ja_e_sua: 'Esta empresa já está na sua carteira.',
+import type { MotivoAtendimento } from '../../lib/atendimento'
+const MOTIVOS: Record<MotivoAtendimento, string> = {
+  sem_permissao: 'Você não tem permissão para atender esta empresa.',
+  nao_encontrada: 'Esta empresa não está disponível para você.',
+  desatualizada: 'A empresa mudou em outra aba. Suas anotações foram preservadas. Atualize o atendimento antes de um novo registro.',
+  arquivada: 'Esta empresa está sem interesse. Retome o atendimento antes de registrar.',
+  dados_invalidos: 'Confira os dados do atendimento.',
+  chave_reutilizada: 'Este envio já possui outros dados. Resolva o envio anterior antes de iniciar outro.',
 }
-
-export function textoDoMotivo(m: Motivo): string {
-  return TEXTO_DO_MOTIVO[m]
-}
-
-const TEXTO_DA_FALTA: Record<Falta, string> = {
-  tipo_invalido: 'Escolha o que aconteceu na ligação.',
-  desfecho_invalido: 'Escolha o que fazer com a empresa.',
-  proximo_passo_exigido: 'Empresa da sua carteira precisa de um próximo passo com data.',
-  par_incompleto: 'Próximo passo e data andam juntos: preencha os dois ou nenhum.',
-}
-
-export function textoDaFalta(f: Falta): string {
-  return TEXTO_DA_FALTA[f]
+export function textoDoMotivo(motivo: MotivoAtendimento) { return MOTIVOS[motivo] }
+export function textoDaFalta(falta: string) {
+  const textos: Record<string, string> = { tipo_invalido: 'Escolha um resultado permitido para esta fase.', agenda_incompativel: 'Sem interesse cancela os próximos passos. Remova a data e o próximo passo.', proximo_passo_exigido: 'Informe o próximo passo e a data combinada.', par_incompleto: 'Próximo passo e data andam juntos: preencha os dois ou nenhum.', dados_invalidos: 'Confira o tamanho dos textos e a data informada.' }
+  return textos[falta] ?? 'Confira os dados do atendimento.'
 }

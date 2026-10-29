@@ -1,13 +1,23 @@
 import type { Filtros } from '@/src/features/prospeccao/tipos'
+import { CAMPOS_PESSOAIS, lerFiltrosPessoais, urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
+
+export function filtrosDaConsulta(params: Record<string, string | string[] | undefined>): FiltrosPessoais {
+  let bruto: unknown = Object.fromEntries(CAMPOS_PESSOAIS.filter(k => params[k] !== undefined).map(k => [k, params[k]]))
+  if (typeof params.pessoal === 'string') { try { bruto = JSON.parse(params.pessoal) } catch { return {} } }
+  const r = lerFiltrosPessoais(bruto)
+  return r.ok ? r.filtros : {}
+}
+export function urlAtendimento(empresaId: string, filtros: FiltrosPessoais): string {
+  return urlPessoal(filtros, Number(filtros.pagina || 1)).replace('/fila/localizar', `/fila/atendimento/${encodeURIComponent(empresaId)}`)
+}
 
 export function urlConsulta(filtros: Filtros, pagina: number): string {
   const params = new URLSearchParams()
-  for (const campo of ['nome', 'cnae', 'uf', 'cidade', 'bairro', 'grupo'] as const) {
+  for (const campo of ['nome', 'cnae', 'uf', 'cidade', 'bairro'] as const) {
     if (filtros[campo]) params.set(campo, filtros[campo])
   }
   params.set('pagina', String(pagina))
-  if(!filtros.pessoal && !filtros.grupo) params.set('grupo','')
-  if(filtros.pessoal) params.set('pessoal',filtros.pessoal)
+  if(filtros.pessoal) return urlPessoal(filtrosDaConsulta({ pessoal: filtros.pessoal }), pagina)
   return `/fila/localizar?${params}`
 }
 
@@ -20,7 +30,6 @@ export function limparFiltros(filtros: Filtros): Filtros {
 }
 
 export function urlEscolhaLista(filtros: Filtros, atendimento = false, aberta = true): string {
-  const consulta = urlConsulta(filtros, filtros.pagina)
-  const destino = atendimento ? consulta.replace('/fila/localizar', '/fila') : consulta
-  return aberta ? `${destino}&escolher_lista=1` : destino
+  void atendimento; void aberta
+  return urlConsulta(filtros, filtros.pagina)
 }

@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { CalendarDays, Building2, Search, Phone } from 'lucide-react'
+import { CalendarDays, Building2, Search } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 import styles from './central.module.css'
 
-export function CentralProspeccao({ atendimento }: {atendimento?:string|null}) {
+export function CentralProspeccao(_props: {atendimento?:string|null} = {}) {
+  void _props
   return <main className={styles.pagina}>
     <CabecalhoPagina titulo="Prospecção" descricao="Escolha o que você quer fazer." />
     <section aria-label="Atividades de Prospecção" className={styles.atividades}>
@@ -20,7 +21,7 @@ export function CentralProspeccao({ atendimento }: {atendimento?:string|null}) {
         <article className={styles.opcao}><CalendarDays aria-hidden="true" /><div><h2>Buscas no Google</h2><p>Defina o nicho e a região de cada dia. O agente entrega as empresas nos seus grupos.</p></div><Button asChild variant="outline"><Link href="/fila/google">Planejar buscas</Link></Button></article>
         <article className={styles.opcao}><Building2 aria-hidden="true" /><div><h2>Banco de empresas</h2><p>Encontre novas empresas e adicione as selecionadas aos seus grupos.</p></div><Button asChild variant="outline"><Link href="/fila/buscar?fonte=banco">Buscar novas empresas</Link></Button></article>
       </div>
-      {atendimento && <aside className={styles.retomar}><div className={styles.apresentacao}><span className={styles.icone}><Phone aria-hidden="true" /></span><div><h2>Você tem um atendimento em andamento</h2><p>{atendimento}</p></div></div><Button asChild variant="outline"><Link href="/fila?atendimento=1">Continuar atendimento</Link></Button></aside>}
+
     </section>
   </main>
 }

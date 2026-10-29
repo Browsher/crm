@@ -6,6 +6,7 @@ import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { HistoricoBuscas } from '@/src/components/crm/historico-buscas'
 import { HistoricoBuscasDialogo } from '@/src/components/crm/historico-buscas-dialogo'
 import { EmpresasBancoRecentes } from './empresas-recentes'
+import { lerResumosEmpresas, lerResumosBusca } from '@/src/server/atendimento/consulta'
 import { FormularioBusca } from './formulario'
 import { BuscaDialogo } from '@/src/components/crm/busca-dialogo'
 import { ConteudoBusca } from '../../empresas/busca/conteudo'
@@ -26,6 +27,10 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
     typeof params.busca === 'string' ? repo.ler(params.busca) : Promise.resolve(null),
     repo.empresasRecentes().then(empresas => ({ ok: true as const, empresas })).catch(() => ({ ok: false as const }))])
   if (typeof params.busca === 'string' && !busca) notFound()
+  const [resumosRecentes, resumosBusca] = await Promise.all([
+    lerResumosEmpresas(eu.usuarioId, recentes.ok ? recentes.empresas.slice(0, 11).flatMap(e => e.empresaId ? [e.empresaId] : []) : []),
+    busca ? lerResumosBusca(eu.usuarioId, busca.id) : Promise.resolve({ ok: true as const, empresas: [] }),
+  ])
   const configurado = Boolean(process.env.CASA_DOS_DADOS_API_KEY?.trim())
   const restante = Math.max(0, (limite?.limite_diario ?? 0) - (limite?.usado ?? 0))
   const bloqueado = !configurado || Boolean(limite?.pausado) || restante === 0
@@ -43,11 +48,11 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
       {busca && <Card className={styles.painel}><h2>{busca.nome}</h2>
         <p className={styles.ajuda}>{busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas. Confira os resultados no pop-up.</p>
         <BuscaDialogo key={busca.id} nome={busca.nome} rotulo="Ver resultados" abrirInicialmente
-          conteudoInicial={<ConteudoBusca busca={busca} gestor={false} bloqueada={Boolean(limite?.pausado)} />}
+          conteudoInicial={<ConteudoBusca busca={busca} gestor={false} bloqueada={Boolean(limite?.pausado)} resumos={resumosBusca.ok ? resumosBusca.empresas : []} />}
           carregarAcao={lerDetalheBuscaAcao.bind(null, busca.id)} />
       </Card>}
       <section id="historico-banco" className="scroll-mt-6"><Card className={styles.painel}>
-        {recentes.ok ? <EmpresasBancoRecentes key={recentes.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.empresas.slice(0, 11)} />
+        {recentes.ok ? <EmpresasBancoRecentes key={recentes.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.empresas.slice(0, 11)} resumos={resumosRecentes.ok ? resumosRecentes.empresas : []} />
           : <p role="alert">Não foi possível carregar suas empresas recentes. Atualize a página para tentar novamente.</p>}
       </Card></section>
   </main>

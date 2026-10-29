@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
-import { registrarContato } from '@/src/features/contato/repositorio'
+import { registrarContatoLegado } from './fixtures/contato-legado'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 let banco: BancoDeTeste
@@ -93,7 +93,7 @@ test('reserva com retorno fica fora da carteira e devolucao remove empresa agend
   expect(antes.reserva).toMatchObject({ id: empresas[0], situacaoRetorno: 'atrasado' })
   expect(antes.carteira.map((e) => e.id)).not.toContain(empresas[0])
   expect(antes.carteira.find((e) => e.id === empresas[1])).toMatchObject({ situacaoRetorno: 'hoje' })
-  expect(await registrarContato(vendedorA, empresas[1], {
+  expect(await registrarContatoLegado(vendedorA, empresas[1], {
     tipo: 'acompanhamento', desfecho: 'devolver', nota: 'Devolvida', proximoPasso: null, proximoPassoData: null,
   })).toEqual({ ok: true })
   const depois = await ler()

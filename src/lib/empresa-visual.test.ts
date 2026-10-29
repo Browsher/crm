@@ -16,3 +16,6 @@ test('funil usa negociação e ausência não inventa destino', () => {
   expect(acaoEmpresa({ ...empresaTeste, situacao: 'em_negociacao', negociacaoId: 'a/b' })).toMatchObject({ href: '/funil?negociacao=a%2Fb' })
   expect(acaoEmpresa({ ...empresaTeste, situacao: 'em_negociacao' })).toBeNull()
 })
+test('continuação usa identidade explícita sem fallback global', () => {
+  expect(acaoEmpresa({ ...empresaTeste, situacao: 'atendimento' })).toMatchObject({ href: '/fila/atendimento/empresa' })
+})
