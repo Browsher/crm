@@ -1,6 +1,6 @@
 # Fluxo comercial unificado e padrão de empresas
 
-Data: 29/10/2026. Estado: proposta consolidada para revisão do usuário, antes do plano de implementação.
+Data: 29/10/2026. Estado: aprovado pelo usuário em 29/10/2026, incluindo a correção do destino Sem interesse para um card com animação de lixeira. Próxima etapa: revisão do plano de implementação.
 
 ## Objetivo e motivo
 
@@ -189,6 +189,8 @@ Levantamento estático sobre a árvore `8c5546546822638274840bd3d597fa1d863ccf29
 Uma revisão independente leu o levantamento. Após as respostas sobre exclusividade pretendida, próxima ação e Sem interesse, concluiu que o conjunto permite formular o plano, sem novas perguntas indispensáveis. As recomendações de distribuição, retomada e transição acima continuam sendo propostas do assistente para revisão do usuário.
 
 Correção posterior do usuário: Sem interesse deve ser um card que recebe o arraste com animação de lixeira, e não uma coluna. Essa forma de interação foi incorporada sem mudar as regras de encerramento, cancelamento de retornos ou preservação de dados.
+
+Após essa correção, o usuário aprovou o conjunto. As recomendações identificadas no documento integram o desenho aprovado; detalhes técnicos e divisão das tarefas serão apresentados no plano de implementação. A forma de execução já escolhida é implementação e revisão por agentes separados em cada etapa.
 
 Referências principais para o planejamento:
 
