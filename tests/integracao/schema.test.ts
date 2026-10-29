@@ -54,6 +54,7 @@ describe('migrações reais', () => {
       '0050_empresa_vinculo.sql',
       '0051_entrega_exclusiva.sql',
       '0052_atendimento_direto.sql',
+      '0053_consulta_atendimento.sql',
     ])
   })
 

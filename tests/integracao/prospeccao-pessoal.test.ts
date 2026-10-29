@@ -16,6 +16,7 @@ beforeAll(async () => {
   const [outra] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Segredo outra loja','11988886666') RETURNING id")
   alheia = outra.id
   for (const [vendedor, empresa, bairro] of [[eu,minha,'Brás'],[outro,alheia,'Segredo bairro']]) {
+    await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[empresa,vendedor])
     const [p] = await banco.sql<{id:string}>("INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf) VALUES($1,'2026-10-19','Armarinhos',$2,'São Paulo','SP') RETURNING id",[vendedor,bairro])
     await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,empresa])
   }
@@ -64,6 +65,7 @@ test('importação própria e Google fazem união sem duplicar e preservam clien
 test('aquisição pessoal recusa ID alheio e próxima empresa respeita filtros pessoais',async()=>{
   const [e]=await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Nova pessoal','11977778888') RETURNING id")
   await vincularGrupoAtivo(banco,[e.id])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[e.id,eu])
   const [p]=await banco.sql<{id:string}>("INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf) VALUES($1,'2026-10-20','Brinquedos','Sé','São Paulo','SP') RETURNING id",[eu])
   await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])
   const reservar=(alvo:string|null,contexto:string|null,f={})=>banco.comoUsuario(eu,sql=>sql<{resultado:string;empresa_id:string;contexto:string}>('SELECT * FROM prospeccao_pessoal_reservar($1,$2,$3)',[alvo,JSON.stringify(f),contexto])).then(r=>r.linhas[0])
@@ -76,6 +78,7 @@ test('aquisição pessoal recusa ID alheio e próxima empresa respeita filtros p
 
 test('nicho e região usam o snapshot da entrega legada mesmo após edição do planejamento',async()=>{
   const [e]=await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Empresa congelada','11955553333') RETURNING id")
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[e.id,eu])
   const [p]=await banco.sql<{id:string}>(`INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf,snapshot)
     VALUES($1,'2026-10-21','Plano alterado','Mooca','São Paulo','SP','{"nicho":"Nicho entregue","bairro":"Sé","cidade":"São Paulo","uf":"SP"}') RETURNING id`,[eu])
   await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])

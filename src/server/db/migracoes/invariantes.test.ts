@@ -81,6 +81,8 @@ const sao = (): Estado => ({
     'public.contato_registrar_direto',
     'public.empresa_sem_interesse_definir',
     'public.empresa_atendimento_retomar',
+    'public.empresa_detalhes_ler',
+    'public.busca_empresa_detalhes_ler',
   ],
   funcoesExecutaveisPorPublico: [],
 })
