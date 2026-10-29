@@ -35,6 +35,10 @@ yarn-error.log*
 !.env.test
 !.env.example
 
+# private local workflow authentication and its OS lock
+.workflow-prospeccao.local.json
+.workflow-prospeccao.local.json.lock
+
 # vercel
 .vercel
 
@@ -44,5 +48,8 @@ next-env.d.ts
 /.next-e2e/
 /playwright-report/
 /test-results/
+
+/.artifact-work/base-prospeccao/
+/outputs/base-prospeccao-2026-10-14/
 /.google-agente/
 __pycache__/

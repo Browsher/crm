@@ -14,7 +14,8 @@ import {
   type LinhaBruta,
 } from './planilha'
 
-export const LIMITE_BYTES_ARQUIVO = 1_500_000
+import { LIMITE_BYTES_ARQUIVO } from '../../lib/arquivo-empresas'
+export { LIMITE_BYTES_ARQUIVO } from '../../lib/arquivo-empresas'
 const LIMITE_BYTES_DESCOMPACTADOS = 16 * 1024 * 1024
 const LIMITE_ENTRADAS_XLSX = 100
 const MAXIMO_COLUNAS_EXCEL = 16_384
