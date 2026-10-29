@@ -22,7 +22,7 @@ Este documento descreve o comportamento pretendido. Não autoriza por si só mig
 | Carteira | A empresa torna-se cliente da Carteira após a primeira venda. Negociações sem venda ficam no Funil. |
 | Descanso automático | Retirar devolução e bloqueio automáticos de 30 dias, mantendo histórico e vínculo. |
 | Não atendeu | O vendedor pode deixar sem retorno ou agendar uma tentativa em Meu dia, sem colocar a empresa no Funil. |
-| Sem interesse | Situação própria, com área para consultar essas empresas, fora das listas de trabalho ativo. No Funil, permitir arrastar uma negociação para Sem interesse. |
+| Sem interesse | Situação própria, com área para consultar essas empresas, fora das listas de trabalho ativo. No Funil, usar um card para receber o arraste, com animação de lixeira, sem criar uma coluna de empresas arquivadas. |
 | Efeito de Sem interesse | Encerrar a negociação quando houver e cancelar os retornos pendentes. Preservar histórico e vínculo com o vendedor. |
 
 O usuário também sinalizou a preferência por filtrar empresas para não repeti-las entre vendedores. A proposta de distribuição abaixo concretiza esse objetivo e permanece identificada como recomendação do assistente.
@@ -54,9 +54,22 @@ Uma tentativa escolhida pelo vendedor após Não atendeu não equivale a retorno
 
 As empresas arquivadas devem sair das listas de trabalho ativo e ficar numa área própria, proposta dentro de Prospecção. Essa área deve permitir encontrar e consultar empresas sem carregar centenas de cards de uma vez. Reutilizar o padrão visual das demais empresas, com situação Sem interesse e ações adequadas ao arquivo.
 
-No Funil, criar a coluna/destino Sem interesse para receber uma negociação por arraste. A movimentação tem o mesmo efeito da marcação pelo atendimento e não conta como oportunidade aberta.
+No Funil, criar um único card compacto Sem interesse, com aparência de recipiente de descarte, para receber uma negociação por arraste. Ele não é uma coluna do quadro e não empilha as empresas arquivadas. A movimentação tem o mesmo efeito da marcação pelo atendimento e não conta como oportunidade aberta.
 
-Proposta do assistente: a área própria reúne todas as arquivadas; o destino do Funil apresenta os encerramentos de empresas que já tinham negociação. Uma empresa marcada Sem interesse antes de qualquer interesse não ganha uma negociação apenas para aparecer nessa coluna.
+Ao clicar no card Sem interesse, abrir a área própria com todas as empresas arquivadas, incluindo as que nunca tiveram negociação. Uma empresa marcada Sem interesse antes de qualquer interesse não ganha uma negociação apenas para aparecer nesse arquivo. O Funil continua reservado às negociações ativas, com o card servindo de destino de arquivamento e acesso à consulta.
+
+### Interação do card de descarte
+
+O usuário pediu uma animação semelhante a uma lixeira recebendo o item. A proposta de interação é:
+
+- Em repouso, mostrar o card Sem interesse, seguindo o design system, com ícone de lixeira e um acesso claro à consulta das arquivadas. A posição exata e a eventual contagem ficam para o desenho da interface.
+- Ao arrastar uma empresa sobre ele, destacar o alvo e animar a abertura do recipiente para indicar que pode receber o item.
+- Após soltar e o arquivamento ser concluído com sucesso, realizar uma animação curta de entrada/recolhimento do card da empresa e retornar o recipiente ao estado de repouso.
+- A animação representa arquivamento comercial. Não excluir empresa, contatos ou histórico do banco.
+- Uma falha deve manter a empresa na situação original e informar que o arquivamento não foi concluído. A animação não pode comunicar sucesso de uma operação que falhou.
+- Manter a ação equivalente Marcar como Sem interesse acessível por botão/menu, inclusive por teclado e em telas de toque. Respeitar a preferência por movimento reduzido, preservando a indicação de resultado sem animação intensa.
+
+Essa definição corrige a interpretação anterior de criar uma coluna Sem interesse. O efeito comercial já confirmado permanece: encerrar a negociação e cancelar retornos, preservando histórico e vendedor.
 
 ### Encerramento e histórico
 
@@ -120,7 +133,7 @@ Abrir e fechar o pop-up preserva filtros e posição/contexto da consulta. Não 
 | Google e Banco | Unificar distribuição, consulta e entrada de atendimento sem prazo, preservando os contratos das buscas. |
 | Últimas empresas | Reutilizar dados, situação e ações do card pessoal, com seleção exata ao abrir informações. |
 | Perfil e atendimento | Retirar contexto de listas, etapas antigas e mensagens/comandos de reserva temporária. |
-| Funil | Preservar o gatilho de interesse/retorno e incluir o destino Sem interesse com encerramento real. |
+| Funil | Preservar o gatilho de interesse/retorno e incluir o card de descarte Sem interesse com animação de lixeira e encerramento real, sem adicionar coluna. |
 | Sem interesse | Criar consulta própria de arquivadas e retomada explícita. |
 | Meu dia | Incluir tentativa agendada sem negociação e excluir retornos cancelados por arquivamento. |
 | Carteira | Manter primeira venda como critério; corrigir mensagens que dizem para assumir/puxar para virar cliente. |
@@ -160,7 +173,9 @@ Não se autoriza apagar registros para resolver colisões, atribuir empresas arb
 | Registrar Não atendeu com tentativa agendada | Aparece em Meu dia quando devida, permanecendo fora do Funil até interesse/retorno combinado. |
 | Registrar interesse ou retorno combinado | Negociação aberta para o vendedor, sem duplicação; retorno combinado preserva texto e data. |
 | Marcar Sem interesse antes de haver negociação | Vai para a área própria, sem negociação artificial ou retornos pendentes. |
-| Arrastar negociação para Sem interesse | Negociação encerrada, fora da contagem de abertas e da agenda, com histórico e vínculo preservados. |
+| Arrastar negociação para o card Sem interesse | Alvo destacado e animação de lixeira ao concluir; negociação encerrada, fora da contagem de abertas e da agenda, com histórico e vínculo preservados. Nenhuma coluna nova de arquivadas é criada. |
+| Clicar no card Sem interesse | Abre a consulta das arquivadas, sem mudar a situação de uma empresa. |
+| Falhar ao soltar ou usar movimento reduzido | Em falha, manter a empresa no estado original e informar o resultado; com movimento reduzido, manter a operação compreensível. Existe ação equivalente sem arraste. |
 | Retomar uma arquivada | Volta ao atendimento; não restaura agenda cancelada ou negociação por efeito da retomada, conforme proposta. |
 | Mesma empresa encontrada por dois vendedores/fontes | Só uma entrega válida; nenhum segundo atendimento disponível, inclusive com operações simultâneas. |
 | Primeira venda | Entrada na Carteira, preservação do histórico e do próximo passo válido. |
@@ -172,6 +187,8 @@ Não se autoriza apagar registros para resolver colisões, atribuir empresas arb
 Levantamento estático sobre a árvore `8c5546546822638274840bd3d597fa1d863ccf29`, correspondente ao commit `fafd7fc11ee294e0aabc6b0e489b80971ac90d2d` usado como base local. Não foi feita leitura de dados de produção.
 
 Uma revisão independente leu o levantamento. Após as respostas sobre exclusividade pretendida, próxima ação e Sem interesse, concluiu que o conjunto permite formular o plano, sem novas perguntas indispensáveis. As recomendações de distribuição, retomada e transição acima continuam sendo propostas do assistente para revisão do usuário.
+
+Correção posterior do usuário: Sem interesse deve ser um card que recebe o arraste com animação de lixeira, e não uma coluna. Essa forma de interação foi incorporada sem mudar as regras de encerramento, cancelamento de retornos ou preservação de dados.
 
 Referências principais para o planejamento:
 
