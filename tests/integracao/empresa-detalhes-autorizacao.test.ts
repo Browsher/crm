@@ -46,18 +46,70 @@ test('candidato sem origem pessoal não entra na consulta nem autoriza cadastro;
   await banco.sql(`UPDATE busca_empresa SET empresas=empresas||'[ {"cnpj":"55555555000199","razao_social":"Snapshot pendente","telefones":[]} ]'::jsonb WHERE id=$1`,[busca])
   expect(await snapshot('55555555000199')).toMatchObject({ok:true,motivoIndisponibilidade:'pendente',empresa:{razao_social:'Snapshot pendente'}})
 })
-test('resumo pessoal e detalhes compartilham localização congelada, origens e situação', async () => {
+test('resumo pessoal e detalhes compartilham localização real persistida, origens e situação', async () => {
   const vendedor = await criarUsuario(banco,'vendedor','ResumoComum')
   const [e] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Resumo comum','11912341234') RETURNING id")
   await vincularGrupoAtivo(banco,[e.id])
   await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[e.id,vendedor])
   const [p] = await banco.sql<{id:string}>(`INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf,snapshot) VALUES($1,'2026-10-29','Alterado','Alterado','São Paulo','SP','{"nicho":"Nicho entregue","bairro":"Sé","cidade":"São Paulo","uf":"SP"}') RETURNING id`,[vendedor])
-  await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])
+  await banco.sql(`INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{"bairro":"Sé","cidade":"São Paulo","uf":"SP"}','entregue',now())`,[p.id,e.id])
   const consulta = await banco.comoUsuario(vendedor,async sql => (await sql<{dados:{empresas:Record<string,unknown>[]}}>('SELECT prospeccao_pessoal() dados')).linhas[0].dados)
   const detalhe = await ler(e.id,vendedor)
   const dados = detalhe.dados as Record<string,unknown>
   for(const campo of ['id','nome','bairro','cidade','uf','origens','recebidaEm','situacao','versao','negociacaoId']) expect(consulta.empresas[0][campo],campo).toEqual(dados[campo])
   expect(dados.bairro).toBe('Sé')
+})
+test('Banco usa localização do snapshot exato próprio e nunca os critérios gerais ou snapshot alheio', async () => {
+  const vendedor = await criarUsuario(banco,'vendedor','LocalBanco')
+  const empresas = await banco.sql<{id:string;cnpj:string}>(`INSERT INTO empresa(cnpj,razao_social,telefone) VALUES
+    ('77777777000199','Banco sem endereço','11911112222'),('88888888000199','Banco com snapshot','11911113333') RETURNING id,cnpj`)
+  const [grupo] = await banco.sql<{id:string}>("INSERT INTO grupo_importacao(nome) VALUES('Localização real') RETURNING id")
+  for (const e of empresas) {
+    await banco.sql('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES($1,$2)',[grupo.id,e.id])
+    await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')",[e.id,vendedor])
+  }
+  await banco.sql(`INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id,empresas) VALUES
+    ($1,'Critérios não são endereço','{"palavra":"Lojas","bairro":"Critério","cidade":"São Paulo","uf":"SP"}',3,'concluida',$2,$3)`,[vendedor,grupo.id,JSON.stringify([
+    {cnpj:empresas[0].cnpj,razao_social:'Sem endereço',telefones:[]},
+    {cnpj:empresas[1].cnpj,razao_social:'Snapshot exato',bairro:'Icaraí',cidade:'Niterói',uf:'RJ',telefones:[]},
+    {cnpj:'99999999000199',razao_social:'Não corresponde',bairro:'Falso',cidade:'Salvador',uf:'BA',telefones:[]},
+  ])])
+  await banco.sql(`INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas) VALUES
+    ($1,'Snapshot alheio','{}',1,'concluida',$2)`,[outro,JSON.stringify([{cnpj:empresas[0].cnpj,razao_social:'Outro vendedor',bairro:'Segredo',cidade:'Recife',uf:'PE',telefones:[]}])])
+  const consultar = (f: object = {}) => banco.comoUsuario(vendedor,async sql=>(await sql<{dados:{total:number;bairros:string[];empresas:Record<string,unknown>[]}}>('SELECT prospeccao_pessoal($1) dados',[JSON.stringify(f)])).linhas[0].dados)
+  const r = await consultar({origem:'banco'})
+  const ausente = r.empresas.find(e=>e.id===empresas[0].id)!
+  const comSnapshot = r.empresas.find(e=>e.id===empresas[1].id)!
+  expect(ausente).toMatchObject({bairro:null,cidade:null,uf:null,regioes:[]})
+  expect(comSnapshot).toMatchObject({bairro:'Icaraí',cidade:'Niterói',uf:'RJ',regioes:['Icaraí · Niterói/RJ']})
+  expect(r.bairros).toEqual(['Icaraí · Niterói/RJ'])
+  expect(r.total).toBe(2)
+  expect((await ler(empresas[0].id,vendedor)).dados).toMatchObject({bairro:null,cidade:null,uf:null})
+  expect((await ler(empresas[1].id,vendedor)).dados).toMatchObject({bairro:'Icaraí',cidade:'Niterói',uf:'RJ'})
+  for (const filtros of [{endereco:'Icaraí · Niterói/RJ'},{cidade:'Niterói',uf:'RJ'},{origem:'banco',nicho:'Lojas',endereco:'Icaraí · Niterói/RJ',cidade:'Niterói',uf:'RJ'}]) {
+    expect((await consultar(filtros)).empresas.map(e=>e.id)).toEqual([empresas[1].id])
+  }
+  for (const filtros of [{endereco:'Critério · São Paulo/SP'},{cidade:'São Paulo'},{uf:'SP'},{endereco:'Segredo · Recife/PE'}]) expect((await consultar(filtros)).total).toBe(0)
+  expect(JSON.stringify(r)).not.toContain('Segredo')
+  expect((await consultar({origem:'banco',pagina:'2'})).empresas).toEqual([])
+})
+test('Google mantém critérios como contexto e usa somente localização real do resultado nas opções e filtros', async () => {
+  const vendedor = await criarUsuario(banco,'vendedor','LocalGoogle')
+  const [e] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Google sem endereço','11911114444') RETURNING id")
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[e.id,vendedor])
+  const [p] = await banco.sql<{id:string}>(`INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf,snapshot)
+    VALUES($1,'2026-10-28','Plano alterado','Planejado','São Paulo','SP','{"nicho":"Nicho entregue","bairro":"Critério congelado","cidade":"São Paulo","uf":"SP"}') RETURNING id`,[vendedor])
+  await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])
+  const consultar = (f: object = {}) => banco.comoUsuario(vendedor,async sql=>(await sql<{dados:{total:number;bairros:string[];nichos:string[];empresas:Record<string,unknown>[]}}>('SELECT prospeccao_pessoal($1) dados',[JSON.stringify(f)])).linhas[0].dados)
+  expect((await ler(e.id,vendedor)).dados).toMatchObject({bairro:null,cidade:null,uf:null})
+  expect(await consultar()).toMatchObject({bairros:[],nichos:['Nicho entregue'],empresas:[{bairro:null,cidade:null,uf:null,regioes:[]}]})
+  expect((await consultar({endereco:'Critério congelado · São Paulo/SP'})).total).toBe(0)
+  expect((await consultar({cidade:'São Paulo',uf:'SP'})).total).toBe(0)
+  await banco.sql(`UPDATE google_resultado SET dados='{"bairro":"Centro","cidade":"Curitiba","uf":"PR"}' WHERE empresa_id=$1`,[e.id])
+  expect((await ler(e.id,vendedor)).dados).toMatchObject({bairro:'Centro',cidade:'Curitiba',uf:'PR'})
+  expect(await consultar()).toMatchObject({bairros:['Centro · Curitiba/PR'],nichos:['Nicho entregue'],empresas:[{bairro:'Centro',cidade:'Curitiba',uf:'PR',regioes:['Centro · Curitiba/PR']}]})
+  expect((await consultar({nicho:'Nicho entregue',endereco:'Centro · Curitiba/PR',cidade:'Curitiba',uf:'PR'})).empresas.map(e=>e.id)).toEqual([e.id])
+  expect((await consultar({cidade:'São Paulo',uf:'SP'})).total).toBe(0)
 })
 test('entrega histórica sem vínculo não autoriza cadastro nem inclui consulta pessoal', async () => {
   const [e] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Sem vínculo','11922223333') RETURNING id")

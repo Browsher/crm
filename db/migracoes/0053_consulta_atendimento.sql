@@ -5,8 +5,8 @@ LANGUAGE sql STABLE SET search_path = '' AS $$
   SELECT jsonb_build_object(
     'referencia',jsonb_build_object('tipo','cadastro','empresaId',e.id),'id',e.id,
     'nome',coalesce(e.nome_fantasia,e.razao_social,'Não informado'),'cnpj',e.cnpj,'cnae',e.cnae_principal,'atividade',NULL,
-    'bairro',coalesce(c.bairro,d.bairro,g.bairro),'cidade',coalesce(c.localidade,d.cidade,g.cidade),
-    'uf',coalesce(c.uf::text,d.uf,g.uf),
+    'bairro',coalesce(c.bairro,d.bairro,g.bairro,banco.bairro),'cidade',coalesce(c.localidade,d.cidade,g.cidade,banco.cidade),
+    'uf',coalesce(c.uf::text,d.uf,g.uf,banco.uf),
     'origens',coalesce((SELECT jsonb_agg(origem ORDER BY origem) FROM (
       SELECT v.origem_inicial origem WHERE v.origem_inicial IS NOT NULL
       UNION SELECT 'google' WHERE EXISTS (SELECT 1 FROM public.google_resultado r JOIN public.google_planejamento p ON p.id=r.planejamento_id WHERE r.empresa_id=e.id AND r.situacao='entregue' AND p.vendedor_id=v.vendedor_id)
@@ -28,12 +28,16 @@ LANGUAGE sql STABLE SET search_path = '' AS $$
   LEFT JOIN public.empresa_fila f ON f.empresa_id=e.id LEFT JOIN public.empresa_dados_cadastrais d ON d.empresa_id=e.id
   LEFT JOIN public.cep c ON c.cep=e.cep
   LEFT JOIN public.negociacao n ON n.empresa_id=e.id AND n.vendedor_id=v.vendedor_id AND n.encerrada_em IS NULL
-  LEFT JOIN LATERAL (SELECT coalesce(nullif(r.dados->>'bairro',''),x.snapshot->>'bairro',p.snapshot->>'bairro',p.bairro) bairro,
-    coalesce(nullif(r.dados->>'cidade',''),x.snapshot->>'cidade',p.snapshot->>'cidade',p.cidade) cidade,
-    coalesce(nullif(r.dados->>'uf',''),x.snapshot->>'uf',p.snapshot->>'uf',p.uf) uf
+  LEFT JOIN LATERAL (SELECT nullif(r.dados->>'bairro','') bairro,nullif(r.dados->>'cidade','') cidade,nullif(r.dados->>'uf','') uf
     FROM public.google_resultado r JOIN public.google_planejamento p ON p.id=r.planejamento_id
-    LEFT JOIN public.google_execucao x ON x.pedido_id=p.id
-    WHERE r.empresa_id=e.id AND r.situacao='entregue' AND p.vendedor_id=v.vendedor_id ORDER BY r.entregue_em DESC,r.id LIMIT 1) g ON true
+    WHERE r.empresa_id=e.id AND r.situacao='entregue' AND p.vendedor_id=v.vendedor_id
+      AND coalesce(nullif(r.dados->>'bairro',''),nullif(r.dados->>'cidade',''),nullif(r.dados->>'uf','')) IS NOT NULL
+    ORDER BY r.entregue_em DESC,r.id LIMIT 1) g ON true
+  LEFT JOIN LATERAL (SELECT nullif(item->>'bairro','') bairro,nullif(item->>'cidade','') cidade,nullif(item->>'uf','') uf
+    FROM public.busca_empresa b CROSS JOIN LATERAL jsonb_array_elements(b.empresas) item
+    WHERE b.usuario_id=v.vendedor_id AND b.estado='concluida' AND item->>'cnpj'=e.cnpj
+      AND coalesce(nullif(item->>'bairro',''),nullif(item->>'cidade',''),nullif(item->>'uf','')) IS NOT NULL
+    ORDER BY b.criado_em DESC,b.id DESC LIMIT 1) banco ON true
   WHERE e.id=p_empresa;
 $$;
 REVOKE EXECUTE ON FUNCTION empresa_atendimento_resumo(uuid) FROM PUBLIC;
@@ -96,31 +100,30 @@ BEGIN
   IF v_pagina NOT BETWEEN 1 AND 10000 OR (nullif(p->>'aberturaDe','') IS NOT NULL AND nullif(p->>'aberturaAte','') IS NOT NULL AND (p->>'aberturaDe')::date>(p->>'aberturaAte')::date) THEN
     RAISE EXCEPTION 'filtros invalidos' USING ERRCODE='22023';
   END IF;
-  WITH fontes AS MATERIALIZED (
+  WITH projecoes AS MATERIALIZED (
+    SELECT v.empresa_id,public.empresa_atendimento_resumo(v.empresa_id) dados FROM public.empresa_vinculo v
+    WHERE v.vendedor_id=v_eu AND (v.arquivada_em IS NULL OR p->>'disponibilidade'='sem_interesse')
+  ), fontes AS MATERIALIZED (
     SELECT r.empresa_id, 'google'::text origem, coalesce(x.snapshot->>'nicho',g.snapshot->>'nicho',g.nicho) nicho,
-      coalesce(nullif(r.dados->>'bairro',''),x.snapshot->>'bairro',g.snapshot->>'bairro',g.bairro) bairro,
-      coalesce(nullif(r.dados->>'cidade',''),x.snapshot->>'cidade',g.snapshot->>'cidade',g.cidade) cidade,
-      coalesce(nullif(r.dados->>'uf',''),x.snapshot->>'uf',g.snapshot->>'uf',g.uf) uf, r.entregue_em entrada, NULL::text grupo_origem
+      r.entregue_em entrada, NULL::text grupo_origem
     FROM public.google_resultado r JOIN public.google_planejamento g ON g.id=r.planejamento_id
     LEFT JOIN public.google_execucao x ON x.pedido_id=g.id
     WHERE g.vendedor_id=v_eu AND r.situacao='entregue' AND r.empresa_id IS NOT NULL
     UNION ALL
     SELECT ge.empresa_id,'banco',coalesce(nullif(b.filtros->>'palavra',''),nullif(b.filtros->>'cnae',''),b.nome),
-      coalesce(d.bairro,b.filtros->>'bairro'),coalesce(d.cidade,b.filtros->>'cidade'),coalesce(d.uf,b.filtros->>'uf'),b.criado_em,g.nome
+      b.criado_em,g.nome
     FROM public.busca_empresa b JOIN public.grupo_importacao g ON g.id=b.grupo_id
     JOIN public.grupo_importacao_empresa ge ON ge.grupo_id=b.grupo_id
-    LEFT JOIN public.empresa_dados_cadastrais d ON d.empresa_id=ge.empresa_id
     WHERE b.usuario_id=v_eu AND b.estado='concluida'
     UNION ALL
-    SELECT v.empresa_id,v.origem_inicial,'Cadastro existente',NULL,NULL,NULL,v.recebida_em,NULL::text
+    SELECT v.empresa_id,v.origem_inicial,'Cadastro existente',v.recebida_em,NULL::text
     FROM public.empresa_vinculo v WHERE v.vendedor_id=v_eu
       AND NOT EXISTS (SELECT 1 FROM public.google_resultado r JOIN public.google_planejamento g ON g.id=r.planejamento_id WHERE r.empresa_id=v.empresa_id AND r.situacao='entregue' AND g.vendedor_id=v_eu)
       AND NOT EXISTS (SELECT 1 FROM public.busca_empresa b JOIN public.grupo_importacao_empresa ge ON ge.grupo_id=b.grupo_id WHERE ge.empresa_id=v.empresa_id AND b.usuario_id=v_eu AND b.estado='concluida')
   ), vinculos AS MATERIALIZED (
-    SELECT s.* FROM fontes s JOIN public.empresa_vinculo v ON v.empresa_id=s.empresa_id AND v.vendedor_id=v_eu
-    WHERE v.arquivada_em IS NULL OR p->>'disponibilidade'='sem_interesse'
+    SELECT s.*,r.dados FROM fontes s JOIN projecoes r ON r.empresa_id=s.empresa_id
   ), vinculadas AS MATERIALIZED (
-    SELECT v.*,concat_ws(' · ',nullif(v.bairro,''),nullif(concat_ws('/',nullif(v.cidade,''),nullif(v.uf,'')),'')) regiao
+    SELECT v.*,concat_ws(' · ',nullif(v.dados->>'bairro',''),nullif(concat_ws('/',nullif(v.dados->>'cidade',''),nullif(v.dados->>'uf','')),'')) regiao
     FROM vinculos v
   ), escolhidos AS MATERIALIZED (
     SELECT v.* FROM vinculadas v WHERE (coalesce(p->>'origem','')='' OR v.origem=p->>'origem') AND (coalesce(p->>'nicho','')='' OR v.nicho=p->>'nicho')
@@ -128,9 +131,8 @@ BEGIN
     SELECT DISTINCT empresa_id FROM escolhidos v WHERE coalesce(p->>'endereco','')='' OR v.regiao=p->>'endereco'
   ), unicas AS MATERIALIZED (
     SELECT v.empresa_id,array_agg(DISTINCT v.origem ORDER BY v.origem) origens,array_agg(DISTINCT v.nicho ORDER BY v.nicho) nichos,
-      array_agg(DISTINCT v.regiao ORDER BY v.regiao) regioes,min(v.entrada) entrada,
-      (array_agg(v.grupo_origem ORDER BY v.entrada,v.grupo_origem) FILTER (WHERE v.grupo_origem IS NOT NULL))[1] grupo_origem,
-      max(nullif(v.bairro,'')) bairro,max(nullif(v.cidade,'')) cidade,max(nullif(v.uf,'')) uf
+      coalesce(array_agg(DISTINCT v.regiao ORDER BY v.regiao) FILTER (WHERE v.regiao<>''),'{}'::text[]) regioes,min(v.entrada) entrada,
+      (array_agg(v.grupo_origem ORDER BY v.entrada,v.grupo_origem) FILTER (WHERE v.grupo_origem IS NOT NULL))[1] grupo_origem
     FROM vinculadas v JOIN elegiveis el ON el.empresa_id=v.empresa_id GROUP BY v.empresa_id
   ), resumo AS MATERIALIZED (
     SELECT e.id,coalesce(e.nome_fantasia,e.razao_social,'Empresa sem nome') nome,e.cnpj,e.cnae_principal cnae,e.cep,d.porte,d.data_abertura abertura,
@@ -139,8 +141,8 @@ BEGIN
       (s.dados->>'versao')::integer versao,(s.dados->>'negociacaoId')::uuid AS "negociacaoId",
       s.dados->>'recebidaEm' AS "recebidaEm",s.dados->>'motivoIndisponibilidade' AS "motivoIndisponibilidade"
     FROM unicas u JOIN public.empresa e ON e.id=u.empresa_id
-    LEFT JOIN public.cep c ON c.cep=e.cep LEFT JOIN public.empresa_dados_cadastrais d ON d.empresa_id=e.id
-    CROSS JOIN LATERAL (SELECT public.empresa_atendimento_resumo(e.id) dados) s
+    LEFT JOIN public.empresa_dados_cadastrais d ON d.empresa_id=e.id
+    JOIN projecoes s ON s.empresa_id=e.id
   ), filtradas AS MATERIALIZED (
     SELECT r.* FROM resumo r WHERE (coalesce(p->>'nome','')='' OR strpos(public.sem_acento(r.nome),public.sem_acento(p->>'nome'))>0)
       AND (coalesce(p->>'cnpj','')='' OR r.cnpj=p->>'cnpj') AND (coalesce(p->>'cnae','')='' OR r.cnae=p->>'cnae')

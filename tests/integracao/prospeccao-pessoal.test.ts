@@ -18,7 +18,7 @@ beforeAll(async () => {
   for (const [vendedor, empresa, bairro] of [[eu,minha,'Brás'],[outro,alheia,'Segredo bairro']]) {
     await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[empresa,vendedor])
     const [p] = await banco.sql<{id:string}>("INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf) VALUES($1,'2026-10-19','Armarinhos',$2,'São Paulo','SP') RETURNING id",[vendedor,bairro])
-    await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,empresa])
+    await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,jsonb_build_object('bairro',$3::text,'cidade','São Paulo','uf','SP'),'entregue',now())",[p.id,empresa,bairro])
   }
 })
 afterAll(async () => { await banco?.derrubar() })
@@ -76,12 +76,12 @@ test('aquisição pessoal recusa ID alheio e próxima empresa respeita filtros p
   expect(await banco.sql('SELECT reservado_por FROM empresa_fila WHERE empresa_id=$1',[e.id])).toEqual([{reservado_por:eu}])
 })
 
-test('nicho e região usam o snapshot da entrega legada mesmo após edição do planejamento',async()=>{
+test('nicho usa contexto congelado e região usa resultado real mesmo após edição do planejamento',async()=>{
   const [e]=await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Empresa congelada','11955553333') RETURNING id")
   await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[e.id,eu])
   const [p]=await banco.sql<{id:string}>(`INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf,snapshot)
     VALUES($1,'2026-10-21','Plano alterado','Mooca','São Paulo','SP','{"nicho":"Nicho entregue","bairro":"Sé","cidade":"São Paulo","uf":"SP"}') RETURNING id`,[eu])
-  await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])
+  await banco.sql(`INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{"bairro":"Sé","cidade":"São Paulo","uf":"SP"}','entregue',now())`,[p.id,e.id])
   const r=await consultar({nicho:'Nicho entregue'})
   expect(r.empresas.map(x=>x.id)).toEqual([e.id])
   expect(r.bairros).toEqual(['Sé · São Paulo/SP'])
