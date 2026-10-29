@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-29-fluxo-comercial-unificado-design.md`, aprovado pelo usuário em 29/10/2026.
 
+**Status:** plano e execução aprovados pelo usuário em 29/10/2026, mantendo Superpowers e agentes separados por implementação/revisão. Spec Kit foi apenas avaliado e não foi instalado.
+
 ## Global Constraints
 
 - Atendimento direto, sem reserva ou expiração de 30 minutos.
@@ -107,7 +109,7 @@ Criar `src/lib/empresa-visual.ts`: `SituacaoEmpresa` com `a_contatar`, `atendime
 
 **Interfaces:**
 - Consumes: `BancoDeTeste`, `criarBancoDeTeste`, `criarUsuario` de `tests/integracao/ajuda.ts`; padrões de RLS/auditoria em 0016/0017 e catálogo fechado em `invariantes.ts`.
-- Produces: as três tabelas e a tabela de operações acima; `classificarVinculoLegado(evidencias: EvidenciasVinculo): DecisaoVinculo`, união `{ tipo:'vincular'; vendedorId:string } | { tipo:'pendente'; motivo:string }`. `EvidenciasVinculo` tem `responsavel:string|null`, `google:string|null`, `candidatos:string[]` das entregas/reserva recuperáveis e `ativos:string[]`.
+- Produces: três tabelas no total (`empresa_vinculo`, `empresa_vinculo_pendencia`, `empresa_atendimento_operacao`); `classificarVinculoLegado(evidencias: EvidenciasVinculo): DecisaoVinculo`, união `{ tipo:'vincular'; vendedorId:string } | { tipo:'pendente'; motivo:string }`. `EvidenciasVinculo` tem `responsavel:string|null`, `google:string|null`, `candidatos:string[]` das entregas/reserva recuperáveis e `ativos:string[]`.
 - Produces: `inventariarTransicao(gestorId: string, depois: string | null, limite: number): Promise<{ok:true;dados:RelatorioTransicao}|{ok:false;motivo:'sem_permissao'|'filtros_invalidos'}>`. `RelatorioTransicao` tem `totais:{empresas:number;vinculosInequivocos:number;pendencias:number}`, `pendencias:{empresaId:string;motivo:string;candidatos:string[]}[]` e `proximo:string|null`, no máximo 100 pendências por página, somente leitura.
 - Produces: fixtures `vincularEmpresaTeste(banco:BancoDeTeste,empresaId:string,vendedorId:string,origem:'google'|'banco'|'legado'):Promise<number>` e `cenarioAtendimento(banco: BancoDeTeste): Promise<{ vendedorId:string; outroId:string; gestorId:string; empresaId:string; versao:number }>`. São preparação administrativa exclusiva do banco de teste; não criar caminho de escrita equivalente no aplicativo.
 
@@ -373,4 +375,4 @@ expect(atribuicoesNovasDaEmpresaAmbigua).toHaveLength(0)
 - Cinco riscos do Review Focus têm testes nas tarefas proprietárias, inclusive última etapa arrastável, concorrência, identidades parciais e legado ambíguo.
 - Pendências de dados não são decisões arbitrárias de código: ficam explícitas no relatório e na operação, sem reatribuição ou perda silenciosa.
 - Método de execução já fornecido: agentes separados para implementar e revisar cada tarefa, em sequência, com revisão final.
-- Próximo passo: revisão deste plano pelo usuário, antes da implementação, conforme o handoff da skill de planejamento. A aprovação anterior foi da spec, registrada no documento correspondente.
+- O usuário revisou e aprovou o plano e a continuidade com Superpowers. Executar as tarefas e revisões em sequência, sem pedir novamente a escolha de método. Merge e publicação continuam fora desta autorização.
