@@ -152,7 +152,8 @@ def _resultado_verificado(value, signal, token):
     counts = ("empresasLidas", "empresasExportadas", "validos", "invalidos", "pendencias", "mensagensEnviadas")
     if not all(_inteiro(value.get(key)) for key in counts) or value["mensagensEnviadas"] != 0:
         return None
-    if any(value[key] > value["empresasLidas"] for key in counts[1:]):
+    # Pendencias counts occurrences: a row can lack both phone and identity.
+    if any(value[key] > value["empresasLidas"] for key in ("empresasExportadas", "validos", "invalidos")):
         return None
     arquivo = value.get("arquivoDrive")
     if (not isinstance(arquivo, dict) or not _id(arquivo.get("id"))

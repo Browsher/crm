@@ -56,6 +56,26 @@ test.each([
   expect(saidas.pendencias).toEqual([expect.objectContaining({ linhas: [2], numero, motivo })])
 })
 
+test('conta duas ocorrências de pendência para uma única empresa sem telefone e identidade', () => {
+  const leitura = lerColetaSheets([
+    [...cabecalho, 'bairro', 'cidade', 'uf', 'data_coleta'],
+    ['', '', '', 'Brás', 'São Paulo', 'SP', '2026-10-16'],
+  ])
+  expect(leitura.ok).toBe(true)
+  if (!leitura.ok) throw new Error(leitura.motivo)
+  expect(leitura.coleta.linhas).toHaveLength(1)
+  const resultado = montarSaidas(leitura.coleta, [])
+  expect(resultado).toEqual({ ok: true, saidas: {
+    validos: [], invalidos: [], exportacao: [], compartilhados: [], duplicadas: [],
+    pendencias: [
+      { linhas: [2], numero: null, motivo: 'telefone_ausente' },
+      { linhas: [2], numero: null, motivo: 'identidade_ausente' },
+    ],
+  } })
+  if (!resultado.ok) throw new Error(resultado.motivo)
+  expect(serializarCsvCrm(resultado.saidas.exportacao).trim().split('\n')).toHaveLength(1)
+})
+
 test('normaliza CNPJ, CEP, CNAE e e-mail e preserva razão social independente', () => {
   const saidas = executar(['telefone', 'cnpj', 'razao_social', 'cep', 'cnae_principal', 'email'], [
     [telefone, '11.222.333/0001-81', 'Empresa jurídica', '01310-100', '4742-3/00', ' CONTATO@EMPRESA.COM '],

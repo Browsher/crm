@@ -111,6 +111,37 @@ class DispatchWorkflow(unittest.TestCase):
         self.assertEqual({k: v for k, v in self.read().items() if k != "workflow_automatico"}, self.pub)
         self.assertNotIn(TOKEN, self.receipt.read_text(encoding="utf-8"))
 
+    def test_one_company_with_two_pending_occurrences_concludes_post_once(self):
+        self.pub["quantidade"] = self.pub["manifesto"]["linhas"] = 1
+        self.write(self.receipt, self.pub)
+        result = {**copy.deepcopy(RESULT), "empresasLidas": 1, "empresasExportadas": 0,
+                  "validos": 0, "invalidos": 0, "pendencias": 2}
+        with patch.object(self.client, "_postar", return_value=result) as post:
+            code, response = self.run_client()
+            self.assertEqual(code, 0)
+            self.assertEqual(response["resultado"], result)
+            self.assertEqual(self.read()["workflow_automatico"]["estado"], "concluido")
+            self.assertEqual(self.read()["workflow_automatico"]["resultado"], result)
+            self.assertEqual({k: v for k, v in self.read().items() if k != "workflow_automatico"}, self.pub)
+            self.assertEqual(self.run_client()[1]["resultado"], result)
+            self.assertEqual(post.call_count, 1)
+
+    def test_one_company_with_two_pending_occurrences_reconciles_without_post(self):
+        self.pub["quantidade"] = self.pub["manifesto"]["linhas"] = 1
+        self.pub["workflow_automatico"] = {"versao": 1, "estado": "incerto", "sinal": SIGNAL}
+        self.write(self.receipt, self.pub)
+        result = {**copy.deepcopy(RESULT), "empresasLidas": 1, "empresasExportadas": 0,
+                  "validos": 0, "invalidos": 0, "pendencias": 2}
+        path = self.root / "resultado.json"
+        self.write(path, result)
+        code, response = self.run_client(path)
+        self.assertEqual(code, 0)
+        self.assertEqual(response["resultado"], result)
+        self.assertEqual(self.read()["workflow_automatico"]["estado"], "concluido")
+        self.assertEqual(self.read()["workflow_automatico"]["resultado"], result)
+        self.assertEqual(self.run_client()[1]["resultado"], result)
+        self.assertEqual(self.posts, [])
+
     def test_all_four_flags_must_be_explicit_true_before_any_post(self):
         for parent, key in [(None, "origem_publicada"), (None, "arquivo_drive_confirmado"),
                             ("leitura_retorno", "conferida"), ("leitura_retorno", "publicacao_nova_conferida")]:
@@ -213,8 +244,11 @@ class DispatchWorkflow(unittest.TestCase):
         mutations = [None, [], {"estado": "concluido"}]
         for key, value in [("lote", "outro"), ("origemCsvSha256", "d" * 64),
                            ("versao", True), ("execucaoId", ""), ("empresasLidas", -1),
-                           ("empresasExportadas", 11), ("validos", True),
-                           ("invalidos", 1.5), ("pendencias", "2"),
+                           ("empresasExportadas", 11), ("validos", 11), ("invalidos", 11),
+                           ("validos", True),
+                           ("invalidos", 1.5), ("pendencias", "2"), ("pendencias", -1),
+                           ("pendencias", True), ("pendencias", 1.5),
+                           ("pendencias", 9007199254740992),
                            ("mensagensEnviadas", 1), ("estado", "pendente")]:
             result = copy.deepcopy(RESULT)
             result[key] = value
