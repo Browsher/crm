@@ -71,7 +71,7 @@ def _erro_contexto(bairro, cidade, uf, data_coleta, horario, lote):
     if not isinstance(horario, str) or not re.fullmatch(r"[0-9]{2}:[0-9]{2}:[0-9]{2}", horario):
         return "Horário da coleta deve ser explícito no formato HH:MM:SS."
     try:
-        time.fromisoformat(horario)
+        time(*(int(part) for part in horario.split(":")))
     except ValueError:
         return "Horário da coleta deve ser válido."
     return None

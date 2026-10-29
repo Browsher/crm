@@ -122,6 +122,9 @@ class ArquivoDrive(unittest.TestCase):
             ({"data-coleta": "2026-2-03"}, ("data",)),
             ({"data-coleta": "2026-10-16T09:05:07"}, ("data",)),
             ({"horario": "24:00:00"}, ("horário",)),
+            ({"horario": "24:00:01"}, ("horário",)),
+            ({"horario": "25:00:00"}, ("horário",)),
+            ({"horario": "23:60:00"}, ("horário",)),
             ({"horario": "9:05:07"}, ("horário",)),
             ({"horario": "09:05:60"}, ("horário",)),
             ({"data-coleta": None}, ("argumentos",)),
@@ -132,6 +135,13 @@ class ArquivoDrive(unittest.TestCase):
             with self.subTest(options=options):
                 self.invalid(self.run_cli([["telefone"]], **options), *terms)
                 self.assertFalse(self.output.exists())
+
+    def test_first_and_last_second_of_day_keep_explicit_hour_in_receipt(self):
+        for hour in ("00:00:00", "23:59:59"):
+            with self.subTest(hour=hour):
+                receipt = self.success(self.run_cli([["telefone"]], horario=hour))
+                self.assertIn("_" + hour.replace(":", "-") + " - lote-", receipt["nome"])
+                self.assertTrue(Path(receipt["caminho"]).is_file())
 
     def test_invalid_json_diagnostic_does_not_expose_input(self):
         self.matrix.write_text('{"segredo-nao-publicar":', encoding="utf-8")

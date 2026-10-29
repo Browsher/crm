@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -85,6 +86,95 @@ class CampaignFlow(unittest.TestCase):
                 raw,_=coletor.collect(root,"Brás")
             self.assertTrue(raw.exists())
             self.assertFalse(any(method=="POST" for method,_ in calls))
+
+
+_LOCK_PROCESS = """
+import runpy
+import sys
+from pathlib import Path
+
+module = runpy.run_path(sys.argv[1])
+state, ready, mode = Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
+try:
+    with module["campaign_lock"](state):
+        if mode == "probe":
+            state.write_text("third process entered", encoding="utf-8")
+        else:
+            signal = ready.with_suffix(".tmp")
+            signal.write_text("locked", encoding="utf-8")
+            signal.replace(ready)
+            sys.stdin.readline()
+            if mode == "exception":
+                raise ValueError("deliberate owner failure")
+except RuntimeError as error:
+    print(str(error), file=sys.stderr)
+    sys.exit(23)
+"""
+
+
+class CampaignLockProcesses(unittest.TestCase):
+    def check_release(self, mode):
+        with tempfile.TemporaryDirectory(dir=SCRIPT.parent, prefix="_lock_") as temp:
+            root = Path(temp)
+            state = root / "nested" / "history.json"
+            state.parent.mkdir()
+            original = b'{"historico":"preservado"}'
+            state.write_bytes(original)
+            ready = root / "ready"
+            command = [sys.executable, "-B", "-c", _LOCK_PROCESS, str(SCRIPT), str(state), str(ready)]
+            owner = subprocess.Popen(command + [mode], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     text=True, encoding="utf-8")
+            try:
+                deadline = time.monotonic() + 10
+                while not ready.exists() and owner.poll() is None and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                if not ready.exists():
+                    if owner.poll() is None:
+                        owner.kill()
+                    stdout, stderr = owner.communicate(timeout=10)
+                    self.fail("Owner did not acquire the lock: " + stdout + stderr)
+                self.assertEqual(ready.read_text(encoding="utf-8"), "locked")
+                self.assertIsNone(owner.poll())
+                lock = state.with_suffix(".lock")
+                self.assertTrue(lock.is_file())
+
+                contender = subprocess.run(command + ["probe"], capture_output=True,
+                                           text=True, encoding="utf-8", timeout=10)
+                self.assertEqual(contender.returncode, 23, contender.stdout + contender.stderr)
+                self.assertIn("Outra execução está em andamento; histórico preservado", contender.stderr)
+                self.assertEqual(state.read_bytes(), original)
+                self.assertIsNone(owner.poll())
+
+                if mode == "terminated":
+                    owner.terminate()
+                    stdout, stderr = owner.communicate(timeout=10)
+                    self.assertNotEqual(owner.returncode, 0, stdout + stderr)
+                else:
+                    stdout, stderr = owner.communicate(input="release\n", timeout=10)
+                    self.assertEqual(owner.returncode, 1 if mode == "exception" else 0, stdout + stderr)
+                    if mode == "exception":
+                        self.assertIn("deliberate owner failure", stderr)
+                self.assertTrue(lock.is_file(), "The persistent lock file must not be deleted")
+                self.assertEqual(state.read_bytes(), original)
+                third = subprocess.run(command + ["probe"], capture_output=True,
+                                       text=True, encoding="utf-8", timeout=10)
+                self.assertEqual(third.returncode, 0, third.stdout + third.stderr)
+                self.assertEqual(state.read_text(encoding="utf-8"), "third process entered")
+                self.assertTrue(lock.is_file())
+            finally:
+                if owner.poll() is None:
+                    owner.kill()
+                owner.communicate(timeout=10)
+
+    def test_lock_excludes_concurrent_process_and_releases_after_normal_exit(self):
+        self.check_release("normal")
+
+    def test_lock_excludes_concurrent_process_and_releases_after_exception(self):
+        self.check_release("exception")
+
+    def test_lock_excludes_concurrent_process_and_releases_after_termination(self):
+        self.check_release("terminated")
 
 if __name__=="__main__":
     unittest.main()

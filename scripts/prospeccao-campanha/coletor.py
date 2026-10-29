@@ -69,20 +69,30 @@ def save_json(path, content):
 
 @contextmanager
 def campaign_lock(state_path):
-    import msvcrt
+    if os.name == "nt":
+        import msvcrt
+    else:
+        import fcntl
     state_path.parent.mkdir(parents=True,exist_ok=True)
     with state_path.with_suffix(".lock").open("a+b") as stream:
         if stream.seek(0,2)==0:
             stream.write(b"0");stream.flush()
         stream.seek(0)
         try:
-            msvcrt.locking(stream.fileno(),msvcrt.LK_NBLCK,1)
+            if os.name == "nt":
+                msvcrt.locking(stream.fileno(),msvcrt.LK_NBLCK,1)
+            else:
+                fcntl.flock(stream.fileno(),fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as error:
             raise RuntimeError("Outra execução está em andamento; histórico preservado") from error
         try:
             yield
         finally:
-            stream.seek(0);msvcrt.locking(stream.fileno(),msvcrt.LK_UNLCK,1)
+            stream.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(stream.fileno(),msvcrt.LK_UNLCK,1)
+            else:
+                fcntl.flock(stream.fileno(),fcntl.LOCK_UN)
 
 def keys(row):
     result = [f"{field}:{row[field]}" for field in ["place_id", "cid", "data_id"] if row.get(field)]

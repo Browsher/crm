@@ -31,11 +31,38 @@ Configuração, histórico e dependências podem ser isolados definindo `PROSPEC
 
 ## Testes isolados
 
+O coletor usa Python 3.10+ e somente a biblioteca padrão. A suíte completa também exercita `arquivo_drive.py`, cujo uso de [`Path.is_junction`](https://docs.python.org/3.12/library/pathlib.html#pathlib.Path.is_junction) exige Python 3.12+; não há pacotes Python a instalar. Motor Node, `exportar_csv.mjs`, Docker e kit instalado são dependências da operação histórica, substituídas por fixtures ou fronteiras simuladas nos testes offline.
+
+Antes dos testes, mantenha `.env.local` e `.env.test.local` operacionais fora do ambiente de teste, sem ler seus valores. No Windows, preserve o ambiente do processo (inclusive PATH, TEMP/TMP, LOCALAPPDATA e VITEST) e esvazie explicitamente as quatro variáveis de integração:
+
 ```powershell
-& 'C:\Users\ADM\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -X utf8 -m unittest discover -s scripts/prospeccao-campanha -p 'test_*.py' -v
+$env:GOOGLE_PLANILHA_N8N_URL = ''
+$env:GOOGLE_PLANILHA_N8N_TOKEN = ''
+$env:GOOGLE_VERIFICACOES_URL = ''
+$env:GOOGLE_VERIFICACOES_TOKEN = ''
+$env:PYTHONDONTWRITEBYTECODE = '1'
+$env:PYTHONUTF8 = '1'
+python -B -m unittest discover -s scripts/prospeccao-campanha -p 'test_*.py' -v
+python -B -m unittest discover -s scripts/google -p 'test_*.py' -v
+npm run test:unit -- src/prospeccao-base-python.test.ts src/google-agente-python.test.ts
 ```
 
-Os quatro testes legados e os novos usam campanha sintética em `TemporaryDirectory`, com limpeza restrita ao estágio temporário. Testes diários simulam a API, geocodificação, logs Docker e a fronteira do exportador; todo o processamento/deduplicação/reconciliação é real. Nenhuma busca Maps, leitura de leads/histórico real ou mensagem é realizada. A exportação Node instalada e o motor real não são executados por essa suíte.
+Em POSIX, com os mesmos arquivos de ambiente isolados:
+
+```sh
+export GOOGLE_PLANILHA_N8N_URL='' GOOGLE_PLANILHA_N8N_TOKEN=''
+export GOOGLE_VERIFICACOES_URL='' GOOGLE_VERIFICACOES_TOKEN=''
+export PYTHONDONTWRITEBYTECODE=1 PYTHONUTF8=1
+python3 -B -m unittest discover -s scripts/prospeccao-campanha -p 'test_*.py' -v
+python3 -B -m unittest discover -s scripts/google -p 'test_*.py' -v
+npm run test:unit -- src/prospeccao-base-python.test.ts src/google-agente-python.test.ts
+```
+
+Os testes usam campanha sintética em `TemporaryDirectory`, com limpeza restrita ao estágio temporário. Testes diários simulam a API, geocodificação, logs Docker e a fronteira do exportador; todo o processamento/deduplicação/reconciliação é real. Nenhuma busca Maps, leitura de leads/histórico real ou mensagem é realizada. A exportação Node instalada e o motor real não são executados por essa suíte.
+
+O lock é exercitado por processos reais concorrentes no Windows (`msvcrt`) e em POSIX (`fcntl.flock`): uma segunda execução é recusada sem alterar o histórico, e saída normal, exceção ou encerramento liberam o lock persistente. `test_integracao_crm.py` carrega a ponte Google atual e o coletor versionado com configuração pública e motor fictício; bloqueia rede, subprocessos e importação do kit externo. O cenário V2 preserva candidata sem telefone, endereço e bytes do CSV bruto, sem executar o classificador legado.
+
+`src/prospeccao-base-python.test.ts` inclui a suíte da campanha no comando unitário já usado pela CI, com `python` no Windows e `python3` nas demais plataformas, UTF-8 e bytecode desativado. O subprocesso deve retornar zero em até 60 segundos, com limite de 65 segundos no teste Vitest. O limite foi definido após medir cerca de 23 segundos para a suíte completa local; não altera os limites globais nem o wrapper Google existente. Para atualizar a lista de testes, `npm run test:inventario` já executa a unidade inteira antes de gravar o inventário.
 
 ## CSV original para arquivar no Drive
 
