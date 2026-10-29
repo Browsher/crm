@@ -4,7 +4,7 @@
 
 **Goal:** Integrar as ferramentas legadas da PR 53 com testes offline e compatibilidade com a main atual, sem reativar operação antiga.
 
-**Architecture:** A main aeccc1b é autoridade da árvore final; o head original 61a374b permanece ancestral. Transportar somente a allowlist, extrair helpers puros mantendo reexports e conservar a fronteira Google V2. As correções funcionais tratam o lock portátil, a contagem de ocorrências de pendência descoberta na revisão e a faixa de horário descoberta pela suíte; uma fixture real da ponte e um wrapper Vitest tornam a compatibilidade verificável na CI existente.
+**Architecture:** A main aeccc1b é autoridade da árvore final; o head original 61a374b permanece ancestral. Transportar somente a allowlist, extrair helpers puros mantendo reexports e conservar a fronteira Google V2. As correções funcionais tratam o lock portátil, a contagem de ocorrências de pendência, a faixa de horário e a retirada do marcador operacional após conclusão Drive; uma fixture real da ponte e um wrapper Vitest tornam a compatibilidade verificável na CI existente.
 
 **Tech Stack:** Node 24, TypeScript/tsx/Vitest existentes; Python 3.12+ para suíte completa (coletor isolado 3.10+) e stdlib; PostgreSQL 18 e Playwright já configurados. Nenhuma dependência nova.
 
@@ -175,6 +175,8 @@ tests/inventario-unitario.txt
 - Task1: a revisão encontrou várias ocorrências de pendência por empresa; cliente Python corrigido com RED/GREEN e contrato do exportador real, guardas numéricas e demais contagens preservadas.
 - Task2: suíte existente mostrou aceitação indevida de 24:00:00 no runtime; ampliar apenas para arquivo_drive.py/test_arquivo_drive.py, ambos já na allowlist. Path.is_junction confirma floor preexistente3.12 para suíte inteira; documentação corrigida, sem nova dependência.
 - São correções necessárias aos gates de integração aprovados pelo usuário; não mudam operação instalada nem os contratos Google atuais.
+
+- Revisão final: P2 no sucesso normal Drive conservava linha de pendência. Onda única fortaleceu os casos existentes de Drive/automático (60 testes, mesmos nomes/quantidades), retirando somente a linha operacional após conferência e preservando nota humana/assinaturas e repetição salva. Revisão restrita do fix e nova CI completa no head final são obrigatórias.
 
 ## Auto revisão do plano
 
