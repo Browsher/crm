@@ -34,7 +34,6 @@
 .corpoDialogo { max-height:60dvh; overflow:auto; overscroll-behavior:contain; padding:8px; display:grid; gap:24px; }
 .formulario .gruposCriterios { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
 .formulario .grupoCriterios { display:grid; align-content:start; gap:16px; min-width:0; border:1px solid var(--ui-border); border-radius:8px; padding:16px; }
-.campoCriterio { display:grid; gap:8px; min-width:0; }
 .grupoCriterios > legend { font-size:14px; font-weight:600; padding:0 8px; }
 .formulario .caixas { display:flex; flex-wrap:wrap; gap:8px 16px; border:0; padding:0; margin:0; }
 .caixas legend { margin-bottom:8px; font-size:14px; }
@@ -51,7 +50,7 @@
 .editorCriterios .formulario { display:flex; flex-direction:column; min-height:0; }
 .editorCriterios .corpoDialogo { flex:1 1 auto; min-height:0; max-height:none; }
 .editorCriterios .grupoCriterios { gap:20px; padding:20px; }
-.editorCriterios .campoCriterio > .ajuda { font-size:13px; line-height:20px; }
+.editorCriterios textarea:focus::placeholder { opacity:0; }
 .editorCriterios :global(.ui-dialog-footer) { flex-shrink:0; }
 .grade { display:grid; grid-template-columns:minmax(0,2fr) minmax(100px,1fr); gap:16px; }
 .entregas { display:grid; gap:16px; min-width:0; }
