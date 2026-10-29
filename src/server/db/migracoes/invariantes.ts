@@ -70,6 +70,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.google_planilha_liberar',
   'public.prospeccao_pessoal',
   'public.prospeccao_pessoal_reservar',
+  'public.atendimento_transicao_inventariar',
 ] as const
 
 // Pergunta 3: quais políticas podem liberar a tabela inteira. `USING (true)`

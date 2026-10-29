@@ -76,6 +76,7 @@ const sao = (): Estado => ({
     'public.google_planilha_liberar',
     'public.prospeccao_pessoal',
     'public.prospeccao_pessoal_reservar',
+    'public.atendimento_transicao_inventariar',
   ],
   funcoesExecutaveisPorPublico: [],
 })
