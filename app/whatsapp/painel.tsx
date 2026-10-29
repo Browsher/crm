@@ -12,10 +12,18 @@ import { VisaoGeralWhatsApp } from './visao-geral'
 import { calcularIndicadores } from '@/src/lib/whatsapp-indicadores'
 import Link from 'next/link'
 import { rotuloCadastro, type CadastroWhatsApp } from '@/src/lib/whatsapp-empresa'
+import { Button } from '@/src/components/ui/button'
+import { Input } from '@/src/components/ui/input'
+import { Badge } from '@/src/components/ui/badge'
+import { Alert } from '@/src/components/ui/alert'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 
 function EtiquetaCadastro({ cadastro }: { cadastro?: CadastroWhatsApp }) {
-  return <span className={styles.etiqueta} data-situacao={cadastro?.estado === 'encontrada' ? cadastro.empresa.situacao : cadastro?.estado}
-    title="Situação da empresa no CRM">{rotuloCadastro(cadastro)}</span>
+  const situacao = cadastro?.estado === 'encontrada' ? cadastro.empresa.situacao : undefined
+  const variante = situacao === 'em_negociacao' || situacao === 'disponivel' ? 'success'
+    : situacao === 'reservada' || situacao === 'descanso' || situacao === 'primeiro_contato' ? 'warning' : 'outline'
+  return <Badge variant={variante} className={styles.etiqueta} data-situacao={cadastro?.estado === 'encontrada' ? cadastro.empresa.situacao : cadastro?.estado}
+    title="Situação da empresa no CRM">{rotuloCadastro(cadastro)}</Badge>
 }
 
 const horario = new Intl.DateTimeFormat('pt-BR', {
@@ -73,6 +81,12 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   const posicao = useRef({ id: '', topo: 0, noFim: true })
   const ancora = useRef<{ id: string; altura: number; topo: number } | null>(null)
   const [busca, mudarBusca] = useState('')
+  const [painelMovel, mudarPainelMovel] = useState<'lista' | 'conversa'>('lista')
+  const origemConversa = useRef<HTMLButtonElement | null>(null)
+  function voltarParaConversas() {
+    mudarPainelMovel('lista')
+    requestAnimationFrame(() => origemConversa.current?.focus())
+  }
   const [filtroConversa, mudarFiltroConversa] = useState<'todas' | 'pendentes' | 'ausentes'>('todas')
   const carregar = useCallback(async () => {
     if (requisicao.current || !mais || !limite) return
@@ -171,6 +185,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   useLayoutEffect(() => {
     const lista = rolagem.current
     if (!lista || !conversaId) return
+    if (painelMovel === 'lista' && lista.clientHeight === 0) return
     if (posicao.current.id !== conversaId) {
       lista.scrollTop = lista.scrollHeight
       posicao.current = { id: conversaId, topo: lista.scrollTop, noFim: true }
@@ -182,7 +197,9 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       posicao.current.topo = lista.scrollTop
     }
     ancora.current = null
-  }, [dados.acumuladas, conversaId])
+  // A primeira conversa já está selecionada enquanto o chat móvel está oculto.
+  // Recalcular ao abri-lo usa a altura real; noFim=false preserva a leitura.
+  }, [dados.acumuladas, conversaId, painelMovel])
 
   const valores = useMemo(() => {
     if (!opcoes || mais || erro || consultaParcial || avisos.length || !limiteHistorico) return undefined
@@ -192,17 +209,14 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   return <>
   {opcoes && <VisaoGeralWhatsApp opcoes={opcoes} filtro={filtro} valores={valores} estado={erro || consultaParcial || avisos.length ? 'Histórico incompleto' : 'Carregando histórico…'} />}
   {children}
-  {!conversas.length ? <section className={styles.estado} role="status">
-    <h2>Nenhuma mensagem carregada</h2>
-    <p>{mais ? 'O histórico será carregado automaticamente.' : 'As novas mensagens aparecerão automaticamente.'}</p>
-  </section> : <section className={styles.painel} aria-label="Conversas carregadas">
+  {!conversas.length ? <div role="status"><EstadoVazio titulo="Nenhuma mensagem carregada" descricao={mais ? 'O histórico será carregado automaticamente.' : 'As novas mensagens aparecerão automaticamente.'} /></div> : <section className={styles.painel} aria-label="Conversas carregadas" data-painel-movel={painelMovel}>
     <div className={styles.lista}>
       <div className={styles.listaCabecalho}>
         <h2>Conversas carregadas <small>{conversas.length}</small></h2>
-        <label className={styles.busca}><span>Buscar conversa</span><input type="search" value={busca} onChange={e => mudarBusca(e.target.value)} placeholder="Nome, telefone ou mensagem" aria-describedby="alcance-busca" /></label>
+        <label className={styles.busca}><span>Buscar conversa</span><Input type="search" value={busca} onChange={e => mudarBusca(e.target.value)} placeholder="Nome, telefone ou mensagem" aria-describedby="alcance-busca" /></label>
         <p id="alcance-busca">Busca nas conversas carregadas.</p>
         <div className={styles.filtrosConversas} role="group" aria-label="Filtrar conversas">
-          {([['todas', 'Todas'], ['pendentes', 'Sem resposta'], ['ausentes', 'Não cadastradas']] as const).map(([id, nome]) => <button key={id} type="button" aria-pressed={filtroConversa === id} onClick={() => mudarFiltroConversa(id)}>{nome}</button>)}
+          {([['todas', 'Todas'], ['pendentes', 'Sem resposta'], ['ausentes', 'Não cadastradas']] as const).map(([id, nome]) => <Button key={id} type="button" variant="outline" aria-pressed={filtroConversa === id} onClick={() => mudarFiltroConversa(id)}>{nome}</Button>)}
         </div>
       </div>
       <div className={styles.conversas} aria-label="Lista de conversas" tabIndex={0} onWheel={e => {
@@ -212,7 +226,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
         const el = e.currentTarget
         if (!erro && el.scrollTop > 0 && el.scrollHeight - el.clientHeight - el.scrollTop < 80) void carregar()
       }}>
-        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={() => selecionar(conversa.id)}>
+        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={e => { origemConversa.current = e.currentTarget; selecionar(conversa.id); mudarPainelMovel('conversa') }}>
           <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
           <span className={styles.conversaConteudo}>
             <span className={styles.conversaTopo}>
@@ -227,12 +241,12 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
             </span>
           </span>
         </button>)}
-        {visiveis.length === 0 && <div className={styles.semResultado} role="status"><strong>Nenhuma conversa encontrada</strong><p>Tente outro filtro, nome ou telefone.{mais ? ' O histórico continua carregando automaticamente.' : ''}</p></div>}
+        {visiveis.length === 0 && <div className={styles.semResultado} role="status"><EstadoVazio titulo="Nenhuma conversa encontrada" descricao={`Tente outro filtro, nome ou telefone.${mais ? ' O histórico continua carregando automaticamente.' : ''}`} /></div>}
       </div>
     </div>
     <div className={styles.chat}>
-      {!conversaAtual ? <div className={styles.semResultado} role="status">Nenhuma conversa neste filtro.</div> : <>
-      <header className={styles.chatCabecalho}><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{conversaAtual.cadastro?.estado === 'encontrada' && <Link className={styles.configurar} href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Ver empresa</Link>}<span className={styles.leitura}>Somente visualização</span></header>
+      {!conversaAtual ? <div className={styles.semResultado} role="status"><Button variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><EstadoVazio titulo="Nenhuma conversa neste filtro" descricao="Escolha outro filtro para consultar as conversas carregadas." /></div> : <>
+      <header className={styles.chatCabecalho}><Button type="button" variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{conversaAtual.cadastro?.estado === 'encontrada' && <Button asChild variant="outline"><Link href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Ver empresa</Link></Button>}<Badge variant="outline" className={styles.leitura}>Somente visualização</Badge></header>
       <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
         if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
       }} onScroll={e => {
@@ -249,14 +263,15 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       </li>)}</ol>
       </>}
     </div>
+    {conversaAtual && <aside className={styles.contexto} aria-label="Contexto da empresa"><h2>Contexto da empresa</h2>{conversaAtual.cadastro?.estado === 'encontrada' ? <><h3>{conversaAtual.cadastro.empresa.nome}</h3><EtiquetaCadastro cadastro={conversaAtual.cadastro} /><Button asChild variant="outline"><Link href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Abrir ficha da empresa</Link></Button></> : <p>{rotuloCadastro(conversaAtual.cadastro)}</p>}<dl><dt>Contato</dt><dd>{conversaAtual.nome}</dd><dt>Telefone</dt><dd>{conversaAtual.telefone ?? 'Não disponibilizado pela integração'}</dd><dt>Vendedor</dt><dd>{conversaAtual.vendedor ?? 'Origem não identificada'}</dd></dl><p>Somente visualização. As conversas são atualizadas automaticamente.</p></aside>}
   </section>}
   <div className={styles.historico}>
     <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
     {mais && <span className={styles.dicaHistorico} role="status">{erro ? 'Carregamento automático pausado.' : 'Carregando histórico automaticamente.'}{total !== undefined && ` ${dados.acumuladas.length} de ${Math.max(total, dados.acumuladas.length)} mensagens.`}</span>}
-    {mais && limite && erro && <button type="button" onClick={carregar} disabled={carregando}>Tentar novamente</button>}
+    {mais && limite && erro && <Button type="button" variant="outline" onClick={carregar} disabled={carregando}>Tentar novamente</Button>}
     {!mais && <span>Fim do histórico disponível nesta consulta.</span>}
-    {erro && <p role="alert">Não foi possível carregar o histórico. Tente novamente.</p>}
-    {avisos.length > 0 && <p role="status">Histórico parcial. Indisponível: {avisos.join(', ')}.</p>}
+    {erro && <Alert variant="danger">Não foi possível carregar o histórico. Tente novamente.</Alert>}
+    {avisos.length > 0 && <Alert variant="warning" role="status">Histórico parcial. Indisponível: {avisos.join(', ')}.</Alert>}
   </div>
   </>
 }

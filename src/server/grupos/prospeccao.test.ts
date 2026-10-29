@@ -27,7 +27,7 @@ test('catálogo corta a vigésima primeira linha e traduz exclusivamente DTO pú
   if(!r.ok) throw new Error('Leitura recusada')
   expect(r.grupos).toHaveLength(20)
   expect(r.grupos[0]).toEqual({id:'0',nome:'Lista',descricao:null,origem:'Fonte',criterios:null,criadoEm:'2026-10-13T00:00:00.000Z',total:2,disponiveis:1})
-  expect(executar).toHaveBeenCalledWith('SELECT * FROM public.grupos_prospeccao_listar($1)',[2])
+  expect(executar).toHaveBeenCalledWith(expect.stringContaining('public.grupos_prospeccao_listar($1)'),[2])
 })
 test('catálogo vazio é explícito e permissão negada não vira resultado vazio',async()=>{
   executar.mockResolvedValue({linhas:[]})
@@ -40,4 +40,9 @@ test('catálogo vazio é explícito e permissão negada não vira resultado vazi
 test('catálogo recusa página não inteira ou fora da faixa antes do banco',async()=>{
   for(const pagina of [0,-1,1.5,NaN,Infinity,10001]) await expect(listarGruposProspeccao('eu',pagina)).rejects.toThrow('Página de listas inválida')
   expect(executar).not.toHaveBeenCalled()
+})
+test('catálogo identifica empresas de origem Google nas listas compartilhadas anteriores', async () => {
+  executar.mockResolvedValue({ linhas: [{ id: 'legado', nome: 'Lista anterior', criado_em: '2026-10-01', total: '1', disponiveis: '1', google_legado: true }] })
+  const r = await listarGruposProspeccao('eu')
+  expect(r).toMatchObject({ ok: true, grupos: [{ id: 'legado', googleLegado: true }] })
 })

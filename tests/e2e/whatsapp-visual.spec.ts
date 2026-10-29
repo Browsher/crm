@@ -1,0 +1,296 @@
+import { expect, test, type Page } from '@playwright/test'
+import { mkdir } from 'node:fs/promises'
+import { resolve } from 'node:path'
+
+test('primeira abertura móvel mostra mensagens recentes e reabertura conserva leitura', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('gestore2e@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/gestao')
+  await page.goto('/whatsapp')
+  const conversas = page.getByLabel('Lista de conversas', { exact: true })
+  const primeira = conversas.locator('button[aria-current=true]')
+  await expect(primeira).toContainText('Contato Aurora')
+  await primeira.click()
+  const mensagens = page.getByLabel('Mensagens da conversa', { exact: true })
+  const tamanho = await mensagens.evaluate(el => ({ altura: el.scrollHeight, visivel: el.clientHeight }))
+  expect(tamanho.altura).toBeGreaterThan(tamanho.visivel + 500)
+  await expect.poll(() => mensagens.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(2)
+  const topo = await mensagens.evaluate(el => { el.scrollTop = Math.floor((el.scrollHeight - el.clientHeight) / 2); return el.scrollTop })
+  await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+  await expect(primeira).toBeFocused()
+  await primeira.click()
+  await expect.poll(() => mensagens.evaluate(el => el.scrollTop)).toBe(topo)
+})
+
+for (const [largura, tema] of [[1440, 'light'], [390, 'dark']] as const) {
+  test(`WhatsApp real com serviço local em ${largura}px e tema ${tema}`, async ({ page }) => {
+    await page.setViewportSize({ width: largura, height: 900 })
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill('gestore2e@teste.local')
+    await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+    await expect(page).toHaveURL('/gestao')
+    await page.goto('/whatsapp')
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    const lista = page.getByLabel('Lista de conversas', { exact: true })
+    await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
+    await expect(page.getByLabel('Mensagens da conversa')).toContainText('próximo pedido')
+    await expect(page.locator('textarea')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Carregar imagem', exact: true }).click()
+    const ampliar = page.getByRole('button', { name: 'Ampliar imagem', exact: true })
+    await ampliar.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.locator('.ui-dialog-portal')).toHaveAttribute('data-theme', tema)
+    await page.keyboard.press('Escape')
+    await expect(ampliar).toBeFocused()
+    await page.getByRole('button', { name: 'Carregar documento: pedido.pdf', exact: true }).click()
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('indisponível')
+    if (largura === 390) {
+      await page.getByRole('button', { name: 'Voltar para conversas' }).click()
+      await expect(lista).toBeVisible()
+      await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
+      await expect(ampliar).toBeVisible()
+    } else await expect(page.getByLabel('Contexto da empresa')).toContainText('Cliente WhatsApp Aurora')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await capturar(page, `midia-${largura}-${tema}`)
+  })
+}
+
+const pastaCapturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-10-captures')
+async function capturar(page: Page, nome: string) {
+  await mkdir(pastaCapturas, { recursive: true })
+  await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }))
+  await page.screenshot({ path: resolve(pastaCapturas, `${nome}.png`), fullPage: true, animations: 'disabled' })
+}
+async function entrar(page: Page) {
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('gestore2e@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/gestao')
+  await page.goto('/whatsapp')
+}
+async function voltarParaLista(page: Page) {
+  await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).click()
+  // A tela restaura o foco no próximo frame antes de uma nova interação.
+  await expect(page.getByLabel('Lista de conversas', { exact: true }).locator('button[aria-current=true]')).toBeFocused()
+}
+async function semColisao(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  const lista = page.getByLabel('Lista de conversas', { exact: true })
+  for (const botao of await lista.getByRole('button').all()) {
+    const medidas = await botao.evaluate(el => {
+      const caixa = el.getBoundingClientRect()
+      const avatar = el.querySelector('[aria-hidden]')!.getBoundingClientRect()
+      const titulo = el.querySelector('strong')!.getBoundingClientRect()
+      const horario = el.querySelector('time')!.getBoundingClientRect()
+      return { largura: caixa.width, conteudo: el.scrollWidth, separacao: titulo.left - avatar.right, tituloFim: titulo.right, horarioInicio: horario.left }
+    })
+    expect(medidas.conteudo).toBeLessThanOrEqual(medidas.largura + 1)
+    expect(medidas.separacao).toBeGreaterThanOrEqual(8)
+    expect(medidas.tituloFim).toBeLessThanOrEqual(medidas.horarioInicio)
+  }
+  const filtros = page.getByRole('group', { name: 'Filtrar conversas' })
+  expect(await filtros.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+}
+for (const tema of ['light', 'dark'] as const) {
+  test(`busca do WhatsApp usa campo comum e mantém seleção e foco no tema ${tema}`, async ({ page }) => {
+    await entrar(page)
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    for (const largura of [1920, 1280, 1200, 820, 390, 320]) {
+      await page.setViewportSize({ width: largura, height: 900 })
+      if (largura <= 820 && await page.getByRole('button', { name: 'Voltar para conversas', exact: true }).isVisible()) await voltarParaLista(page)
+      const indicador = page.getByRole('region', { name: 'Indicadores de atendimento' }).getByRole('article').first()
+      await expect(indicador).toHaveCSS('padding', largura <= 820 ? '20px' : '24px')
+      await expect(indicador).toHaveCSS('background-color', tema === 'light' ? 'rgb(255, 255, 255)' : 'rgb(28, 36, 45)')
+      const vendedores = page.getByRole('region', { name: 'Filtrar por vendedor' }).getByRole('link', { name: 'Todos', exact: true })
+      expect((await vendedores.boundingBox())!.height).toBeGreaterThanOrEqual(largura <= 820 ? 44 : 40)
+      const busca = page.getByRole('searchbox', { name: 'Buscar conversa', exact: true })
+      await expect(busca).toHaveAttribute('placeholder', 'Nome, telefone ou mensagem')
+      await expect(busca).toHaveCSS('font-size', largura <= 820 ? '16px' : '14px')
+      await expect(busca).toHaveCSS('border-radius', '6px')
+      await expect(busca).toHaveCSS('min-height', largura <= 820 ? '44px' : '40px')
+      await busca.focus()
+      await expect(busca).toHaveCSS('outline-width', '3px')
+      await expect(busca).toHaveCSS('outline-offset', '3px')
+      await busca.fill('Boreal')
+      await expect(busca).toBeFocused()
+      const lista = page.getByLabel('Lista de conversas', { exact: true })
+      await expect(lista.getByRole('button')).toHaveCount(1)
+      await lista.getByRole('button').click()
+      await expect(page.getByLabel('Mensagens da conversa')).toContainText('segunda conversa')
+      if (largura <= 820) await voltarParaLista(page)
+      await busca.fill('')
+      await expect(busca).toHaveValue('')
+      await expect(lista.locator('button[aria-current=true]')).toContainText('Contato Boreal')
+      const filtro = page.getByRole('button', { name: 'Sem resposta', exact: true })
+      await filtro.focus()
+      await expect(filtro).toHaveCSS('outline-width', '3px')
+      expect((await filtro.boundingBox())!.height).toBeGreaterThanOrEqual(largura <= 820 ? 44 : 40)
+      await expect(lista.getByRole('button').filter({ hasText: 'Contato não identificado' })).toBeVisible()
+      await expect(lista.getByRole('button').filter({ hasText: 'Contato com nome muito longo' })).toBeVisible()
+      await expect(lista.locator('time').first()).toHaveCSS('font-size', '12px')
+      await expect(lista.locator('strong').first()).toHaveCSS('font-size', '14px')
+      await expect(lista.locator('[data-slot="badge"]').first()).toHaveCSS('font-size', '12px')
+      await semColisao(page)
+      await capturar(page, `busca-${largura}-${tema}`)
+      await lista.getByRole('button').filter({ hasText: 'Contato com nome muito longo' }).click()
+      const cabecalho = page.getByRole('heading', { name: /^Contato com nome muito longo/ }).locator('..').locator('..')
+      const colisoes = await cabecalho.evaluate(el => {
+        const caixas = [...el.children].map(filho => filho.getBoundingClientRect()).filter(r => r.width && r.height)
+        return caixas.flatMap((a, i) => caixas.slice(i + 1).filter(b => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1)).length
+      })
+      expect(colisoes).toBe(0)
+      await capturar(page, `nome-longo-${largura}-${tema}`)
+      if (largura <= 820) await voltarParaLista(page)
+      await lista.getByRole('button').filter({ hasText: 'Contato não identificado' }).click()
+      await expect(page.getByRole('heading', { name: 'Contato não identificado', exact: true })).toBeVisible()
+      await expect(page.getByLabel('Mensagens da conversa')).toContainText('sem identificação disponível')
+      if (largura <= 820) await voltarParaLista(page)
+    }
+    await page.setViewportSize({ width: 390, height: 900 })
+    const lista = page.getByLabel('Lista de conversas', { exact: true })
+    await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
+    const carregar = page.getByRole('button', { name: 'Carregar imagem', exact: true })
+    await carregar.click()
+    const ampliar = page.getByRole('button', { name: 'Ampliar imagem', exact: true })
+    await ampliar.click()
+    const dialogo = page.getByRole('dialog')
+    await expect(dialogo).toBeVisible()
+    const caixa = (await dialogo.boundingBox())!
+    expect(caixa.x).toBeGreaterThanOrEqual(15)
+    expect(caixa.x + caixa.width).toBeLessThanOrEqual(375)
+    expect(await dialogo.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    const fechar = (await dialogo.getByRole('button', { name: 'Fechar', exact: true }).boundingBox())!
+    const titulo = (await dialogo.getByRole('heading').boundingBox())!
+    expect(titulo.x + titulo.width).toBeLessThanOrEqual(fechar.x)
+    await capturar(page, `imagem-overlay-${tema}`)
+    await page.keyboard.press('Escape')
+    await expect(ampliar).toBeFocused()
+  })
+
+  test(`configuração preserva campos e feedback em ${tema}`, async ({ page }) => {
+    await entrar(page)
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    await page.goto('/whatsapp/configuracao')
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    await expect(page.locator('html')).toHaveAttribute('data-theme', tema)
+    for (const largura of [1280, 820, 390, 320]) {
+      await page.setViewportSize({ width: largura, height: 900 })
+      const select = page.getByLabel('Vendedor ativo', { exact: true })
+      await select.focus()
+      await expect(select).toHaveCSS('outline-width', '3px')
+      await expect(select).toHaveCSS('outline-offset', '3px')
+      await expect(select).toHaveCSS('font-size', largura <= 820 ? '16px' : '14px')
+      const cartao = page.getByRole('heading', { name: 'Vincular instância', exact: true }).locator('..')
+      await expect(cartao).toHaveCSS('border-radius', '10px')
+      await expect(cartao).toHaveCSS('background-color', tema === 'light' ? 'rgb(255, 255, 255)' : 'rgb(28, 36, 45)')
+      await expect(cartao).toHaveCSS('padding', largura <= 820 ? '20px' : '24px')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await capturar(page, `configuracao-${largura}-${tema}`)
+    }
+    await page.getByLabel('Vendedor ativo').selectOption({ label: 'vendedore2e' })
+    const instancia = page.getByLabel('Nome exato da instância existente')
+    await instancia.fill(`instancia-visual-${tema}`)
+    await page.getByRole('button', { name: 'Salvar ou substituir vínculo', exact: true }).click()
+    await expect(page.getByRole('main').getByRole('status')).toContainText('Vínculo salvo.')
+    await capturar(page, `configuracao-sucesso-${tema}`)
+    await page.getByLabel('Vendedor ativo').selectOption({ label: 'invalidoe2e' })
+    await page.getByRole('button', { name: 'Salvar ou substituir vínculo', exact: true }).click()
+    await expect(page.getByRole('main').getByRole('alert')).toContainText('Esta instância já está vinculada a outro vendedor.')
+    await expect(instancia).toHaveValue(`instancia-visual-${tema}`)
+    await capturar(page, `configuracao-erro-${tema}`)
+    await page.getByRole('button', { name: 'Remover vínculo de vendedore2e', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Remover vínculo de vendedore2e', exact: true })).toHaveCount(0)
+  })
+}
+
+test('busca e configuração usam controles de toque em tela larga', async ({ browser }) => {
+  const contexto = await browser.newContext({ viewport: { width: 1280, height: 900 }, hasTouch: true, baseURL: 'http://localhost:3100' })
+  const page = await contexto.newPage()
+  try {
+    await entrar(page)
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true)
+    const busca = page.getByRole('searchbox', { name: 'Buscar conversa', exact: true })
+    await expect(busca).toHaveCSS('font-size', '16px')
+    await expect(busca).toHaveCSS('min-height', '44px')
+    expect((await page.getByRole('button', { name: 'Todas', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    expect((await page.getByRole('region', { name: 'Filtrar por vendedor' }).getByRole('link', { name: 'Todos', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await semColisao(page)
+    await capturar(page, 'busca-toque-1280')
+    await page.goto('/whatsapp/configuracao')
+    await expect(page.getByLabel('Vendedor ativo')).toHaveCSS('font-size', '16px')
+    await expect(page.getByLabel('Vendedor ativo')).toHaveCSS('min-height', '44px')
+    await capturar(page, 'configuracao-toque-1280')
+  } finally { await contexto.close() }
+})
+for (const tema of ['light', 'dark'] as const) {
+  test(`retorno da configuração conserva navegação e alvo comum no tema ${tema}`, async ({ page }) => {
+    await entrar(page)
+    await page.goto('/whatsapp/configuracao')
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    for (const largura of [1280, 390, 320]) {
+      await page.setViewportSize({ width: largura, height: 900 })
+      const voltar = page.getByRole('link', { name: 'Voltar ao WhatsApp', exact: true })
+      await expect(voltar).toHaveAttribute('href', '/whatsapp')
+      await expect(voltar.locator('button')).toHaveCount(0)
+      expect((await voltar.boundingBox())!.height).toBeGreaterThanOrEqual(largura <= 820 ? 44 : 40)
+      await voltar.focus()
+      await voltar.press('Tab')
+      await page.keyboard.press('Shift+Tab')
+      await expect(voltar).toBeFocused()
+      await expect(voltar).toHaveCSS('outline-width', '3px')
+      await expect(voltar).toHaveCSS('outline-offset', '3px')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await capturar(page, `revisao-retorno-${largura}-${tema}`)
+    }
+    await page.getByRole('link', { name: 'Voltar ao WhatsApp', exact: true }).click()
+    await expect(page).toHaveURL('/whatsapp')
+    await expect(page.getByRole('region', { name: 'Conversas carregadas' })).toBeVisible()
+  })
+
+  test(`foco da primeira e última conversa fica contido no scroller no tema ${tema}`, async ({ page }) => {
+    await entrar(page)
+    await page.getByLabel('Tema do WhatsApp').selectOption(tema)
+    // A altura menor também cobre a compressão causada por fontes de fallback.
+    for (const [largura, altura] of [[1280, 900], [1280, 720], [390, 900], [320, 900]]) {
+      await page.setViewportSize({ width: largura, height: altura })
+      const lista = page.getByLabel('Lista de conversas', { exact: true })
+      const itens = lista.getByRole('button')
+      for (const extremo of ['primeira', 'ultima'] as const) {
+        const item = extremo === 'primeira' ? itens.first() : itens.last()
+        await lista.evaluate((el, ultimo) => { el.scrollTop = ultimo ? el.scrollHeight : 0 }, extremo === 'ultima')
+        await item.focus()
+        await item.press('Shift+Tab')
+        await page.keyboard.press('Tab')
+        await expect(item).toBeFocused()
+        await expect(item).toHaveCSS('outline-width', '3px')
+        await expect(item).toHaveCSS('outline-offset', '3px')
+        const margens = await item.evaluate(el => {
+          const lista = el.closest('[aria-label="Lista de conversas"]')! as HTMLElement
+          const item = el.getBoundingClientRect()
+          const caixa = lista.getBoundingClientRect()
+          const css = getComputedStyle(el)
+          const foco = parseFloat(css.outlineWidth) + parseFloat(css.outlineOffset)
+          return {
+            esquerda: item.left - foco - caixa.left, direita: caixa.left + lista.clientWidth - item.right - foco,
+            topo: item.top - foco - caixa.top, base: caixa.top + lista.clientHeight - item.bottom - foco,
+            viewport: { largura: innerWidth, altura: innerHeight },
+            lista: { topo: caixa.top, base: caixa.bottom, clientHeight: lista.clientHeight, scrollHeight: lista.scrollHeight, scrollTop: lista.scrollTop, clientWidth: lista.clientWidth, scrollWidth: lista.scrollWidth, barraVertical: lista.offsetWidth - lista.clientWidth, barraHorizontal: lista.offsetHeight - lista.clientHeight },
+            botao: { topo: item.top, base: item.bottom, altura: item.height, foco },
+          }
+        })
+        const contexto = JSON.stringify({ extremo, tema, ...margens })
+        expect(margens.esquerda, contexto).toBeGreaterThanOrEqual(0)
+        expect(margens.direita, contexto).toBeGreaterThanOrEqual(0)
+        expect(margens.topo, contexto).toBeGreaterThanOrEqual(0)
+        expect(margens.base, contexto).toBeGreaterThanOrEqual(0)
+        await capturar(page, `revisao-foco-${extremo}-${largura}-${altura}-${tema}`)
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    }
+  })
+}

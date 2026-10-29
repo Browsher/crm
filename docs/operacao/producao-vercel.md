@@ -15,9 +15,81 @@ O site usa HTTPS na Vercel e o banco CRM CH já existente na Railway. O computad
 - Limpeza local concluída em transação: 66 empresas, três vendedores e seus registros de teste removidos sem backup. Gestor e sua credencial, 1.209.313 CEPs, a carga de CEP e as 38 migrações preservados. Arquivos originais da coleta permanecem no disco.
 - Atalho existente CRM Prospecção atualizado para o endereço hospedado. Não inicia Docker, banco ou servidor local. CRM Social permaneceu intacto.
 
+## Publicação e sincronização Google em 25/10/2026
+
+O CRM foi atualizado em
+[crm-prospeccao-bice.vercel.app](https://crm-prospeccao-bice.vercel.app),
+deployment `dpl_5nqm29e4oSrmLJM33eXe5Jk761r1`, estado READY. A fonte é
+`e42adfa`, aprovada no [CI #153](https://github.com/Browsher/crm/actions/runs/40215177831).
+O deployment foi preparado com `--prod --skip-domain`, conferido e promovido
+ao endereço estável. A PR #55 permanece em rascunho, sem merge; esta é a
+publicação do ambiente de testes online já autorizado.
+
+Foram cadastradas por stdin, como `sensitive` e somente em Production:
+
+- `GOOGLE_PLANILHA_ID`
+- `GOOGLE_PLANILHA_ABA_ID`
+- `GOOGLE_PLANILHA_N8N_URL`
+- `GOOGLE_PLANILHA_N8N_TOKEN`
+- `GOOGLE_AGENTE_USUARIO_ID`
+
+A identidade operacional aponta para o único gestor ativo com senha
+definitiva já existente. Os metadados confirmaram tipo e escopo das cinco
+variáveis; as oito anteriores foram preservadas, totalizando 13. Preview
+continua sem variáveis. A autorização Google permanece no n8n.
+
+Antes da migração, foi gerado backup privado custom com pg_dump 18, TLS
+`verify-full`, 14.030.114 bytes e SHA256 registrado localmente. O arquivo
+foi lido e descomprimido integralmente por pg_restore, sem conexão a banco.
+Isso confere o arquivo; não representa ensaio de restauração em banco.
+
+O runner separado aplicou somente as migrações pendentes 0038–0044.
+Resultado: **45 aplicadas, zero pendentes/divergentes e invariantes aprovadas**.
+A comparação imediatamente após a migração preservou contagens das 17
+tabelas anteriores, inclusive 30 empresas e quatro usuários. Os hashes
+também coincidiram nas tabelas de até 10 mil registros; na base maior de
+CEPs foi conferida a contagem. Existem três perfis para os três vendedores,
+nenhum vendedor sem perfil e nenhuma execução iniciada.
+
+O workflow `gITBY7vBYNfgUWMp`, **CRM · Prospecção e planejamento**, está
+ativo para receber webhooks autenticados, com 32 nós e nenhum agendamento.
+A conferência sem token retornou 403; a autenticada confirmou os 14
+cabeçalhos. O workflow legado foi preservado. A coleta e os provedores
+de verificação continuam sem ativação nesta operação.
+
+A validação online incluiu:
+
+- login por sessão real de vendedor; tentativa inválida com mensagem
+  esperada e nenhuma falha de infraestrutura;
+- páginas privadas redirecionando visitantes sem sessão; `/usuarios`
+  redirecionando o vendedor para `/meu-dia`;
+- salvamento de um dia futuro identificado como teste, com cidade inteira
+  e critério de e-mail; a interface confirmou sincronização;
+- correlação da revisão/versão com a intenção persistida e os 14 valores
+  lidos diretamente do Google Sheets na linha 2; envio liberado e erro nulo;
+- retorno do teste a **Não definido**, com critérios neutros, confirmado
+  na revisão/versão 3 e na mesma linha, sem duplicação;
+- zero execuções, lotes, publicações de coleta e resultados ao terminar.
+
+A sincronização CRM → planilha foi validada com escrita real. A etapa
+posterior conectou o coletor local e homologou as verificações básicas no
+workflow único. A qualificação de perfil continua pendente. O piloto de
+entrega real e a ativação posteriores estão registrados na atualização final
+deste documento.
+
+Em 25/10, a mesma publicação foi reconstruída para aplicar
+`GOOGLE_AGENTE_TOKEN` sensível, exclusivo de Production. O deployment atual
+`dpl_HowW7mJmFFRPbdY6w5VY6xsrcEhu` ficou READY no endereço estável,
+por redeploy de `dpl_5nqm29e4oSrmLJM33eXe5Jk761r1`, sem mudar a fonte
+da aplicação já aprovada no CI #153. A autenticação do executor foi conferida
+sem executar operação: POST sem token retornou 401; com token e comando
+inválido retornou 400 antes de acessar o repositório. Login respondeu 200 e
+rota privada sem sessão retornou 307 para login. Nenhum pedido foi adquirido,
+nenhuma coleta/importação/mensagem ou nova migração foi executada nessa etapa.
+
 ## Configuração do projeto
 
-Foi criado um projeto separado chamado crm-prospeccao. A publicação atual foi feita pelo CLI, com código já integrado e validado. Uma conexão futura com Browsher/crm deve usar main e a raiz do repositório; ela ainda não foi ativada. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.
+Foi criado um projeto separado chamado crm-prospeccao. As publicações são feitas pelo CLI; a atualização de 25/10 usa a fonte revisada da PR #55, com CI aprovado e ainda sem merge. Uma conexão futura com Browsher/crm deve usar main e a raiz do repositório; ela ainda não foi ativada. Não reutilizar os projetos ntvbox, ta-hora ou outros sites existentes.
 
 O vercel.json declara Next.js, npm ci e npm run build. package.json fixa Node 24.x, a mesma versão principal do CI. O .vercelignore exclui arquivos de ambiente, certificados locais, bases coletadas, logs e artefatos de teste da carga de código.
 
@@ -64,3 +136,254 @@ Fontes: [Node e runtime](https://vercel.com/docs/functions/runtimes/node-js/node
 Validação desta preparação: 1266 testes unitários e 587 de integração passaram, com dois skips existentes; 44 jornadas passaram; typecheck, lint, db:checar e build sem env aprovados. npm audit --omit=dev não aponta vulnerabilidades. A auditoria completa mantém cinco avisos altos na cadeia de ESLint de desenvolvimento, sem correção compatível indicada pelo npm; não aplicar o downgrade sugerido para eslint-config-next 14.
 
 A revisão automática inicialmente bloqueou a rotação de app_conexao por falta de autorização explícita para o alvo e o impacto em outros consumidores. Depois de o usuário autorizar a troca e a configuração, a senha foi definida e validada; DATABASE_URL foi enviada por stdin como variável sensível. Não reutilizar a credencial local, que havia devolvido 28P01 no remoto, nem repetir a rotação sem necessidade.
+
+## Ativação da coleta após piloto
+
+Em 25/10/2026, a validação real do planejamento entregou 13 empresas ao
+Junior, com três ocorrências repetidas bloqueadas e repetição idempotente do
+mesmo recibo. A segunda coleta não trouxe novidades; o pedido foi concluído
+e sincronizado. A automação existente foi atualizada e ativada para
+segunda a sexta às 17h de São Paulo. Nenhuma nova publicação da aplicação,
+migração, alteração de permissões ou mensagem foi necessária.
+O procedimento e os limites estão em [Agente Google](agente-google-crm.md).
+
+
+## Pool Google publicado em 26/10/2026
+
+Fonte `400e405`, [CI aprovado](https://github.com/Browsher/crm/actions/runs/40399058396),
+deployment `dpl_3kh8aCH8dhgTzrHdwm6weQvS6b8S` READY e promovido para
+[crm-prospeccao-bice.vercel.app](https://crm-prospeccao-bice.vercel.app).
+A implantação foi preparada sem trocar o endereço bice, conferida e promovida
+após o CI. A PR #55 continua aberta em rascunho, sem merge.
+
+Somente 0045 foi aplicada: 46 migrações, zero pendentes/divergentes e
+invariantes aprovadas. Empresa/usuário permaneceram em 43/4. Backup
+criptografado conferido e dump lido integralmente sem executar restauração.
+Os três motores locais estão preparados, preservando o original e os volumes.
+
+A mesma automação voltou a ACTIVE, seg–sex 17h de São Paulo. A coleta exige
+5.632 MiB livres no Windows; um teste real com menos RAM bloqueou sem
+reivindicar pedidos ou criar jobs. Não houve três entregas em listas reais
+neste incremento. Detalhes, limites da validação e revisão independente:
+[operação do agente](agente-google-crm.md#atualização-operacional-em-26102026).
+
+
+## Casa dos Dados em 27/10/2026
+
+Publicado no endereço estável [CRM Prospecção](https://crm-prospeccao-bice.vercel.app),
+deployment dpl_2LtW8SmkTWP5EAffazDsNWkq6tLr, READY, fonte
+50643b6ca072aaac2ea57e044848fef3d501742a da PR55, sem merge.
+O [CI do código publicado](https://github.com/Browsher/crm/actions/runs/40519067373)
+passou com 1.682 testes unitários (dois ignorados), 695 de integração e 69
+jornadas no navegador, além de tipos, lint, convenções, build e conferência Railway.
+
+A publicação foi criada com Production e skip-domain, conferida por projeto,
+commit e estado READY e depois promovida. O endereço estável foi resolvido
+novamente e confirmou o mesmo deployment. A chave CASA_DOS_DADOS_API_KEY foi
+enviada por stdin, tipo sensitive e somente Production. Metadados confirmaram
+15 variáveis; as 14 anteriores foram preservadas. Nenhuma chave ou resposta
+real integra o código enviado. Não há retorno ao CNPJ.biz em novas consultas.
+
+Antes da aplicação, o backup operacional foi criptografado e conferido por
+manifesto, SHA256 e leitura integral do dump com pg_restore sem banco de destino.
+Isso confere o arquivo; não representa ensaio de restauração em banco.
+Foi aplicada somente 0046, totalizando 47 migrações sem pendências/divergências
+e com invariantes aprovadas. O histórico CNPJ.biz conserva sua origem e contratos.
+
+A validação real reservou cota e UUID antes de uma única chamada de pesquisa,
+com resultado completo. Uma empresa de armarinhos, Brás, São Paulo/SP foi
+importada para Junior. Saldo aferido: 2.000 antes, 1.999 depois e 1.999 na
+conferência final. A resposta foi persistida criptografada e normalizada sem
+outra compra. A reimportação criou zero empresas e conservou o grupo; outro
+envio da reserva retornou repetida. Os dois outros vendedores não veem essa
+busca nem a empresa em suas listas pessoais. O gestor vê a origem, quem buscou
+e os dois sócios protegidos; Junior vê somente nome e função.
+
+Hashes dos 43 cadastros anteriores, quatro usuários, 11 linhas da fila, duas
+negociações, uma venda, dois grupos e 43 vínculos anteriores foram preservados.
+A empresa nova não foi transferida automaticamente para carteira ou reserva.
+A cota temporária de Junior voltou a zero; os três vendedores terminam com
+limite zero, sujeitos à liberação normal pelo gestor.
+
+Sete jornadas locais afetadas passaram, incluindo importação Casa, histórico
+CNPJ, refresh sem nova chamada, fichas, pausa, temas e larguras 390/1920.
+As capturas fictícias foram conferidas. A revisão independente final ficou
+sem achados Critical, Important ou Minor: capital inteiro, mock403 e contato
+fictício repetido foram corrigidos com regressões, sem afrouxar a deduplicação.
+
+Na publicação online, login retornou 200, Banco de empresas e gestão sem sessão
+redirecionaram307 para login, e API Google sem token retornou401 sem adquirir
+pedido. O transporte do navegador autenticado estava indisponível. A importação
+real foi validada pelas funções nativas sob identidade RLS; as telas autenticadas
+foram validadas no E2E local, sem fabricar sessão online. Não houve outra consulta
+paga, mensagem, alteração de workflow, planilha ou agendamento Google nesta migração.
+
+
+## Filtros adicionais Casa dos Dados em 27/10/2026
+
+A fonte 153e2968ab8395da39303583c9191b1bc3e06151 foi publicada no deployment
+dpl_DPBxEPjESLJTsgrdD8E2h7vbYtz5, READY, e promovida para o mesmo endereço
+estável do CRM. Projeto, SHA e resolução do alias foram conferidos.
+[CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40531948103)
+aprovou 1.711 unitários (dois ignorados), 713 integrações e 72 jornadas,
+além de tipos, lint, convenções, build e conferência Railway.
+
+O formulário tem listas independentes de CNAEs principais/secundários, abertura
+por período ou últimos dias, exclusão de optantes MEI/Simples e seus períodos
+opcionais de exclusão. Nome ou palavra-chave permanece no modo anterior.
+Valores incompatíveis são recusados no TS e no banco, antes da cota/rede;
+payloads antigos não ganham defaults novos e conservam histórico/replay.
+
+Backup criptografado novo foi conferido por SHA256 e leitura integral do dump,
+sem restauração em banco. Aplicou-se somente 0047, totalizando 48 migrações,
+sem pendências/divergências e com invariantes aprovadas. Comparações de contagem
+e hash preservaram 44 empresas, quatro usuários, 11 linhas de fila, duas negociações,
+uma venda, três grupos, 44 vínculos, uma busca e os complementos protegidos.
+As três cotas permaneceram 100, sem pausa. Nenhuma reserva real ou empresa foi
+criada para testar filtros; não houve chamada paga ao fornecedor.
+
+Dez jornadas locais afetadas passaram. O caso positivo de corpo enviado e
+histórico foi repetido após fixar explicitamente o parâmetro que mantém os
+CNAEs principais separados dos secundários. Revisão independente final sem
+achados remanescentes; o problema do campo inválido recolhido foi reproduzido
+e corrigido com regressões para 0 e 1.5, erro visível e zero HTTP.
+
+Online, login retornou 200, páginas privadas 307 para login e API Google sem
+token 401. Os controles autenticados foram validados no E2E local, sem criar
+sessão online. Chaves e 15 variáveis foram preservadas, assim como Google,
+workflow, planilha e os limites 100. A PR55 segue em rascunho, sem merge.
+
+
+## Histórico de buscas em pop-up, 27/10/2026
+
+A fonte c9993c30dfd8d5488165a6491d4faf41693384fd foi publicada no deployment
+dpl_Brn1P2QEkcPT3ddvThrV4PPHg1Gm, READY, e promovida para o endereço estável.
+Projeto, SHA e resolução do alias foram conferidos novamente após a promoção.
+O [CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40541679880)
+aprovou 1.722 unitários (dois ignorados), 713 integrações e 75 jornadas,
+além de tipos, lint, convenções, build e conferência Railway. Localmente,
+1.723 unitários passaram (um ignorado) e seis jornadas afetadas passaram.
+
+Ver busca abre os resultados persistidos em Dialog shadcn sem navegar ou
+repetir a consulta. Ver mais revela cards de cadastro, endereço/CEP, contatos,
+atividades/tributação e nomes/funções dos sócios. Dados restritos permanecem
+exclusivos do gestor no servidor. Importação, pausa, duplicidade e telefone
+válido continuam protegidos. Formulário e foco são preservados ao fechar.
+
+O layout foi conferido em 1920x1080 e 390px, claro/escuro. Revisão independente
+sem achados restantes; o espaço do botão Fechar teve regressão geométrica
+RED/GREEN. Nenhuma consulta real, migração, variável ou limite foi alterado.
+Login online retornou 200 e as duas páginas privadas retornaram 307 para login.
+A visualização autenticada foi validada no E2E local; não se criou sessão online.
+A PR55 permanece em rascunho, sem merge. O registro posterior é somente documental.
+
+
+## Resultado automático da busca, 27/10/2026
+
+A fonte 06af7223d4d36f1842e8119d65e9ad93edf2a267 foi publicada no deployment
+dpl_78jzMvriTcSJh5ucE24jFkZmDM14 READY e promovida para o endereço estável.
+Projeto, SHA e alias foram conferidos após a promoção. O
+[CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40546516169)
+aprovou 1.725 unitários (dois ignorados), 713 integrações e 75 jornadas,
+além de tipos, lint, convenções, build e conferência Railway.
+
+Nova busca e links com ?busca= abrem o Dialog automaticamente usando o snapshot
+já lido, sem action extra na primeira abertura. Fechar não reabre na revalidação;
+Ver resultados relê sob sessão/RLS. Refresh não repete a aquisição. Histórico
+permanece dentro do Banco de empresas; Localizar todas as empresas aponta para
+as importações pessoais da origem banco. Filtros usados conserva seu nome e
+critérios preenchidos, sem filtros favoritos.
+
+Localmente passaram 200 testes focados e nove jornadas de busca/filtros/importação.
+Revisão independente sem achados. Nenhuma migração, chave, limite ou chamada paga.
+Login online retornou 200 e páginas privadas 307 para login. Fluxo autenticado
+validado no E2E local, sem criar sessão online. PR55 continua sem merge.
+
+
+## Carrossel do Banco de empresas, 27/10/2026
+
+A fonte 8be28a0453c66fd3589a026b156f3010931f9039 foi publicada no deployment
+dpl_9C7cTPEPWhS9ZstQ2kvYnvkBqquo READY e promovida para o endereço estável.
+Projeto, SHA e alias foram conferidos após a promoção. O
+[CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40561324107)
+aprovou 1.737 testes unitários (dois ignorados), 716 integrações e 77 jornadas,
+além de tipos, lint, convenções, build e conferência Railway.
+
+Todas as minhas empresas substitui o anúncio do rodapé do formulário com até
+11 empresas pessoais importadas da origem banco, nome em destaque e grupo de
+origem. Três cards quadrados por vez no desktop, dois na faixa intermediária
+e um no celular; o último Ver todas buscas abre /fila/localizar?origem=banco.
+Nome e grupo usam uma linha com reticências e preservam o texto completo no
+Dialog. Somente Cliente aparece como selo; a situação comercial continua no
+banco e nas telas existentes. Nenhuma consulta é disparada ao navegar.
+
+A revisão independente encontrou sobreposição entre identidade, metadados e
+botão em cards estreitos. O caso foi reproduzido e corrigido com teste
+geométrico RED/GREEN; os três cards acima de 670px foram preservados. Não
+houve achados menores ou comportamentos deixados sem julgamento. A correção
+foi verificada por testes; não se executou uma segunda revisão. O CI também
+revelou um assert de foco anterior ao evento assíncrono do FocusScope: o teste
+agora aguarda a condição, com retorno de foco confirmado no navegador após
+resize que remove o gatilho. Localmente passaram 1.738 unitários (um ignorado),
+20 integrações focadas e 15 jornadas afetadas, mais a jornada de foco ampliada.
+
+Backup criptografado novo foi conferido por hash e leitura integral do dump,
+sem restauração em banco. Aplicou-se somente 0048, com 49 migrações, zero
+pendências/divergências e invariantes aprovadas. Contagens/hashes das 11 tabelas
+conferidas e as três cotas de 100 sem pausa foram preservados. A consulta sob
+identidade do Junior retornou uma empresa com grupo e sem contatos no resumo;
+nenhuma busca paga, reserva ou importação real foi executada nesta entrega.
+
+Login online retornou 200 e as páginas privadas de vendedor/gestor retornaram
+307 para login. O fluxo autenticado foi conferido no E2E local, sem criar
+sessão online. Imagens da prévia usam dados fictícios. Google, workflow,
+planilha e variáveis não foram alterados. A PR55 segue em rascunho, sem merge;
+o registro posterior à fonte publicada é somente documental.
+
+
+## Últimas buscas e inclusão automática, 27/10/2026
+
+A fonte 473f0df9377d33c305ba1ea63850b1c5790ab883 foi publicada em
+dpl_8a3jRGKywRjoSar6da7EoArMmPn2 READY, promovida e conferida no endereço
+estável. [CI da fonte publicada](https://github.com/Browsher/crm/actions/runs/40575608030)
+aprovado em todas as etapas, incluindo 77 jornadas completas. Localmente:
+1.751 unitários e um ignorado, 50 integrações focadas e 15 jornadas afetadas;
+tipos, lint, build e convenções aprovados.
+
+Últimas buscas agora ocupa a seção original e mostra até 11 empresas
+individuais retornadas pelas consultas próprias concluídas, mesmo antes da
+inclusão. Mesmos CNPJs usam o snapshot mais recente. Histórico completo em
+botão/diálogo. Mantidos os cards quadrados 3/2/1 e o último Ver todas buscas
+para /fila/localizar?origem=banco. Desktop amplo acrescenta nicho, endereço,
+porte, abertura e indicadores de contato; nome/grupo permitem 80/120 caracteres,
+sem quebra de linha. Ver empresa abre apenas o resultado escolhido. O resumo
+não recebe contatos efetivos nem documentos dos sócios.
+
+A inclusão acontece depois da persistência da resposta paga. Retomar usa
+somente os resultados salvos, sem nova compra. Revisão independente encontrou
+um Important: grupo criado não comprova inclusão integral de um histórico
+parcial. O caso foi reproduzido e corrigido com testes RED/GREEN de unidade,
+integração e navegador. A0049 registra a conclusão automática em separado e
+permite concluir na mesma lista. Zero Critical, zero Minor e nada deixado sem
+julgamento. Uma rodada de correção, sem segunda revisão.
+
+Após backup criptografado novo, com hash e leitura integral do dump conferidos,
+aplicou-se somente0049:50 migrações, zero pendências/divergências e invariantes
+aprovadas. Hashes/contagens das11tabelas conferidas e as três cotas100 sem pausa
+foram preservados. Só a nova coluna inclusao_automatica_concluida foi excluída
+do hash da busca para comparar o mesmo conteúdo antes/depois da mudança.
+Não se executou restauração do backup em banco.
+
+A busca já paga f198661a-ce21-4a20-9bd6-e71e12eff09c, Empresas · Brasil,
+tinha5resultados do Junior e nenhum grupo. A função nativa sob sua identidade
+incluiu5empresas,5complementos cadastrais e5vínculos em uma única lista.
+Repetição inseriu zero e manteve a lista. Registros anteriores, usuários,
+responsáveis, fila/reservas, negociações, vendas, demais buscas e cotas foram
+preservados. RLS conferida:Junior vê a busca e as5empresas;Jackson eJoão não.
+Nenhuma consulta externa, crédito adicional ou Carteira/reserva real criada.
+
+Fonte/projeto/alias conferidos; login200 e páginas privadas307 para login.
+Jornada autenticada validada no E2E local e dados reais pela identidade nativa
+do banco; não se criou sessão online. A prévia visual usa dados fictícios.
+Google, workflow, planilha e variáveis não foram alterados. PR55 permanece
+em rascunho, sem merge. Este registro posterior é somente documental.

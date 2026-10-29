@@ -1,5 +1,7 @@
 # Base de prospecção Google Maps
 
+AVISO — LEGADO V1 HISTÓRICO (14–16/10/2026). Este documento preserva contratos e relatos da V1; não descreve a operação atual nem autoriza coleta, importação, instalação ou reinstalação. A rotina das 09h, a fila global, o WhatsApp obrigatório para exportar e o manifesto CRM_DRIVE_V1 pertencem à V1 histórica. O Google V2 vigente usa planejamento por vendedor e rotina das 17h; consulte [Agente Google CRM](agente-google-crm.md) e [Rotina do agente Google](agente-google-rotina.md). Resultados e pendências relatados em 16/10 são evidências daquela data, sem afirmar o estado atual. Os procedimentos abaixo são referência histórica, não próximos passos operacionais. O motor Node, exportar_csv.mjs e o kit instalado são fronteiras externas: não foram copiados para este repositório e sua execução real não é coberta pelos testes offline.
+
 ## Uso
 
 A planilha privada tem três abas. Empresas conserva cada identidade, fontes e endereço completo. Telefones reúne números completos únicos e resultados de registro WhatsApp. Coletas registra um resumo e uma ocorrência por empresa recebida, preservando as fontes anteriores e conflitos.
@@ -29,7 +31,7 @@ Alvo autorizado: NxCO8HiaJmwqJ8jK, projeto mIsmhrUTAVI1ZPnf, em https://primary-
 
 Evolution usa a credencial Evolution API do pacote comunitário n8n-nodes-evolution-api (OrionDesign, contrato publicado 1.0.4), guardada no n8n. Configure Server Url com a URL HTTPS da Evolution sem barra final e ApiKey com a chave existente. As duas consultas usam Chat, Verificar Número; a checagem de conexão compartilha essa credencial pelo tipo predefinido Evolution API. CSV, planilha, logs e export compartilhável não recebem a chave. O workflow recebe arquivo pelo formulário de teste, com autenticação; permanece manual e não envia mensagens.
 
-Antes de declarar instalação, ler workflow e planilha depois da gravação e executar uma coleta no alvo. API sem autenticação não autoriza instalar. Credencial legítima ou importação no editor são os caminhos suportados; não fabricar autenticação de sessão.
+Na V1, o aceite de instalação exigia leitura posterior do workflow e da planilha e execução autorizada no alvo. Essa exigência histórica não é um próximo passo desta adaptação.
 
 ## Gerar e testar workflow
 
@@ -37,12 +39,9 @@ Gerar com npx tsx scripts/prospeccao-base/gerar-workflow.mts --config <config.js
 
 O formulário é manual pelo Test URL e exige Basic Auth configurada. Ler as abas passa por controles de item único para não multiplicar consultas. Escritas são sequenciais, por chave, usando RAW e schema de colunas. Consultas seguem lotes de dez, intervalo de 750 ms e uma tentativa adicional para falha reportada pelo nó comunitário. O pacote não preserva o status HTTP no envelope de erro, portanto a repetição é conservadora e limitada a uma vez, inclusive para erro sem código. Erro de Sheets interrompe. A checagem de conexão mantém timeout de 15 segundos e recusa redirecionamento; as consultas comunitárias usam os padrões de transporte do pacote, que não expõe essas opções. Não confundir essa limitação com uma garantia do gerador. Logs de execução não são persistidos; o relatório e os resultados da planilha são a evidência de operação.
 
-## Instalar no alvo
+## Instalação histórica e limite desta cópia
 
-Crie uma chave na area n8n API das configuracoes pessoais e configure N8N_API_URL/N8N_API_KEY em arquivo privado .env.n8n.local. Nao envie chave pelo chat. Execute: node --env-file=<arquivo-privado> --import tsx scripts/prospeccao-base/instalar.mts --workflow <export-gerado>. O instalador aceita somente o workflow/projeto/host indicado, bloqueia alvo ativo, compara a leitura antes de sobrescrever, salva o anterior e verifica GET posterior. Se a API nao comprovar projeto, instalar pelo editor em vez de desabilitar a guarda.
-
-Caminho pelo editor: criar uma cópia do workflow importado para conservar a configuração anterior; Import from File; selecionar o JSON; configurar Google Sheets OAuth em todos os nos Sheets, Evolution API em Consultar WhatsApp, Consultar novamente e Verificar conexao e Basic Auth no formulario. Manter manual/nao publicado. Conferir planilha e instancia, salvar e usar Execute Workflow. Primeiro ensaio em planilha privada de cenario; depois configurar a base definitiva e repetir o CSV Mooca. Baixar o workflow salvo para conferir seu conteudo e guardar ID da execucao. So declarar instalado depois do teste real e readback.
-
+A instalação da V1 era restrita ao workflow, projeto e host originais. O CLI de instalação foi omitido desta adaptação. A biblioteca histórica `src/server/prospeccao-base/instalar.ts` permanece com alvo fixo e cliente HTTP injetado, exercitada apenas com respostas simuladas. Este registro não recomenda instalar ou importar os workflows antigos; os guias Google V2 indicados no aviso definem a operação vigente.
 ## Retorno do nó comunitário
 
 O pacote 1.0.4 devolve success/data, com um array em data. A classificação exige sucesso booleano verdadeiro, conexão aberta, resposta única para cada número original e exists booleano. Erro, número ausente, resposta ambígua ou conexão fechada permanecem inconclusivos. Telefone fixo conserva seus oito dígitos locais; o fluxo não insere nove.
@@ -51,4 +50,4 @@ A coluna http fica vazia nas consultas comunitárias, pois o pacote não informa
 
 Verificar conexao permanece HTTP com a mesma credencial Evolution API porque esse pacote não oferece connectionState. Buscar Instância consulta outro endpoint e não substitui a verificação de estado em tempo real.
 
-Export de compatibilidade: workflow-n8n-2.36.8-evolution-comunidade.json. Ele não contém credenciais nem ID de workflow externo. A cópia importada pelo editor pode ter outro ID/projeto; o instalador por API permanece restrito ao alvo original e não muda de destino automaticamente. Importação, seleção das credenciais, salvamento e teste real no editor são necessários antes do aceite operacional.
+Export de compatibilidade: workflow-n8n-2.36.8-evolution-comunidade.json. Ele não contém credenciais nem ID de workflow externo. A cópia importada pelo editor pode ter outro ID/projeto; o instalador por API permanece restrito ao alvo original e não muda de destino automaticamente. Essas etapas eram condições do aceite operacional da V1, sem recomendação de retomá-las agora.

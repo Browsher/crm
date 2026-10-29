@@ -18,7 +18,7 @@ import PaginaLocalizar from './localizar/page'
 const lista = {id:'00000000-0000-4000-8000-000000000701',nome:'Mooca',descricao:null,origem:null,criterios:null,criadoEm:'2026-10-13T12:00:00Z',total:3,disponiveis:1}
 beforeEach(()=> {estado.reserva=null;vi.clearAllMocks();estado.listar.mockResolvedValue({ok:true,grupos:[lista],temProxima:false})})
 test('entrada da fila oferece cartão comercial da lista ativa sem reserva',async()=>{
-  const html=renderToStaticMarkup(await PaginaFila({searchParams:Promise.resolve({})}))
+  const html=renderToStaticMarkup(await PaginaFila({searchParams:Promise.resolve({atendimento:'1'})}))
   expect(html).toContain('<article')
   expect(html).toContain('Mooca')
   expect(html).toContain('Prospectar esta lista')
@@ -40,7 +40,7 @@ test('atendimento mantém formulário antes do chooser e preserva refinamentos n
 })
 test('atendimento não carrega catálogo quando a escolha está fechada',async()=>{
   estado.reserva={id:'reservada'}
-  const html=renderToStaticMarkup(await PaginaFila({searchParams:Promise.resolve({})}))
+  const html=renderToStaticMarkup(await PaginaFila({searchParams:Promise.resolve({atendimento:'1'})}))
   expect(html).not.toContain('<article')
   expect(estado.listar).not.toHaveBeenCalled()
 })
@@ -74,7 +74,7 @@ test('paginação contextual na busca preserva página de empresas e só a sele�
   const html=renderToStaticMarkup(<GruposProspeccao grupos={[lista]} pagina={2} temProxima escolha={{filtros,atendimento:false}} />)
   expect(html).toContain(`href="/fila/localizar?nome=Aurora&amp;cnae=1234567&amp;grupo=${lista.id}&amp;pagina=3&amp;escolher_lista=1&amp;listas_pagina=3"`)
   expect(html).toContain(`href="/fila/localizar?grupo=${lista.id}&amp;pagina=1"`)
-  expect(html).toContain('href="/fila/localizar?pagina=1"')
+  expect(html).toContain('href="/fila/localizar?pagina=1&amp;grupo="')
 })
 test('página vazia permite voltar sem remover o contexto selecionado',()=>{
   const filtros={nome:'Aurora',cnae:null,uf:null,cidade:null,bairro:null,pagina:3,grupo:lista.id}

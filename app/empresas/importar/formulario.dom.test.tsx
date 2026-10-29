@@ -180,10 +180,13 @@ test('pendente bloqueia troca e navegação, erro descarta confirmação antiga'
   mock.mockReturnValueOnce(new Promise((resolve) => { resolver = resolve }))
   await clicar('Confirmar importação')
   expect(host.querySelector('fieldset')?.disabled).toBe(true)
+  expect(host.querySelector('form')?.getAttribute('aria-busy')).toBe('true')
   expect(host.querySelector('nav button')).toBeNull()
   await act(async () => resolver({ erro: 'Confira novamente.', relatorio: null, inseridas: null, grupoId: null, conferencia: null }))
   const alerta = host.querySelector('[role=alert]')
   expect(alerta?.textContent).toBe('Confira novamente.')
+  expect(alerta?.getAttribute('data-slot')).toBe('alert')
+  expect(host.querySelector('form')?.getAttribute('aria-busy')).toBe('false')
   expect(document.activeElement).toBe(alerta)
   expect(nome.value).toBe('Mooca')
   expect(input.files?.[0]).toBe(file)
@@ -297,4 +300,13 @@ test('dois envios de confirmação sem mudança repetem chave e comprovante', as
     expect(dadosDaChamada(i).get('conferencia')).toBe('comprovante-autenticado')
     expect(dadosDaChamada(i).get('origem')).toBe('Google Maps')
   }
+})
+
+
+test('etapa de envio usa Card e conserva área de arquivo e orientações dentro do formulário', async () => {
+  await montar()
+  const painel = host.querySelector('[data-slot="card"]')
+  expect(painel).not.toBeNull()
+  expect(painel?.contains(host.querySelector('input[type=file]'))).toBe(true)
+  expect(host.querySelectorAll('form')).toHaveLength(1)
 })

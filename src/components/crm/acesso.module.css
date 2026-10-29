@@ -1,0 +1,15 @@
+.acesso { display: grid; grid-template-columns: minmax(320px, .9fr) minmax(0, 1.1fr); min-height: 100dvh; background: var(--background); color: var(--foreground); }
+.apresentacao { display: flex; flex-direction: column; justify-content: space-between; gap: 64px; padding: clamp(32px, 5vw, 80px); background: var(--primary); color: var(--primary-foreground); }
+.marca { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 650; }
+.legenda { text-transform: uppercase; font-size: 12px; line-height: 18px; letter-spacing: .12em; margin-bottom: 20px; }
+.apresentacao h2 { max-width: 14ch; font-size: clamp(32px, 3.5vw, 52px); line-height: 1.12; letter-spacing: -.04em; font-weight: 550; }
+.apresentacao h2 + p { max-width: 34ch; margin-top: 24px; line-height: 1.7; }
+.apresentacao small { font-size: 12px; line-height: 18px; }
+.areaFormulario { display: grid; align-items: center; justify-items: center; padding: 48px 24px; min-width: 0; }
+.formulario { width: 100%; max-width: 360px; overflow-wrap: anywhere; }
+.identificador { font-size: 12px; line-height: 18px; color: var(--muted-foreground); margin-bottom: 32px; }
+.formulario h1 { font-size: 28px; line-height: 36px; font-weight: 650; letter-spacing: -.03em; }
+.campos { display: flex; flex-direction: column; gap: 16px; }
+.campo { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 21px; }
+.descricao { color: var(--muted-foreground); margin: 8px 0 24px; font-size: 14px; }
+@media (max-width: 820px) { .formulario h1 { font-size: 24px; line-height: 32px; } .acesso { grid-template-columns: minmax(0, 1fr); } .apresentacao { display: none; } .areaFormulario { min-height: 100dvh; padding: 32px 24px; } }

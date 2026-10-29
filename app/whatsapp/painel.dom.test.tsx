@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { PainelWhatsApp } from './painel'
+import ErroWhatsApp from './error'
 import type { Mensagem } from '@/src/server/whatsapp/evolution'
 import { historicoMensagensAcao, historicoFontesAcao } from './historico-acao'
 
@@ -17,6 +18,24 @@ const mensagens: Mensagem[] = [
   { id: '1', conversa: 'a@lid', nome: 'Ana', direcao: 'recebida', texto: 'Mensagem A', em: '2026-09-21T15:00:00Z' },
   { id: '2', conversa: 'b@lid', nome: 'Bia', direcao: 'recebida', texto: 'Mensagem B', em: '2026-09-21T16:00:00Z' },
 ]
+
+test('voltar à lista preserva conversa e rolagem sem buscar mensagens novamente', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} />))
+  const lista = host.querySelector<HTMLElement>('[aria-label="Lista de conversas"]')!
+  lista.scrollTop = 120
+  const conversa = lista.querySelectorAll('button')[1]
+  await act(async () => conversa.click())
+  const chat = host.querySelector<HTMLOListElement>('ol')!
+  await act(async () => { chat.scrollTop = 80; chat.dispatchEvent(new Event('scroll')) })
+  const voltar = [...host.querySelectorAll('button')].find(b => b.textContent === 'Voltar para conversas')
+  expect(voltar).toBeTruthy()
+  await act(async () => voltar!.click())
+  expect(lista.scrollTop).toBe(120)
+  expect(chat.scrollTop).toBe(80)
+  expect(lista.querySelector('[aria-current]')).toBe(conversa)
+  expect(historicoMensagensAcao).not.toHaveBeenCalled()
+  expect(host.querySelector('textarea')).toBeNull()
+})
 test('mesmo cliente e mesmo ID em vendedores distintos não misturam conversa', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[
     { ...mensagens[0], fonteId: 'a', vendedor: 'Vendedor A' },
@@ -312,7 +331,7 @@ test('carga por vendedor aguarda a página pendente e continua com os cursores r
 
 test('carga normal não oferece botão manual nem anuncia fim enquanto ainda há páginas', async () => {
   await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} {...historico} />))
-  expect([...host.querySelectorAll('button')].every(b => b.closest('[aria-label="Lista de conversas"], [aria-label="Filtrar conversas"]'))).toBe(true)
+  expect([...host.querySelectorAll('button')].every(b => b.textContent === 'Voltar para conversas' || b.closest('[aria-label="Lista de conversas"], [aria-label="Filtrar conversas"]'))).toBe(true)
   expect(host.textContent).not.toContain('Fim do histórico')
   expect(host.textContent).toContain('Carregando histórico automaticamente')
 })
@@ -397,4 +416,58 @@ test('etiqueta comercial aparece na lista e no cabeçalho e acompanha atualizaç
   await act(async () => raiz.render(<PainelWhatsApp mensagens={[{ ...mensagem, cadastro: { telefone: mensagem.telefone!, estado: 'encontrada', empresa: { id: 'empresa', nome: 'Loja Aurora', situacao: 'proposta_enviada' } } }]} />))
   expect(host.querySelector('header [data-situacao="proposta_enviada"]')?.textContent).toBe('Proposta enviada')
   expect(host.textContent).not.toContain('Em negociação')
+})
+
+test('busca do WhatsApp usa campo comum e mantém seleção e foco', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} />))
+  const conversa = host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')[1]
+  await act(async () => conversa.click())
+  const campo = host.querySelector<HTMLInputElement>('input[type="search"]')!
+  expect(campo.labels?.[0].textContent).toContain('Buscar conversa')
+  expect(campo.placeholder).toBe('Nome, telefone ou mensagem')
+  expect(campo.getAttribute('aria-describedby')).toBe('alcance-busca')
+  campo.focus()
+  await buscar('Ana')
+  expect(document.activeElement).toBe(campo)
+  expect(host.querySelector('ol')?.textContent).toContain('Mensagem A')
+  await buscar('')
+  expect(host.querySelector('button[aria-current]')).toBe(conversa)
+  const etiqueta = conversa.querySelector('[data-slot="badge"]')
+  expect(etiqueta?.textContent).toBeTruthy()
+  expect(etiqueta?.getAttribute('role')).toBeNull()
+  expect(etiqueta?.getAttribute('tabindex')).toBeNull()
+  expect(host.querySelector('[aria-label="Filtrar conversas"] button[aria-pressed="true"]')?.textContent).toBe('Todas')
+  expect(host.querySelector('textarea')).toBeNull()
+})
+
+test('nome longo e ausência de nome mantêm identificação e conversa separada', async () => {
+  const nome = 'Contato com nome muito longo para validar identificação completa sem misturar conversas'
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[
+    { ...mensagens[0], nome }, { ...mensagens[1], nome: null },
+  ]} />))
+  const conversas = host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')
+  expect(conversas).toHaveLength(2)
+  expect(conversas[0].textContent).toContain('Contato não identificado')
+  await act(async () => conversas[1].click())
+  expect(host.querySelector('header h2')?.textContent).toBe(nome)
+  expect(host.querySelector('ol')?.textContent).toContain('Mensagem A')
+})
+test('falha de infraestrutura apresenta alerta comum e recuperação', async () => {
+  const reset = vi.fn()
+  await act(async () => raiz.render(<ErroWhatsApp error={new Error('segredo-ficticio')} reset={reset} />))
+  const alerta = host.querySelector('[role="alert"]')
+  expect(alerta?.getAttribute('data-slot')).toBe('alert')
+  expect(alerta?.querySelector('h2')?.textContent).toBe('Não foi possível carregar as mensagens')
+  expect(host.textContent).not.toContain('segredo-ficticio')
+  await act(async () => host.querySelector('button')!.click())
+  expect(reset).toHaveBeenCalledTimes(1)
+})
+test('busca sem resultado mantém vazio em card sem criar ação de envio', async () => {
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={mensagens} />))
+  await buscar('contato inexistente no histórico')
+  const estado = [...host.querySelectorAll('[role="status"]')].find(el => el.textContent?.includes('Nenhuma conversa encontrada'))!
+  expect(estado.querySelector('[data-slot="card"]')).not.toBeNull()
+  expect(estado.querySelector('h2')?.textContent).toBe('Nenhuma conversa encontrada')
+  expect(estado.textContent).toContain('Tente outro filtro, nome ou telefone.')
+  expect(estado.querySelector('button, a, textarea')).toBeNull()
 })

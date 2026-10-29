@@ -2,24 +2,30 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { ShellCrm } from '@/src/components/crm/shell'
+import { TemaCrmProvider } from '@/src/components/crm/tema'
 import { Galeria } from './galeria'
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/design' }))
 
 let container: HTMLDivElement
 let root: ReturnType<typeof createRoot>
 
 beforeEach(async () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   vi.useFakeTimers()
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
-  await act(async () => root.render(<Galeria />))
+  await act(async () => root.render(<TemaCrmProvider><ShellCrm nome="Ana" papel="gestor" area="design"><Galeria /></ShellCrm></TemaCrmProvider>))
 })
 
 afterEach(async () => {
   await act(async () => root.unmount())
   container.remove()
   vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 function botao(texto: string) {
@@ -27,6 +33,14 @@ function botao(texto: string) {
   if (!elemento) throw new Error(`Botao nao encontrado: ${texto}`)
   return elemento
 }
+
+test('abas da ficha mostram dados e histórico sem misturar o conteúdo', async () => {
+  const abas = container.querySelectorAll<HTMLButtonElement>('[role=tab]')
+  expect(abas.length).toBe(2)
+  expect(container.querySelector('[role=tabpanel]')?.textContent).toContain('Contato principal')
+  await act(async () => abas[1].click())
+  expect(document.getElementById(abas[1].getAttribute('aria-controls')!)?.textContent).toContain('Ligação de demonstração')
+})
 
 test('expõe as seções e dados fictícios da referência', () => {
   expect(container.textContent).toContain('Dados fictícios')
@@ -107,7 +121,7 @@ test('falha ao salvar preserva a nota e permite tentar novamente', async () => {
 
 test('troca o tema no escopo da galeria', async () => {
   const escopo = container.querySelector('.crm-ui')
-  const seletor = container.querySelector<HTMLSelectElement>('[aria-label="Tema da galeria"]')
+  const seletor = container.querySelector<HTMLSelectElement>('[aria-label="Tema do design system"]')
 
   expect(escopo?.getAttribute('data-theme')).toBe('system')
   await act(async () => {
@@ -148,4 +162,34 @@ test('avança apenas pelas ações e preserva anotações ao voltar', async () =
   expect(container.textContent).toContain('Etapa atual: Consultar')
   expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Anotações da ligação"]')?.value)
     .toBe('Retornar na sexta pela manhã')
+})
+
+
+test('galeria usa somente um shell e mostra tabela com componentes reais', () => {
+  expect(container.querySelectorAll('nav[aria-label="Navegação do CRM"]')).toHaveLength(1)
+  expect(container.querySelectorAll('nav[aria-label="Seções da galeria"]')).toHaveLength(1)
+  expect(container.querySelectorAll('select[aria-label^="Tema"]')).toHaveLength(1)
+  const tabela = container.querySelector('table[aria-label="Empresas de demonstração"]')
+  expect(tabela?.querySelectorAll('tbody tr')).toHaveLength(3)
+  expect(tabela?.querySelector('th[scope="col"]')?.textContent).toBe('Empresa')
+})
+
+test('galeria compartilha shell e tema sem perder rascunho na ficha', async () => {
+  const nota = container.querySelector<HTMLTextAreaElement>('[aria-label="Nota da ficha"]')!
+  expect(nota).not.toBeNull()
+  await act(async () => {
+    nota.value = 'Rascunho preservado entre abas'
+    nota.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const abas = container.querySelectorAll<HTMLButtonElement>('[role=tab]')
+  await act(async () => abas[1].click())
+  expect(container.querySelector<HTMLTextAreaElement>('[aria-label="Nota da ficha"]')?.value).toBe('Rascunho preservado entre abas')
+  const seletor = container.querySelector<HTMLSelectElement>('[aria-label="Tema do design system"]')!
+  await act(async () => {
+    seletor.value = 'dark'
+    seletor.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  await act(async () => botao('Próxima').click())
+  expect(document.querySelector('.ui-dialog-portal')?.getAttribute('data-theme')).toBe('dark')
+  expect(document.documentElement.dataset.theme).toBe('dark')
 })

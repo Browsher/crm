@@ -1,5 +1,7 @@
 # Validação automática depois da coleta
 
+AVISO — LEGADO V1 HISTÓRICO (14–16/10/2026). Este documento preserva contratos e relatos da V1; não descreve a operação atual nem autoriza coleta, importação, instalação ou reinstalação. A rotina das 09h, a fila global, o WhatsApp obrigatório para exportar e o manifesto CRM_DRIVE_V1 pertencem à V1 histórica. O Google V2 vigente usa planejamento por vendedor e rotina das 17h; consulte [Agente Google CRM](agente-google-crm.md) e [Rotina do agente Google](agente-google-rotina.md). Resultados e pendências relatados em 16/10 são evidências daquela data, sem afirmar o estado atual. Os procedimentos abaixo são referência histórica, não próximos passos operacionais. O motor Node, exportar_csv.mjs e o kit instalado são fronteiras externas: não foram copiados para este repositório e sua execução real não é coberta pelos testes offline.
+
 O agente salva o CSV original no Drive, publica a mesma matriz na origem e confere a leitura de retorno. Em seguida chama o workflow privado, que valida WhatsApps, preenche as saídas e salva o CSV final na mesma pasta do bairro e data.
 
 Concluído em Planejamento semanal continua indicando que a coleta está publicada. A validação tem controle separado em `workflow_automatico` no comprovante da coleta. Antes de buscar outro bairro, a rotina resolve a validação anterior que ainda estiver pendente.
@@ -33,5 +35,5 @@ ou endereço incompleto. O endereço original continua preservado.
 Continuam os critérios de perfil comercial, encerramento, duplicidade e até
 50 empresas. O workflow mantém sua validação de WhatsApp e o backup de
 telefones. A conferência do coletor verifica o endereço contra o download,
-sem exigir igualdade com a região pesquisada. A alteração vale para as
+sem exigir igualdade com a região pesquisada. A alteração histórica de 16/10 valia para as
 próximas coletas; arquivos e publicações anteriores ficam preservados.

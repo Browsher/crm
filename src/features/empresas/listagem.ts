@@ -7,7 +7,7 @@ export type EmpresaNaLista = {
   cnpj: string | null
   razaoSocial: string | null
   nomeFantasia: string | null
-  telefone: string
+  telefone: string | null
   email: string | null
   cnaePrincipal: string | null
   // Os três estados de endereço, separados de propósito: com cidade, com CEP
@@ -33,7 +33,7 @@ type LinhaCrua = {
   cnpj: string | null
   razao_social: string | null
   nome_fantasia: string | null
-  telefone: string
+  telefone: string | null
   email: string | null
   cnae_principal: string | null
   cep: string | null

@@ -118,3 +118,16 @@ test('limpar na própria URL reseta controles sem alterar clique modificado do l
   })))
   expect(busca.value).toBe('preservar para nova aba')
 })
+
+
+test('filtros usam um painel comum sem aninhar formulário e mantêm rótulos acessíveis', async () => {
+  await montar()
+  expect(host.querySelectorAll('form')).toHaveLength(1)
+  const painel = host.querySelector('[data-slot="card"]')
+  expect(painel).not.toBeNull()
+  const busca = host.querySelector<HTMLInputElement>('#empresas-busca')!
+  expect(painel?.contains(busca)).toBe(true)
+  expect(host.querySelector('label[for="empresas-busca"]')?.textContent).toBe('Buscar empresas')
+  expect(busca.getAttribute('name')).toBe('q')
+  expect(host.querySelector('form form')).toBeNull()
+})

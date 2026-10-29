@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import type { Client } from 'pg'
 import { validarCnpj } from '../../src/features/empresas/cnpj'
 import { comAdmin } from '../../src/server/db/admin'
@@ -69,16 +69,20 @@ async function tabAte(page: Page, alvo: Locator, maximo = 20) {
   await expect(alvo).toBeFocused()
 }
 
-async function capturarEmTamanhos(page: Page, tela: string, testInfo: TestInfo) {
+async function capturarEmTamanhos(page: Page, tela: string) {
   for (const tema of ['light', 'dark'] as const) {
     await page.getByRole('combobox', { name: 'Tema de Empresas' }).selectOption(tema)
     await expect(page.locator('.crm-ui').first()).toHaveAttribute('data-theme', tema)
-    for (const width of [390, 820, 1280]) {
+    for (const width of [390, 820, 1100, 1200, 1280, 1920]) {
       await page.setViewportSize({ width, height: 844 })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      await expect(page.getByRole('main')).toHaveCSS('padding-left', width <= 820 ? '16px' : '32px')
+      const card = page.getByRole('main').locator('form [data-slot=card]').first()
+      await expect(card).toHaveCSS('border-radius', '10px')
+      await expect(card).toHaveCSS('padding-top', width <= 820 ? '20px' : '24px')
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.screenshot({
-        path: testInfo.outputPath(`empresas-${tela}-${tema}-${width}.png`),
+        path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/empresas-${tela}-${tema}-${width}.png`,
         animations: 'disabled',
         fullPage: tela !== 'lista',
       })
@@ -102,7 +106,7 @@ test.beforeAll(async () => {
   expect(await contarCnpj(CNPJ_EXISTENTE)).toBe(1)
 })
 
-test('gestor consulta a tabela e confirma somente a empresa nova depois da conferência', async ({ page }, testInfo) => {
+test('gestor consulta a tabela e confirma somente a empresa nova depois da conferência', async ({ page }) => {
   test.setTimeout(60_000)
   expect(await contarCnpj(CNPJ_NOVA)).toBe(0)
   await entrar(page, 'gestore2e')
@@ -125,12 +129,12 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
     pagina: document.documentElement.scrollWidth,
     viewport: window.innerWidth,
   }))
-  expect(rolagem.conteudo).toBeGreaterThan(rolagem.visivel)
+  expect(rolagem.conteudo).toBeLessThanOrEqual(rolagem.visivel)
   expect(rolagem.pagina).toBeLessThanOrEqual(rolagem.viewport)
   await page.getByLabel('Buscar empresas', { exact: true }).focus()
   await tabAte(page, regiaoTabela)
   expect(await regiaoTabela.evaluate((elemento) => getComputedStyle(elemento).outlineStyle)).not.toBe('none')
-  await capturarEmTamanhos(page, 'lista', testInfo)
+  await capturarEmTamanhos(page, 'lista')
 
   await page.getByRole('link', { name: 'Importar empresas', exact: true }).click()
   await expect(page).toHaveURL('/empresas/importar')
@@ -150,6 +154,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   })
   await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
 
+  await expect(page.getByRole('main').locator('form [data-slot=card]')).toHaveCount(1)
   const tituloConferencia = page.getByRole('heading', { name: 'Confira antes de importar', exact: true })
   await expect(tituloConferencia).toBeFocused()
   await expect(page.getByText('Nada foi gravado. A confirmação cria o grupo e vincula todas as empresas aceitas, incluindo as já cadastradas.', { exact: true })).toBeVisible()
@@ -162,7 +167,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   expect(await contarCnpj(CNPJ_NOVA)).toBe(0)
   expect(await contarCnpj(CNPJ_EXISTENTE)).toBe(1)
   expect(await contarCnpj(CNPJ_RECUSADO)).toBe(0)
-  await capturarEmTamanhos(page, 'importacao-conferencia', testInfo)
+  await capturarEmTamanhos(page, 'importacao-conferencia')
 
   await page.getByRole('button', { name: 'Voltar ao arquivo', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Enviar arquivo', exact: true })).toBeFocused()
@@ -187,7 +192,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   await expect(page.getByRole('table')).toContainText(NOME_NOVA)
 })
 
-test('troca de arquivo invalida relatório, somente existentes permite grupo e CSV inválido recebe foco', async ({ page }, testInfo) => {
+test('troca de arquivo invalida relatório, somente existentes permite grupo e CSV inválido recebe foco', async ({ page }) => {
   expect(await contarCnpj(CNPJ_TROCA)).toBe(0)
   await entrar(page, 'gestore2e')
   await page.goto('/empresas/importar')
@@ -237,7 +242,7 @@ test('troca de arquivo invalida relatório, somente existentes permite grupo e C
     await page.setViewportSize({ width: 390, height: 844 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await expect(erro).toBeVisible()
-    await page.screenshot({ path: testInfo.outputPath(`empresas-importacao-erro-${tema}-390.png`), fullPage: true })
+    await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/empresas-importacao-erro-${tema}-390.png`, fullPage: true })
   }
 })
 

@@ -51,3 +51,5 @@ next-env.d.ts
 
 /.artifact-work/base-prospeccao/
 /outputs/base-prospeccao-2026-10-14/
+/.google-agente/
+__pycache__/

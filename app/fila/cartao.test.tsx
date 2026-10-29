@@ -42,6 +42,11 @@ const BASE: EmpresaComigo = {
 }
 
 describe('Cartao', () => {
+  test('empresa Google sem telefone mantém ficha e registro de atendimento', () => {
+    const saida = renderToStaticMarkup(<Cartao empresa={{ ...BASE, telefone: null }} agora={AGORA} contatos={[]} etapa="consultar" />)
+    expect(saida).toContain('Sem telefone informado')
+    expect(saida).toContain('Registrar resultado')
+  })
   test('na etapa consultar mostra dados e historico sem montar o formulario', () => {
     const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} etapa="consultar" />)
     expect(saida).toContain('Registrar resultado')

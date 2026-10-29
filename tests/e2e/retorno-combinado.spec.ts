@@ -7,7 +7,7 @@ test('retorno combinado na Prospecção entra no Funil e Meu dia de hoje, sem vi
   try{hoje=(await c.query("SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date,'YYYY-MM-DD') AS data")).rows[0].data}finally{await c.end()}
   await page.goto('/login');await page.getByLabel('E-mail').fill('retornoe2e@teste.local');await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await page.getByRole('button',{name:'Entrar',exact:true}).click()
   await expect(page).toHaveURL('/meu-dia')
-  await page.goto('/fila/localizar?cnae=7777799')
+  await page.goto('/fila/localizar?legado=1&cnae=7777799')
   await page.getByRole('button',{name:'Buscar cliente',exact:true}).click()
   await expect(page.getByRole('heading',{name:'Retorno Combinado',exact:true})).toBeVisible()
   await page.getByRole('button',{name:'Registrar resultado',exact:true}).click()
@@ -18,7 +18,7 @@ test('retorno combinado na Prospecção entra no Funil e Meu dia de hoje, sem vi
   await expect(page.getByRole('region',{name:'Listas de prospecção',exact:true})).toBeVisible()
   await expect(page.getByText('11977779001',{exact:true})).not.toBeVisible()
   await expect(page.getByRole('textbox',{name:'Nota',exact:true})).toHaveCount(0)
-  await page.getByRole('main').locator('header nav').getByRole('link',{name:'Localizar empresa',exact:true}).click()
+  await page.getByRole('main').locator('header').filter({has:page.getByRole('heading',{level:1})}).getByRole('link',{name:'Localizar empresa',exact:true}).click()
   await expect(page).toHaveURL(/\/fila\/localizar\?/)
   await expect(page.getByRole('main')).toContainText('Com você')
   await page.goto('/funil');await expect(page.getByRole('button',{name:/Retorno Combinado/})).toBeVisible()

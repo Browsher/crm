@@ -37,6 +37,12 @@ test('trocar só grupo e abrir escolha mantém editor, reserva e nota digitada',
       nota.dispatchEvent(new Event('input',{bubbles:true}))
     })
     expect(nota.value).toBe('Nota digitada durante atendimento')
+    const historico = [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Histórico')
+    expect(historico).toBeTruthy()
+    await act(async () => historico!.click())
+    expect(host.querySelector('textarea[name="nota"]')).toBe(nota)
+    expect(nota.value).toBe('Nota digitada durante atendimento')
+    await act(async () => [...host.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Dados da empresa')!.click())
     const abrir=[...host.querySelectorAll('a')].find(a=>a.textContent==='Escolher outra lista')!
     const abertura=new URL(abrir.getAttribute('href')!,'https://crm.test')
     await mostrar(Object.fromEntries(abertura.searchParams))

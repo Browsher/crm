@@ -27,16 +27,16 @@ test('lista compacta usa totais globais, origem migrada e navegação real', asy
 test('estado vazio oferece importação', async () => {
   deps.listar.mockResolvedValue({ ok: true, grupos: [], resumo: { total: 0, ativos: 0, desativados: 0, empresas: 0 } })
   const html = renderToStaticMarkup(await Pagina({ searchParams: Promise.resolve({}) }))
-  expect(html).toContain('Nenhum grupo')
+  expect(html).toContain('Nenhuma lista')
   expect(html).toContain('href="/empresas/importar"')
 })
 
 test('página além do fim orienta voltar sem apresentar a base como vazia', async () => {
   deps.listar.mockResolvedValue({ ok: true, grupos: [], resumo: { total: 51, ativos: 49, desativados: 2, empresas: 300 } })
   const html = renderToStaticMarkup(await Pagina({ searchParams: Promise.resolve({ pagina: '3' }) }))
-  expect(html).toContain('Nenhum grupo nesta página')
-  expect(html).toContain('Volte à primeira página para consultar os grupos existentes.')
-  expect(html).not.toContain('Importe uma planilha para criar um grupo.')
+  expect(html).toContain('Nenhuma lista nesta página')
+  expect(html).toContain('Volte à primeira página para consultar as listas existentes.')
+  expect(html).not.toContain('Importe uma planilha ou consulte as coletas do Google.')
   expect(html).toContain('href="/empresas/grupos"')
   expect(html).toContain('300')
 })

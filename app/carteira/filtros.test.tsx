@@ -94,7 +94,8 @@ describe('filtros da carteira', () => {
   test('renderiza formulario GET com opcoes derivadas da carteira autorizada', () => {
     const html = renderToStaticMarkup(<FiltrosForm filtros={SEM_FILTROS} ufs={['SP', 'PR', 'SP']} />)
     expect(html).toContain('action="/carteira"')
-    expect(html).toContain('method="get"')
+    const metodo = html.match(/<form[^>]* method="([^"]+)"/)?.[1] ?? 'get'
+    expect(metodo.toLowerCase()).toBe('get')
     expect(html).toContain('name="nome"')
     expect(html).toContain('name="uf"')
     expect(html).toContain('name="retorno"')

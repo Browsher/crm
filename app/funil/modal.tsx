@@ -14,6 +14,8 @@ import { proximaEtapa } from '@/src/lib/comercial'
 import { ROTULOS_ETAPA } from './rotulos'
 import { detalheAcao, telefoneAcao, etapaAcao, vendaAcao, devolverAcao, type EstadoFunil } from './acoes'
 import styles from './funil.module.css'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
+import { AbasFicha } from '@/src/components/crm/abas-ficha'
 
 type Modo='resumo'|'venda'|'devolver'|'atendimento'
 export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void}) {
@@ -96,9 +98,8 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
             Avançar para {ROTULOS_ETAPA[proximaEtapa(detalhe.etapa)!]}
           </Button>}
         </div>
-        <dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj ?? 'Não informado'}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>
+        <AbasFicha dados={<dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj ?? 'Não informado'}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>} historico={<section><h3 className={styles.tituloSecao}>Seus atendimentos</h3>{!detalhe.historico.length?<EstadoVazio nivelTitulo={3} titulo="Nenhum atendimento seu registrado." descricao="Seus atendimentos registrados nesta negociação aparecerão aqui." />:<ol className={styles.historico}>{detalhe.historico.map(c=><li key={c.id}><time>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(c.em))}</time><p>{c.nota??'Sem anotação'}</p>{c.proximoPasso&&<p>Próximo passo: {c.proximoPasso}</p>}</li>)}</ol>}</section>} />
         <div className={styles.acoes}><Button disabled={pendente||dirty} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty} onClick={()=>{chave.current=crypto.randomUUID();setModo('venda')}}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty} onClick={()=>setModo('devolver')}>Devolver à prospecção</Button></div>
-        <section><h3>Seus atendimentos</h3>{!detalhe.historico.length?<p className={styles.muted}>Nenhum atendimento seu registrado.</p>:<ol className={styles.historico}>{detalhe.historico.map(c=><li key={c.id}><time>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(c.em))}</time><p>{c.nota??'Sem anotação'}</p>{c.proximoPasso&&<p>Próximo passo: {c.proximoPasso}</p>}</li>)}</ol>}</section>
       </>:<>
         <Button variant="ghost" disabled={pendente} onClick={()=>pedir('resumo')}>Voltar ao resumo</Button>
         {modo==='atendimento'?<><h3>Registrar atendimento</h3>{buscandoTelefone?<p role="status">Carregando telefone...</p>:telefone!==null?<><p>Telefone: <strong>{telefone||'Não cadastrado'}</strong></p><FormularioContato empresaId={detalhe.empresaId} posse visual="fila" rascunho={rascunho} onDraftChange={setRascunho} onPendingChange={informarPendente} onSaved={()=>concluir('Atendimento registrado.')} /></>:null}</>:null}

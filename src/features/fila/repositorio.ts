@@ -44,6 +44,7 @@ async function tentar<T>(usuarioId: string, trabalho: (executar: Executar) => Pr
 }
 
 export type FiltrosReserva = {
+  pessoal?: string
   grupo: string | null
   nome: string
   cnae: string | null
@@ -66,7 +67,7 @@ export function reservarEmpresa(usuarioId: string, alvo: string | null, filtros:
       empresa_id: string | null
       reservado_ate: Date | null
       contexto: string | null
-    }>('SELECT * FROM fila_reservar($1,$2,$3,$4,$5,$6,$7,$8)', [alvo, filtros.nome, filtros.cnae, filtros.uf, filtros.cidade, filtros.bairro, contexto, filtros.grupo])
+    }>(filtros.pessoal ? 'SELECT * FROM prospeccao_pessoal_reservar($1,$2,$3)' : 'SELECT * FROM fila_reservar($1,$2,$3,$4,$5,$6,$7,$8)', filtros.pessoal ? [alvo,filtros.pessoal,contexto] : [alvo, filtros.nome, filtros.cnae, filtros.uf, filtros.cidade, filtros.bairro, contexto, filtros.grupo])
     const linha = r.linhas[0]
     if (!linha || !['ok', 'sem_candidata', 'indisponivel', 'contexto_alterado', 'grupo_indisponivel'].includes(linha.resultado)) {
       throw new ResultadoDesconhecido('fila_reservar', linha?.resultado ?? '')

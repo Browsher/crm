@@ -9,6 +9,7 @@ import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
 import { NativeSelect } from '@/src/components/ui/native-select'
+import { PainelFiltros } from '@/src/components/crm/painel-filtros'
 import styles from './empresas.module.css'
 
 const campos = [
@@ -64,7 +65,12 @@ export function Formulario({ consulta, opcoes }: { consulta: ConsultaEmpresas; o
 
   return (
     <form key={chave} action="/empresas" method="get" onSubmit={enviar} className={styles.filtros}>
-      <div className={styles.gradeFiltros}>
+      <PainelFiltros descricao={<p id="empresas-filtros-dependentes" className={styles.ajuda}>
+        Ao mudar estado ou cidade, a página atualiza as opções seguintes.
+      </p>} acoes={<>
+        <Button type="submit">Buscar</Button>
+        <Button asChild variant="ghost"><Link href="/empresas" onClick={limparControles}>Limpar filtros</Link></Button>
+      </>}>
         <div className={styles.campo}>
           <Label htmlFor="empresas-busca">Buscar empresas</Label>
           <Input
@@ -97,16 +103,7 @@ export function Formulario({ consulta, opcoes }: { consulta: ConsultaEmpresas; o
             </NativeSelect>
           </div>
         ))}
-      </div>
-      <p id="empresas-filtros-dependentes" className={styles.ajuda}>
-        Ao mudar estado ou cidade, a página atualiza as opções seguintes.
-      </p>
-      <div className={styles.acoesFiltros}>
-        <Button type="submit">Buscar</Button>
-        <Button asChild variant="ghost">
-          <Link href="/empresas" onClick={limparControles}>Limpar filtros</Link>
-        </Button>
-      </div>
+      </PainelFiltros>
     </form>
   )
 }

@@ -1,0 +1,57 @@
+.secao { container-type:inline-size; min-width:0; }
+.cabecalho { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.secao .cabecalho h2 { margin:0; font-size:18px; line-height:1.4; font-weight:650; }
+.secao .cabecalho p { margin:4px 0 0; font-size:13px; color:var(--muted-foreground); }
+.navegacao { display:flex; align-items:center; gap:8px; }
+.contagem { font-size:12px; color:var(--muted-foreground); font-variant-numeric:tabular-nums; margin-right:8px; }
+.grade { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; min-width:0; }
+.secao .card { aspect-ratio:1; display:grid; grid-template-rows:auto minmax(0,1fr) auto; gap:16px; min-width:0; min-height:0; padding:22px; overflow:hidden; border-radius:var(--radius-card); background:var(--card); }
+.identidade,.metadados { min-width:0; }
+.marca { display:flex; align-items:center; justify-content:space-between; height:28px; margin-bottom:18px; gap:12px; }
+.marca>svg { width:24px; height:24px; color:var(--muted-foreground); }
+.secao .card h3.nome { display:block; font-size:clamp(16px,1.55cqi,22px); line-height:1.4; font-weight:650; margin:0; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; text-wrap:nowrap; }
+.metadados { align-self:center; display:grid; gap:12px; font-size:13px; }
+.rotulo { color:var(--muted-foreground); font-size:11px; }
+.secao .card p { margin:0; }
+.secao .card p.linha { white-space:nowrap; text-overflow:ellipsis; overflow:hidden; text-wrap:nowrap; }
+.local { display:flex; align-items:center; gap:6px; color:var(--muted-foreground); }
+.local svg { width:14px; height:14px; flex:none; }
+.local span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.recebido { color:var(--muted-foreground); font-size:12px; white-space:nowrap; }
+.card>button,.card>a { width:100%; min-width:0; }
+.secao .todas { background:var(--muted); align-items:start; }
+.iconeTodas { width:28px; height:28px; color:var(--primary); }
+.secao .todas h3 { font-size:20px; line-height:1.3; margin:0 0 10px; font-weight:650; }
+.secao .todas p { color:var(--muted-foreground); font-size:13px; line-height:1.6; }
+.todas>div { align-self:center; }
+.vazio { color:var(--muted-foreground); font-size:13px; margin-bottom:16px!important; }
+@container(max-width:900px) {
+ .secao .card { padding:14px; gap:10px; }
+ .marca { height:20px; margin-bottom:6px; }
+ .marca>svg { width:20px; height:20px; }
+ .secao .card h3.nome { font-size:16px; line-height:1.3; }
+ .metadados { gap:6px; font-size:12px; line-height:1.4; }
+ .rotulo { display:block; font-size:10px; line-height:1.25; }
+ .recebido { font-size:11px; line-height:1.4; }
+ .secao .todas h3 { font-size:18px; }
+ .secao .todas p { font-size:12px; line-height:1.4; }
+}
+@container(max-width:670px) { .grade { grid-template-columns:repeat(2,minmax(0,1fr)); } .grade>.card:nth-child(n+3) { display:none; } .secao .card { padding:16px; gap:12px; } .marca { margin-bottom:12px; } .metadados { gap:8px; } }
+@container(max-width:480px) { .grade { grid-template-columns:minmax(0,1fr); } .grade>.card:nth-child(n+2) { display:none; } .secao .card { padding:22px; gap:16px; } .secao .card h3.nome { font-size:20px; } .marca { margin-bottom:16px; } .metadados { gap:12px; } }
+
+@container(max-width:300px) { .secao .card { padding:14px; gap:10px; } .secao .card h3.nome { font-size:18px; } .marca { margin-bottom:8px; } .metadados { gap:8px; font-size:12px; } .recebido { font-size:11px; } }
+
+.secao:focus-visible { outline:3px solid var(--ring); outline-offset:3px; }
+.desktopDados,.desktopAtividade { display:none; }
+@container(min-width:1120px) {
+ .secao .card { padding:18px; gap:12px; }
+ .marca { height:24px; margin-bottom:10px; }
+ .metadados { gap:8px; font-size:13px; line-height:1.4; }
+ .rotulo { display:block; font-size:11px; line-height:1.25; }
+ .recebido { font-size:12px; line-height:1.4; }
+ .desktopDados { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; }
+ .desktopDados>div { min-width:0; }
+ .desktopDados span { display:block; font-size:11px; line-height:1.25; color:var(--muted-foreground); }
+ .desktopDados p { font-size:13px; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ .secao .card p.desktopAtividade { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+}

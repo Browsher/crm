@@ -1,1 +1,1 @@
-export { normalizarCnpj, validarCnpj, pareceNotacaoCientifica } from '../../lib/cnpj'
+export { normalizarCnpj, validarCnpj, pareceNotacaoCientifica } from '@/src/lib/cnpj'

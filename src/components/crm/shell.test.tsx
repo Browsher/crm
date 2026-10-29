@@ -1,6 +1,19 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { ShellCrm } from './shell'
+
+const rota = vi.hoisted(() => ({ atual: null as string | null }))
+vi.mock('next/navigation', () => ({ usePathname: () => rota.atual }))
+
+test('grupos tem somente um item ativo na navegação do gestor', () => {
+  rota.atual = '/empresas/grupos/grupo'
+  try {
+    const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="empresas">Grupos</ShellCrm>)
+    const ativos = [...html.matchAll(/<a[^>]*aria-current="page"[^>]*>/g)]
+    expect(ativos).toHaveLength(1)
+    expect(ativos[0][0]).toContain('href="/empresas/grupos"')
+  } finally { rota.atual = null }
+})
 
 test('usuários ativa seu menu e oferece tema próprio ao gestor', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="usuarios">Lista</ShellCrm>)
@@ -27,7 +40,7 @@ test('gestor tem início e administração sem links de atendimento', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="gestao">Gestão</ShellCrm>)
   expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/gestao"')
   expect(html).toContain('href="/usuarios"')
-  expect(html).not.toContain('href="/empresas/grupos"')
+  expect(html).toContain('href="/empresas/grupos"')
   expect(html).toContain('href="/whatsapp"')
   for (const rota of ['/fila', '/carteira', '/meu-dia']) expect(html).not.toContain(`href="${rota}"`)
 })
@@ -54,4 +67,15 @@ test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   expect(html).toContain('method="post"')
   const saida = html.match(/<form\b[^>]*action="\/sair"[^>]*>([\s\S]*?)<\/form>/)?.[1] ?? ''
   expect(saida.replace(/<[^>]+>/g, '')).toBe('Sair')
+})
+
+
+test('design compartilha navegação e tema do gestor sem expor galeria ao vendedor', () => {
+  const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="design">Galeria visual</ShellCrm>)
+  expect(html).toContain('Tema do design system')
+  expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/design"')
+  expect(html).toContain('href="/usuarios"')
+  expect(html).toContain('Design system')
+  const vendedor = renderToStaticMarkup(<ShellCrm nome="Bia" papel="vendedor" area="carteira">Carteira</ShellCrm>)
+  expect(vendedor).not.toContain('href="/design"')
 })

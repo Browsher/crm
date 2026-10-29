@@ -27,6 +27,7 @@ async function enviar() { const f=document.querySelector<HTMLFormElement>('[role
 
 test('lista combina busca e filtros, limpa resultado vazio e não oferece ações próprias',async()=>{
   await montar();expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
+  expect(document.querySelector('table')?.getAttribute('aria-label')).toBe('Acessos da equipe')
   expect(linha('Bruno').querySelector('a')?.getAttribute('href')).toBe('/usuarios/vendedores/bruno')
   expect(linha('Ana').querySelector('a')).toBeNull()
   expect(linha('Carla').querySelector('a')).toBeNull()
@@ -61,4 +62,26 @@ test('pendência bloqueia botões e Escape; nova senha aguarda confirmação e f
   await act(async()=>resolver({erro:null,senhaProvisoria:'Nova-secreta'}));expect(document.querySelector('code')?.textContent).toBe('Nova-secreta')
   Object.defineProperty(navigator,'clipboard',{value:{writeText:vi.fn().mockRejectedValue(new Error('negado'))},configurable:true})
   await clicar('Copiar senha');expect(document.querySelector('[role=status]')?.textContent).toContain('manualmente');expect(document.querySelector('code')?.textContent).toBe('Nova-secreta')
+})
+
+test('resultado vazio oferece recuperação no rodapé e filtros possuem região nomeada', async () => {
+  await montar()
+  expect(document.querySelector('section[aria-label="Filtros de usuários"]')).not.toBeNull()
+  await preencher('busca', 'sem resultado')
+  const titulo = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Nenhum usuário encontrado')!
+  const card = titulo.closest('[data-slot=card]')!
+  expect(card).not.toBeNull()
+  await clicar('Limpar filtros', card.querySelector('[data-slot=card-footer]')!)
+  expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
+})
+
+test('papel continua radio nativo acessível e segue no formulário enviado', async () => {
+  await montar()
+  await clicar('Novo usuário')
+  const gestor = document.querySelector<HTMLInputElement>('input[type=radio][value=gestor]')!
+  expect(gestor.labels?.[0].textContent).toContain('Gestor')
+  await act(async () => gestor.click())
+  expect(gestor.checked).toBe(true)
+  expect(new FormData(document.querySelector('[role=dialog] form') as HTMLFormElement).get('papel')).toBe('gestor')
+  await clicar('Cancelar')
 })

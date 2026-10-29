@@ -9,13 +9,25 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await expect(page.getByRole('main').locator('input')).toHaveCount(0)
   for(const tema of ['light','dark']){
     await page.getByRole('combobox',{name:'Tema do Funil'}).selectOption(tema)
-    for(const width of [390,820,1280]){
+    for(const width of [390,820,1280,1920]){
       await page.setViewportSize({width,height:844})
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-      await page.screenshot({path:`test-results/funil-${tema}-${width}.png`,fullPage:true})
-      await page.getByRole('button',{name:/Funil Aurora/}).click()
+      await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-${tema}-${width}.png`,fullPage:true,animations:'disabled'})
+      const cardVisual = page.getByRole('button',{name:/Funil Aurora/})
+      await expect(cardVisual).toHaveCSS('border-radius','10px')
+      await expect(cardVisual).toHaveCSS('padding',width<=820?'20px':'24px')
+      await expect(cardVisual.locator('strong')).toHaveCSS('font-size','16px')
+      await expect(cardVisual.locator('strong')).toHaveCSS('line-height','24px')
+      await cardVisual.click()
       const modal=page.getByRole('dialog');await expect(modal).toContainText('Nota própria Aurora');await expect(modal).not.toContainText('SEGREDO DO COLEGA');await expect(modal).not.toContainText('11977778888')
-      await page.screenshot({path:`test-results/funil-modal-${tema}-${width}.png`})
+      await modal.getByRole('tab',{name:'Histórico',exact:true}).click()
+      await expect(modal.getByRole('heading',{name:'Seus atendimentos',exact:true})).toHaveCSS('font-size','18px')
+      await expect(modal.getByRole('heading',{name:'Seus atendimentos',exact:true})).toHaveCSS('line-height','26px')
+      await expect(modal.getByRole('heading',{name:'Seus atendimentos',exact:true})).toHaveCSS('font-weight','600')
+      const tituloModal=(await modal.getByRole('heading',{level:2}).boundingBox())!
+      const fecharModal=(await modal.getByRole('button',{name:'Fechar',exact:true}).boundingBox())!
+      expect(tituloModal.x+tituloModal.width<=fecharModal.x||tituloModal.y+tituloModal.height<=fecharModal.y).toBe(true)
+      await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-modal-${tema}-${width}.png`,animations:'disabled'})
       await page.keyboard.press('Escape');await expect(modal).toHaveCount(0);await expect(page.getByRole('button',{name:/Funil Aurora/})).toBeFocused()
     }
   }
@@ -61,7 +73,7 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   for(const width of [390,1280]){
     await page.setViewportSize({width,height:844})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-    await page.screenshot({path:`test-results/carteira-venda-${width}.png`})
+    await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/carteira-venda-${width}.png`,animations:'disabled'})
   }
   await page.getByRole('button',{name:'Conferir venda'}).click()
   await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
@@ -69,7 +81,7 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await expect(page.getByRole('main')).toContainText('250,50')
   await expect(page.getByRole('main')).toContainText('Segunda compra')
   await expect(page.getByRole('main').getByText('Venda registrada',{exact:true})).toHaveCount(2)
-  await page.screenshot({path:'test-results/carteira-historico-vendas.png',fullPage:true})
+  await page.screenshot({path:'.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/carteira-historico-vendas.png',fullPage:true,animations:'disabled'})
   await page.goto('/meu-dia');await expect(page.getByRole('main')).toContainText('Funil Aurora')
   const c=new Client({connectionString:process.env.DATABASE_URL_ADMIN});await c.connect();try{expect((await c.query('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[FUNIL_EMPRESA])).rows[0].n).toBe(2)}finally{await c.end()}
 })

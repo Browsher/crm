@@ -127,3 +127,31 @@ describe('Formulario', () => {
     expect(saida).not.toMatch(/<form[^>]*>(?:(?!<\/form>)[\s\S])*<form/)
   })
 })
+
+
+test('sem reserva mantém ação de puxar no rodapé e submitter com filtros e contexto', async () => {
+  estado.atual = { erro: null, filaVazia: false }
+  memoria.entradas = {}
+  const host = document.createElement('div')
+  document.body.append(host)
+  const root = createRoot(host)
+  const filtros = { nome:'Luz & Cia',cnae:'4742300',uf:'SP',cidade:null,bairro:null,pagina:1,grupo:null }
+  try {
+    await act(async () => root.render(<Formulario reserva={null} contatos={[]} contexto="versao" filtros={filtros} />))
+    const botao = host.querySelector<HTMLButtonElement>('button[name="acao"]')!
+    expect(botao.closest('[data-slot="card-footer"]')).not.toBeNull()
+    expect(botao.type).toBe('submit')
+    expect(botao.name).toBe('acao')
+    expect(botao.value).toBe('puxar')
+    const form = botao.form!
+    expect(host.querySelectorAll('form')).toHaveLength(1)
+    expect(new FormData(form,botao).get('contexto')).toBe('versao')
+    expect(new FormData(form,botao).get('nome')).toBe('Luz & Cia')
+    expect(new FormData(form,botao).get('acao')).toBe('puxar')
+    await act(async () => root.render(<Formulario reserva={null} contatos={[]} buscaBloqueada />))
+    expect(botao.disabled).toBe(true)
+  } finally {
+    await act(async () => root.unmount())
+    host.remove()
+  }
+})

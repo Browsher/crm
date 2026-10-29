@@ -1,5 +1,9 @@
 # Padrão visual do CRM
 
+Atualização de 22/10/2026: a nova direção visual aprovada está em
+[Redesenho completo do CRM](2026-10-22-redesign-crm-design.md). Este documento
+permanece como referência histórica e de requisitos operacionais preservados.
+
 Estado: galeria aprovada pelo usuário em 11/09/2026, após os ajustes de cards,
 avisos e diálogo descritos abaixo. Este padrão passa a ser a referência para
 a aplicação visual na Fila. A galeria não altera as telas operacionais.

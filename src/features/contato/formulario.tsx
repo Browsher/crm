@@ -5,6 +5,7 @@ import { registrarContatoAcao, type EstadoContato } from './acao'
 import { DESFECHO_SUGERIDO, EXIGE_POSSE, ROTULO, TIPOS_CONTATO, type TipoContato } from './tipos'
 import { rascunhoInicial, type RascunhoContato } from './rascunho'
 import { Button } from '@/src/components/ui/button'
+import { Choice } from '@/src/components/ui/choice'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
 import { Textarea } from '@/src/components/ui/textarea'
@@ -65,10 +66,10 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
   // aviso era fixo por posse e mentia em `interessado`, que assume a empresa em
   // vez de devolvê-la — achado da verificação manual.
   const desfecho = DESFECHO_SUGERIDO[tipo]
-  const CampoTexto = visual === 'fila' ? Input : 'input'
-  const CampoNota = visual === 'fila' ? Textarea : 'textarea'
-  const Rotulo = visual === 'fila' ? Label : 'label'
-  const Botao = visual === 'fila' ? Button : 'button'
+  const CampoTexto = Input
+  const CampoNota = Textarea
+  const Rotulo = Label
+  const Botao = Button
 
   return (
     <form data-visual={visual} action={agir} onSubmit={evento => {
@@ -78,57 +79,57 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
       <input type="hidden" name="posse" value={posse ? 'sim' : 'nao'} />
       {voltarPara ? <input type="hidden" name="voltarPara" value={voltarPara} /> : null}
 
-      {estado.erro ? visual === 'fila' ? (
+      {estado.erro ? (
         <Alert variant="danger">
           <AlertTitle>Não foi possível registrar</AlertTitle>
           <AlertDescription>{estado.erro}</AlertDescription>
         </Alert>
-      ) : <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm">{estado.erro}</p> : null}
+      ) : null}
 
-      <fieldset className="flex flex-col gap-1">
+      <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">O que aconteceu na ligação</legend>
         {oferecidos.map((t) => (
-          <label key={t} className="flex items-center gap-2 text-sm">
-            <input type="radio" disabled={pendente || somenteLeitura} name="tipo" value={t} checked={tipo === t} onChange={() => alterar({ tipo: t })} />
+          <label key={t} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-border px-3 py-2 text-sm has-checked:border-primary has-checked:bg-success-background">
+            <Choice type="radio" disabled={pendente || somenteLeitura} name="tipo" value={t} checked={tipo === t} onChange={() => alterar({ tipo: t })} />
             {ROTULO[t]}
           </label>
         ))}
       </fieldset>
 
-      <div className="flex flex-col gap-1 text-sm">
+      <div className="flex flex-col gap-2 text-sm">
         <Rotulo htmlFor={`${camposId}-nota`}>Nota</Rotulo>
-        <CampoNota id={`${camposId}-nota`} name="nota" readOnly={pendente || somenteLeitura} rows={2} value={atual.nota} onChange={e => alterar({ nota: e.target.value })} className="rounded border p-2" />
+        <CampoNota id={`${camposId}-nota`} name="nota" readOnly={pendente || somenteLeitura} rows={2} value={atual.nota} onChange={e => alterar({ nota: e.target.value })} />
       </div>
 
       {posse ? (
         <>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-2 text-sm">
             Próximo passo
-            <CampoTexto type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="text" name="proximoPasso" readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-2 text-sm">
             Data do próximo passo
-            <CampoTexto type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="date" name="proximoPassoData" readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} />
           </label>
         </>
       ) : (
         <>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-2 text-sm">
             {tipo === 'retornar_depois' ? 'Combinado' : 'Combinado (opcional)'}
-            <CampoTexto type="text" name="proximoPasso" required={tipo === 'retornar_depois'} readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="text" name="proximoPasso" required={tipo === 'retornar_depois'} readOnly={pendente || somenteLeitura} value={atual.proximoPasso} onChange={e => alterar({ proximoPasso: e.target.value })} />
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label className="flex flex-col gap-2 text-sm">
             {tipo === 'retornar_depois' ? 'Data combinada' : 'Data combinada (opcional)'}
-            <CampoTexto type="date" name="proximoPassoData" required={tipo === 'retornar_depois'} readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} className="rounded border p-2" />
+            <CampoTexto type="date" name="proximoPassoData" required={tipo === 'retornar_depois'} readOnly={pendente || somenteLeitura} value={atual.proximoPassoData} onChange={e => alterar({ proximoPassoData: e.target.value })} />
           </label>
           {desfecho === 'devolver' ? (
             /* A promessa que o sistema NÃO cumpre, dita com todas as letras.
                Sem esta frase o vendedor acredita que agendou alguma coisa. */
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-muted-foreground">
               A empresa volta para a fila em 30 dias. A data fica registrada no histórico e não agenda nada.
             </p>
           ) : (
-            <p className="text-sm text-neutral-600">
+            <p className="text-sm text-muted-foreground">
               A empresa vai para o seu Funil, e o combinado passa a valer como próximo passo.
             </p>
           )}
@@ -137,16 +138,15 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
 
       {comDevolver ? (
         <>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-muted-foreground">
           Devolver tira a empresa da sua carteira e ela volta para a fila em 30 dias.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Botao
             type="submit"
             name="desfecho"
             value={desfecho}
             disabled={pendente || bloqueado}
-            className="rounded border px-3 py-2 text-sm font-medium"
           >
             {pendente ? 'Registrando…' : 'Registrar'}
           </Botao>
@@ -155,7 +155,7 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
             name="desfecho"
             value="devolver"
             disabled={pendente || bloqueado}
-            className="rounded border px-3 py-2 text-sm"
+            variant="outline"
           >
             Registrar e devolver
           </Botao>
@@ -167,7 +167,7 @@ export function FormularioContato({ empresaId, posse, comDevolver, tipoInicial, 
           <Botao
             type="submit"
             disabled={pendente || bloqueado}
-            className="self-start rounded border px-3 py-2 text-sm font-medium"
+            className="self-start"
           >
             {pendente ? 'Registrando…' : 'Registrar'}
           </Botao>

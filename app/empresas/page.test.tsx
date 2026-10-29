@@ -7,7 +7,7 @@ import { listarEmpresas, listarOpcoesEmpresas } from '@/src/features/empresas/li
 
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: vi.fn() }))
 vi.mock('@/src/features/empresas/listagem', () => ({ listarEmpresas: vi.fn(), listarOpcoesEmpresas: vi.fn() }))
-vi.mock('next/navigation', () => ({ redirect: vi.fn(), useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('next/navigation', () => ({ redirect: vi.fn(), useRouter: () => ({ push: vi.fn() }), usePathname: () => '/empresas' }))
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(exigir).mockResolvedValue({ usuarioId: 'gestor', nome: 'Ana', papel: 'gestor' } as Awaited<ReturnType<typeof exigir>>)
@@ -35,6 +35,7 @@ test('busca tem nome acessível, conserva termo e reinicia paginação', async (
 test('filtro inválido exibe aviso sem consultar banco', async () => {
   const html = renderToStaticMarkup(await PaginaEmpresas({ searchParams: Promise.resolve({ cidade: '3550308' }) }))
   expect(html).toContain('Não foi possível aplicar os filtros')
+  expect(html).toContain('data-slot="alert"')
   expect(listarEmpresas).not.toHaveBeenCalled()
   expect(listarOpcoesEmpresas).not.toHaveBeenCalled()
 })
@@ -48,4 +49,15 @@ test('layout exige gestor antes de renderizar o shell', async () => {
 test('layout não renderiza conteúdo se guarda recusa acesso', async () => {
   vi.mocked(exigir).mockRejectedValue(new Error('acesso recusado'))
   await expect(LayoutEmpresas({ children: 'Tabela' })).rejects.toThrow('acesso recusado')
+})
+
+
+test('falha de consulta usa alerta e zero empresas usa Card com ação no rodapé', async () => {
+  const vazio = renderToStaticMarkup(await PaginaEmpresas({ searchParams: Promise.resolve({}) }))
+  expect(vazio).toContain('Nenhuma empresa encontrada')
+  expect(vazio).toMatch(/data-slot="card-footer"[\s\S]*href="\/empresas"/)
+  vi.mocked(listarEmpresas).mockResolvedValue({ ok: false, motivo: 'sem_permissao' })
+  const falha = renderToStaticMarkup(await PaginaEmpresas({ searchParams: Promise.resolve({}) }))
+  expect(falha).toContain('data-slot="alert"')
+  expect(falha).not.toContain('Nenhuma empresa encontrada')
 })

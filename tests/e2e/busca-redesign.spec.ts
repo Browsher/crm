@@ -1,0 +1,162 @@
+import { execFileSync } from 'node:child_process'
+import { mkdirSync } from 'node:fs'
+import { resolve } from 'node:path'
+const capturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-5-captures')
+mkdirSync(capturas, { recursive: true })
+import { expect, test, type Page } from '@playwright/test'
+import { comBancoGrupos } from './dados-grupos'
+
+async function entrar(page: Page, apelido = 'redesigne2e') {
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill(`${apelido}@teste.local`)
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL(apelido === 'gestore2e' ? '/gestao' : '/meu-dia')
+}
+
+test('acesso à busca e localização convivem no redesign da Prospecção', async ({ page }) => {
+  test.setTimeout(60_000)
+  await entrar(page)
+  await page.goto('/fila')
+  await expect(page.getByRole('button', { name: 'Localizar empresas', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Planejar buscas', exact: true }).click()
+  await expect(page).toHaveURL('/fila/google')
+  await expect(page.getByRole('heading', { name: 'Buscas no Google', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Editar planejamento', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Voltar às opções', exact: true }).click()
+  await page.getByRole('link', { name: 'Buscar novas empresas', exact: true }).click()
+  await expect(page).toHaveURL('/fila/buscar?fonte=banco')
+  await expect(page.getByRole('link', { name: 'Localizar todas as empresas', exact: true })).toHaveAttribute('href', '/fila/localizar?origem=banco')
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const tema of ['light', 'dark']) {
+      await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      await page.screenshot({ path: resolve(capturas, `busca-cnpj-${width}-${tema}.png`), fullPage: true })
+    }
+  }
+})
+
+test('consulta simulada persiste, não repete no refresh e importa dados nas abas', async ({ page, browser }) => {
+  test.setTimeout(90_000)
+  await entrar(page)
+  await page.goto('/fila/buscar')
+  await expect(page.getByRole('button', { name: 'Buscar empresas', exact: true })).toBeEnabled()
+  await page.getByLabel('Nome ou palavra-chave', { exact: true }).fill('iluminação')
+  await page.getByLabel('CNAEs principais', { exact: true }).fill('4742300')
+  await page.getByRole('button',{name:'Localização',exact:true}).click()
+  await page.getByRole('combobox', { name: 'Estado', exact: true }).selectOption('SP')
+  await page.getByRole('button',{name:'Resultados e dados retornados',exact:true}).click()
+  await page.getByLabel('Nome da lista', { exact: true }).fill('Nova consulta integrada fictícia')
+  await page.getByRole('spinbutton', { name: /^Quantidade de empresas/ }).fill('2')
+  await page.getByRole('button', { name: 'Buscar empresas', exact: true }).click()
+  await expect(page).toHaveURL(/busca=[0-9a-f-]{36}/)
+  const buscaId = new URL(page.url()).searchParams.get('busca')!
+  const chamadas = async () => (await (await fetch(process.env.CNPJ_BIZ_MOCK_URL + '/estatisticas')).json()).consultas
+  const chamadasDepois = await chamadas()
+  const popup = page.getByRole('dialog', { name: 'Nova consulta integrada fictícia', exact: true })
+  await expect(popup).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true })).toBeVisible()
+  await expect(popup.getByRole('checkbox')).toHaveCount(0)
+  await expect(popup).toContainText('automaticamente')
+  await expect(popup.getByRole('link', { name: 'Prospectar esta lista', exact: true })).toBeVisible()
+  const conferir = () => comBancoGrupos(async c => (await c.query(
+    `SELECT b.estado,b.fornecedor,b.quantidade,(b.empresas->0->>'bloqueada_por_repeticao')::boolean bloqueada,jsonb_array_length(b.empresas) AS retornadas,
+      (SELECT count(*)::int FROM busca_empresa WHERE usuario_id=b.usuario_id AND nome=b.nome) AS tentativas
+     FROM busca_empresa b WHERE b.id=$1`, [buscaId])).rows[0])
+  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
+  await page.reload()
+  await expect(popup).toBeVisible()
+  expect(await chamadas()).toBe(chamadasDepois)
+  expect(await conferir()).toEqual({ estado: 'concluida', fornecedor: 'Casa dos Dados', quantidade: 2, bloqueada: false, retornadas: 2, tentativas: 1 })
+  await expect(popup.getByRole('checkbox')).toHaveCount(0)
+  const empresa = await comBancoGrupos(async c => (await c.query('SELECT id FROM empresa WHERE cnpj=$1', ['99887766000105'])).rows[0])
+  await page.goto('/fila/localizar/' + empresa.id)
+  await expect(page.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
+  // Importar não transfere posse. A ficha abaixo usa uma posse criada somente
+  // na fixture, como as demais jornadas de Carteira; o fluxo de reserva tem E2E próprio.
+  await comBancoGrupos(async c => {
+    const fila = (await c.query('SELECT vendedor_id FROM empresa_fila WHERE empresa_id=$1', [empresa.id])).rows[0]
+    expect(fila?.vendedor_id ?? null).toBeNull()
+    await c.query(`INSERT INTO empresa_fila(empresa_id,vendedor_id)
+      SELECT $1,id FROM usuario WHERE email='redesigne2e@teste.local'
+      ON CONFLICT(empresa_id) DO UPDATE SET vendedor_id=excluded.vendedor_id`, [empresa.id])
+  })
+  await page.goto('/carteira/' + empresa.id)
+  const dados = page.getByRole('tabpanel', { name: 'Dados da empresa', exact: true })
+  await expect(dados.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).not.toBeVisible()
+  await page.getByRole('tab', { name: 'Dados da empresa', exact: true }).click()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const tema of ['light', 'dark']) {
+      await page.getByLabel('Tema da Carteira').selectOption(tema)
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      await page.screenshot({ path: resolve(capturas, `ficha-cnpj-${width}-${tema}.png`), fullPage: true })
+    }
+  }
+  const contextoGestor = await browser.newContext()
+  try {
+    const gestor = await contextoGestor.newPage()
+    await entrar(gestor, 'gestore2e')
+    await gestor.goto('/empresas/' + empresa.id)
+    await expect(gestor.getByRole('tabpanel', { name: 'Dados da empresa', exact: true }).getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
+    await gestor.getByRole('tab', { name: 'Histórico', exact: true }).click()
+    await expect(gestor.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).not.toBeVisible()
+    await gestor.goto('/empresas/busca')
+    await expect(gestor.getByRole('navigation', { name: 'Localização atual' })).toContainText('Busca de empresas')
+    for (const width of [1440, 390]) {
+      await gestor.setViewportSize({ width, height: 900 })
+      for (const tema of ['light', 'dark']) {
+        await gestor.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
+        await expect.poll(() => gestor.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+        await gestor.screenshot({ path: resolve(capturas, `gestao-cnpj-${width}-${tema}.png`), fullPage: true })
+      }
+    }
+  } finally { await contextoGestor.close() }
+})
+
+
+test('Choice conserva transporte nativo por label, Espaço e teclado do grupo radio', async ({ page }) => {
+  await entrar(page)
+  await page.goto('/fila/buscar?fonte=banco')
+  await page.getByRole('button', { name: 'Contatos e qualidade', exact: true }).click()
+  const evitar = page.getByLabel('Evitar emails de contabilidade', { exact: true })
+  const formBusca = page.locator('form').filter({ has: evitar })
+  const qualidade = () => formBusca.evaluate(el => JSON.parse(String(new FormData(el as HTMLFormElement).get('avancados'))).semEmailContabil)
+  expect(await qualidade()).toBe(false)
+  await evitar.focus()
+  await page.keyboard.press('Space')
+  expect(await qualidade()).toBe(true)
+  await page.getByText('Evitar emails de contabilidade', { exact: true }).click()
+  expect(await qualidade()).toBe(false)
+  expect((await evitar.locator('..').boundingBox())!.height).toBeGreaterThanOrEqual(44)
+
+  // Como em design-system.spec.ts, Node/tsx evita a transformação JSX do Playwright.
+  // Radio ainda não tem consumidor migrado nestas telas.
+  const html = execFileSync(process.execPath, ['--import', 'tsx', '--eval', `
+    const { createElement: h } = require('react')
+    const { renderToStaticMarkup } = require('react-dom/server')
+    const { Choice } = require('./src/components/ui/choice')
+    process.stdout.write(renderToStaticMarkup(h('form', { id: 'choice-contrato', className: 'crm-ui' },
+      h('label', null, h(Choice, { type: 'radio', name: 'regiao', value: 'SP', defaultChecked: true }), 'São Paulo de teste'),
+      h('label', null, h(Choice, { type: 'radio', name: 'regiao', value: 'RJ' }), 'Rio de Janeiro de teste'),
+    )))
+  `], { encoding: 'utf8' })
+  await page.locator('body').evaluate((body, markup) => body.insertAdjacentHTML('beforeend', markup), html)
+  const form = page.locator('#choice-contrato')
+  const valores = () => form.evaluate(el => [...new FormData(el as HTMLFormElement).entries()])
+  expect(await valores()).toEqual([['regiao', 'SP']])
+  await page.getByLabel('São Paulo de teste', { exact: true }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByLabel('Rio de Janeiro de teste', { exact: true })).toBeChecked()
+  expect(await valores()).toEqual([['regiao', 'RJ']])
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Shift+Tab')
+  const foco = await page.getByLabel('Rio de Janeiro de teste', { exact: true }).evaluate(el => {
+    const css = getComputedStyle(el)
+    return { largura: css.outlineWidth, afastamento: css.outlineOffset, estilo: css.outlineStyle, sombra: css.boxShadow }
+  })
+  expect(foco).toEqual({ largura: '3px', afastamento: '3px', estilo: 'solid', sombra: 'none' })
+})

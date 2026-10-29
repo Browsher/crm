@@ -1,3 +1,5 @@
+import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
+import { Alert, AlertTitle, AlertDescription } from '@/src/components/ui/alert'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { aplicarFiltrosEmpresas, destinoCanonico, lerConsulta, totalDePaginas } from '@/src/features/empresas/consulta'
@@ -24,15 +26,11 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
   if (!filtros.ok) {
     return (
       <main className={styles.pagina}>
-        <header className={styles.cabecalho}>
-          <div><h1>Empresas</h1><p>Consulte os cadastros e importe novas empresas.</p></div>
-          <div className={styles.acoesFiltros}><Button variant="outline" asChild><Link href="/empresas/grupos">Grupos de importação</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button></div>
-        </header>
-        <div role="alert" className={styles.vazio}>
-          <h2>Não foi possível aplicar os filtros</h2>
-          <p>Revise os filtros informados e tente novamente.</p>
-          <Link href="/empresas">Limpar filtros</Link>
-        </div>
+        <CabecalhoPagina titulo="Empresas" descricao="Consulte os cadastros e importe novas empresas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/busca">Busca de empresas</Link></Button><Button variant="outline" asChild><Link href="/empresas/grupos">Listas de empresas</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button> </>} />
+        <Alert variant="danger"><AlertTitle><h2>Não foi possível aplicar os filtros</h2></AlertTitle>
+          <AlertDescription>Revise os filtros informados e tente novamente.</AlertDescription>
+          <Button asChild variant="outline"><Link href="/empresas">Limpar filtros</Link></Button>
+        </Alert>
       </main>
     )
   }
@@ -43,15 +41,12 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
   ])
   return (
     <main className={styles.pagina}>
-      <header className={styles.cabecalho}>
-        <div><h1>Empresas</h1><p>Consulte os cadastros e importe novas empresas.</p></div>
-        <div className={styles.acoesFiltros}><Button variant="outline" asChild><Link href="/empresas/grupos">Grupos de importação</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button></div>
-      </header>
+      <CabecalhoPagina titulo="Empresas" descricao="Consulte os cadastros e importe novas empresas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/busca">Busca de empresas</Link></Button><Button variant="outline" asChild><Link href="/empresas/grupos">Listas de empresas</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button> </>} />
       {resultadoOpcoes.ok ? <Formulario consulta={consulta} opcoes={resultadoOpcoes.opcoes} /> : (
-        <div role="alert" className={styles.vazio}><p>{textoDoMotivo(resultadoOpcoes.motivo)}</p></div>
+        <Alert variant="danger">{textoDoMotivo(resultadoOpcoes.motivo)}</Alert>
       )}
       {!resultado.ok ? (
-        <div role="alert" className={styles.vazio}><h2>Não foi possível consultar as empresas</h2><p>{textoDoMotivo(resultado.motivo)}</p><Link href="/empresas">Voltar para empresas</Link></div>
+        <Alert variant="danger"><AlertTitle><h2>Não foi possível consultar as empresas</h2></AlertTitle><AlertDescription>{textoDoMotivo(resultado.motivo)}</AlertDescription><Button asChild variant="outline"><Link href="/empresas">Voltar para empresas</Link></Button></Alert>
       ) : resultadoOpcoes.ok ? (
         <>
           <p className={styles.contagem}>

@@ -1,5 +1,7 @@
 # Coletor da campanha local
 
+AVISO — LEGADO V1 HISTÓRICO (14–16/10/2026). Este documento preserva contratos e relatos da V1; não descreve a operação atual nem autoriza coleta, importação, instalação ou reinstalação. A rotina das 09h, a fila global, o WhatsApp obrigatório para exportar e o manifesto CRM_DRIVE_V1 pertencem à V1 histórica. O Google V2 vigente usa planejamento por vendedor e rotina das 17h; consulte [Agente Google CRM](../../docs/operacao/agente-google-crm.md) e [Rotina do agente Google](../../docs/operacao/agente-google-rotina.md). Resultados e pendências relatados em 16/10 são evidências daquela data, sem afirmar o estado atual. Os procedimentos abaixo são referência histórica, não próximos passos operacionais. O motor Node, exportar_csv.mjs e o kit instalado são fronteiras externas: não foram copiados para este repositório e sua execução real não é coberta pelos testes offline.
+
 Cópia revisável de `coletor.py` e `verificar_coleta.py` da campanha existente.
 A configuração real, o motor, o exportador, os downloads, o histórico e as credenciais continuam na instalação local. `campanha.exemplo.json` contém somente configuração de exemplo, os 25 bairros legados e termos públicos de pesquisa.
 
@@ -59,30 +61,8 @@ O workflow confere lote, hash e IDs antes de operar. Uma publicação já valida
 
 Se a resposta for incerta, não reenviar. O agente deve conferir as notas/dados da exportação e o arquivo no Drive, gerar um resultado JSON correspondente ao mesmo lote/hash e usar a opção `--reconciliar <resultado.json>`, que não envia rede. Sem evidência de conclusão, preservar pendência e resolver antes de buscar outro bairro. A conferência do arquivo final mantém os dois CSVs na mesma pasta da coleta.
 
-## Instalação após revisão
+## Fronteiras históricas e verificação offline
 
-No n8n, manter desativada a gravação de execuções com sucesso, com erro, manuais e de progresso desta variante privada. Colar os nós no canvas não importa as configurações do JSON: conferir os quatro ajustes em Do not save depois de salvar e reabrir. O comprovante local e os arquivos no Drive conservam o resultado sem o cabeçalho de autenticação.
+A instalação local de 16/10 mantinha motor Node, `exportar_csv.mjs`, configuração, histórico, downloads e credenciais fora do repositório. Esta cópia não inclui esse kit e não oferece receita de reinstalação. Os testes substituem essas fronteiras por mocks; não provam funcionamento da exportação Node instalada nem do motor real.
 
-Instalar as fontes revisadas `coletor.py`, `verificar_coleta.py`, `arquivo_drive.py`, `disparar_workflow.py` e as instruções atualizadas. Não substituir `campanha.json`, `historico.json`, `coletas`, motor, exportador ou credenciais. O controlador executa a instalação; este bloco é a receita revisável e não foi executado pela tarefa do coletor.
-
-```powershell
-$origem = 'C:\Users\ADM\.codex\worktrees\producao-vercel\crm\scripts\prospeccao-campanha'
-$destino = 'C:\Users\ADM\Desktop\Web Scraping\armarinhos'
-$reserva = Join-Path $destino ('fontes-anteriores-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-New-Item -ItemType Directory -Path $reserva | Out-Null
-foreach ($arquivo in @('coletor.py', 'verificar_coleta.py', 'arquivo_drive.py', 'disparar_workflow.py', 'INSTRUCOES.txt')) {
-    if (Test-Path -LiteralPath (Join-Path $destino $arquivo)) {
-        Copy-Item -LiteralPath (Join-Path $destino $arquivo) -Destination (Join-Path $reserva $arquivo)
-    }
-    Copy-Item -LiteralPath (Join-Path $origem $arquivo) -Destination (Join-Path $destino $arquivo)
-    if ((Get-FileHash -LiteralPath (Join-Path $origem $arquivo)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $destino $arquivo)).Hash) {
-        throw ('Cópia divergente: ' + $arquivo)
-    }
-}
-```
-
-A conferência de uma coleta pronta usa a pasta indicada pelo resumo:
-
-```powershell
-& $python -X utf8 (Join-Path $campanha 'verificar_coleta.py') (Join-Path $campanha 'coletas\AAAA-MM-DD_centro_guarulhos_sp')
-```
+Para revisão desta cópia, use somente a suíte isolada acima, com fixtures públicas e diretórios temporários. Os exemplos operacionais anteriores documentam a interface V1 e não autorizam executar coleta, piloto, publicação, disparo de webhook ou instalação. Os guias Google V2 indicados no aviso são a referência da rotina vigente.

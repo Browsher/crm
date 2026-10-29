@@ -69,27 +69,34 @@ async function tabAte(page: Page, alvo: Locator, maximo = 30) {
 async function conferirTamanhos(page: Page, tela: string) {
   for (const tema of ['light', 'dark'] as const) {
     await page.getByRole('combobox', { name: 'Tema do Meu dia' }).selectOption(tema)
-    for (const width of [390, 820, 1280]) {
+    for (const width of [390, 820, 1280, 1920]) {
       await page.setViewportSize({ width, height: 844 })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 
+      const lista = page.getByTestId('lista-meu-dia')
+      if (width <= 820) {
+        await expect(lista).toBeVisible()
+        await lista.getByRole('button').first().click()
+        await expect(lista).toBeHidden()
+      }
       // "Abrir atendimento" precisa existir e caber inteiro na largura, dos
       // dois lados: nem cortado à direita, nem começando fora à esquerda.
       const abrir = page.getByRole('link', { name: 'Abrir atendimento', exact: true })
       await expect(abrir).toBeVisible()
+      await expect(page.getByRole('article')).toHaveCSS('border-radius', '10px')
+      await expect(page.getByRole('article')).toHaveCSS('padding', width <= 820 ? '20px' : '24px')
       const caixa = (await abrir.boundingBox())!
       expect(caixa.x).toBeGreaterThanOrEqual(0)
       expect(caixa.x + caixa.width).toBeLessThanOrEqual(width)
 
-      if (width === 390) {
-        // Empilhamento de verdade no celular: o perfil começa depois do fim
-        // da lista, não ao lado dela.
-        const listaBox = (await page.getByTestId('lista-meu-dia').boundingBox())!
-        const perfilBox = (await perfilAtual(page).boundingBox())!
-        expect(perfilBox.y).toBeGreaterThanOrEqual(listaBox.y + listaBox.height)
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/meu-dia-${tela}-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
+      if (width <= 820) {
+        await page.getByRole('button', { name: 'Voltar para retornos', exact: true }).click()
+        await expect(lista).toBeVisible()
+        await expect(lista.getByRole('button').first()).toBeFocused()
+      } else {
+        await expect(lista).toBeVisible()
       }
-
-      await page.screenshot({ path: `test-results/meu-dia-${tela}-${tema}-${width}.png`, fullPage: true })
     }
   }
 }
@@ -250,6 +257,8 @@ test('Reagendar para o futuro pela ficha tira a empresa da agenda e mantém na C
   await page.getByLabel('Próximo passo', { exact: true }).fill('Retomar contato mais adiante')
   await page.getByLabel('Data do próximo passo', { exact: true }).fill(await dataCivilFutura(7))
   await page.getByRole('button', { name: 'Registrar', exact: true }).click()
+  await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(page.getByText('Reagendado para o futuro pelo Meu dia', { exact: true })).toBeVisible()
 
   await page.getByRole('link', { name: 'Voltar para o Meu dia', exact: true }).click()
@@ -267,6 +276,7 @@ test('Devolver pela ficha com filtros ativos some da agenda e da Carteira, e vol
   await page.getByLabel('Nome', { exact: true }).fill('Devolucao')
   await page.getByLabel('Retorno', { exact: true }).selectOption('atrasado')
   await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
+  await expect(page).toHaveURL(/nome=Devolucao.*retorno=atrasado/)
   const filtros = new URL(page.url()).search
   const lista = page.getByTestId('lista-meu-dia')
   await expect(lista.getByRole('button')).toHaveCount(1)

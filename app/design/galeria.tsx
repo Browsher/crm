@@ -11,9 +11,14 @@ import { Label } from '@/src/components/ui/label'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Skeleton } from '@/src/components/ui/skeleton'
 import { Textarea } from '@/src/components/ui/textarea'
+import { AbasFicha } from '@/src/components/crm/abas-ficha'
+import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
+import { EstadoVazio } from '@/src/components/crm/estado-vazio'
+import { PainelFiltros } from '@/src/components/crm/painel-filtros'
+import { useTemaCrm } from '@/src/components/crm/tema'
+import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/src/components/ui/table'
 import styles from './galeria.module.css'
 
-type Tema = 'light' | 'dark' | 'system'
 type Etapa = 0 | 1 | 2
 
 const secoes = [
@@ -21,6 +26,8 @@ const secoes = [
   ['botoes', 'Botões'],
   ['filtros', 'Filtros'],
   ['empresas', 'Empresas'],
+  ['tabelas', 'Tabelas'],
+  ['ficha', 'Ficha e histórico'],
   ['avisos', 'Avisos'],
   ['dialogo', 'Diálogo'],
   ['fluxo', 'Fluxo simulado'],
@@ -35,8 +42,7 @@ const empresas = [
 const filtrosIniciais = { nome: '', cnae: '', uf: '', cidade: '', bairro: '' }
 
 export function Galeria() {
-  const [tema, setTema] = useState<Tema>('system')
-  const [menuAberto, setMenuAberto] = useState(false)
+  const tema = useTemaCrm()
   const [resposta, setResposta] = useState('')
   const [respostaFiltros, setRespostaFiltros] = useState('')
   const [respostaDialogo, setRespostaDialogo] = useState('')
@@ -81,48 +87,24 @@ export function Galeria() {
   }
 
   return (
-    <div className={`crm-ui ${styles.shell}`} data-theme={tema}>
-      <aside className={`${styles.sidebar} ${menuAberto ? styles.sidebarOpen : ''}`} aria-label="Seções da galeria">
-        <div className={styles.brand}>
-          <span className={styles.brandMark} aria-hidden="true">C</span>
-          <div><strong>CRM</strong><span>Referência visual</span></div>
-        </div>
-        <nav>
-          {secoes.map(([id, nome]) => (
-            <a key={id} href={`#${id}`} onClick={() => setMenuAberto(false)}>{nome}</a>
-          ))}
-        </nav>
-      </aside>
-
-      <div className={styles.workspace}>
-        <header className={styles.topbar}>
-          <Button variant="ghost" size="icon" className={styles.menuButton} aria-label="Abrir menu" aria-expanded={menuAberto} onClick={() => setMenuAberto((aberto) => !aberto)}>
-            <span aria-hidden="true">☰</span>
-          </Button>
-          <div className={styles.topbarTitle}>Padrão visual</div>
-          <div className={styles.themeControl}>
-            <Label htmlFor="tema">Tema</Label>
-            <NativeSelect id="tema" aria-label="Tema da galeria" value={tema} onChange={(evento) => setTema(evento.target.value as Tema)}>
-              <option value="system">Sistema</option>
-              <option value="light">Claro</option>
-              <option value="dark">Escuro</option>
-            </NativeSelect>
-          </div>
-        </header>
-
-        <main className={styles.main}>
-          <div className={styles.intro}>
-            <div>
-              <h1>Galeria do CRM</h1>
-              <p>Componentes para uma rotina de prospecção clara, calma e direta.</p>
-            </div>
-            <Badge variant="outline">Somente demonstração</Badge>
-          </div>
+    <main className={styles.main}>
+      <CabecalhoPagina titulo="Galeria do CRM" descricao="Componentes para uma rotina de prospecção clara, calma e direta." acoes={<Badge variant="outline">Somente demonstração</Badge>} />
+      <nav className={styles.sectionNav} aria-label="Seções da galeria">
+        {secoes.map(([id, nome]) => <a key={id} href={`#${id}`}>{nome}</a>)}
+      </nav>
 
           <Alert>
             <AlertTitle>Dados fictícios e estado local</AlertTitle>
             <AlertDescription>Os exemplos desta página não consultam, reservam ou alteram empresas reais.</AlertDescription>
           </Alert>
+
+          <section id="ficha" className={styles.section}>
+            <header><h2>Ficha e histórico</h2><p>Informações fictícias para demonstrar as abas do novo padrão.</p></header>
+            <AbasFicha dados={<>
+              <p>Contato principal: Mariana, da Aurora Papelaria. Dados fictícios.</p>
+              <Campo label="Nota da ficha" id="nota-ficha"><Textarea id="nota-ficha" aria-label="Nota da ficha" defaultValue="Cliente pediu retorno após conferir a agenda." /></Campo>
+            </>} historico={<p>Ligação de demonstração: retorno combinado com a responsável.</p>} />
+          </section>
 
           <Secao id="tipografia" titulo="Tipografia" descricao="Hierarquia curta para leitura rápida durante a ligação.">
             <div className={styles.typeSample}>
@@ -146,14 +128,13 @@ export function Galeria() {
           </Secao>
 
           <Secao id="filtros" titulo="Filtros" descricao="Combinações de exemplo para localizar uma empresa.">
-            <div className={styles.filters}>
+            <PainelFiltros acoes={<><Button onClick={() => { setFiltrosAplicados(filtros); setRespostaFiltros('Filtros aplicados aos dados fictícios.') }}>Aplicar filtros</Button><Button variant="outline" onClick={limparFiltros}>Limpar</Button></>}>
               <Campo label="Nome da empresa" id="nome"><Input id="nome" placeholder="Ex.: Aurora Papelaria" value={filtros.nome} onInput={(evento) => setFiltros({ ...filtros, nome: evento.currentTarget.value })} /></Campo>
               <Campo label="CNAE" id="cnae"><NativeSelect id="cnae" value={filtros.cnae} onChange={(evento) => setFiltros({ ...filtros, cnae: evento.target.value })}><option value="">Todos</option><option value="4761-0/03">Comércio varejista de artigos de papelaria</option><option value="5611-2/03">Lanchonetes e casas de chá</option></NativeSelect></Campo>
               <Campo label="Estado" id="estado"><NativeSelect id="estado" value={filtros.uf} onChange={(evento) => setFiltros({ ...filtros, uf: evento.target.value })}><option value="">Todos</option><option value="SP">São Paulo</option><option value="MG">Minas Gerais</option></NativeSelect></Campo>
               <Campo label="Cidade" id="cidade"><NativeSelect id="cidade" value={filtros.cidade} onChange={(evento) => setFiltros({ ...filtros, cidade: evento.target.value })}><option value="">Todas</option><option>Campinas</option><option>Jundiaí</option><option>Sorocaba</option></NativeSelect></Campo>
               <Campo label="Bairro" id="bairro"><NativeSelect id="bairro" value={filtros.bairro} onChange={(evento) => setFiltros({ ...filtros, bairro: evento.target.value })}><option value="">Todos</option><option>Centro</option><option>Cambuí</option></NativeSelect></Campo>
-            </div>
-            <div className={styles.filterActions}><Button onClick={() => { setFiltrosAplicados(filtros); setRespostaFiltros('Filtros aplicados aos dados fictícios.') }}>Aplicar filtros</Button><Button variant="outline" onClick={limparFiltros}>Limpar</Button></div>
+            </PainelFiltros>
             {respostaFiltros && <p className={styles.feedback} role="status">{respostaFiltros}</p>}
             <div className={styles.stateExamples}>
               <Campo label="Telefone com erro" id="telefone"><Input id="telefone" defaultValue="(19) 33" aria-invalid aria-describedby="telefone-erro" /><span id="telefone-erro" className={styles.error}>Informe um telefone com DDD.</span></Campo>
@@ -175,10 +156,19 @@ export function Galeria() {
                 </Card>
               ))}
             </div>
-            {empresasFiltradas.length === 0 && <Card>
-              <CardHeader><CardTitle>Nenhuma empresa encontrada</CardTitle><CardDescription>Altere um filtro para ampliar a busca nos dados fictícios.</CardDescription></CardHeader>
-              <CardFooter><Button variant="outline" size="sm" onClick={limparFiltros}>Limpar filtros</Button></CardFooter>
-            </Card>}
+            {empresasFiltradas.length === 0 && <EstadoVazio titulo="Nenhuma empresa encontrada" descricao="Altere um filtro para ampliar a busca nos dados fictícios." acao={{ rotulo: 'Limpar filtros', variante: 'outline', aoAcionar: limparFiltros }} />}
+          </Secao>
+
+          <Secao id="tabelas" titulo="Tabelas" descricao="Os mesmos registros fictícios em linhas confortáveis, empilhadas no celular.">
+            <Table className="crm-registros" aria-label="Empresas de demonstração">
+              <TableHeader><TableRow><TableHead scope="col">Empresa</TableHead><TableHead scope="col">Localização</TableHead><TableHead scope="col">Situação</TableHead></TableRow></TableHeader>
+              <TableBody>{empresasFiltradas.map(empresa => <TableRow key={empresa.nome}>
+                <TableCell data-label="Empresa"><strong>{empresa.nome}</strong></TableCell>
+                <TableCell data-label="Localização">{empresa.cidade}, {empresa.uf}</TableCell>
+                <TableCell data-label="Situação"><Badge variant={empresa.variante}>{empresa.estado}</Badge>{empresa.detalhe && <p className={styles.companyDetail}>{empresa.detalhe}</p>}</TableCell>
+              </TableRow>)}</TableBody>
+            </Table>
+            {empresasFiltradas.length === 0 && <p role="status">Nenhum registro para os filtros aplicados.</p>}
           </Secao>
 
           <Secao id="avisos" titulo="Avisos e carregamento" descricao="Veja onde cada mensagem entra na tela. As ações abaixo simulam a rotina, sem enviar dados.">
@@ -224,9 +214,7 @@ export function Galeria() {
               {etapa === 1 && <Button onClick={registrarResultado}>Registrar resultado</Button>}
             </div>
           </Secao>
-        </main>
-      </div>
-    </div>
+    </main>
   )
 }
 
