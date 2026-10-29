@@ -35,7 +35,7 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
-  for (const tabela of ['google_execucao','google_exclusividade','google_resultado','google_publicacao','google_planilha_tentativa','google_sincronizacao','google_planejamento','google_rotina','empresa_origem_google','google_grupo','grupo_importacao_empresa','grupo_importacao','empresa_fila','empresa']) await banco.sql('DELETE FROM ' + tabela)
+  for (const tabela of ['google_execucao','google_exclusividade','google_resultado','google_publicacao','google_planilha_tentativa','google_sincronizacao','google_planejamento','google_rotina','empresa_origem_google','google_grupo','grupo_importacao_empresa','grupo_importacao','empresa_vinculo','empresa_fila','empresa']) await banco.sql('DELETE FROM ' + tabela)
 })
 
 test('admite tres vendedores e recusa a quarta reivindicacao concorrente', async () => {

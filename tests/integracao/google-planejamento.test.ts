@@ -59,6 +59,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM google_rotina')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_origem_google')
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
   await banco.sql('UPDATE usuario SET ativo=true,senha_provisoria_pendente=false WHERE id IN ($1,$2)', [vendedor, outro])
@@ -246,7 +247,7 @@ test('ficha central reúne quem solicitou a mesma empresa em pedidos diferentes'
 })
 test('ficha central encontra pendências anteriores por identidade sem associar conflitos', async () => {
   const { repositorioGoogle } = await import('@/src/features/google/repositorio')
-  const [{ id: outraEmpresa }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Outra empresa','11988887777') RETURNING id")
+  const [{ id: outraEmpresa }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Outra empresa','11977776666') RETURNING id")
   await banco.sql('INSERT INTO empresa_origem_google(google_place_id,empresa_id) VALUES ($1,$2)', ['place-outra', outraEmpresa])
   const a = await iniciado()
   const b = await iniciado(outro)
@@ -261,7 +262,7 @@ test('ficha central encontra pendências anteriores por identidade sem associar 
 test('preserva ocorrências excedentes na auditoria e entrega no máximo 50 leads', async () => {
   const { repositorioGoogle } = await import('@/src/features/google/repositorio')
   const id = await iniciado()
-  const encontradas = Array.from({ length: 51 }, (_, i) => ({ ...empresa, cnpj: null, google_place_id: 'place-limite-' + i }))
+  const encontradas = Array.from({ length: 51 }, (_, i) => ({ ...empresa, cnpj: null, google_place_id: 'place-limite-' + i, telefone: '1198888' + String(i).padStart(4, '0'), email: `loja${i}@exemplo.test` }))
   await entregar(id, encontradas)
   expect(await banco.sql("SELECT count(*)::int AS n FROM google_resultado WHERE situacao='entregue'")).toEqual([{ n: 50 }])
   expect(await banco.sql('SELECT count(*)::int AS n FROM google_resultado')).toEqual([{ n: 51 }])

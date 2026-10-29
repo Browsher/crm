@@ -28,6 +28,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM google_grupo')
   await banco.sql('DELETE FROM grupo_importacao_empresa')
   await banco.sql('DELETE FROM grupo_importacao')
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
   await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1', [vendedor])
