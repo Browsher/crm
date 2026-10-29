@@ -1,8 +1,19 @@
 -- ver docs/db/0053.md
 BEGIN;
-CREATE FUNCTION empresa_atendimento_resumo(p_empresa uuid) RETURNS jsonb
+CREATE FUNCTION empresa_atendimento_resumos(p_vendedor uuid,p_empresa uuid DEFAULT NULL) RETURNS TABLE(empresa_id uuid,dados jsonb)
 LANGUAGE sql STABLE SET search_path = '' AS $$
-  SELECT jsonb_build_object(
+  WITH alvos AS MATERIALIZED (
+    SELECT v.empresa_id FROM public.empresa_vinculo v WHERE p_empresa IS NULL AND v.vendedor_id=p_vendedor
+    UNION ALL SELECT p_empresa WHERE p_empresa IS NOT NULL
+  ), banco AS MATERIALIZED (
+    SELECT DISTINCT ON (item->>'cnpj') item->>'cnpj' cnpj,
+      nullif(item->>'bairro','') bairro,nullif(item->>'cidade','') cidade,nullif(item->>'uf','') uf
+    FROM public.busca_empresa b CROSS JOIN LATERAL jsonb_array_elements(b.empresas) item
+    WHERE b.usuario_id=p_vendedor AND b.estado='concluida' AND nullif(item->>'cnpj','') IS NOT NULL
+      AND coalesce(nullif(item->>'bairro',''),nullif(item->>'cidade',''),nullif(item->>'uf','')) IS NOT NULL
+    ORDER BY item->>'cnpj',b.criado_em DESC,b.id DESC
+  )
+  SELECT e.id,jsonb_build_object(
     'referencia',jsonb_build_object('tipo','cadastro','empresaId',e.id),'id',e.id,
     'nome',coalesce(e.nome_fantasia,e.razao_social,'Não informado'),'cnpj',e.cnpj,'cnae',e.cnae_principal,'atividade',NULL,
     'bairro',coalesce(c.bairro,d.bairro,g.bairro,banco.bairro),'cidade',coalesce(c.localidade,d.cidade,g.cidade,banco.cidade),
@@ -23,7 +34,7 @@ LANGUAGE sql STABLE SET search_path = '' AS $$
       WHEN NOT coalesce(u.ativo AND u.papel='vendedor',false) THEN 'responsavel_inativo'
       WHEN NOT public.empresa_origem_ativa(e.id) THEN 'origem_inativa'
       WHEN v.vendedor_id<>public.usuario_atual() THEN 'outro_responsavel' END)
-  FROM public.empresa e LEFT JOIN public.empresa_vinculo v ON v.empresa_id=e.id
+  FROM alvos a JOIN public.empresa e ON e.id=a.empresa_id LEFT JOIN public.empresa_vinculo v ON v.empresa_id=e.id
   LEFT JOIN public.usuario u ON u.id=v.vendedor_id LEFT JOIN public.empresa_vinculo_pendencia pend ON pend.empresa_id=e.id
   LEFT JOIN public.empresa_fila f ON f.empresa_id=e.id LEFT JOIN public.empresa_dados_cadastrais d ON d.empresa_id=e.id
   LEFT JOIN public.cep c ON c.cep=e.cep
@@ -33,12 +44,13 @@ LANGUAGE sql STABLE SET search_path = '' AS $$
     WHERE r.empresa_id=e.id AND r.situacao='entregue' AND p.vendedor_id=v.vendedor_id
       AND coalesce(nullif(r.dados->>'bairro',''),nullif(r.dados->>'cidade',''),nullif(r.dados->>'uf','')) IS NOT NULL
     ORDER BY r.entregue_em DESC,r.id LIMIT 1) g ON true
-  LEFT JOIN LATERAL (SELECT nullif(item->>'bairro','') bairro,nullif(item->>'cidade','') cidade,nullif(item->>'uf','') uf
-    FROM public.busca_empresa b CROSS JOIN LATERAL jsonb_array_elements(b.empresas) item
-    WHERE b.usuario_id=v.vendedor_id AND b.estado='concluida' AND item->>'cnpj'=e.cnpj
-      AND coalesce(nullif(item->>'bairro',''),nullif(item->>'cidade',''),nullif(item->>'uf','')) IS NOT NULL
-    ORDER BY b.criado_em DESC,b.id DESC LIMIT 1) banco ON true
-  WHERE e.id=p_empresa;
+  LEFT JOIN banco ON banco.cnpj=e.cnpj;
+$$;
+REVOKE EXECUTE ON FUNCTION empresa_atendimento_resumos(uuid,uuid) FROM PUBLIC;
+CREATE FUNCTION empresa_atendimento_resumo(p_empresa uuid) RETURNS jsonb
+LANGUAGE sql STABLE SET search_path = '' AS $$
+  SELECT r.dados FROM public.empresa e LEFT JOIN public.empresa_vinculo v ON v.empresa_id=e.id
+  CROSS JOIN LATERAL public.empresa_atendimento_resumos(v.vendedor_id,e.id) r WHERE e.id=p_empresa;
 $$;
 REVOKE EXECUTE ON FUNCTION empresa_atendimento_resumo(uuid) FROM PUBLIC;
 CREATE FUNCTION empresa_detalhes_ler(p_empresa uuid) RETURNS jsonb
@@ -101,7 +113,8 @@ BEGIN
     RAISE EXCEPTION 'filtros invalidos' USING ERRCODE='22023';
   END IF;
   WITH projecoes AS MATERIALIZED (
-    SELECT v.empresa_id,public.empresa_atendimento_resumo(v.empresa_id) dados FROM public.empresa_vinculo v
+    SELECT r.empresa_id,r.dados FROM public.empresa_atendimento_resumos(v_eu) r
+    JOIN public.empresa_vinculo v ON v.empresa_id=r.empresa_id
     WHERE v.vendedor_id=v_eu AND (v.arquivada_em IS NULL OR p->>'disponibilidade'='sem_interesse')
   ), fontes AS MATERIALIZED (
     SELECT r.empresa_id, 'google'::text origem, coalesce(x.snapshot->>'nicho',g.snapshot->>'nicho',g.nicho) nicho,

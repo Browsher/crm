@@ -29,6 +29,7 @@ test('snapshot B é exato e próprio; busca alheia e CNPJ ausente recusados', as
   expect(await snapshot('98765432000199',outro)).toEqual({ok:false,motivo:'sem_permissao'})
   expect(await snapshot('00000000000199')).toEqual({ok:false,motivo:'nao_encontrada'})
   await expect(banco.comoUsuario(eu,sql=>sql('SELECT empresa_atendimento_resumo($1)',[alheia]))).rejects.toMatchObject({code:'42501'})
+  await expect(banco.comoUsuario(eu,sql=>sql('SELECT * FROM empresa_atendimento_resumos($1)',[outro]))).rejects.toMatchObject({code:'42501'})
 })
 test('consulta não escreve operações, contatos ou fila e não ativa snapshot coincidente', async () => {
   const antes = await banco.sql('SELECT (SELECT count(*) FROM contato) contatos,(SELECT count(*) FROM empresa_atendimento_operacao) operacoes,(SELECT count(*) FROM empresa_fila) fila')
@@ -110,6 +111,58 @@ test('Google mantém critérios como contexto e usa somente localização real d
   expect(await consultar()).toMatchObject({bairros:['Centro · Curitiba/PR'],nichos:['Nicho entregue'],empresas:[{bairro:'Centro',cidade:'Curitiba',uf:'PR',regioes:['Centro · Curitiba/PR']}]})
   expect((await consultar({nicho:'Nicho entregue',endereco:'Centro · Curitiba/PR',cidade:'Curitiba',uf:'PR'})).empresas.map(e=>e.id)).toEqual([e.id])
   expect((await consultar({cidade:'São Paulo',uf:'SP'})).total).toBe(0)
+})
+test('lote expande cada item do histórico Banco autorizado uma vez, inclusive com vínculos sem localização', async () => {
+  const vendedor = await criarUsuario(banco,'vendedor','LoteLocalizacao')
+  const empresas = await banco.sql<{id:string;cnpj:string}>(`INSERT INTO empresa(cnpj,razao_social,telefone)
+    SELECT '66110000'||lpad(i::text,6,'0'),'Lote endereço '||i,'119'||lpad(i::text,8,'0') FROM generate_series(0,39) i RETURNING id,cnpj`)
+  for(const e of empresas) await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')",[e.id,vendedor])
+  for(let i=0;i<10;i++) {
+    const itens = empresas.slice(0,20).map((e,j)=>({cnpj:e.cnpj,razao_social:'Snapshot '+j,telefones:[],...(j===0&&i<9?{bairro:'Centro',cidade:'Cidade '+i,uf:'PR'}:{})}))
+    await banco.sql(`INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas,criado_em)
+      VALUES($1,'Histórico em lote','{"cidade":"Critério","uf":"SP"}',20,'concluida',$2,$3)`,[vendedor,JSON.stringify(itens),`2026-10-${String(i+1).padStart(2,'0')}T12:00:00Z`])
+  }
+  const alheio = JSON.stringify([{cnpj:empresas[0].cnpj,razao_social:'Alheio',bairro:'Segredo',cidade:'Segredo',uf:'BA',telefones:[]}])
+  await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas) VALUES($1,'Outro histórico','{}',1,'concluida',$2),($3,'Não concluída','{}',1,'reservada',$2)",[outro,alheio,vendedor])
+  // Instrumentação local conta itens JSON expandidos de verdade na chamada da RPC.
+  // A função original é restaurada no finally; não há limiar de tempo/hardware.
+  const definicoes = await banco.sql<{definicao:string}>(`SELECT pg_get_functiondef(p.oid) definicao FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname IN ('empresa_atendimento_resumo','empresa_atendimento_resumos') AND p.prosrc LIKE '%jsonb_array_elements(%'`)
+  expect(definicoes).toHaveLength(1)
+  await banco.sql('CREATE SEQUENCE public.teste_localizacao_itens')
+  await banco.sql(`CREATE FUNCTION public.teste_localizacao_expandir(p jsonb) RETURNS SETOF jsonb LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
+    DECLARE item jsonb; BEGIN FOR item IN SELECT jsonb_array_elements(p) LOOP
+      PERFORM nextval('public.teste_localizacao_itens'); RETURN NEXT item; END LOOP; END; $$`)
+  await banco.sql('REVOKE EXECUTE ON FUNCTION public.teste_localizacao_expandir(jsonb) FROM PUBLIC')
+  try {
+    for(const d of definicoes) await banco.sql(d.definicao.replaceAll('jsonb_array_elements(', 'public.teste_localizacao_expandir('))
+    const consultar = (f: object) => banco.comoUsuario(vendedor,async sql=>(await sql<{dados:{total:number;bairros:string[];empresas:Record<string,unknown>[]}}>('SELECT prospeccao_pessoal($1) dados',[JSON.stringify(f)])).linhas[0].dados)
+    const medir = async (f: object) => {
+      await banco.sql("SELECT setval('public.teste_localizacao_itens',1,false)")
+      const dados=await consultar(f)
+      const [contador]=await banco.sql<{itens:number}>(`SELECT CASE WHEN is_called THEN last_value::integer ELSE 0 END itens FROM public.teste_localizacao_itens`)
+      return {dados,itens:contador.itens}
+    }
+    const completa=await medir({origem:'banco'})
+    expect(completa.dados.total).toBe(40)
+    expect(completa.dados.empresas).toHaveLength(20)
+    expect(completa.dados.bairros).toEqual(['Centro · Cidade 8/PR'])
+    expect(completa.itens).toBeGreaterThan(0)
+    expect(completa.itens).toBeLessThanOrEqual(200)
+    const vazia=await medir({origem:'banco',nicho:'Inexistente'})
+    expect(vazia.dados.total).toBe(0)
+    expect(vazia.itens).toBeLessThanOrEqual(200)
+    const exata=await consultar({cnpj:empresas[0].cnpj,cidade:'Cidade 8',uf:'PR'})
+    expect(exata.empresas.map(e=>e.id)).toEqual([empresas[0].id])
+    expect((await ler(empresas[0].id,vendedor)).dados).toMatchObject({cidade:'Cidade 8',bairro:'Centro',uf:'PR'})
+    expect((await ler(empresas[39].id,vendedor)).dados).toMatchObject({cidade:null,bairro:null,uf:null})
+    expect(JSON.stringify(completa.dados)).not.toContain('Segredo')
+    expect((await consultar({origem:'banco',pagina:'2'})).empresas).toHaveLength(20)
+  } finally {
+    for(const d of definicoes) await banco.sql(d.definicao)
+    await banco.sql('DROP FUNCTION public.teste_localizacao_expandir(jsonb)')
+    await banco.sql('DROP SEQUENCE public.teste_localizacao_itens')
+  }
 })
 test('entrega histórica sem vínculo não autoriza cadastro nem inclui consulta pessoal', async () => {
   const [e] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Sem vínculo','11922223333') RETURNING id")
