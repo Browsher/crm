@@ -1,15 +1,7 @@
-// Vocabulário da tela. A migração 0031 também protege retornar_depois no banco,
-// pois esse tipo agora exige assumir a empresa e preservar o combinado.
-export const TIPOS_CONTATO = [
-  'nao_liguei',
-  'nao_atendeu',
-  'retornar_depois',
-  'sem_interesse',
-  'interessado',
-  'acompanhamento',
-] as const
-
-export type TipoContato = (typeof TIPOS_CONTATO)[number]
+// Compatibilidade com a UI anterior. O vocabulário comum também atende aos
+// comandos diretos da 0052; desfecho permanece apenas nos consumidores legados.
+import { TIPOS_CONTATO, type TipoContato } from '../../lib/atendimento'
+export { TIPOS_CONTATO, type TipoContato } from '../../lib/atendimento'
 
 export type Desfecho = 'nenhum' | 'assumir' | 'devolver'
 

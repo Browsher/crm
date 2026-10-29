@@ -77,6 +77,10 @@ const sao = (): Estado => ({
     'public.prospeccao_pessoal',
     'public.prospeccao_pessoal_reservar',
     'public.atendimento_transicao_inventariar',
+    'public.atendimento_iniciar',
+    'public.contato_registrar_direto',
+    'public.empresa_sem_interesse_definir',
+    'public.empresa_atendimento_retomar',
   ],
   funcoesExecutaveisPorPublico: [],
 })

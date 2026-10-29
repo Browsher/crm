@@ -24,6 +24,10 @@ const CHAMADA = 'SELECT contato_registrar('
 
 const COM_LITERAL = ARQUIVOS.filter((c) => readFileSync(c, 'utf8').includes(CHAMADA))
 
+test('contato direto usa apenas o adaptador comum de atendimento', () => {
+  expect(ARQUIVOS.filter(c => readFileSync(c, 'utf8').includes('SELECT contato_registrar_direto('))).toEqual(['src/server/atendimento/operacoes.ts'])
+})
+
 describe('contato_registrar tem um chamador só', () => {
   // Sem este, renomear a função deixa a catraca verde vigiando zero arquivos.
   // Mesma lição da lista de políticas irrestritas que a `cep` deixou vazia.
