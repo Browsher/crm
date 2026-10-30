@@ -46,7 +46,7 @@ export async function lerPerfilVendedor(gestorId: string, vendedorId: string, pa
       ), dia AS (
         SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS hoje
       ), vinculos AS MATERIALIZED (
-        SELECT v.* FROM empresa_vinculo v JOIN alvo a ON a.id=v.vendedor_id
+        SELECT v.* FROM empresa_vinculo v JOIN alvo a ON a.id=v.vendedor_id WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=v.empresa_id)
       ), numeradas AS (
         SELECT empresa_id,(row_number() OVER(ORDER BY empresa_id)-1)/100 AS lote FROM vinculos
       ), lotes AS (
@@ -74,6 +74,7 @@ export async function lerPerfilVendedor(gestorId: string, vendedorId: string, pa
         SELECT c.id,c.empresa_id AS "empresaId",coalesce(e.razao_social,e.nome_fantasia) AS empresa,c.tipo,CASE WHEN c.tipo='nao_liguei' THEN 'atividade_sem_ligacao' ELSE 'contato' END AS natureza,c.nota,
           c.proximo_passo AS "proximoPasso",to_char(c.proximo_passo_data,'YYYY-MM-DD') AS retorno,c.criado_em AS em
         FROM contato c JOIN alvo a ON a.id=c.criado_por JOIN empresa e ON e.id=c.empresa_id
+        WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
         ORDER BY c.criado_em DESC,c.id DESC LIMIT 20
       )
       SELECT jsonb_build_object('id',a.id,'nome',a.nome,'email',a.email,'pagina',$3::int,
@@ -82,7 +83,7 @@ export async function lerPerfilVendedor(gestorId: string, vendedorId: string, pa
         'oportunidades',(SELECT count(*)::int FROM carteira WHERE oportunidade),
         'atrasados',(SELECT count(*)::int FROM carteira WHERE retorno<d.hoje),
         'hoje',(SELECT count(*)::int FROM carteira WHERE retorno=d.hoje),
-        'contatosHoje',(SELECT count(*)::int FROM contato c WHERE c.criado_por=a.id AND c.tipo<>'nao_liguei'
+        'contatosHoje',(SELECT count(*)::int FROM contato c WHERE c.criado_por=a.id AND c.tipo<>'nao_liguei' AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=c.empresa_id)
           AND c.criado_em >= (d.hoje::timestamp AT TIME ZONE 'America/Sao_Paulo')
           AND c.criado_em < ((d.hoje+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')),
         'empresas',coalesce((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.nome,p.id) FROM paginada p),'[]'::jsonb),

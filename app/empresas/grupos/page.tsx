@@ -14,7 +14,7 @@ export default async function PaginaGrupos({ searchParams }: { searchParams: Pro
   const pagina = paginaGrupos((await searchParams).pagina)
   const r = await listarGrupos(eu.usuarioId, pagina)
   return <main className={styles.pagina}>
-    <CabecalhoPagina titulo="Listas de empresas" descricao="Confira a origem e a disponibilidade das listas compartilhadas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/google">Planejamentos e coletas do Google</Link></Button><Button variant="outline" asChild><Link href="/empresas">Todas as empresas</Link></Button> </>} />
+    <CabecalhoPagina titulo="Listas de empresas" descricao="Confira a origem e a disponibilidade das listas compartilhadas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/arquivadas">Arquivo</Link></Button><Button variant="outline" asChild><Link href="/empresas/google">Planejamentos e coletas do Google</Link></Button><Button variant="outline" asChild><Link href="/empresas">Todas as empresas</Link></Button> </>} />
     {!r.ok ? <Alert variant="danger">Você não tem permissão para consultar os grupos.</Alert> : <>
       <dl className={styles.resumo}>
         <div><dt>Total de listas</dt><dd>{r.resumo.total}</dd></div>

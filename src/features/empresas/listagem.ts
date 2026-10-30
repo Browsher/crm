@@ -82,7 +82,7 @@ const SQL = `WITH pagina AS MATERIALIZED (SELECT e.id, e.cnpj, e.razao_social, e
                     c.localidade, c.uf, count(*) OVER () AS total
                FROM empresa e
                LEFT JOIN cep c ON c.cep = e.cep
-              WHERE eh_gestor() AND ($1::text = ''
+              WHERE eh_gestor() AND EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id) = $9::boolean AND ($1::text = ''
                  OR e.busca LIKE '%' || sem_acento($1::text) || '%' ESCAPE '\\'
                  OR e.cnpj LIKE $2::text || '%')
                 AND ($3::text IS NULL OR ($3 = 'nao_informado' AND e.cnae_principal IS NULL) OR e.cnae_principal = $3)
@@ -96,7 +96,7 @@ const SQL = `WITH pagina AS MATERIALIZED (SELECT e.id, e.cnpj, e.razao_social, e
               ) SELECT pagina.*,resumos.resumo FROM pagina JOIN resumos ON resumos.resumo->>'id'=pagina.id::text
               ORDER BY coalesce(pagina.razao_social,pagina.nome_fantasia),pagina.id`
 
-export async function listarEmpresas(gestorId: string, consulta: Consulta | ConsultaEmpresas): Promise<ResultadoListagem> {
+export async function listarEmpresas(gestorId: string, consulta: Consulta | ConsultaEmpresas, arquivadas = false): Promise<ResultadoListagem> {
   try {
     return await comoUsuario(gestorId, async (executar) => {
       const r = await executar<LinhaCrua>(SQL, [
@@ -108,6 +108,7 @@ export async function listarEmpresas(gestorId: string, consulta: Consulta | Cons
         'bairro' in consulta ? consulta.bairro : null,
         POR_PAGINA,
         (consulta.pagina - 1) * POR_PAGINA,
+        arquivadas,
       ])
       return {
         ok: true as const,

@@ -15,6 +15,7 @@ const subpaginas: { rota: RegExp; niveis: { nome: string; href?: string }[] }[] 
   { rota: /^\/empresas\/importar$/, niveis: [{ nome: 'Importar empresas' }] },
   { rota: /^\/empresas\/grupos$/, niveis: [{ nome: 'Listas' }] },
   { rota: /^\/empresas\/grupos\/[^/]+$/, niveis: [{ nome: 'Listas', href: '/empresas/grupos' }, { nome: 'Detalhes da lista' }] },
+  { rota: /^\/empresas\/arquivadas$/, niveis: [{ nome: 'Arquivo' }] },
   { rota: /^\/empresas\/[^/]+$/, niveis: [{ nome: 'Ficha da empresa' }] },
   { rota: /^\/usuarios\/vendedores\/[^/]+$/, niveis: [{ nome: 'Perfil do vendedor' }] },
   { rota: /^\/carteira\/[^/]+$/, niveis: [{ nome: 'Ficha da empresa' }] },

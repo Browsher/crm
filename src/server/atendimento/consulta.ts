@@ -55,7 +55,7 @@ export async function lerEmpresasAtendimento(usuarioId: string, somenteClientes 
         FROM empresa_vinculo v JOIN empresa e ON e.id=v.empresa_id
         LEFT JOIN contato agenda ON agenda.id=v.agenda_contato_id AND agenda.empresa_id=v.empresa_id AND v.arquivada_em IS NULL
         LEFT JOIN LATERAL (SELECT c.id,c.nota,c.criado_em FROM contato c WHERE c.empresa_id=e.id ORDER BY c.criado_em DESC,c.id DESC LIMIT 1) ultimo ON true
-        WHERE v.vendedor_id=$1 AND pode_ler()
+        WHERE v.vendedor_id=$1 AND pode_ler() AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
           AND (NOT $2::boolean OR EXISTS(SELECT 1 FROM minhas_empresas_clientes() clientes WHERE clientes.empresa_id=e.id))
           AND (NOT $3::boolean OR (v.arquivada_em IS NULL AND agenda.proximo_passo_data<=(now() AT TIME ZONE 'America/Sao_Paulo')::date))
         ), numeradas AS (

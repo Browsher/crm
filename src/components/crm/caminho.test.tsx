@@ -11,6 +11,7 @@ test.each([
   ['/empresas/grupos', 'empresas', 'Empresas', 'Listas', '/empresas'],
   ['/empresas/grupos/id-privado', 'empresas', 'Empresas', 'Detalhes da lista', '/empresas/grupos'],
   ['/empresas/id-privado', 'empresas', 'Empresas', 'Ficha da empresa', '/empresas'],
+  ['/empresas/arquivadas', 'empresas', 'Empresas', 'Arquivo', '/empresas'],
   ['/usuarios/vendedores/id-privado', 'usuarios', 'Usuários', 'Perfil do vendedor', '/usuarios'],
   ['/carteira/id-privado', 'carteira', 'Carteira', 'Ficha da empresa', '/carteira'],
   ['/fila/localizar', 'fila', 'Prospecção', 'Localizar empresas', '/fila'],

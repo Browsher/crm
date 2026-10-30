@@ -10,6 +10,7 @@ export type PerfilEmpresa = {
   situacao: SituacaoEmpresa
   proximoPasso: string | null; retorno: string | null
   grupos: { id: string; nome: string; ativo: boolean }[]
+  arquivo?: { arquivadaEm: string; negociacoes: { id: string; etapa: string; encerradaEm: string; encerramento: string; vendedor: string | null }[] } | null
 }
 
 export async function lerPerfilEmpresa(gestorId: string, empresaId: string): Promise<PerfilEmpresa | null> {
@@ -26,9 +27,13 @@ export async function lerPerfilEmpresa(gestorId: string, empresaId: string): Pro
         resumo.dados AS resumo,resumo.dados->>'nome' AS nome,resumo.dados->>'situacao' AS situacao,
         resumo.dados->'responsavel'->>'nome' AS responsavel,(resumo.dados->'responsavel'->>'ativo')::boolean AS "responsavelAtivo",
         agenda.proximo_passo AS "proximoPasso",to_char(agenda.proximo_passo_data,'YYYY-MM-DD') AS retorno,
-        coalesce(origem.grupos,'[]'::jsonb) AS grupos
+        coalesce(origem.grupos,'[]'::jsonb) AS grupos,
+        CASE WHEN arquivo.empresa_id IS NOT NULL THEN jsonb_build_object('arquivadaEm',arquivo.arquivada_em,
+          'negociacoes',coalesce((SELECT jsonb_agg(jsonb_build_object('id',n.id,'etapa',n.etapa,'encerradaEm',n.encerrada_em,'encerramento',n.encerramento,'vendedor',autor.nome) ORDER BY n.iniciada_em,n.id)
+            FROM negociacao n LEFT JOIN usuario autor ON autor.id=n.vendedor_id WHERE n.empresa_id=e.id),'[]'::jsonb)) END AS arquivo
       FROM empresa e LEFT JOIN cep c ON c.cep=e.cep
       JOIN resumo ON resumo.id=e.id
+      LEFT JOIN empresa_arquivo arquivo ON arquivo.empresa_id=e.id
       LEFT JOIN empresa_vinculo v ON v.empresa_id=e.id
       LEFT JOIN contato agenda ON agenda.id=v.agenda_contato_id AND agenda.empresa_id=e.id AND v.arquivada_em IS NULL
         AND resumo.dados->>'situacao'<>'indisponivel'

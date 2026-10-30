@@ -1,13 +1,13 @@
 import type { DetalhesBanco } from './banco-empresas'
 import { formatarCnpj } from './empresa-apresentacao'
 
-export type SituacaoEmpresa = 'a_contatar' | 'atendimento' | 'primeiro_contato' | 'em_negociacao' | 'proposta_enviada' | 'cliente' | 'sem_interesse' | 'indisponivel'
+export type SituacaoEmpresa = 'a_contatar' | 'atendimento' | 'primeiro_contato' | 'em_negociacao' | 'proposta_enviada' | 'cliente' | 'sem_interesse' | 'indisponivel' | 'arquivada'
 export type ReferenciaEmpresa = { tipo: 'cadastro'; empresaId: string } | { tipo: 'busca'; buscaId: string; cnpj: string }
 export type ResumoEmpresa = {
   referencia: ReferenciaEmpresa; id: string | null; nome: string; cnpj: string | null; cnae: string | null; atividade: string | null
   bairro: string | null; cidade: string | null; uf: string | null; origens: ('google' | 'banco' | 'legado')[]
   recebidaEm: string | null; situacao: SituacaoEmpresa; versao: number | null; negociacaoId: string | null
-  motivoIndisponibilidade?: 'pendente' | 'origem_inativa' | 'responsavel_inativo' | 'outro_responsavel' | null
+  motivoIndisponibilidade?: 'pendente' | 'origem_inativa' | 'responsavel_inativo' | 'outro_responsavel' | 'arquivada' | null
 }
 export type ResumoEmpresaGestor = ResumoEmpresa & { responsavel: { id: string; nome: string; ativo: boolean } | null }
 export type DetalhesEmpresa = ResumoEmpresa & {
@@ -18,12 +18,12 @@ export type DetalhesEmpresa = ResumoEmpresa & {
 export type AcaoEmpresa = { tipo: 'iniciar' | 'retomar'; rotulo: string; empresaId: string; versao: number }
   | { tipo: 'continuar' | 'funil' | 'carteira'; rotulo: string; href: string }
 export const SITUACOES_EMPRESA: Record<SituacaoEmpresa, string> = {
-  a_contatar: 'A contatar', atendimento: 'Em atendimento', primeiro_contato: 'Primeiro contato', em_negociacao: 'Em negociação', proposta_enviada: 'Proposta enviada', cliente: 'Cliente', sem_interesse: 'Sem interesse', indisponivel: 'Indisponível',
+  a_contatar: 'A contatar', atendimento: 'Em atendimento', primeiro_contato: 'Primeiro contato', em_negociacao: 'Em negociação', proposta_enviada: 'Proposta enviada', cliente: 'Cliente', sem_interesse: 'Sem interesse', indisponivel: 'Indisponível', arquivada: 'Arquivada',
 }
-export const MOTIVOS_INDISPONIBILIDADE = { pendente: 'Vínculo pendente de revisão', origem_inativa: 'Origem inativa', responsavel_inativo: 'Responsável inativo', outro_responsavel: 'Com outro vendedor' }
+export const MOTIVOS_INDISPONIBILIDADE = { pendente: 'Vínculo pendente de revisão', origem_inativa: 'Origem inativa', responsavel_inativo: 'Responsável inativo', outro_responsavel: 'Com outro vendedor', arquivada: 'Arquivo histórico, somente consulta' }
 export function rotuloSituacao(situacao: SituacaoEmpresa) { return SITUACOES_EMPRESA[situacao] }
 export function acaoEmpresa(e: ResumoEmpresa): AcaoEmpresa | null {
-  if (e.referencia.tipo !== 'cadastro' || !e.id || e.id !== e.referencia.empresaId || !Number.isInteger(e.versao) || e.versao! < 1 || e.situacao === 'indisponivel') return null
+  if (e.referencia.tipo !== 'cadastro' || !e.id || e.id !== e.referencia.empresaId || !Number.isInteger(e.versao) || e.versao! < 1 || e.situacao === 'indisponivel' || e.situacao === 'arquivada') return null
   if (e.situacao === 'a_contatar' || e.situacao === 'sem_interesse') return { tipo: e.situacao === 'a_contatar' ? 'iniciar' : 'retomar', rotulo: e.situacao === 'a_contatar' ? 'Iniciar atendimento' : 'Retomar atendimento', empresaId: e.id, versao: e.versao! }
   if (e.situacao === 'atendimento') return { tipo: 'continuar', rotulo: 'Continuar atendimento', href: `/fila/atendimento/${encodeURIComponent(e.id)}` }
   if (e.situacao === 'cliente') return { tipo: 'carteira', rotulo: 'Abrir na carteira', href: `/carteira/${encodeURIComponent(e.id)}` }
