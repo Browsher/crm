@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { criarBancoDeTeste, type BancoDeTeste } from './ajuda'
 import { cenarioAtendimento, vincularEmpresaTeste } from './atendimento-fixtures'
+import { lerPerfilEmpresa } from '@/src/features/empresas/perfil'
 let banco: BancoDeTeste
 let c: Awaited<ReturnType<typeof cenarioAtendimento>>
 beforeAll(async () => { banco = await criarBancoDeTeste(); c = await cenarioAtendimento(banco) })
@@ -30,7 +31,7 @@ test('lote expande histórico Banco uma vez e não cria efeitos comerciais', asy
   for (const e of empresas) await vincularEmpresaTeste(banco,e.id,c.vendedorId,'banco')
   const itens = empresas.map(e=>({cnpj:e.cnpj,bairro:'Centro',cidade:'Cidade real',uf:'SP'}))
   await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas) VALUES($1,'Lote resumo','{}',20,'concluida',$2)",[c.vendedorId,JSON.stringify(itens)])
-  const [original] = await banco.sql<{definicao:string}>("SELECT pg_get_functiondef('empresa_atendimento_resumos(uuid,uuid)'::regprocedure) definicao")
+  const [original] = await banco.sql<{definicao:string}>("SELECT pg_get_functiondef('empresa_resumos_base(uuid[])'::regprocedure) definicao")
   await banco.sql('CREATE SEQUENCE public.teste_resumos_itens')
   await banco.sql(`CREATE FUNCTION public.teste_resumos_expandir(p jsonb) RETURNS SETOF jsonb LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
     DECLARE item jsonb; BEGIN FOR item IN SELECT jsonb_array_elements(p) LOOP
@@ -39,6 +40,16 @@ test('lote expande histórico Banco uma vez e não cria efeitos comerciais', asy
   try {
     await banco.sql(original.definicao.replaceAll('jsonb_array_elements(', 'public.teste_resumos_expandir('))
     expect((await ler(empresas.map(e=>e.id))).empresas).toHaveLength(20)
+    expect((await banco.sql<{itens:number}>('SELECT last_value::integer itens FROM teste_resumos_itens'))[0].itens).toBe(20)
+    const efeitos=await banco.sql('SELECT (SELECT count(*) FROM contato) contatos,(SELECT count(*) FROM empresa_atendimento_operacao) operacoes,(SELECT count(*) FROM empresa_fila) fila,(SELECT count(*) FROM venda) vendas')
+    await banco.sql("SELECT setval('public.teste_resumos_itens',1,false)")
+    const gerencial=await banco.comoUsuario(c.gestorId,async sql=>(await sql<{r:{empresas:{versao:number|null}[]}}>('SELECT gestor_empresas_resumos_ler($1::uuid[]) r',[empresas.map(e=>e.id)])).linhas[0].r)
+    expect(gerencial.empresas).toHaveLength(20)
+    expect(gerencial.empresas.every(e=>e.versao===null)).toBe(true)
+    expect((await banco.sql<{itens:number}>('SELECT last_value::integer itens FROM teste_resumos_itens'))[0].itens).toBe(20)
+    expect(await banco.sql('SELECT (SELECT count(*) FROM contato) contatos,(SELECT count(*) FROM empresa_atendimento_operacao) operacoes,(SELECT count(*) FROM empresa_fila) fila,(SELECT count(*) FROM venda) vendas')).toEqual(efeitos)
+    await banco.sql("SELECT setval('public.teste_resumos_itens',1,false)")
+    expect(await lerPerfilEmpresa(c.gestorId,empresas[0].id)).toMatchObject({id:empresas[0].id})
     expect((await banco.sql<{itens:number}>('SELECT last_value::integer itens FROM teste_resumos_itens'))[0].itens).toBe(20)
     expect((await banco.sql('SELECT id FROM contato WHERE empresa_id=ANY($1::uuid[])',[empresas.map(e=>e.id)]))).toHaveLength(0)
     expect((await banco.sql('SELECT id FROM negociacao WHERE empresa_id=ANY($1::uuid[])',[empresas.map(e=>e.id)]))).toHaveLength(0)

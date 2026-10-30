@@ -1,8 +1,9 @@
 import { comoUsuario } from '../../server/db/como-usuario'
 import { POR_PAGINA, type Consulta, type ConsultaEmpresas } from './consulta'
 import type { Falha } from './repositorio'
+import type { ResumoEmpresaGestor } from '../../lib/empresa-visual'
 
-export type EmpresaNaLista = {
+export type EmpresaNaLista = ResumoEmpresaGestor & {
   id: string
   cnpj: string | null
   razaoSocial: string | null
@@ -29,6 +30,7 @@ export type OpcaoFiltroEmpresa = {
 export type ResultadoOpcoesEmpresas = { ok: true; opcoes: OpcaoFiltroEmpresa[] } | Falha
 
 type LinhaCrua = {
+  resumo: ResumoEmpresaGestor
   id: string
   cnpj: string | null
   razao_social: string | null
@@ -76,11 +78,11 @@ type LinhaCrua = {
 //
 // O corte é no banco, não no Node: com milhares de linhas, trazer tudo para
 // filtrar em memória é o erro que a paginação existe para não cometer.
-const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e.email, e.cep, e.cnae_principal,
+const SQL = `WITH pagina AS MATERIALIZED (SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e.email, e.cep, e.cnae_principal,
                     c.localidade, c.uf, count(*) OVER () AS total
                FROM empresa e
                LEFT JOIN cep c ON c.cep = e.cep
-              WHERE ($1::text = ''
+              WHERE eh_gestor() AND ($1::text = ''
                  OR e.busca LIKE '%' || sem_acento($1::text) || '%' ESCAPE '\\'
                  OR e.cnpj LIKE $2::text || '%')
                 AND ($3::text IS NULL OR ($3 = 'nao_informado' AND e.cnae_principal IS NULL) OR e.cnae_principal = $3)
@@ -88,7 +90,11 @@ const SQL = `SELECT e.id, e.cnpj, e.razao_social, e.nome_fantasia, e.telefone, e
                 AND ($5::text IS NULL OR c.ibge = $5)
                 AND ($6::text IS NULL OR nullif(btrim(c.bairro), '') = $6)
               ORDER BY coalesce(e.razao_social,e.nome_fantasia), e.id
-              LIMIT $7 OFFSET $8`
+              LIMIT $7 OFFSET $8), resumos AS MATERIALIZED (
+                SELECT item AS resumo FROM jsonb_array_elements(gestor_empresas_resumos_ler(
+                  coalesce((SELECT array_agg(id) FROM pagina),'{}'::uuid[]))->'empresas') item
+              ) SELECT pagina.*,resumos.resumo FROM pagina JOIN resumos ON resumos.resumo->>'id'=pagina.id::text
+              ORDER BY coalesce(pagina.razao_social,pagina.nome_fantasia),pagina.id`
 
 export async function listarEmpresas(gestorId: string, consulta: Consulta | ConsultaEmpresas): Promise<ResultadoListagem> {
   try {
@@ -109,8 +115,6 @@ export async function listarEmpresas(gestorId: string, consulta: Consulta | Cons
         // linha nenhuma não há janela, e o total é zero.
         total: r.linhas.length > 0 ? Number(r.linhas[0].total) : 0,
         linhas: r.linhas.map((l) => ({
-          id: l.id,
-          cnpj: l.cnpj,
           razaoSocial: l.razao_social,
           nomeFantasia: l.nome_fantasia,
           telefone: l.telefone,
@@ -118,7 +122,8 @@ export async function listarEmpresas(gestorId: string, consulta: Consulta | Cons
           cnaePrincipal: l.cnae_principal,
           cep: l.cep,
           localidade: l.localidade,
-          uf: l.uf,
+          ...l.resumo,
+          id: l.id,
         })),
       }
     })

@@ -52,7 +52,7 @@ Entregar uma PR final contra main. Commits intermediários são unidades de revi
 
 - [ ] Ler CLAUDE.md, PREFERENCIAS.md, REGRAS.md e a spec aprovada; conferir branch, arquivos alterados e worktree. Preservar alterações externas.
 - [ ] Separar o ambiente privado sem ler ou registrar segredos. Confirmar o host local pelas guardas existentes; não usar `db:aplicar` com ambiente de produção.
-- [ ] Conferir que a última migração continua `0049_banco_inclusao_automatica.sql`. Os números 0050–0056 abaixo estão reservados neste plano; a 0054 acrescenta a leitura em lote das fontes (tarefa 5), a 0055 centraliza a disponibilidade para agenda e gestor (tarefa 7) e a aposentadoria passa à 0056. Se a main avançar, renumerar apenas os arquivos novos antes de publicar, sem alterar migrações existentes.
+- [ ] Conferir que a última migração continua `0049_banco_inclusao_automatica.sql`. Os números 0050–0057 abaixo estão reservados neste plano; a 0054 acrescenta a leitura em lote das fontes (tarefa 5), a 0055 centraliza disponibilidade (tarefa 7), a 0056 compartilha o resumo gerencial em lote (tarefa 8) e a aposentadoria passa à 0057. Se a main avançar, renumerar apenas os arquivos novos antes de publicar, sem alterar migrações existentes.
 
 ## Contratos comuns decididos pelo plano
 
@@ -311,6 +311,7 @@ expect(contatoHistorico.proximo_passo_data).toEqual(dataAntesDoArquivo)
 ## Task 8: Gestor e design system com o mesmo padrão de empresa
 
 **Files:**
+- Create: `db/migracoes/0056_resumos_gestor.sql`, `docs/db/0056.md`, adaptador focado em `src/server/empresas/` e testes de autorização/paridade em lote; atualizar catálogo fechado e ponteiros documentais. Acréscimo decidido durante a execução: o resumo anterior acoplava indisponibilidade à permissão do observador e não atendia a leitura gerencial do estado real.
 - Modify: `src/features/empresas/listagem.ts`, `perfil.ts`, `app/empresas/page.tsx`, `lista.tsx`, `linha.tsx` se permanecer consumidor, `empresas.module.css` e testes.
 - Modify: `app/design/galeria.tsx`, `app/fila/localizar/pessoal.module.css`, `app/fila/buscar/empresas-recentes.module.css` para remover composição duplicada após conferir consumidores.
 - Modify: `tests/integracao/empresa-perfil-gestor.test.ts`, `empresas-listagem.test.ts`, `tests/e2e/empresas-visual.spec.ts`, `empresa-perfil-gestor.spec.ts`, `carrossel-empresas-banco.spec.ts`.
@@ -318,6 +319,7 @@ expect(contatoHistorico.proximo_passo_data).toEqual(dataAntesDoArquivo)
 **Interfaces:**
 - Consumes: `ResumoEmpresa`, `CardEmpresa`, diálogo e consultas autorizadas; filtros/paginação existentes do gestor.
 - Produces: listagem gerencial paginada em cards com responsável e situação corretos, sem botões de vendedor. Estado cliente exige venda; responsável sem venda não recebe rótulo Carteira. Galeria mostra os mesmos componentes e o card de descarte real.
+- Produces: `lerResumosEmpresasGestor(usuarioId:string,empresaIds:readonly string[]):Promise<{ok:true;empresas:ResumoEmpresaGestor[]}|{ok:false;motivo:'sem_permissao'|'dados_invalidos'}>` e RPC `gestor_empresas_resumos_ler(uuid[])`. Gestor ativo/pode_ler antes do vazio, UUIDs deduplicados no máximo 100, apenas IDs existentes já autorizados; vendedor recusado. Reutilizar uma projeção privada base de dados/estado reais do dono e snapshots exatos, sem N leituras de histórico por card. O wrapper privado anterior conserva assinatura/OID e delega preservando guardas de observador; não renomear objeto existente. O detalhe já autorizado pode usar a base para o gestor, com versão nula. `responsavel` vem do vínculo persistido ou é nulo, sem escolha entre candidatos; nenhuma versão/comando de vendedor é entregue ao gestor. Helpers sem grant, sem aquisição/efeito. Testar paridade por estado/campo, roles/limites, lotes e contagem real do trabalho. SQL anterior continua imutável.
 
 - [ ] **Step 1: Escrever testes falhando de igualdade de contrato e permissões.** Mesmo cadastro em consulta, últimas empresas e gestor tem nome/CNAE/origem/situação iguais; gestor mantém filtro e paginação e não ganha Iniciar/Retomar como vendedor. Código de CNAE não vira atividade textual. Cliente/negociação/arquivada não são todos chamados Carteira.
 
@@ -336,7 +338,7 @@ expect(textoDoCardGerencial).not.toContain('Retomar atendimento')
 ## Task 9: Transição completa e retirada dos comandos de fila sem consumidor
 
 **Files:**
-- Create: `db/migracoes/0056_aposentar_reserva.sql`, `docs/db/0056.md`, `tests/integracao/atendimento-migracao.test.ts`, `tests/e2e/fluxo-comercial-unificado.spec.ts`, `docs/operacao/fluxo-comercial-unificado.md`.
+- Create: `db/migracoes/0057_aposentar_reserva.sql`, `docs/db/0057.md`, `tests/integracao/atendimento-migracao.test.ts`, `tests/e2e/fluxo-comercial-unificado.spec.ts`, `docs/operacao/fluxo-comercial-unificado.md`.
 - Modify: `src/server/db/migracoes/invariantes.ts`, `src/features/fila/repositorio.ts`, `tests/integracao/fila-reservar.test.ts`, `fila-puxar.test.ts`, `fila-posse.test.ts`, `fila-politicas.test.ts`, `fila-consulta.test.ts`, `contato-registrar.test.ts`, `prospeccao-pessoal.test.ts`, `prospeccao-grupos.test.ts`, `prospeccao-consulta.test.ts`.
 - Modify: `tests/e2e/dados-reserva.ts`, `tests/e2e/dados-google.ts`, `tests/e2e/prospeccao-grupos.spec.ts`, `tests/e2e/prospeccao-previa.spec.ts`, `tests/e2e/reserva.spec.ts`, `scripts/e2e/run.mts` para concluir a troca do preparo legado; preservar cenários de proteção, filtro e histórico nas jornadas novas.
 - Reference: `src/features/contato/um-chamador.test.ts`, testes de política/identidade e documentação das migrações superadas.
@@ -344,7 +346,7 @@ expect(textoDoCardGerencial).not.toContain('Retomar atendimento')
 **Interfaces:**
 - Consumes: todas as tarefas anteriores; operação pública somente pelo novo contrato.
 - Produces: nenhuma função concedida sem consumidor; documentação da transição, pendências, verificação e recuperação. Histórico permanece consultável sem liberar o catálogo inteiro.
-- Produces: guardas autoritativas para comandos novos nas mesmas indisponibilidades do resumo comum (origem inativa e pendência), depois de autenticação/replay e trava. Obrigação identificada no teste da tarefa 5: a pré-leitura de estado em TypeScript impedia replay, mas a 0052 ainda permitia comando novo com origem inativa. Resolver na nova 0056, reutilizando a disponibilidade central da 0055, sem editar SQL antigo, com negativas reais e preservação do replay histórico autorizado. Incluir a RPC comercial que o teste da tarefa 7 comprovou aceitar venda nova de cliente arquivado.
+- Produces: guardas autoritativas para comandos novos nas mesmas indisponibilidades do resumo comum (origem inativa e pendência), depois de autenticação/replay e trava. Obrigação identificada no teste da tarefa 5: a pré-leitura de estado em TypeScript impedia replay, mas a 0052 ainda permitia comando novo com origem inativa. Resolver na nova 0057, reutilizando a disponibilidade central da 0055 e os contratos da 0056, sem editar SQL antigo, com negativas reais e preservação do replay histórico autorizado. Incluir a RPC comercial que o teste da tarefa 7 comprovou aceitar venda nova de cliente arquivado.
 
 - [ ] **Step 1: Escrever testes falhando de migração e aposentadoria.** Criar banco até 0049 com reserva, negociação, cliente, descanso por Não atendeu/Sem interesse, colisão entre fontes e dono inativo; guardar IDs/autores/quantidades/datas. Aplicar as novas migrações pelo runner e comparar. Assertivas: contatos/vendas imutáveis, responsável inequívoco preservado, conflito reportado, agenda cancelada não restaurada, nenhum grant de aquisição global acessível ao vendedor, arquivos antigos não reabrem o catálogo.
 

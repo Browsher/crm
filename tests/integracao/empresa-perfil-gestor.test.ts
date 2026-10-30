@@ -18,6 +18,7 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('UPDATE grupo_importacao SET ativo=true')
@@ -25,7 +26,8 @@ beforeEach(async () => {
 test('gestor consulta dados e origem de empresa livre sem atendimento', async () => {
   const r = await lerPerfilEmpresa(gestor, id)
   expect(r).toMatchObject({ id, razaoSocial: 'Empresa Perfil', contatoNome: 'Maria', telefone: '11987654321',
-    email: 'maria@teste.local', cnae: '4742300', situacao: 'disponivel', responsavel: null, proximoPasso: null, retorno: null })
+    email: 'maria@teste.local', cnae: '4742300', situacao: 'indisponivel', responsavel: null, proximoPasso: null, retorno: null })
+  expect(r?.resumo).toMatchObject({motivoIndisponibilidade:'pendente',versao:null})
   expect(r?.grupos).toHaveLength(1)
   expect(r?.grupos[0]).toMatchObject({ nome: 'Origem do cenário', ativo: true })
 })
@@ -34,21 +36,24 @@ test('ID inválido/inexistente e vendedor não recebem perfil administrativo', a
   expect(await lerPerfilEmpresa(gestor, '00000000-0000-4000-8000-000000000000')).toBeNull()
   expect(await lerPerfilEmpresa(vendedor, id)).toBeNull()
 })
-test('posse e último retorno aparecem sem gravar visita ou contato', async () => {
+test('responsável sem venda fica em atendimento; agenda vem do ponteiro, sem gravar visita', async () => {
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,vendedor])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [id, vendedor])
   await banco.sql(`INSERT INTO contato(id,empresa_id,tipo,proximo_passo,proximo_passo_data) VALUES
     ('00000000-0000-4000-8000-000000000001',$1,'interessado','Antigo',CURRENT_DATE-1),
     ('00000000-0000-4000-8000-000000000002',$1,'acompanhamento','Telefonar',CURRENT_DATE+1)`, [id])
+  await banco.sql("UPDATE empresa_vinculo SET agenda_contato_id='00000000-0000-4000-8000-000000000001' WHERE empresa_id=$1",[id])
   const r = await lerPerfilEmpresa(gestor, id)
-  expect(r).toMatchObject({ responsavel: 'Vendedor', responsavelAtivo: true, situacao: 'carteira', proximoPasso: 'Telefonar' })
+  expect(r).toMatchObject({ responsavel: 'Vendedor', responsavelAtivo: true, situacao: 'atendimento', proximoPasso: 'Antigo' })
   expect(r?.retorno).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   expect(await banco.sql('SELECT count(*)::int AS n FROM contato WHERE empresa_id=$1', [id])).toEqual([{ n: 2 }])
   expect(await lerPerfilEmpresa(vendedor, id)).toBeNull() // inclusive sendo dono
 })
-test('reserva válida e grupo desativado continuam explícitos', async () => {
+test('reserva legada não cria situação comercial; origem inativa continua explícita', async () => {
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,vendedor])
   await banco.sql("INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES($1,$2,now()+interval '1 hour')", [id,vendedor])
   await banco.sql('UPDATE grupo_importacao SET ativo=false')
-  expect(await lerPerfilEmpresa(gestor, id)).toMatchObject({ situacao: 'reservada', reservadoPor: 'Vendedor', grupos: [expect.objectContaining({ ativo: false })] })
+  expect(await lerPerfilEmpresa(gestor, id)).toMatchObject({ situacao: 'indisponivel', resumo: {motivoIndisponibilidade:'origem_inativa'}, grupos: [expect.objectContaining({ ativo: false })] })
   await banco.sql("UPDATE empresa_fila SET reservado_ate=now()-interval '1 hour' WHERE empresa_id=$1", [id])
-  expect(await lerPerfilEmpresa(gestor, id)).toMatchObject({ situacao: 'inativa', reservadoPor: null })
+  expect(await lerPerfilEmpresa(gestor, id)).toMatchObject({ situacao: 'indisponivel' })
 })

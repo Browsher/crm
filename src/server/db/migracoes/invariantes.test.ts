@@ -84,6 +84,7 @@ const sao = (): Estado => ({
     'public.empresa_detalhes_ler',
     'public.empresas_resumos_ler',
     'public.empresas_disponibilidade_ler',
+    'public.gestor_empresas_resumos_ler',
     'public.busca_empresa_detalhes_ler',
   ],
   funcoesExecutaveisPorPublico: [],

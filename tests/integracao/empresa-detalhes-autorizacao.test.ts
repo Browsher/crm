@@ -20,7 +20,7 @@ test('vínculo autoriza dados próprios; ID alheio/arbitrário não expõe cadas
   expect(await ler(minha)).toMatchObject({ok:true,dados:{id:minha,nome:'Minha',versao:1,situacao:'a_contatar'}})
   expect(await ler(alheia)).toEqual({ok:false,motivo:'sem_permissao'})
   expect(await ler('10000000-0000-4000-8000-000000000001')).toEqual({ok:false,motivo:'sem_permissao'})
-  expect(await ler(alheia,gestor)).toMatchObject({ok:true,dados:{nome:'Segredo',situacao:'indisponivel',versao:null}})
+  expect(await ler(alheia,gestor)).toMatchObject({ok:true,dados:{nome:'Segredo',situacao:'a_contatar',versao:null}})
   expect(JSON.stringify(await ler(minha))).not.toContain('responsavel')
 })
 test('snapshot B é exato e próprio; busca alheia e CNPJ ausente recusados', async () => {
@@ -43,7 +43,7 @@ test('candidato sem origem pessoal não entra na consulta nem autoriza cadastro;
   expect(listagem.empresas.map(e=>e.id)).not.toContain(e.id)
   expect(await ler(e.id)).toEqual({ok:false,motivo:'sem_permissao'})
   expect(await ler(e.id,gestor)).toMatchObject({ok:true,dados:{nome:'Pendente',situacao:'indisponivel',motivoIndisponibilidade:'pendente',versao:null}})
-  expect((await ler(e.id,gestor)).dados).toMatchObject({origens:[]})
+  expect((await ler(e.id,gestor)).dados).toMatchObject({origens:[],responsavel:null})
   await banco.sql(`UPDATE busca_empresa SET empresas=empresas||'[ {"cnpj":"55555555000199","razao_social":"Snapshot pendente","telefones":[]} ]'::jsonb WHERE id=$1`,[busca])
   expect(await snapshot('55555555000199')).toMatchObject({ok:true,motivoIndisponibilidade:'pendente',empresa:{razao_social:'Snapshot pendente'}})
 })
@@ -87,6 +87,8 @@ test('Banco usa localização do snapshot exato próprio e nunca os critérios g
   expect(r.total).toBe(2)
   expect((await ler(empresas[0].id,vendedor)).dados).toMatchObject({bairro:null,cidade:null,uf:null})
   expect((await ler(empresas[1].id,vendedor)).dados).toMatchObject({bairro:'Icaraí',cidade:'Niterói',uf:'RJ'})
+  expect((await ler(empresas[0].id,gestor)).dados).toMatchObject({bairro:null,cidade:null,uf:null,versao:null})
+  expect((await ler(empresas[1].id,gestor)).dados).toMatchObject({bairro:'Icaraí',cidade:'Niterói',uf:'RJ',versao:null})
   for (const filtros of [{endereco:'Icaraí · Niterói/RJ'},{cidade:'Niterói',uf:'RJ'},{origem:'banco',nicho:'Lojas',endereco:'Icaraí · Niterói/RJ',cidade:'Niterói',uf:'RJ'}]) {
     expect((await consultar(filtros)).empresas.map(e=>e.id)).toEqual([empresas[1].id])
   }
@@ -127,7 +129,7 @@ test('lote expande cada item do histórico Banco autorizado uma vez, inclusive c
   // Instrumentação local conta itens JSON expandidos de verdade na chamada da RPC.
   // A função original é restaurada no finally; não há limiar de tempo/hardware.
   const definicoes = await banco.sql<{definicao:string}>(`SELECT pg_get_functiondef(p.oid) definicao FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname='public' AND p.proname IN ('empresa_atendimento_resumo','empresa_atendimento_resumos') AND p.prosrc LIKE '%jsonb_array_elements(%'`)
+    WHERE n.nspname='public' AND p.proname='empresa_resumos_base' AND p.prosrc LIKE '%jsonb_array_elements(%'`)
   expect(definicoes).toHaveLength(1)
   await banco.sql('CREATE SEQUENCE public.teste_localizacao_itens')
   await banco.sql(`CREATE FUNCTION public.teste_localizacao_expandir(p jsonb) RETURNS SETOF jsonb LANGUAGE plpgsql VOLATILE SET search_path='' AS $$

@@ -1,10 +1,10 @@
-import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
+import { rotuloSituacao } from '@/src/lib/empresa-visual'
 import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
 import { lerDadosCadastrais } from '@/src/server/cnpj-biz/dados'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
-import { lerPerfilEmpresa, type PerfilEmpresa } from '@/src/features/empresas/perfil'
+import { lerPerfilEmpresa } from '@/src/features/empresas/perfil'
 import { lerHistorico } from '@/src/features/contato/historico'
 import { ResumoVenda } from '@/src/components/crm/resumo-venda'
 import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
@@ -21,10 +21,6 @@ import { HistoricoGoogleEmpresa } from '@/src/components/crm/historico-google'
 import { Button } from '@/src/components/ui/button'
 import { SociosGestor } from '../socios-gestor'
 
-const situacoes: Record<PerfilEmpresa['situacao'], string> = {
-  carteira: 'Em carteira', reservada: 'Reservada', inativa: 'Sem grupo ativo',
-  descanso: 'Em descanso', disponivel: 'Disponível para prospecção',
-}
 const horario = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
 function dataCivil(data: string) { return data.split('-').reverse().join('/') }
 
@@ -44,9 +40,9 @@ export default async function PaginaPerfil({ params, searchParams }: {
     : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
   return <main className={styles.pagina}>
     <Button asChild variant="outline"><Link href={voltar} className={styles.voltar}>Voltar para empresas</Link></Button>
-    <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{nomeEmpresa(empresa)}</h1>
+    <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{empresa.nome}</h1>
       {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
-      <Badge variant="outline">{situacoes[empresa.situacao]}</Badge></header>
+      <Badge variant="outline">{rotuloSituacao(empresa.situacao)}</Badge></header>
     <div className={styles.colunas}><AbasFicha dados={<div className={styles.detalhes}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent>
         <dl className={styles.dados}>
@@ -63,7 +59,6 @@ export default async function PaginaPerfil({ params, searchParams }: {
       <Card><CardHeader><CardTitle>Acompanhamento</CardTitle></CardHeader><CardContent>
         <dl className={styles.dados}>
           <dt>Vendedor responsável</dt><dd>{empresa.responsavel ?? 'Sem vendedor responsável'}{empresa.responsavel && !empresa.responsavelAtivo ? <Badge variant="warning">Desativado</Badge> : null}</dd>
-          {empresa.reservadoPor ? <><dt>Reservada por</dt><dd>{empresa.reservadoPor}</dd><dt>Reserva até</dt><dd>{empresa.reservadoAte ? horario.format(empresa.reservadoAte) : 'Não informado'}</dd></> : null}
           <dt>Próximo passo</dt><dd>{empresa.proximoPasso ?? 'Não registrado'}</dd>
           <dt>Próximo retorno</dt><dd>{empresa.retorno ? dataCivil(empresa.retorno) : 'Sem retorno agendado'}</dd>
         </dl>

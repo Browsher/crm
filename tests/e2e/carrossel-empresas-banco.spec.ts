@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
-const capturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-5-captures')
+const capturas = resolve('.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-8-captures')
 mkdirSync(capturas, { recursive: true })
 import { expect, test, type Page } from '@playwright/test'
 import { comBancoGrupos, bancoGruposDoHarness } from './dados-grupos'
@@ -10,7 +10,7 @@ test.describe.configure({ mode: 'serial' })
 const nome = 'Armarinhos e variedades Aurora com nome completo para o vendedor (fictícia)'
 const grupo = 'Armarinhos e variedades · Brás · Grupo de origem completo para conferir reticências'
 const grupoRecente = 'Empresas · Brasil'
-let ids:string[] = [], legado:string
+let legado:string
 function dados(cnpj:string,nome:string,indice:number) {
  return {cnpj,razao_social:nome,nome_fantasia:null,telefone:String(11960000100+indice),telefones:[String(11960000100+indice)],email:`contato${indice}@exemplo.test`,cnae_principal:'4755502',cep:'01001000',situacao:'ATIVA',porte:'ME',data_abertura:'2012-01-01',logradouro:'Rua fictícia',numero:'10',complemento:null,bairro:'Brás',cidade:'São Paulo',uf:'SP',detalhes:{}}
 }
@@ -21,7 +21,7 @@ test.beforeAll(async()=>{
  const outro=await criarUsuarioComSenha(banco,'vendedor','carrosseloutroe2e','Senha-e2e-2026')
  const vazio=await criarUsuarioComSenha(banco,'vendedor','carrosselvazioe2e','Senha-e2e-2026')
  await banco.sql('INSERT INTO busca_empresa_limite(usuario_id,limite_diario,pausado) VALUES($1,0,true),($2,100,false)',[vazio.id,eu.id])
- ids=await comBancoGrupos(async c=>{
+ await comBancoGrupos(async c=>{
   const empresas:string[]=[],registros:string[]=[]
   for(let i=0;i<14;i++){
    const cnpj=String(84000000000000+i),titulo=i===12?'Cliente Aurora (fictício)':i===13?'Empresa ALHEIA (fictícia)':`Empresa recente ${i} (fictícia)`
@@ -49,92 +49,62 @@ async function entrar(page:Page,apelido='carrossele2e'){
 }
 const chamadas=async()=>(await(await fetch(process.env.CNPJ_BIZ_MOCK_URL+'/estatisticas')).json()).consultas
 
-test('Últimas buscas inclui cinco não importadas; desktop útil, popup e retomada automática sem nova aquisição',async({page})=>{
- test.setTimeout(120000)
- const erros:string[]=[];page.on('pageerror',e=>erros.push(e.message))
- await page.setViewportSize({width:1920,height:1080});await entrar(page)
- const secao=page.getByRole('region',{name:'Últimas buscas',exact:true}),cards=secao.locator('[data-empresa-recente]')
- await expect(page.getByRole('heading',{name:'Todas as minhas empresas',exact:true})).toHaveCount(0)
- await expect(page.getByRole('heading',{name:'Últimas buscas',exact:true})).toHaveCount(1)
- await expect(cards).toHaveCount(3);await expect(cards.first().getByRole('heading')).toHaveAttribute('title',nome)
- await expect(cards.first().locator('[data-grupo-origem]')).toHaveText(grupoRecente)
- expect(await comBancoGrupos(async c=>(await c.query('SELECT grupo_id FROM busca_empresa WHERE id=$1',[legado])).rows[0].grupo_id)).toBeNull()
- await expect(secao).not.toContainText('ALHEIA');await expect(secao).not.toContainText('Somente GOOGLE');await expect(secao).not.toContainText('Em atendimento')
- for(const width of [1920,1440,900,820,800,784,783,782,736,600,390,320]){
-  await page.setViewportSize({width,height:width===1920?1080:900});const espaco=(await secao.boundingBox())!.width
-  await expect(cards).toHaveCount(espaco>670?3:espaco>480?2:1)
-  for(const tema of ['light','dark']){
-   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema);await secao.scrollIntoViewIfNeeded()
-   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBe(0)
-   const medidas=await cards.evaluateAll(els=>els.map(el=>{
-    const r=el.getBoundingClientRect(),h=el.querySelector('h3')!,g=el.querySelector('[data-grupo-origem]')!
-    const [identidade,meta,acao]=Array.from(el.children).map(e=>e.getBoundingClientRect())
-    return {quadrado:Math.abs(r.width-r.height)<1,semOverflow:el.scrollHeight<=el.clientHeight+1,semSobreposicao:meta.top>=identidade.bottom-1&&acao.top>=meta.bottom-1,linhaNome:getComputedStyle(h).whiteSpace,linhaGrupo:getComputedStyle(g).whiteSpace,nome:Array.from(h.textContent!).length,grupo:Array.from(g.textContent!).length}
-   }))
-   for(const m of medidas){expect(m.quadrado).toBe(true);expect(m.semOverflow).toBe(true);expect(m.semSobreposicao).toBe(true);expect(m.linhaNome).toBe('nowrap');expect(m.linhaGrupo).toBe('nowrap');expect(m.nome).toBeLessThanOrEqual(espaco>=1120?80:36);expect(m.grupo).toBeLessThanOrEqual(espaco>=1120?120:40)}
-   const extra=cards.first().locator('[data-desktop-dados]')
-   if(espaco>=1120)await expect(extra).toBeVisible();else await expect(extra).not.toBeVisible()
-   if([1920,820,390].includes(width))await secao.screenshot({path:resolve(capturas, `ultimas-${width}-${tema}.png`)})
-  }
- }
- await page.setViewportSize({width:1920,height:1080});await expect(cards).toHaveCount(3)
- await comBancoGrupos(async c=>{
-  const vendedor=(await c.query('SELECT usuario_id FROM busca_empresa WHERE id=$1',[legado])).rows[0].usuario_id
-  await c.query('BEGIN')
-  try {
-   await c.query("SELECT set_config('app.usuario_id',$1,true),set_config('role','app_usuario',true)",[vendedor])
-   await c.query('SELECT * FROM busca_empresa_importar($1,$2)',[legado,['84200000000000']])
-   await c.query('COMMIT')
-  } catch(e){await c.query('ROLLBACK');throw e}
- })
- await page.reload();await expect(cards).toHaveCount(3)
- const antes=await chamadas(),url=page.url(),abrir=cards.first().getByRole('button',{name:`Ver empresa: ${nome}`,exact:true})
- await abrir.click();const d=page.getByRole('dialog',{name:nome,exact:true})
- await expect(d).toBeVisible();await expect(d).toContainText(grupoRecente);await expect(d).toContainText('84.200.000/0000-00')
- await expect(d.getByRole('checkbox')).toHaveCount(0)
- for(const width of [1920,820,390]) {
-  await page.setViewportSize({width,height:width===1920?1080:900})
-  for(const tema of ['light','dark']) {
-   await page.keyboard.press('Escape')
-   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
-   await abrir.click()
-   await expect(d).toContainText('84.200.000/0000-00')
-   await d.screenshot({path:resolve(capturas,`detalhe-longo-${width}-${tema}.png`)})
-  }
- }
- await page.setViewportSize({width:1920,height:1080})
 
- await d.getByRole('button',{name:'Concluir inclusão',exact:true}).click()
- await expect(d.getByText('4 empresas novas. A lista reúne 5 empresas.',{exact:true})).toBeVisible()
- await expect(d.getByRole('link',{name:'Prospectar esta lista',exact:true})).toBeVisible()
- const conferir=()=>comBancoGrupos(async c=>(await c.query(`SELECT b.grupo_id,(SELECT count(*)::int FROM grupo_importacao_empresa g WHERE g.grupo_id=b.grupo_id) total FROM busca_empresa b WHERE b.id=$1`,[legado])).rows[0])
- expect((await conferir()).total).toBe(5);await expect(page).toHaveURL(url)
- await page.keyboard.press('Escape');await expect(d).not.toBeVisible();await expect(abrir).toBeFocused()
- await page.reload();await expect(cards).toHaveCount(3);expect((await conferir()).total).toBe(5);expect(await chamadas()).toBe(antes)
- await cards.nth(2).getByRole('button',{name:/Ver empresa:/}).click();await page.setViewportSize({width:390,height:900});await expect(cards).toHaveCount(1)
- await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(secao).toBeFocused()
- await page.setViewportSize({width:1920,height:1080});await expect(cards).toHaveCount(3)
- const vistos=await cards.evaluateAll(els=>els.map(e=>e.getAttribute('data-empresa-recente')))
- for(let i=0;i<3;i++){await secao.getByRole('button',{name:'Próximas empresas',exact:true}).click();vistos.push(...await cards.evaluateAll(els=>els.map(e=>e.getAttribute('data-empresa-recente'))))}
- expect(vistos).toEqual(ids.slice(0,11));const todas=secao.getByRole('link',{name:'Ver todas buscas',exact:true})
- await expect(todas).toHaveAttribute('href','/fila/localizar?origem=banco');await expect(secao.getByRole('button',{name:'Próximas empresas',exact:true})).toBeDisabled()
- await todas.click();await expect(page).toHaveURL('/fila/localizar?origem=banco');expect(erros).toEqual([])
+test('Últimas buscas usa card comum e detalhe salvo exato sem aquisição ou inclusão implícita',async({page})=>{
+ const erros:string[]=[];page.on('pageerror',e=>erros.push(e.message))
+ await entrar(page)
+ const secao=page.getByRole('region',{name:'Últimas buscas',exact:true}),cards=secao.locator('ul > li')
+ await expect(cards).toHaveCount(3)
+ await expect(cards.first().getByRole('heading')).toHaveText(nome)
+ await expect(cards.first()).toContainText('AtividadeNão informado')
+ await expect(cards.first()).toContainText('OrigemBanco')
+ await expect(secao).not.toContainText('ALHEIA');await expect(secao).not.toContainText('Somente GOOGLE')
+ const antes=await chamadas(),url=page.url(),abrir=cards.first().getByRole('button',{name:'Ver empresa: '+nome,exact:true})
+ for(const width of [390,820,1280]){
+  await page.setViewportSize({width,height:900})
+  for(const tema of ['light','dark']){
+   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
+   await secao.scrollIntoViewIfNeeded()
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+   for(const card of await cards.all()) {
+    expect(await card.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true)
+    expect(await card.locator('dl').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(1)
+    const partes=card.locator('[data-slot="card"] > *')
+    const limites=await partes.evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom}}))
+    for(let i=1;i<limites.length;i++)expect(limites[i].top).toBeGreaterThanOrEqual(limites[i-1].bottom-1)
+   }
+   await secao.screenshot({path:resolve(capturas,'ultimas-'+width+'-'+tema+'.png'),style:'header[class*="topbar"], a[href="#conteudo-fila"] { visibility:hidden; }'})
+   await abrir.click()
+   const d=page.getByRole('dialog',{name:'Ver empresa',exact:true})
+   await expect(d).toContainText(nome)
+   await expect(d).toContainText('84.200.000/0000-00')
+   await expect(d).toContainText('Não informado')
+   await expect(d.getByRole('checkbox')).toHaveCount(0)
+   await expect(d.getByRole('button',{name:/Concluir inclusão|Iniciar atendimento|Retomar atendimento/})).toHaveCount(0)
+   await d.screenshot({path:resolve(capturas,'detalhe-longo-'+width+'-'+tema+'.png')})
+   await page.keyboard.press('Escape');await expect(d).not.toBeVisible();await expect(abrir).toBeFocused()
+  }
+ }
+ expect(await chamadas()).toBe(antes)
+ expect(await comBancoGrupos(async c=>(await c.query('SELECT grupo_id FROM busca_empresa WHERE id=$1',[legado])).rows[0].grupo_id)).toBeNull()
+ await expect(page).toHaveURL(url)
+ const vistos:string[]=[]
+ for(let i=0;i<4;i++){
+  vistos.push(...await cards.getByRole('heading').allTextContents())
+  if(i<3)await secao.getByRole('button',{name:'Próximas empresas',exact:true}).click()
+ }
+ expect(vistos).toHaveLength(11);expect(new Set(vistos).size).toBe(11)
+ await expect(secao.getByRole('button',{name:'Próximas empresas',exact:true})).toBeDisabled()
+ await secao.getByRole('link',{name:'Ver todas as empresas',exact:true}).click()
+ await expect(page).toHaveURL('/fila/localizar?origem=banco');expect(erros).toEqual([])
 })
 
 test('sem resultados não cria cards fictícios e conserva o histórico completo',async({page})=>{
  await entrar(page,'carrosselvazioe2e');const secao=page.getByRole('region',{name:'Últimas buscas',exact:true})
- await expect(secao.locator('[data-empresa-recente]')).toHaveCount(0);await expect(secao).toContainText('As empresas encontradas nas suas buscas aparecerão aqui.')
- await expect(secao.getByRole('link',{name:'Ver todas buscas',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Buscar empresas',exact:true})).toBeDisabled()
- await page.getByRole('button',{name:'Ver histórico de buscas',exact:true}).click();await expect(page.getByRole('dialog',{name:'Histórico de buscas',exact:true})).toBeVisible()
- await expect(page.getByRole('dialog')).toContainText('Nenhuma busca no banco de empresas realizada ainda.')
- for(const width of [1920,820,390]) {
-  await page.setViewportSize({width,height:900})
-  for(const tema of ['light','dark']) {
-   await page.keyboard.press('Escape')
-   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
-   await page.getByRole('button',{name:'Ver histórico de buscas',exact:true}).click()
-   await page.screenshot({path:resolve(capturas,`historico-vazio-${width}-${tema}.png`),fullPage:true})
-  }
- }
-
+ await expect(secao.locator('ul > li')).toHaveCount(0)
+ await expect(secao).toContainText('As empresas encontradas nas suas buscas aparecerão aqui.')
+ await expect(secao.getByRole('link',{name:'Ver todas as empresas',exact:true})).toBeVisible()
+ await expect(page.getByRole('button',{name:'Buscar empresas',exact:true})).toBeDisabled()
+ await page.getByRole('button',{name:'Ver histórico de buscas',exact:true}).click()
+ await expect(page.getByRole('dialog',{name:'Histórico de buscas',exact:true})).toContainText('Nenhuma busca no banco de empresas realizada ainda.')
 })

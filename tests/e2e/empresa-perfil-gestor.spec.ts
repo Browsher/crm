@@ -15,11 +15,13 @@ test.beforeAll(async () => {
         VALUES('90909090909901','Perfil Gestor Aurora','11988776655','Marina','marina@teste.local') RETURNING id`)
       empresaId = empresa.id
       await cliente.query('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [empresaId,dono.id])
+      await cliente.query("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresaId,dono.id])
       await cliente.query(`WITH g AS (INSERT INTO grupo_importacao(nome) VALUES('Origem da ficha do gestor') RETURNING id)
         INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) SELECT id,$1 FROM g`, [empresaId])
       await cliente.query("SELECT set_config('app.usuario_id',$1,true)", [dono.id])
-      await cliente.query(`INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data)
-        VALUES($1,'acompanhamento','Conversa de teste registrada','Telefonar amanhã',(now() AT TIME ZONE 'America/Sao_Paulo')::date+1)`, [empresaId])
+      const {rows:[contato]}=await cliente.query(`INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data)
+        VALUES($1,'acompanhamento','Conversa de teste registrada','Telefonar amanhã',(now() AT TIME ZONE 'America/Sao_Paulo')::date+1) RETURNING id`, [empresaId])
+      await cliente.query('UPDATE empresa_vinculo SET agenda_contato_id=$2 WHERE empresa_id=$1',[empresaId,contato.id])
       await cliente.query('COMMIT')
     } catch (erro) { await cliente.query('ROLLBACK'); throw erro }
   })
@@ -32,7 +34,14 @@ test('gestor abre ficha pela lista, consulta sem ações e volta mantendo busca'
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/gestao')
   await page.goto('/empresas?q=Perfil+Gestor+Aurora&pagina=1')
-  await page.getByRole('link', { name: 'Perfil Gestor Aurora', exact: true }).click()
+  const cards=page.getByRole('region',{name:'Empresas cadastradas'})
+  await expect(cards).toContainText('Em atendimento')
+  await expect(cards.getByRole('button',{name:/Iniciar|Retomar|Continuar atendimento/})).toHaveCount(0)
+  await cards.getByRole('button',{name:'Ver empresa: Perfil Gestor Aurora',exact:true}).click()
+  await expect(page.getByRole('dialog')).toContainText('Perfil Gestor Aurora')
+  await expect(page.getByRole('dialog').getByRole('button',{name:/Iniciar|Retomar|Registrar/})).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.getByRole('link', { name: 'Ficha administrativa', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/empresas/${empresaId}\\?`))
   await expect(page.getByRole('heading', { name: 'Perfil Gestor Aurora' })).toBeVisible()
   await expect(page.getByText('Marina', { exact: true })).toBeVisible()
@@ -43,12 +52,12 @@ test('gestor abre ficha pela lista, consulta sem ações e volta mantendo busca'
   await expect(page.getByText('Registrado por vendedore2e', { exact: true })).toBeVisible()
   await expect(page.locator('main form')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Registrar atendimento' })).toHaveCount(0)
-  for (const largura of [1280,390]) {
+  for (const largura of [1280,820,390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light','dark']) {
       await page.getByRole('combobox').selectOption(tema)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: `test-results/empresa-perfil-${largura}-${tema}.png`, fullPage: true })
+      await page.screenshot({ path: `.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-8-captures/empresa-perfil-${largura}-${tema}.png`, fullPage: true })
     }
   }
   await page.getByRole('link', { name: 'Voltar para empresas', exact: true }).click()

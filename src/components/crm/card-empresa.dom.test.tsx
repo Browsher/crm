@@ -21,3 +21,15 @@ test('nome completo, ausências e rótulo centralizado; callbacks recebem refer�
   await act(async () => root.render(<CardEmpresa empresa={{ ...empresa, id: null, versao: null, referencia: { tipo: 'busca', buscaId: 'busca', cnpj: '12345678000199' } }} aoVer={ver} aoAcionar={acionar} />))
   expect(host.querySelectorAll('button')).toHaveLength(1)
 })
+
+test('composição informativa não renderiza comandos mesmo com versão recebida; responsável é metadado', async()=>{
+  host=document.createElement('div');document.body.append(host);root=createRoot(host)
+  const ver=vi.fn()
+  await act(async()=>root.render(<CardEmpresa empresa={empresa} responsavel={{id:'dono',nome:'Ana',ativo:false}} aoVer={ver} />))
+  expect(host.textContent).toContain('Ana')
+  expect(host.textContent).toContain('Inativo')
+  expect(host.textContent).not.toContain('Retomar atendimento')
+  expect(host.querySelectorAll('button')).toHaveLength(1)
+  await act(async()=>host.querySelector('button')!.click())
+  expect(ver).toHaveBeenCalledWith(empresa.referencia)
+})

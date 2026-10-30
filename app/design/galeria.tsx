@@ -4,7 +4,13 @@ import { useEffect, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card'
+import { CardEmpresa } from '@/src/components/crm/card-empresa'
+import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
+import { CardSemInteresse, type EstadoDescarte } from '@/app/funil/card-sem-interesse'
+import { detalhesSnapshot, rotuloSituacao, type ResumoEmpresa } from '@/src/lib/empresa-visual'
+import { ETAPAS_FUNIL } from '@/src/lib/comercial'
+import empresaStyles from '@/src/components/crm/empresa.module.css'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/src/components/ui/dialog'
 import { Input } from '@/src/components/ui/input'
 import { Label } from '@/src/components/ui/label'
@@ -26,6 +32,7 @@ const secoes = [
   ['botoes', 'Botões'],
   ['filtros', 'Filtros'],
   ['empresas', 'Empresas'],
+  ['funil', 'Funil e arquivo'],
   ['tabelas', 'Tabelas'],
   ['ficha', 'Ficha e histórico'],
   ['avisos', 'Avisos'],
@@ -33,10 +40,11 @@ const secoes = [
   ['fluxo', 'Fluxo simulado'],
 ] as const
 
-const empresas = [
-  { nome: 'Aurora Papelaria Ltda.', cnae: '4761-0/03', uf: 'SP', cidade: 'Campinas', bairro: 'Cambuí', estado: 'Disponível', variante: 'success' as const },
-  { nome: 'Oficina Horizonte Ltda.', cnae: '4520-0/01', uf: 'SP', cidade: 'Jundiaí', bairro: 'Centro', estado: 'Reservada para você', variante: 'warning' as const },
-  { nome: 'Café Cedro Comércio Ltda.', cnae: '5611-2/03', uf: 'SP', cidade: 'Sorocaba', bairro: 'Centro', estado: 'Indisponível', detalhe: 'Com outro vendedor: Marina Costa', variante: 'outline' as const },
+const baseEmpresa: ResumoEmpresa = { referencia: {tipo:'cadastro',empresaId:'exemplo'},id:'exemplo',nome:'',cnpj:null,cnae:null,atividade:null,uf:null,cidade:null,bairro:null,origens:[],recebidaEm:null,situacao:'a_contatar',versao:1,negociacaoId:null }
+const empresas: ResumoEmpresa[] = [
+  { ...baseEmpresa, id:'aurora',referencia:{tipo:'cadastro',empresaId:'aurora'},nome: 'Aurora Papelaria Ltda.', cnae: '4761-0/03', uf: 'SP', cidade: 'Campinas', bairro: 'Cambuí',origens:['banco'],recebidaEm:'2026-10-29' },
+  { ...baseEmpresa,id:'horizonte',referencia:{tipo:'cadastro',empresaId:'horizonte'},nome: 'Oficina Horizonte Serviços e Comércio de Peças para Veículos de Longa Distância Ltda.', cnae: '4520-0/01', uf: 'SP', cidade: 'Jundiaí', bairro: 'Centro',situacao:'cliente',origens:['google','banco'] },
+  { ...baseEmpresa,id:'cedro',referencia:{tipo:'cadastro',empresaId:'cedro'},nome: 'Café Cedro Comércio Ltda.',situacao:'indisponivel',motivoIndisponibilidade:'outro_responsavel',versao:null },
 ]
 
 const filtrosIniciais = { nome: '', cnae: '', uf: '', cidade: '', bairro: '' }
@@ -46,7 +54,8 @@ export function Galeria() {
   const [resposta, setResposta] = useState('')
   const [respostaFiltros, setRespostaFiltros] = useState('')
   const [respostaDialogo, setRespostaDialogo] = useState('')
-  const [empresaAberta, setEmpresaAberta] = useState<string | null>(null)
+  const [empresaAberta, setEmpresaAberta] = useState<ResumoEmpresa | null>(null)
+  const [descarte, setDescarte] = useState<EstadoDescarte>('repouso')
   const [carregando, setCarregando] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>(0)
   const [anotacoes, setAnotacoes] = useState('Cliente pediu retorno após conferir a agenda.')
@@ -95,7 +104,7 @@ export function Galeria() {
 
           <Alert>
             <AlertTitle>Dados fictícios e estado local</AlertTitle>
-            <AlertDescription>Os exemplos desta página não consultam, reservam ou alteram empresas reais.</AlertDescription>
+            <AlertDescription>Os exemplos desta página não consultam ou alteram empresas reais.</AlertDescription>
           </Alert>
 
           <section id="ficha" className={styles.section}>
@@ -121,9 +130,9 @@ export function Galeria() {
               <Button variant="outline" onClick={() => setResposta('Ação secundária simulada.')}>Ação secundária</Button>
               <Button variant="ghost" onClick={() => setResposta('Navegação de exemplo. Você continua na galeria.')}>Voltar à fila</Button>
               <Button variant="destructive" onClick={() => setResposta('Exclusão simulada. Nenhum dado foi removido.')}>Excluir exemplo</Button>
-              <Button disabled>Reservar para ligar</Button>
+              <Button disabled>Iniciar atendimento</Button>
             </div>
-            <p className={styles.help}>Reservar para ligar está desabilitado porque a empresa já está reservada.</p>
+            <p className={styles.help}>Iniciar atendimento está desabilitado enquanto os dados são atualizados.</p>
             {resposta && <p className={styles.feedback} role="status">{resposta}</p>}
           </Secao>
 
@@ -138,25 +147,23 @@ export function Galeria() {
             {respostaFiltros && <p className={styles.feedback} role="status">{respostaFiltros}</p>}
             <div className={styles.stateExamples}>
               <Campo label="Telefone com erro" id="telefone"><Input id="telefone" defaultValue="(19) 33" aria-invalid aria-describedby="telefone-erro" /><span id="telefone-erro" className={styles.error}>Informe um telefone com DDD.</span></Campo>
-              <Campo label="Código da reserva" id="codigo-reserva"><Input id="codigo-reserva" value="RES-0184" readOnly aria-describedby="codigo-ajuda" /><span id="codigo-ajuda" className={styles.help}>Somente leitura. O valor pode ser copiado.</span></Campo>
+              <Campo label="Código da empresa" id="codigo-empresa"><Input id="codigo-empresa" value="EMP-0184" readOnly aria-describedby="codigo-ajuda" /><span id="codigo-ajuda" className={styles.help}>Somente leitura. O valor pode ser copiado.</span></Campo>
             </div>
           </Secao>
 
           <Secao id="empresas" titulo="Empresas" descricao="Situação sempre escrita, sem depender apenas da cor.">
             <div className={styles.companyGrid} data-testid="company-list">
-              {empresasFiltradas.map((empresa) => (
-                <Card key={empresa.nome} className={styles.companyCard}>
-                  <CardHeader><CardTitle>{empresa.nome}</CardTitle><CardDescription>{empresa.cidade}, {empresa.uf}</CardDescription></CardHeader>
-                  <CardContent>
-                    <Badge variant={empresa.variante}>{empresa.estado}</Badge>
-                    {empresa.detalhe && <p className={styles.companyDetail}>{empresa.detalhe}</p>}
-                    {empresaAberta === empresa.nome && <dl className={styles.companyExample}><div><dt>Telefone fictício</dt><dd>(15) 3333-0184</dd></div><div><dt>CNAE</dt><dd>{empresa.cnae}</dd></div><div><dt>Bairro</dt><dd>{empresa.bairro}</dd></div></dl>}
-                  </CardContent>
-                  <CardFooter className={styles.companyFooter}><Button variant="outline" size="sm" aria-expanded={empresaAberta === empresa.nome} onClick={() => setEmpresaAberta(empresaAberta === empresa.nome ? null : empresa.nome)}>{empresaAberta === empresa.nome ? 'Fechar exemplo' : 'Ver exemplo'}</Button></CardFooter>
-                </Card>
-              ))}
+              {empresasFiltradas.map(empresa => <CardEmpresa key={empresa.id} empresa={empresa} aoVer={() => setEmpresaAberta(empresa)} aoAcionar={acao=>setRespostaDialogo(`${acao.rotulo}: demonstração local, sem alterar empresas.`)} />)}
             </div>
+            {empresaAberta && <Dialog open onOpenChange={aberto=>{if(!aberto)setEmpresaAberta(null)}}><DialogContent theme={tema} className={empresaStyles.dialogo}><DialogHeader><DialogTitle>Ver empresa</DialogTitle><DialogDescription>Dados fictícios para demonstração.</DialogDescription></DialogHeader><div className={empresaStyles.corpo}><h3 className={empresaStyles.nome}>{empresaAberta.nome}</h3><EmpresaDetalhes empresa={{...detalhesSnapshot({},empresaAberta.referencia),...empresaAberta,nomeFantasia:empresaAberta.nome}} /></div></DialogContent></Dialog>}
+            {respostaDialogo && <p role="status">{respostaDialogo}</p>}
             {empresasFiltradas.length === 0 && <EstadoVazio titulo="Nenhuma empresa encontrada" descricao="Altere um filtro para ampliar a busca nos dados fictícios." acao={{ rotulo: 'Limpar filtros', variante: 'outline', aoAcionar: limparFiltros }} />}
+          </Secao>
+
+          <Secao id="funil" titulo="Funil e arquivo" descricao="Três etapas de negociação. Sem interesse encerra a negociação e fica no arquivo.">
+            <div className={styles.companyGrid}>{ETAPAS_FUNIL.map(etapa=><Card key={etapa} data-etapa-funil={etapa}><CardHeader><CardTitle>{rotuloSituacao(etapa)}</CardTitle></CardHeader><CardContent><p>Nenhuma negociação de exemplo.</p></CardContent></Card>)}</div>
+            <CardSemInteresse estado={descarte} total={descarte==='sucesso'?1:0} aceitaArraste={false} aoMudarSobre={()=>{}} aoSoltar={()=>{}} />
+            <div className={styles.row}><Button variant="outline" onClick={()=>setDescarte('sucesso')}>Simular arquivamento</Button><Button variant="ghost" onClick={()=>setDescarte('repouso')}>Reiniciar exemplo</Button></div>
           </Secao>
 
           <Secao id="tabelas" titulo="Tabelas" descricao="Os mesmos registros fictícios em linhas confortáveis, empilhadas no celular.">
@@ -165,7 +172,7 @@ export function Galeria() {
               <TableBody>{empresasFiltradas.map(empresa => <TableRow key={empresa.nome}>
                 <TableCell data-label="Empresa"><strong>{empresa.nome}</strong></TableCell>
                 <TableCell data-label="Localização">{empresa.cidade}, {empresa.uf}</TableCell>
-                <TableCell data-label="Situação"><Badge variant={empresa.variante}>{empresa.estado}</Badge>{empresa.detalhe && <p className={styles.companyDetail}>{empresa.detalhe}</p>}</TableCell>
+                <TableCell data-label="Situação"><Badge variant="outline">{rotuloSituacao(empresa.situacao)}</Badge></TableCell>
               </TableRow>)}</TableBody>
             </Table>
             {empresasFiltradas.length === 0 && <p role="status">Nenhum registro para os filtros aplicados.</p>}
@@ -261,12 +268,12 @@ function ExemplosAvisos() {
       </CardContent>
     </Card>
     <Card>
-      <CardHeader><CardTitle>Quando a reserva expira</CardTitle><CardDescription>Durante o atendimento. O aviso fica acima das anotações para explicar por que o registro está bloqueado.</CardDescription></CardHeader>
+      <CardHeader><CardTitle>Quando o cadastro muda</CardTitle><CardDescription>Durante o atendimento. O aviso explica por que é necessário atualizar a empresa.</CardDescription></CardHeader>
       <CardContent className={styles.scenarioContent}>
-        <Alert variant="warning"><AlertTitle>Reserva expirada</AlertTitle><AlertDescription>Você não tem mais esta reserva ativa. Suas anotações foram preservadas e podem ser copiadas.</AlertDescription></Alert>
+        <Alert variant="warning"><AlertTitle>Empresa atualizada em outra aba</AlertTitle><AlertDescription>Atualize os dados antes de registrar. Suas anotações foram preservadas e podem ser copiadas.</AlertDescription></Alert>
         <Label htmlFor="anotacoes-expiradas">Anotações da tentativa</Label><Textarea id="anotacoes-expiradas" defaultValue="Responsável retorna depois das 15h." />
         <Button disabled>Registrar ligação</Button>
-        <p className={styles.help}>Para registrar, é necessário conseguir a reserva novamente. O aviso não renova a reserva sozinho.</p>
+        <p className={styles.help}>Confira a situação atual da empresa antes de tentar novamente.</p>
       </CardContent>
     </Card>
   </div>
