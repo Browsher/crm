@@ -23,6 +23,8 @@ test('origem inativa não impede replay próprio; auth continua antes do resulta
   await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1',[c.vendedorId])
   expect(await registrarContatoDireto(c.vendedorId,comando,entrada)).toEqual({...original,repetida:true})
   if(!original.ok)throw new Error('Contato recusado')
+  expect(await registrarContatoDireto(c.vendedorId,{...comando,chave:randomUUID(),versao:original.versao},entrada)).toEqual({ok:false,motivo:'desatualizada'})
+  await banco.sql('UPDATE grupo_importacao SET ativo=true WHERE id IN (SELECT grupo_id FROM grupo_importacao_empresa WHERE empresa_id=$1)',[c.empresaId])
   expect(await registrarContatoDireto(c.vendedorId,{...comando,chave:randomUUID(),versao:original.versao},{...entrada,tipo:'acompanhamento',proximoPasso:'Ligar',proximoPassoData:'2030-01-01'})).toEqual({ok:false,motivo:'dados_invalidos'})
   expect(await banco.sql('SELECT nota FROM contato WHERE empresa_id=$1',[c.empresaId])).toEqual([{nota:'Resposta perdida'}])
   expect(await banco.sql('SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1',[c.empresaId])).toEqual([{agenda_contato_id:null}])

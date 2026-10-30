@@ -8,10 +8,11 @@ let eu: string
 let outro: string
 let seq = 0
 const registrar = (id: string, usuario = eu) => banco.comoUsuario(usuario, e => e('SELECT empresa_recente_registrar($1::uuid) AS registrado', [id]))
-const recentes = (usuario = eu) => banco.comoUsuario(usuario, e => e<{ id: string; disponibilidade: string }>('SELECT * FROM empresa_recentes()'))
+const recentes = (usuario = eu) => banco.comoUsuario(usuario, e => e<{ id: string }>('SELECT empresa_id AS id FROM empresa_recente ORDER BY acessada_em DESC,empresa_id'))
 async function empresa() {
   const id = (await banco.sql<{ id: string }>('INSERT INTO empresa(cnpj,razao_social,telefone,email) VALUES ($1,\'Empresa\',\'11999999999\',\'privado@teste.local\') RETURNING id', [String(++seq).padStart(14, '0')]))[0].id
   await vincularGrupoAtivo(banco, [id])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,eu])
   return id
 }
 beforeAll(async () => {
@@ -21,7 +22,7 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
-  await banco.sql('DELETE FROM contato')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo; DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM grupo_importacao_empresa')
   await banco.sql('DELETE FROM grupo_importacao')
@@ -42,40 +43,27 @@ test('limita a dez inclusive em conexões concorrentes', async () => {
   expect((await recentes()).linhas).toHaveLength(10)
   expect((await banco.sql<{ n: number }>('SELECT count(*)::int AS n FROM empresa_recente'))[0].n).toBe(10)
 })
-test('perfil e recentes usam estado atual e projeção de oito campos sem reservar', async () => {
-  const id = await empresa()
-  await registrar(id)
-  await banco.sql('INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES ($1,$2,now()+interval \'1 hour\')', [id, outro])
-  const { linhas } = await banco.comoUsuario(eu, e => e('SELECT * FROM empresa_perfil($1)', [id]))
-  expect(Object.keys(linhas[0]).sort()).toEqual(['id','razao_social','nome_fantasia','cnae_principal','cidade','uf','bairro','disponibilidade'].sort())
-  expect(linhas[0]).toEqual((await recentes()).linhas[0])
-  expect(linhas[0].disponibilidade).toBe('outro_vendedor')
-  expect((await banco.comoUsuario(eu, e => e('SELECT * FROM empresa WHERE id=$1', [id]))).linhas).toEqual([])
-})
-test('sugestões são somente disponíveis e limitadas', async () => {
-  for (let i = 0; i < 12; i++) await empresa()
-  const indisponivel = await empresa()
-  await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES ($1,$2)', [indisponivel, outro])
-  const { linhas } = await banco.comoUsuario(eu, e => e('SELECT * FROM empresa_sugestoes()'))
-  expect(linhas).toHaveLength(10)
-  expect(linhas.every(x => x.disponibilidade === 'disponivel')).toBe(true)
+test('visita de empresa alheia é recusada sem revelar catálogo',async()=>{
+ const id=await empresa()
+ expect((await registrar(id,outro)).linhas).toEqual([{registrado:false}])
+ expect((await recentes(outro)).linhas).toEqual([])
 })
 test('contato atualiza pelo autor e rollback não deixa recente', async () => {
   const id = await empresa()
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES ($1,$2)', [id, eu])
   await expect(banco.comoUsuario(eu, async e => {
-    await e("SELECT contato_registrar($1,'ligacao',NULL,NULL,NULL,'nenhum')", [id])
+    await e("SELECT contato_registrar_direto($1,gen_random_uuid(),(SELECT versao FROM empresa_vinculo WHERE empresa_id=$1),'nao_atendeu',NULL,NULL,NULL)", [id])
     throw new Error('rollback')
   })).rejects.toThrow('rollback')
   expect((await recentes()).linhas).toEqual([])
-  await banco.comoUsuario(eu, e => e("SELECT contato_registrar($1,'ligacao',NULL,NULL,NULL,'nenhum')", [id]))
+  await banco.comoUsuario(eu, e => e("SELECT contato_registrar_direto($1,gen_random_uuid(),(SELECT versao FROM empresa_vinculo WHERE empresa_id=$1),'nao_atendeu',NULL,NULL,NULL)", [id]))
   expect((await recentes()).linhas.map(x => x.id)).toEqual([id])
   expect((await recentes(outro)).linhas).toEqual([])
 })
 test('inexistente não registra e leitura pendente não permite gravar', async () => {
   const id = '00000000-0000-0000-0000-000000000000'
   expect((await registrar(id)).linhas).toEqual([{ registrado: false }])
-  expect((await banco.comoUsuario(eu, e => e('SELECT * FROM empresa_perfil($1)', [id]))).linhas).toEqual([])
+  expect((await banco.comoUsuario(eu, e => e('SELECT * FROM empresa WHERE id=$1', [id]))).linhas).toEqual([])
   const pendente = await criarUsuario(banco, 'vendedor', 'RecentePendente')
   await banco.sql('UPDATE usuario SET senha_provisoria_pendente=true WHERE id=$1', [pendente])
   expect((await recentes(pendente)).linhas).toEqual([])
@@ -89,17 +77,13 @@ test('sem identidade, escrita direta e funções internas são negadas', async (
   const acl = await banco.sql("SELECT has_function_privilege('app_conferencia','empresa_recentes()','EXECUTE') AS permitido")
   expect(acl).toEqual([{ permitido: false }])
 })
-test('repositório mapeia resumo e traduz somente permissão', async () => {
-  const { listarRecentes, listarSugestoes, lerPerfil, registrarRecente } = await import('@/src/features/prospeccao/recentes')
-  const id = await empresa()
-  expect(await registrarRecente(eu,id)).toEqual({ ok: true, registrado: true })
-  expect(await lerPerfil(eu,id)).toMatchObject({ ok: true, empresa: { id, razaoSocial: 'Empresa' } })
-  expect(await listarRecentes(eu)).toMatchObject({ ok: true, empresas: [{ id }] })
-  expect(await listarSugestoes(eu)).toMatchObject({ ok: true, empresas: [{ id }] })
-  await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1', [outro])
-  expect(await listarRecentes(outro)).toEqual({ ok: false, motivo: 'sem_permissao' })
-  expect(await lerPerfil(outro,id)).toEqual({ ok: false, motivo: 'sem_permissao' })
-  expect(await registrarRecente(outro,id)).toEqual({ ok: false, motivo: 'sem_permissao' })
+test('repositório de visita traduz somente permissão e respeita vínculo',async()=>{
+ const {registrarRecente}=await import('@/src/features/prospeccao/recentes')
+ const id=await empresa()
+ expect(await registrarRecente(eu,id)).toEqual({ok:true,registrado:true})
+ expect(await registrarRecente(outro,id)).toEqual({ok:true,registrado:false})
+ await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[outro])
+ expect(await registrarRecente(outro,id)).toEqual({ok:false,motivo:'sem_permissao'})
 })
 
 async function esperarAdvisoryPendente() {
@@ -127,7 +111,7 @@ test('visita aguarda contato antes da FK e não forma ciclo de locks', async () 
       await c.query('SELECT id FROM empresa WHERE id=$1 FOR UPDATE', [id])
       bloqueou()
       await continuar
-      await c.query("SELECT contato_registrar($1,'ligacao',NULL,NULL,NULL,'nenhum')", [id])
+      await c.query("SELECT contato_registrar_direto($1,gen_random_uuid(),(SELECT versao FROM empresa_vinculo WHERE empresa_id=$1),'nao_atendeu',NULL,NULL,NULL)", [id])
       await c.query('COMMIT')
     } catch (erro) {
       await c.query('ROLLBACK')

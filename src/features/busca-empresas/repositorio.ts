@@ -5,7 +5,6 @@ import type { BuscaSalva, FiltrosBusca, LimiteBusca, ResultadoFornecedor } from 
 
 export type FalhaBanco = 'sem_permissao' | 'operacao_invalida' | 'empresa_repetida'
 export type ResumoBusca = Omit<BuscaSalva, 'empresas'> & { retornadas: number }
-export type GrupoGoogle = { id: string; nome: string; criado_em: string; total: number }
 export type RepositorioBusca = Pick<ReturnType<typeof repositorioBusca>, 'reservar' | 'concluir'>
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
 function motivo(erro: unknown): FalhaBanco {
@@ -90,9 +89,6 @@ export function repositorioBusca(usuarioId: string) {
         const [r] = await executar<{ grupo_id: string | null; inseridas: number; vinculadas: number }>('SELECT * FROM busca_empresa_importar($1,NULL)', [id])
         return { ok: true, grupoId: r.grupo_id, inseridas: r.inseridas, vinculadas: r.vinculadas }
       } catch (erro) { return { ok: false, motivo: motivo(erro) } }
-    },
-    async gruposGoogle(): Promise<GrupoGoogle[]> {
-      return executar<GrupoGoogle>('SELECT id,nome,criado_em::text,total FROM busca_empresa_grupos_google()')
     },
   }
 }

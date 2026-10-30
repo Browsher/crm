@@ -8,10 +8,10 @@ const googleId = randomUUID()
 const nomeBusca = 'Aquisição CNPJ.biz fictícia'
 let vendedor: string
 let empresaGoogle: string
-const lead = { cnpj: '98765432000198', razao_social: 'Loja iluminação fictícia CNPJ', nome_fantasia: 'Iluminação fictícia',
-  telefone: '11988887777', email: 'comercial@exemplo.test', cep: null, cnae_principal: '4742300',
+const lead = { cnpj: '98765432009100', razao_social: 'Loja iluminação fictícia CNPJ', nome_fantasia: 'Iluminação fictícia',
+  telefone: '11988889100', email: 'comercial@exemplo.test', cep: null, cnae_principal: '4742300',
   situacao: 'ATIVA', porte: 'ME', data_abertura: '2020-01-15', logradouro: 'Rua fictícia', numero: '10',
-  complemento: 'Sala 2', bairro: 'Centro', cidade: 'São Paulo', uf: 'SP', telefones: ['11988887777'] }
+  complemento: 'Sala 2', bairro: 'Centro', cidade: 'São Paulo', uf: 'SP', telefones: ['11988889100'] }
 async function entrar(page: Page, apelido: string) {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill(apelido + '@teste.local')
@@ -45,6 +45,7 @@ test.afterAll(async () => {
     await c.query('DELETE FROM grupo_importacao WHERE id=ANY($1::uuid[])', [[googleId, ...grupos]])
     await c.query('DELETE FROM empresa_origem_google WHERE empresa_id=ANY($1::uuid[])', [empresas])
     await c.query('DELETE FROM empresa_fila WHERE empresa_id=ANY($1::uuid[])', [empresas])
+    await c.query('DELETE FROM empresa_vinculo WHERE empresa_id=ANY($1::uuid[])', [empresas])
     await c.query('DELETE FROM empresa WHERE id=ANY($1::uuid[])', [empresas])
   })
 })
@@ -62,12 +63,15 @@ test('vendedor escolhe fonte, confere contatos e importa; gestor acompanha e pau
   await expect(page.getByRole('dialog').last().getByRole('checkbox')).toHaveCount(0)
   await page.getByRole('button', { name: 'Concluir inclusão', exact: true }).click()
   await expect(page.getByText('1 empresas novas. A lista reúne 1 empresas.', { exact: true })).toBeVisible()
-  const prospectar = page.getByRole('link', { name: 'Prospectar esta lista', exact: true })
-  await expect(prospectar).toHaveAttribute('href', /grupo=/)
+  await expect(page.getByRole('link', { name: 'Prospectar esta lista', exact: true })).toHaveCount(0)
   const [{ id: empresaId }] = await comBancoGrupos(async c => (await c.query('SELECT id FROM empresa WHERE cnpj=$1', [lead.cnpj])).rows)
   await page.goto('/fila/localizar/' + empresaId)
-  await expect(page.getByRole('heading', { name: 'Dados cadastrais do CNPJ.biz' })).toBeVisible()
-  await expect(page.getByText('Rua fictícia, 10, Sala 2, Centro, São Paulo, SP', { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp('/fila/atendimento/' + empresaId))
+  await page.getByRole('button', { name: 'Ver empresa: Iluminação fictícia', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('Rua fictícia')
+  await expect(page.getByRole('dialog')).toContainText('Sala 2')
+  await expect(page.getByRole('dialog')).toContainText('Centro')
+  await page.keyboard.press('Escape')
   const contextoGestor = await browser.newContext()
   const paginaGestor = await contextoGestor.newPage()
   await entrar(paginaGestor, 'buscagestore2e')

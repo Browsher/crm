@@ -34,7 +34,8 @@ test('gestor lê disponibilidade real de donos distintos sem receber versão ou 
   const r=await ler(gestor,[propria,alheia])
   expect(r.ok&&r.empresas).toEqual([propria,alheia].sort().map(empresaId=>({empresaId,disponivel:true,motivo:null})))
   const detalhes=await banco.comoUsuario(gestor,e=>e<{r:{dados:{versao:null;situacao:string}}}>('SELECT empresa_detalhes_ler($1) AS r',[propria]))
-  expect(detalhes.linhas[0].r.dados).toMatchObject({versao:null,situacao:'indisponivel'})
+  expect(detalhes.linhas[0].r.dados).toMatchObject({versao:null,situacao:'a_contatar',responsavel:{id:vendedor,ativo:true}})
+  expect((await banco.comoUsuario(gestor,e=>e('SELECT atendimento_iniciar($1,gen_random_uuid(),1) AS r',[propria]))).linhas).toEqual([{r:{ok:false,motivo:'sem_permissao'}}])
 })
 test('autenticação vem antes do lote vazio e papel/estado vigente não ficam em cache',async()=>{
   expect(await ler('00000000-0000-4000-8000-000000000000',[])).toEqual({ok:false,motivo:'sem_permissao'})

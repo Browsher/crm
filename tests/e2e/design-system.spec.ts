@@ -72,7 +72,7 @@ test('controles mantêm tema e medidas em desktop e toque', async ({ page, brows
     await expect(telefone).toHaveCSS('min-height', '40px')
     await expect(telefone).toHaveCSS('font-size', '14px')
     await expect(telefone).toHaveCSS('box-shadow', 'none')
-    await expect(page.getByLabel('Código da reserva', { exact: true })).toHaveCSS('background-color', secundario)
+    await expect(page.getByLabel('Código da empresa', { exact: true })).toHaveCSS('background-color', secundario)
     await page.getByText('Telefone com erro', { exact: true }).click()
     await expect(telefone).toBeFocused()
     await expect(telefone).toHaveAttribute('aria-describedby', 'telefone-erro')
@@ -82,7 +82,7 @@ test('controles mantêm tema e medidas em desktop e toque', async ({ page, brows
     await expect(telefone).toHaveCSS('outline-offset', '3px')
     await expect(telefone).toHaveCSS('outline-color', foco)
     await expect(telefone).toHaveCSS('box-shadow', 'none')
-    await expect(page.getByRole('button', { name: 'Reservar para ligar', exact: true })).toBeDisabled()
+    await expect(page.locator('#botoes').getByRole('button', { name: 'Iniciar atendimento', exact: true })).toBeDisabled()
     await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-4-captures/design-system-desktop-${tema}.png`, animations: 'disabled' })
   }
   // O tema global também chega a controles fora do contêiner da galeria.
@@ -155,7 +155,7 @@ test('Carteira realmente vazia orienta primeiro uso em Card e navega pelo CTA co
   await expect(titulo).toBeVisible()
   await expect(page.getByRole('main')).not.toContainText('Nenhum cliente corresponde aos filtros')
   const card = page.locator('[data-slot="card"]').filter({ has: titulo })
-  const cta = card.getByRole('link', { name: 'Puxar a próxima empresa', exact: true })
+  const cta = card.getByRole('link', { name: 'Ir para Prospecção', exact: true })
   const referencia = await page.context().newPage()
   await referencia.setContent(readFileSync('docs/design/design-system-padrao.html', 'utf8'))
   const cardReferencia = referencia.locator('[data-component="empty-state"]')
@@ -287,11 +287,11 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
           expect(await linha.getByRole('cell').last().evaluate(elemento => getComputedStyle(elemento, '::before').content)).toBe('"Ações"')
         }
         await expect(linha).toContainText('Contato principal não informado')
-        const badge = linha.locator('[data-slot="badge"]')
+        const badges = linha.locator('[data-slot="badge"]')
         const badgeReferencia = referencia.locator('.badge-success').first()
         // A tipografia e o raio vêm da referência aprovada; células seguem os 16px do inventário.
         for (const propriedade of ['font-size', 'line-height', 'border-radius']) {
-          await expect(badge).toHaveCSS(propriedade, await badgeReferencia.evaluate((elemento, chave) => getComputedStyle(elemento).getPropertyValue(chave), propriedade))
+          for (const badge of await badges.all()) await expect(badge).toHaveCSS(propriedade, await badgeReferencia.evaluate((elemento, chave) => getComputedStyle(elemento).getPropertyValue(chave), propriedade))
         }
         const acao = linha.getByRole('link', { name: 'Ver cliente', exact: true })
         await acao.focus()

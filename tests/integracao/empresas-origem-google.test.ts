@@ -1,3 +1,4 @@
+import { contatoDireto } from './fixtures/contato-direto'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { CABECALHO_GOOGLE } from '@/src/features/empresas/planilha'
@@ -26,7 +27,7 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
-  await banco.sql('DELETE FROM negociacao')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo; DELETE FROM negociacao')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM fila_contexto')
@@ -54,8 +55,8 @@ test('reimportação conserva UUID em dois grupos e mesma chave retorna resultad
 test('completa somente CNPJ e razão social vazios e conserva contato e carteira', async () => {
   await confirmar([prospect()])
   const [{ id }] = await banco.sql<{ id: string }>('SELECT id FROM empresa')
-  await banco.comoUsuario(vendedor, e => e("SELECT * FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)", [id]))
-  await banco.comoUsuario(vendedor, e => e("SELECT contato_registrar($1,'interessado','Anotação preservada',NULL,NULL,'assumir')", [id]))
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[id,vendedor])
+  expect(await contatoDireto(banco,vendedor,id,{tipo:'interessado',nota:'Anotação preservada',proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
   const contatos = await banco.sql('SELECT * FROM contato')
   const carteira = await banco.sql('SELECT * FROM empresa_fila')
   expect(await confirmar([{ ...prospect(), cnpj: '11222333000181', razao_social: 'Aurora LTDA', telefone: '1134567890', nome_fantasia: 'Outro nome' }])).toMatchObject({ inseridas: 0 })

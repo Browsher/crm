@@ -14,7 +14,7 @@ export async function prepararEmpresasConsulta(banco: BancoDeTeste) {
   const outra = await banco.sql<{ id: string }>(`INSERT INTO empresa (cnpj, razao_social, telefone, cep)
     VALUES ('00000000000024','Outra empresa fluminense','21987650002','20000000') RETURNING id`)
   await vincularGrupoAtivo(banco, [...empresas, ...outra].map(e => e.id))
-  await banco.sql(`INSERT INTO empresa_fila (empresa_id, vendedor_id)
-    SELECT e.id, u.id FROM empresa e CROSS JOIN usuario u
-    WHERE e.razao_social LIKE 'Consulta E2E %' AND u.email='invalidoe2e@teste.local'`)
+  await banco.sql(`INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial)
+    SELECT e.id,u.id,'legado' FROM empresa e CROSS JOIN usuario u
+    WHERE e.razao_social LIKE 'Consulta E2E %' AND u.email='vendedore2e@teste.local'`)
 }

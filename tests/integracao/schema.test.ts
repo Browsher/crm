@@ -58,6 +58,7 @@ describe('migrações reais', () => {
       '0054_resumos_empresas.sql',
       '0055_disponibilidade_atendimento.sql',
       '0056_resumos_gestor.sql',
+      '0057_aposentar_reserva.sql',
     ])
   })
 

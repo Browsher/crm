@@ -3,7 +3,6 @@ import { expect, test, vi } from 'vitest'
 vi.mock('@/src/server/autenticacao/guarda',()=>({exigir:async()=>({usuarioId:'eu'})}))
 vi.mock('@/src/features/fila/consulta',()=>({lerMinhasEmpresas:async()=>({ok:true,reserva:null,carteira:[],contexto:null})}))
 vi.mock('@/src/features/contato/historico',()=>({lerHistorico:async()=>({ok:true,contatos:[]})}))
-vi.mock('@/src/server/grupos/prospeccao',()=>({listarGruposProspeccao:async()=>({ok:true,grupos:[],temProxima:false}),lerGrupoProspeccao:async()=>null}))
 vi.mock('./entrada-sem-reserva',()=>({EntradaSemReserva:()=>null}))
 vi.mock('./formulario',()=>({Formulario:()=>null}))
 import Pagina from './page'

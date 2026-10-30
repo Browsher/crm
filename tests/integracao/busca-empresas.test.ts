@@ -217,20 +217,11 @@ test('quota anterior à meia-noite de São Paulo não reduz o limite do novo dia
   expect(await repositorioBusca(vendedor).meuLimite()).toMatchObject({ usado: 0, limite_diario: 2 })
   expect(await reservar()).toEqual([{ resultado: 'ok' }])
 })
-test('Google oferece somente grupos ativos com vínculo de origem real', async () => {
-  const { repositorioBusca } = await import('@/src/features/busca-empresas/repositorio')
-  const [{ id: empresaId }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Google fictício','11988887777') RETURNING id")
-  const [{ id: grupoId }] = await banco.sql<{ id: string }>("INSERT INTO grupo_importacao(nome) VALUES ('Lista Google fictícia') RETURNING id")
-  await banco.sql('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES ($1,$2)', [grupoId, empresaId])
-  const repo = repositorioBusca(vendedor)
-  expect(await repo.gruposGoogle()).toEqual([])
-  await banco.sql("INSERT INTO empresa_origem_google(google_place_id,empresa_id) VALUES ('place-fixture',$1)", [empresaId])
-  expect(await repo.gruposGoogle()).toMatchObject([{ id: grupoId, total: 1 }])
-  await banco.sql('UPDATE grupo_importacao SET ativo=false WHERE id=$1', [grupoId])
-  expect(await repo.gruposGoogle()).toEqual([])
+test('catálogo compartilhado antigo do Google não é executável pelo vendedor',async()=>{
+ await expect(banco.comoUsuario(vendedor,e=>e('SELECT * FROM busca_empresa_grupos_google()'))).rejects.toMatchObject({code:'42501'})
 })
 
-test('perfil público conserva dados cadastrais mas oculta telefone sem posse ou reserva vigente', async () => {
+test('dados cadastrais exigem vínculo pessoal, preservado independentemente de reserva antiga', async () => {
   const { lerDadosCadastrais } = await import('@/src/server/cnpj-biz/dados')
   await configurar()
   const id = randomUUID()
@@ -239,10 +230,10 @@ test('perfil público conserva dados cadastrais mas oculta telefone sem posse ou
   await importar(id)
   const [{ id: empresaId }] = await banco.sql<{ id: string }>('SELECT id FROM empresa WHERE cnpj=$1', [empresa.cnpj])
   expect(await lerDadosCadastrais(gestor, empresaId)).toMatchObject({ telefones: [empresa.telefone] })
-  expect(await lerDadosCadastrais(outro, empresaId)).toMatchObject({ porte: 'ME', telefones: [] })
+  expect(await lerDadosCadastrais(outro, empresaId)).toBeNull()
   await banco.sql('INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES ($1,$2,now()+interval \'10 minutes\')', [empresaId, vendedor])
   expect(await lerDadosCadastrais(vendedor, empresaId)).toMatchObject({ telefones: [empresa.telefone] })
-  expect(await lerDadosCadastrais(outro, empresaId)).toMatchObject({ telefones: [] })
+  expect(await lerDadosCadastrais(outro, empresaId)).toBeNull()
   await banco.sql('UPDATE empresa_fila SET reservado_ate=now()-interval \'1 second\' WHERE empresa_id=$1', [empresaId])
-  expect(await lerDadosCadastrais(vendedor, empresaId)).toMatchObject({ telefones: [] })
+  expect(await lerDadosCadastrais(vendedor, empresaId)).toMatchObject({ telefones: [empresa.telefone] })
 })

@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
@@ -20,6 +21,7 @@ afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
   const [e] = await banco.sql<{ id: string }>("INSERT INTO empresa(razao_social,telefone) VALUES('Atendimento','11987654321') RETURNING id")
   empresa = e.id
+  await vincularGrupoAtivo(banco,[empresa])
   await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial,recebida_em) VALUES($1,$2,'banco',now()-interval '90 days')", [empresa, vendedor])
 })
 async function rpc(nome: string, args: unknown[], usuario = vendedor) {

@@ -33,5 +33,6 @@ export async function prepararGoogle(banco: BancoDeTeste) {
   }
   await banco.sql(`INSERT INTO contato(empresa_id,tipo,nota) SELECT o.empresa_id,'nao_atendeu','Atendimento fictício após a entrega.'
     FROM empresa_origem_google o CROSS JOIN (SELECT set_config('app.usuario_id',$1,false) OFFSET 0) identidade WHERE o.google_place_id='google-demo-brinquedos'`, [vendedorId])
+  await banco.sql("UPDATE empresa_vinculo SET iniciada_em=now() WHERE empresa_id IN (SELECT empresa_id FROM empresa_origem_google WHERE google_place_id='google-demo-brinquedos')")
   return { vendedorId, gestorId, outroId: outro.id }
 }

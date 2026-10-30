@@ -40,7 +40,7 @@ beforeAll(async () => {
   b = await criarUsuario(banco, 'vendedor', 'TransicaoB')
   gestor = await criarUsuario(banco, 'gestor', 'TransicaoGestor')
   ids = []
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 11; i++) {
     const [{ id }] = await banco.sql<{ id: string }>("INSERT INTO empresa(razao_social,telefone) VALUES($1,'11987654321') RETURNING id", [`Legada ${i}`])
     ids.push(id)
   }
@@ -66,6 +66,10 @@ beforeAll(async () => {
   await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id,concluido_em) VALUES($1,'Busca anterior','{}',1,'concluida',$2,now())", [a, grupo])
   await banco.sql("UPDATE empresa_fila SET elegivel_em=now()+interval '30 days' WHERE empresa_id=$1", [ids[8]])
   await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1', [b])
+  await banco.sql("INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate,primeira_reserva_em) VALUES($1,$2,'2026-10-01','2026-09-30')",[ids[9],a])
+  await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[ids[10],a])
+  await banco.sql("INSERT INTO negociacao(empresa_id,vendedor_id,iniciada_em) VALUES($1,$2,'2026-09-30')",[ids[10],a])
+  await banco.sql('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES($1,$2)',[grupo,ids[2]])
   antes = await retrato()
   somas = await banco.sql('SELECT nome,soma FROM _migracao ORDER BY nome')
   expect((await aplicar(banco.urlAdmin, PASTA_MIGRACOES)).ok).toBe(true)
@@ -75,7 +79,7 @@ afterAll(async () => { await banco?.derrubar() })
 test('migração mantém todos os IDs, autoria, vendas, grupos e somas anteriores', async () => {
   expect(await retrato()).toEqual(antes)
   expect(await banco.sql("SELECT nome,soma FROM _migracao WHERE nome<'0050' ORDER BY nome")).toEqual(somas)
-  expect(await banco.sql('SELECT empresa_id FROM empresa_vinculo')).toHaveLength(4)
+  expect(await banco.sql('SELECT empresa_id FROM empresa_vinculo')).toHaveLength(6)
   expect(await banco.sql('SELECT empresa_id FROM empresa_vinculo_pendencia')).toHaveLength(5)
   expect(await banco.sql('SELECT * FROM empresa_atendimento_operacao')).toEqual([])
 })
@@ -99,7 +103,7 @@ test('inventário é do gestor real, paginado e somente leitura, sem contatos no
   expect(await inventariarTransicao(gestor, 'invalido', 100)).toEqual({ ok: false, motivo: 'filtros_invalidos' })
   expect(await inventariarTransicao(gestor, null, 101)).toEqual({ ok: false, motivo: 'filtros_invalidos' })
   const primeira = await inventariarTransicao(gestor, null, 2)
-  expect(primeira).toMatchObject({ ok: true, dados: { totais: { empresas: 9, vinculosInequivocos: 4, pendencias: 5 } } })
+  expect(primeira).toMatchObject({ ok: true, dados: { totais: { empresas: 11, vinculosInequivocos: 6, pendencias: 5 } } })
   if (!primeira.ok) throw new Error('inventário recusou gestor')
   expect(primeira.dados.pendencias).toHaveLength(2)
   const segunda = await inventariarTransicao(gestor, primeira.dados.proximo, 100)
@@ -121,7 +125,7 @@ test('CLI local lê usando identidade de gestor, valida argumentos e recusa host
   })
   const ok = executar(['--gestor', gestor, '--limite', '2'])
   expect(ok.status, ok.stderr).toBe(0)
-  expect(JSON.parse(ok.stdout)).toMatchObject({ ok: true, dados: { totais: { empresas: 9 } } })
+  expect(JSON.parse(ok.stdout)).toMatchObject({ ok: true, dados: { totais: { empresas: 11 } } })
   for (const args of [['--gestor', a, '--limite', '2'], ['--gestor', gestor, '--limite', '101'], ['--gestor', 'invalido', '--limite', '2']]) {
     expect(executar(args).status).not.toBe(0)
   }
@@ -160,4 +164,16 @@ test('classificação SQL concorda com a regra pura em reservas e entregas de fo
     if (decisao.tipo === 'pendente') expect(linha.motivo_vinculo).toBe(decisao.motivo)
     else { expect(linha.motivo_vinculo).toBeNull(); expect(linha.vendedor_id).toBe(decisao.vendedorId) }
   }
+})
+
+test('upgrade não usa reserva como autoridade e retomar não ressuscita agenda antiga cancelada',async()=>{
+  expect(await banco.sql('SELECT vendedor_id FROM empresa_vinculo WHERE empresa_id=ANY($1)',[[ids[9],ids[10]]])).toEqual([{vendedor_id:a},{vendedor_id:a}])
+  expect(await banco.sql('SELECT empresa_id FROM empresa_vinculo WHERE empresa_id=$1',[ids[3]])).toEqual([])
+  expect(await banco.sql('SELECT motivo FROM empresa_vinculo_pendencia WHERE empresa_id=$1',[ids[4]])).toEqual([{motivo:'responsavel_inativo'}])
+  const antes=await banco.sql('SELECT * FROM contato WHERE empresa_id=$1',[ids[2]])
+  const r=await banco.comoUsuario(a,e=>e<{r:{ok:boolean}}>('SELECT empresa_atendimento_retomar($1,gen_random_uuid(),(SELECT versao FROM empresa_vinculo WHERE empresa_id=$1)) AS r',[ids[2]]))
+  expect(r.linhas[0].r.ok).toBe(true)
+  expect(await banco.sql('SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[ids[2]])).toEqual([{agenda_contato_id:null,arquivada_em:null}])
+  expect(await banco.sql('SELECT * FROM contato WHERE empresa_id=$1',[ids[2]])).toEqual(antes)
+  expect(await banco.sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[ids[2]])).toEqual([])
 })

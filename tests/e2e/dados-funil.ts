@@ -4,9 +4,9 @@ import { vincularEmpresaTeste } from '../integracao/atendimento-fixtures'
 import { randomUUID } from 'node:crypto'
 export const FUNIL_EMPRESA='00000000-0000-4000-8000-000000000801'
 export async function prepararFunil(banco:BancoDeTeste) {
-  await criarUsuarioComSenha(banco,'vendedor','retornoe2e','Senha-e2e-2026',{pendente:false})
+  const retornoUsuario=await criarUsuarioComSenha(banco,'vendedor','retornoe2e','Senha-e2e-2026',{pendente:false})
   const [retorno]=await banco.sql<{id:string}>("INSERT INTO empresa(cnpj,razao_social,telefone,cnae_principal) VALUES('00000000000901','Retorno Combinado','11977779001','7777799') RETURNING id")
-  await vincularGrupoAtivo(banco,[retorno.id])
+  await vincularEmpresaTeste(banco,retorno.id,retornoUsuario.id,'legado')
   const eu=await criarUsuarioComSenha(banco,'vendedor','funile2e','Senha-e2e-2026',{pendente:false})
   const outro=await criarUsuarioComSenha(banco,'vendedor','funiloutroe2e','Senha-e2e-2026',{pendente:false})
   for(let i=1;i<=9;i++){

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { vincularGrupoAtivo } from './grupos-fixtures'
@@ -62,18 +63,18 @@ test('importação própria e Google fazem união sem duplicar e preservam clien
   expect((await consultar({},outro)).empresas.map(e=>e.id)).toEqual([alheia])
 })
 
-test('aquisição pessoal recusa ID alheio e próxima empresa respeita filtros pessoais',async()=>{
+test('atendimento pessoal recusa ID alheio e lista respeita filtros pessoais',async()=>{
   const [e]=await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Nova pessoal','11977778888') RETURNING id")
   await vincularGrupoAtivo(banco,[e.id])
   await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'google')",[e.id,eu])
   const [p]=await banco.sql<{id:string}>("INSERT INTO google_planejamento(vendedor_id,dia,nicho,bairro,cidade,uf) VALUES($1,'2026-10-20','Brinquedos','Sé','São Paulo','SP') RETURNING id",[eu])
   await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,'{}','entregue',now())",[p.id,e.id])
-  const reservar=(alvo:string|null,contexto:string|null,f={})=>banco.comoUsuario(eu,sql=>sql<{resultado:string;empresa_id:string;contexto:string}>('SELECT * FROM prospeccao_pessoal_reservar($1,$2,$3)',[alvo,JSON.stringify(f),contexto])).then(r=>r.linhas[0])
-  const r=await reservar(null,null,{nicho:'Brinquedos'})
-  expect(r).toMatchObject({resultado:'ok',empresa_id:e.id})
-  expect(await reservar(alheia,r.contexto)).toMatchObject({resultado:'indisponivel'})
-  expect(await reservar(null,r.contexto,{nicho:'Inexistente'})).toMatchObject({resultado:'sem_candidata'})
-  expect(await banco.sql('SELECT reservado_por FROM empresa_fila WHERE empresa_id=$1',[e.id])).toEqual([{reservado_por:eu}])
+  const iniciar=(id:string)=>banco.comoUsuario(eu,sql=>sql<{r:{ok:boolean;motivo?:string}}>('SELECT atendimento_iniciar($1,$2,1) AS r',[id,randomUUID()])).then(r=>r.linhas[0].r)
+  expect((await consultar({nicho:'Brinquedos'})).empresas.map(x=>x.id)).toEqual([e.id])
+  expect(await iniciar(e.id)).toMatchObject({ok:true})
+  expect(await iniciar(alheia)).toEqual({ok:false,motivo:'sem_permissao'})
+  expect((await consultar({nicho:'Inexistente'})).empresas).toEqual([])
+  expect(await banco.sql('SELECT empresa_id FROM empresa_fila WHERE empresa_id=$1',[e.id])).toEqual([])
 })
 
 test('nicho usa contexto congelado e região usa resultado real mesmo após edição do planejamento',async()=>{

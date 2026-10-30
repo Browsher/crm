@@ -59,7 +59,8 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   await expect(page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true })).toBeVisible()
   await expect(popup.getByRole('checkbox')).toHaveCount(0)
   await expect(popup).toContainText('automaticamente')
-  await expect(popup.getByRole('link', { name: 'Prospectar esta lista', exact: true })).toBeVisible()
+  await expect(popup.getByRole('link', { name: 'Prospectar esta lista', exact: true })).toHaveCount(0)
+  await expect(popup.getByRole('button', { name: 'Iniciar atendimento', exact: true })).toBeVisible()
   const conferir = () => comBancoGrupos(async c => (await c.query(
     `SELECT b.estado,b.fornecedor,b.quantidade,(b.empresas->0->>'bloqueada_por_repeticao')::boolean bloqueada,jsonb_array_length(b.empresas) AS retornadas,
       (SELECT count(*)::int FROM busca_empresa WHERE usuario_id=b.usuario_id AND nome=b.nome) AS tentativas
@@ -72,15 +73,16 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
   await expect(popup.getByRole('checkbox')).toHaveCount(0)
   const empresa = await comBancoGrupos(async c => (await c.query('SELECT id FROM empresa WHERE cnpj=$1', ['99887766000105'])).rows[0])
   await page.goto('/fila/localizar/' + empresa.id)
-  await expect(page.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
-  // Importar não transfere posse. A ficha abaixo usa uma posse criada somente
-  // na fixture, como as demais jornadas de Carteira; o fluxo de reserva tem E2E próprio.
+  await expect(page).toHaveURL(new RegExp('/fila/atendimento/' + empresa.id))
+  await page.getByRole('button', { name: 'Ver empresa: Luminárias Horizonte fictícia', exact: true }).click()
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Cadastro', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  // A entrega cria vínculo pessoal, sem contato nem responsabilidade comercial inventada.
   await comBancoGrupos(async c => {
     const fila = (await c.query('SELECT vendedor_id FROM empresa_fila WHERE empresa_id=$1', [empresa.id])).rows[0]
     expect(fila?.vendedor_id ?? null).toBeNull()
-    await c.query(`INSERT INTO empresa_fila(empresa_id,vendedor_id)
-      SELECT $1,id FROM usuario WHERE email='redesigne2e@teste.local'
-      ON CONFLICT(empresa_id) DO UPDATE SET vendedor_id=excluded.vendedor_id`, [empresa.id])
+    expect((await c.query(`SELECT v.empresa_id FROM empresa_vinculo v JOIN usuario u ON u.id=v.vendedor_id WHERE v.empresa_id=$1 AND u.email='redesigne2e@teste.local'`, [empresa.id])).rowCount).toBe(1)
+    expect((await c.query('SELECT id FROM contato WHERE empresa_id=$1', [empresa.id])).rowCount).toBe(0)
   })
   await page.goto('/carteira/' + empresa.id)
   const dados = page.getByRole('tabpanel', { name: 'Dados da empresa', exact: true })

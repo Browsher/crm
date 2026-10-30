@@ -66,13 +66,13 @@ test('venda nega terceiros, gestor, senha pendente, valor e data futura', async 
   expect(await vender()).toBe('sem_permissao')
   expect(await banco.sql('SELECT id FROM venda')).toEqual([])
 })
-test('devolver exige motivo e grava autoria; venda concorrente não fica sem dono', async () => {
-  expect(await agir(eu,"SELECT funil_devolver($1,' ') AS resultado",[ciclo])).toBe('dados_invalidos')
-  const resultados=await Promise.all([vender(),agir(eu,"SELECT funil_devolver($1,'Sem interesse') AS resultado",[ciclo])])
-  expect(resultados.filter(x=>x==='ok')).toHaveLength(1)
-  const vendas=await banco.sql('SELECT id FROM venda')
-  if (vendas.length) expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:eu}])
-  else expect(await banco.sql('SELECT nota,criado_por FROM contato')).toEqual([{nota:'Sem interesse',criado_por:eu}])
+test('arquivo e primeira venda concorrentes preservam dono e um único desfecho',async()=>{
+ const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+ const arquivar=banco.comoUsuario(eu,e=>e<{r:{ok:boolean;motivo?:string}}>('SELECT empresa_sem_interesse_definir($1,$2,$3,$4) AS r',[empresa,randomUUID(),versao,ciclo])).then(r=>r.linhas[0].r)
+ const [venda,arquivo]=await Promise.all([vender(),arquivar])
+ expect(Number(venda==='ok')+Number(arquivo.ok)).toBe(1)
+ expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:eu}])
+ expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:venda==='ok'?'venda':'sem_interesse'}])
 })
 
 test.each(['etapa','venda'])('reconfere autorização após esperar trava de empresa: %s',async(comando)=>{

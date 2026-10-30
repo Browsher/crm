@@ -8,7 +8,7 @@ import { criarBancoDeTeste, criarUsuarioComSenha, type BancoDeTeste } from '../.
 import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal } from '../../tests/e2e/ambiente'
 import { iniciarProcesso, encerrarProcesso } from './processos'
 import { prepararEmpresasConsulta } from '../../tests/e2e/dados-consulta'
-import { prepararEmpresasReserva } from '../../tests/e2e/dados-reserva'
+import { prepararVinculosPermanentes } from '../../tests/e2e/dados-reserva'
 import { prepararRecentes } from '../../tests/e2e/dados-recentes'
 import { prepararFilaVisual } from '../../tests/e2e/dados-fila-visual'
 import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
@@ -75,7 +75,7 @@ try {
     await criarUsuarioComSenha(banco, papel, apelido, 'Senha-e2e-2026', { pendente })
   }
   await prepararEmpresasConsulta(banco)
-  await prepararEmpresasReserva(banco)
+  await prepararVinculosPermanentes(banco)
   await prepararRecentes(banco)
   await prepararFilaVisual(banco)
   await prepararCarteiraVisual(banco)

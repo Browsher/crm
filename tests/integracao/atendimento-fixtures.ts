@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { criarUsuario, type BancoDeTeste } from './ajuda'
 
 // Exclusivo da preparação administrativa do harness local. Não é comando do app.
@@ -7,6 +8,7 @@ export async function vincularEmpresaTeste(
   vendedorId: string,
   origem: 'google' | 'banco' | 'legado',
 ): Promise<number> {
+  await vincularGrupoAtivo(banco,[empresaId])
   const [vinculo] = await banco.sql<{ versao: number }>(
     `INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,$3)
      RETURNING versao`, [empresaId, vendedorId, origem],

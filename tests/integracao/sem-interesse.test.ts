@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { vincularEmpresaTeste } from './atendimento-fixtures'
 
 let banco: BancoDeTeste
 let vendedor: string
@@ -10,7 +11,7 @@ afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
   const [e] = await banco.sql<{ id: string }>("INSERT INTO empresa(razao_social,telefone) VALUES('Arquivo','11987654321') RETURNING id")
   empresa = e.id
-  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')", [empresa, vendedor])
+  await vincularEmpresaTeste(banco, empresa, vendedor, 'banco')
 })
 async function rpc(nome: string, args: unknown[]) {
   return banco.comoUsuario(vendedor, async e => (await e<{ r: { ok: boolean; motivo?: string; versao: number; repetida: boolean } }>(`SELECT ${nome}(${args.map((_, i) => `$${i + 1}`).join(',')}) AS r`, args)).linhas[0].r)

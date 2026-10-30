@@ -10,9 +10,11 @@ import { garantirInclusao } from '@/src/features/busca-empresas/inclusao-automat
 import { mensagemBusca } from '@/src/features/busca-empresas/mensagens'
 import { validarFiltros } from '@/src/features/busca-empresas/filtros'
 import { prepararConsultaCasa } from '@/src/server/casa-dados/filtros'
+import { lerResumosBusca } from '@/src/server/atendimento/consulta'
+import type { ResumoEmpresa } from '@/src/lib/empresa-visual'
 
 export type EstadoBusca = { erro: string | null }
-export type EstadoImportarBusca = { erro: string | null; grupoId: string | null; inseridas: number; vinculadas: number; concluido?: boolean }
+export type EstadoImportarBusca = { erro: string | null; grupoId: string | null; inseridas: number; vinculadas: number; concluido?: boolean; resumos?: ResumoEmpresa[]; aviso?: string }
 
 export async function buscarEmpresasAcao(_anterior: EstadoBusca, form: FormData): Promise<EstadoBusca> {
   const eu = await exigir('vendedor')
@@ -51,7 +53,11 @@ export async function concluirInclusaoAcao(_anterior: EstadoImportarBusca, form:
     revalidatePath('/fila/buscar')
     revalidatePath('/empresas')
     revalidatePath('/empresas/busca')
-    return { erro: null, grupoId: r.grupoId, inseridas: r.inseridas, vinculadas: r.vinculadas, concluido: true }
+    const confirmado = { erro: null, grupoId: r.grupoId, inseridas: r.inseridas, vinculadas: r.vinculadas, concluido: true }
+    // Falha na leitura posterior não transforma o recibo confirmado em uma nova inclusão.
+    const leitura = await lerResumosBusca(eu.usuarioId, String(form.get('busca') ?? '')).catch(() => null)
+    return leitura?.ok ? { ...confirmado, resumos: leitura.empresas }
+      : { ...confirmado, resumos: [], aviso: 'A inclusão foi concluída. Reabra a busca para atualizar a situação das empresas, sem refazer a consulta.' }
   } catch {
     return { ...inicial, erro: 'Não foi possível concluir a inclusão. Seus resultados continuam salvos; tente novamente sem refazer a busca.' }
   }

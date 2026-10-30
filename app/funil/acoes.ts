@@ -14,7 +14,7 @@ function resultado(r:Resultado):EstadoFunil {
     for(const rota of ['/funil','/carteira','/meu-dia','/gestao','/usuarios']) revalidatePath(rota)
     return {ok:true}
   }
-  const mensagens={sem_permissao:'A negociação não está mais disponível para você.',encerrada:'Esta negociação já foi encerrada.',dados_invalidos:'Confira os campos. A data da venda não pode ser futura.',desatualizada:'A etapa mudou. Feche e reabra a negociação.',chave_reutilizada:'Esta tentativa de venda já foi usada com outros dados. Feche e confira a Carteira.'}
+  const mensagens={sem_permissao:'A negociação não está mais disponível para você.',encerrada:'Esta negociação já foi encerrada.',dados_invalidos:'Confira os campos. A data da venda não pode ser futura.',desatualizada:'O atendimento mudou ou está indisponível. Confira a negociação antes de tentar novamente.',chave_reutilizada:'Esta tentativa de venda já foi usada com outros dados. Feche e confira a Carteira.'}
   return {ok:false,erro:mensagens[r.motivo],indisponivel:r.motivo==='sem_permissao'||r.motivo==='encerrada'}
 }
 export async function detalheAcao(id:string) {const eu=await exigir('vendedor');return lerNegociacao(eu.usuarioId,id)}

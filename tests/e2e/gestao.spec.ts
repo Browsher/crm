@@ -13,14 +13,19 @@ test.beforeAll(async () => {
       const usuarios = await cliente.query<{ id: string; nome: string }>(`INSERT INTO usuario(nome,email,papel,ativo) VALUES
         ('Ana Lima','dashboardana@teste.local','vendedor',true),
         ('Bruno Costa','dashboardbruno@teste.local','vendedor',true),
-        ('Vendedor desativado','dashboardinativo@teste.local','vendedor',false) RETURNING id,nome`)
+        ('Vendedor desativado','dashboardinativo@teste.local','vendedor',true) RETURNING id,nome`)
       for (const [indice, usuario] of usuarios.rows.entries()) {
         const empresa = await cliente.query<{ id: string }>(`INSERT INTO empresa(cnpj,razao_social,telefone)
           VALUES($1,$2,'11999999999') RETURNING id`, [`90909090000${String(indice).padStart(3, '0')}`, ['Aurora Comércio', 'Brisa Serviços', 'Cadastro Inativo'][indice]])
         await cliente.query('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [empresa.rows[0].id, usuario.id])
+        await cliente.query("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial,iniciada_em) VALUES($1,$2,'legado',now())", [empresa.rows[0].id, usuario.id])
+        await cliente.query("WITH g AS (INSERT INTO grupo_importacao(nome) VALUES('Origem dashboard') RETURNING id) INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) SELECT id,$1 FROM g", [empresa.rows[0].id])
+        await cliente.query('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())', [empresa.rows[0].id, usuario.id])
         await cliente.query("SELECT set_config('app.usuario_id',$1,true)", [usuario.id])
         await cliente.query(`INSERT INTO contato(empresa_id,tipo,proximo_passo,proximo_passo_data)
           VALUES($1,'acompanhamento','Conversar com o responsável',(now() AT TIME ZONE 'America/Sao_Paulo')::date + $2::int)`, [empresa.rows[0].id, indice === 0 ? -1 : 0])
+        await cliente.query('UPDATE empresa_vinculo SET agenda_contato_id=(SELECT id FROM contato WHERE empresa_id=$1) WHERE empresa_id=$1', [empresa.rows[0].id])
+        if (indice === 2) await cliente.query('UPDATE usuario SET ativo=false WHERE id=$1', [usuario.id])
       }
       await cliente.query('COMMIT')
     } catch (erro) { await cliente.query('ROLLBACK'); throw erro }

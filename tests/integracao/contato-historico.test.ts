@@ -1,3 +1,5 @@
+import { contatoDireto } from './fixtures/contato-direto'
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { lerHistorico } from '@/src/features/contato/historico'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
@@ -18,13 +20,14 @@ beforeAll(async () => {
      VALUES ('11222333000181', 'Aurora Comercio LTDA', '11987654321') RETURNING id`,
   )
   empresa = linha.id
+  await vincularGrupoAtivo(banco,[empresa])
 })
 afterAll(async () => {
   await banco.derrubar()
 })
 
 beforeEach(async () => {
-  await banco.sql('DELETE FROM contato')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo; DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
 })
 
@@ -33,17 +36,13 @@ beforeEach(async () => {
 // autor e com o now() da transação da semeadura. Teste que dependa de autor ou
 // de ordem no tempo tem que escrever pelo caminho de verdade, em transações
 // separadas — é o que dá dois now() diferentes.
-function registrar(usuarioId: string, nota: string): Promise<string> {
-  return banco.comoUsuario(usuarioId, async (e) => {
-    const r = await e<{ contato_registrar: string }>(
-      'SELECT contato_registrar($1, $2, $3, NULL, NULL, $4)',
-      [empresa, 'acompanhamento', nota, 'nenhum'],
-    )
-    return r.linhas[0].contato_registrar
-  })
+async function registrar(usuarioId:string,nota:string) {
+  const r=await contatoDireto(banco,usuarioId,empresa,{tipo:'nao_atendeu',nota,proximoPasso:null,proximoPassoData:null})
+  return r.ok?'ok':r.motivo
 }
 
 async function darPosseA(usuarioId: string): Promise<void> {
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado') ON CONFLICT(empresa_id) DO UPDATE SET vendedor_id=excluded.vendedor_id",[empresa,usuarioId])
   await banco.sql(
     `INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em)
      VALUES ($1, $2, now())
@@ -72,15 +71,7 @@ describe('lerHistorico', () => {
 
   test('proximo passo vem como texto YYYY-MM-DD, sem ambiguidade de Date', async () => {
     await darPosseA(vendedorA)
-    await banco.comoUsuario(vendedorA, (e) =>
-      e('SELECT contato_registrar($1, $2, NULL, $3, $4, $5)', [
-        empresa,
-        'acompanhamento',
-        'Mandar orcamento',
-        '2026-10-01',
-        'nenhum',
-      ]),
-    )
+    await contatoDireto(banco,vendedorA,empresa,{tipo:'nao_atendeu',nota:null,proximoPasso:'Mandar orcamento',proximoPassoData:'2026-10-01'})
     const r = await lerHistorico(vendedorA, empresa)
     if (!r.ok) throw new Error('esperava sucesso')
     expect(r.contatos[0].proximoPassoData).toBe('2026-10-01')

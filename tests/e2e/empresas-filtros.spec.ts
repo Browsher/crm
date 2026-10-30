@@ -91,8 +91,8 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
   await expect(page.getByLabel('Buscar empresas', { exact: true })).toBeVisible()
   await expect(page.locator('main form form')).toHaveCount(0)
   await expect(page.getByRole('main').locator('form [data-slot=card]')).toHaveCount(1)
-  const tabela = page.getByRole('table')
-  await expect(tabela.getByRole('row')).toHaveCount(51)
+  const tabela = page.getByRole('region', { name: 'Empresas cadastradas', exact: true })
+  await expect(tabela.getByRole('listitem')).toHaveCount(50)
   await expect(tabela).not.toContainText('Outro bairro')
   await expect(tabela).not.toContainText('Sem CNAE')
   await expect(tabela).not.toContainText('Porto Alegre')
@@ -100,7 +100,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
     await page.getByLabel('Tema de Empresas').selectOption(tema)
     for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 900 })
-      const empresaLonga = tabela.getByRole('link', { name: NOME_LONGO, exact: true })
+      const empresaLonga = tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha administrativa', exact: true })
       await empresaLonga.scrollIntoViewIfNeeded()
       await expect(empresaLonga).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -108,7 +108,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
     }
   }
   // A ficha conserva filtros aplicados e pode não ter sócios enriquecidos.
-  await tabela.getByRole('link', { name: NOME_LONGO, exact: true }).click()
+  await tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha administrativa', exact: true }).click()
   await expect(page.getByRole('heading', { name: NOME_LONGO, exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dados dos sócios e representantes', exact: true })).toHaveCount(0)
   for (const tema of ['light', 'dark']) {
@@ -146,7 +146,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
   await cnae.selectOption('nao_informado')
   await bairro.selectOption('Centro mineiro')
   await page.getByRole('link', { name: 'Próxima', exact: true }).click()
-  await expect(tabela.getByRole('row')).toHaveCount(2)
+  await expect(tabela.getByRole('listitem')).toHaveCount(1)
   await expect(tabela).toContainText('Filtros E2E Empresa 51')
   const params = new URL(page.url()).searchParams
   expect(Object.fromEntries(params)).toEqual({ q: 'Filtros E2E', cnae: '4742300', uf: 'MG', cidade: '3106200', bairro: 'Savassi', pagina: '2' })
@@ -172,7 +172,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
       expect(sobreposicoes).toBe(0)
       expect((await tabela.getByRole('link').first().boundingBox())!.height).toBeGreaterThanOrEqual(width <= 820 ? 44 : 40)
       expect((await page.getByRole('link', { name: 'Anterior', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(width <= 820 ? 44 : 40)
-      await expect(tabela.locator('tbody tr').first()).toHaveCSS('display', width <= 600 ? 'grid' : 'table-row')
+      await expect(tabela.locator('[data-slot=card]').first()).toHaveCSS('padding-top', width <= 820 ? '20px' : '24px')
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/empresas-filtros-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
     }
@@ -214,7 +214,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
       await toque.getByLabel('Tema de Empresas').selectOption(tema)
       await expect(toque.getByLabel('Buscar empresas', { exact: true })).toHaveCSS('font-size', '16px')
       await expect(toque.getByLabel('Buscar empresas', { exact: true })).toHaveCSS('min-height', '44px')
-      expect((await toque.getByRole('table').getByRole('link').first().boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      expect((await toque.getByRole('region', { name: 'Empresas cadastradas', exact: true }).getByRole('link').first().boundingBox())!.height).toBeGreaterThanOrEqual(44)
       await toque.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/empresas-toque-${tema}-1280.png` })
     }
   } finally { await contextoToque.close() }

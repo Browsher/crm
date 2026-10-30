@@ -12,7 +12,7 @@ export async function vendaCarteiraAcao(form:FormData):Promise<EstadoVenda> {
   const id=String(form.get('id')??'')
   const r=await registrarVenda(eu.usuarioId,id,validado.dados)
   if(!r.ok){
-    const mensagens={sem_permissao:'Este cliente não está mais disponível para você.',nao_cliente:'Registre a primeira venda pelo Funil.',dados_invalidos:'Confira os campos. A data da venda não pode ser futura.',chave_reutilizada:'Esta tentativa já foi usada com outros dados. Confira o histórico antes de iniciar outra venda.'}
+    const mensagens={arquivada:'Retome o atendimento deste cliente antes de registrar uma nova venda.',desatualizada:'O atendimento mudou ou está indisponível. Atualize a página e confira o histórico antes de tentar novamente.',sem_permissao:'Este cliente não está mais disponível para você.',nao_cliente:'Registre a primeira venda pelo Funil.',dados_invalidos:'Confira os campos. A data da venda não pode ser futura.',chave_reutilizada:'Esta tentativa já foi usada com outros dados. Confira o histórico antes de iniciar outra venda.'}
     return {ok:false,erro:mensagens[r.motivo]}
   }
   for(const rota of ['/carteira',`/carteira/${id}`,'/meu-dia',`/empresas/${id}`,'/gestao'])revalidatePath(rota)

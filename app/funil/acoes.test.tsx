@@ -41,3 +41,13 @@ test('venda exige confirmação, usa ator da sessão e revalida consumidores',as
   expect(mocks.vender).toHaveBeenCalledWith('eu','ciclo',expect.objectContaining({centavos:1234}))
   for(const p of ['/funil','/carteira','/meu-dia','/gestao'])expect(mocks.revalidar).toHaveBeenCalledWith(p)
 })
+
+test('primeira venda explica indisponibilidade sem afirmar mudança de etapa ou perda de autorização',async()=>{
+  mocks.vender.mockResolvedValue({ok:false,motivo:'desatualizada'})
+  const f=new FormData()
+  for(const[k,v]of Object.entries({id:'ciclo',valor:'12,34',data:'2026-09-15',chave:'12345678-1234-1234-1234-123456789012',confirmado:'sim'}))f.set(k,v)
+  const r=await vendaAcao(f)
+  expect(r).toMatchObject({ok:false,indisponivel:false})
+  expect(r.erro).toContain('indisponível')
+  expect(mocks.revalidar).not.toHaveBeenCalled()
+})

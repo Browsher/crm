@@ -26,7 +26,6 @@ async function confirmar(linhas: unknown, chave = randomUUID(), usuario = gestor
   return r.linhas[0]
 }
 const situacao = (id: string, ativo: boolean, usuario = gestor) => banco.comoUsuario(usuario, e => e('SELECT grupo_importacao_situacao_definir($1,$2) AS resultado', [id, ativo]))
-const reservar = (id: string | null) => banco.comoUsuario(vendedor, e => e<{resultado:string;empresa_id:string;reservado_ate:Date}>("SELECT * FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,(SELECT versao FROM fila_contexto WHERE usuario_id=usuario_atual()))", [id]))
 beforeAll(async () => {
   banco = await criarBancoDeTeste()
   gestor = await criarUsuario(banco, 'gestor', 'GrupoGestor')
@@ -35,7 +34,7 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
-  await banco.sql('DELETE FROM negociacao')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo; DELETE FROM negociacao')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM fila_contexto')
@@ -105,7 +104,7 @@ test('filtros públicos conservam geografia, ordenação e universos distintos c
     {tipo:'cidade',valor:'3550308',rotulo:'Cidade do cenário'},
     {tipo:'uf',valor:'SP',rotulo:'SP'},
   ]
-  for (const funcao of ['empresa_filtros','empresa_filtros_administracao']) {
+  for (const funcao of ['empresa_filtros_administracao']) {
     expect((await banco.comoUsuario(gestor,e=>e(`SELECT * FROM ${funcao}('SP','3550308')`))).linhas).toEqual(esperadas)
     for (const params of [['sp',null],[null,'3550308'],['SP','abc']]) {
       await expect(banco.comoUsuario(gestor,e=>e(`SELECT * FROM ${funcao}($1,$2)`,params))).rejects.toMatchObject({code:'22023'})
@@ -113,7 +112,7 @@ test('filtros públicos conservam geografia, ordenação e universos distintos c
   }
   await expect(banco.comoUsuario(vendedor,e=>e("SELECT * FROM empresa_filtros_administracao('sp',NULL)"))).rejects.toMatchObject({code:'42501'})
   await situacao(grupo.grupo_id,false)
-  expect((await banco.comoUsuario(gestor,e=>e("SELECT * FROM empresa_filtros('SP','3550308')"))).linhas).toEqual([])
+  await expect(banco.comoUsuario(gestor,e=>e("SELECT * FROM empresa_filtros('SP','3550308')"))).rejects.toMatchObject({code:'42501'})
   expect((await banco.comoUsuario(gestor,e=>e("SELECT * FROM empresa_filtros_administracao('SP','3550308')"))).linhas).toEqual(esperadas)
 })
 test('gestor inativo ou com senha pendente não confirma nem muda grupo', async () => {
@@ -140,50 +139,28 @@ test('payload inválido ou duplicado desfaz grupo, vínculos e inserções inclu
     await expect(banco.comoUsuario(gestor, e => e(sqlConfirmar, p))).rejects.toMatchObject({code:'22023'})
   }
 })
-test('desativar bloqueia todos os caminhos de prospecção e mantém administração', async () => {
-  const r = await confirmar([linha()])
-  const [{ id }] = await banco.sql<{id:string}>('SELECT id FROM empresa')
-  await banco.comoUsuario(vendedor, e => e('SELECT empresa_recente_registrar($1)', [id]))
-  await situacao(r.grupo_id, false)
-  for (const sql of ["SELECT * FROM empresa_consultar('',NULL,NULL,NULL,NULL,1)", 'SELECT * FROM empresa_sugestoes()', 'SELECT * FROM empresa_recentes()', `SELECT * FROM empresa_perfil('${id}')`, 'SELECT * FROM empresa_filtros(NULL,NULL)']) {
-    expect((await banco.comoUsuario(vendedor, e => e(sql))).linhas).toEqual([])
-  }
-  expect((await reservar(id)).linhas[0].resultado).toBe('indisponivel')
-  expect((await reservar(null)).linhas[0].resultado).toBe('sem_candidata')
-  expect((await banco.comoUsuario(gestor, e => e('SELECT * FROM empresa'))).linhas).toHaveLength(1)
-  expect((await banco.comoUsuario(gestor, e => e('SELECT * FROM empresa_filtros_administracao(NULL,NULL)'))).linhas).toHaveLength(1)
-  await expect(banco.comoUsuario(vendedor, e => e('SELECT * FROM empresa_filtros_administracao(NULL,NULL)'))).rejects.toMatchObject({code:'42501'})
+async function prepararVinculo(id:string) {
+ await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,vendedor])
+}
+const iniciar=(id:string)=>banco.comoUsuario(vendedor,e=>e<{r:{ok:boolean;motivo?:string}}>('SELECT atendimento_iniciar($1,gen_random_uuid(),(SELECT versao FROM empresa_vinculo WHERE empresa_id=$1)) AS r',[id])).then(r=>r.linhas[0].r)
+test('desativar origem recusa nova intenção e mantém leitura histórica autorizada e administração',async()=>{
+ const g=await confirmar([linha()]),[{id}]=await banco.sql<{id:string}>('SELECT id FROM empresa')
+ await prepararVinculo(id);await situacao(g.grupo_id,false)
+ expect(await iniciar(id)).toEqual({ok:false,motivo:'desatualizada'})
+ expect((await banco.comoUsuario(vendedor,e=>e('SELECT id FROM empresa'))).linhas).toEqual([{id}])
+ expect((await banco.comoUsuario(gestor,e=>e('SELECT id FROM empresa'))).linhas).toEqual([{id}])
+ expect((await banco.comoUsuario(gestor,e=>e('SELECT * FROM empresa_filtros_administracao(NULL,NULL)'))).linhas).toHaveLength(1)
 })
-test('outra origem ativa mantém elegibilidade, reativar preserva descanso e carteira', async () => {
-  const l = linha()
-  const a = await confirmar([l])
-  const b = await confirmar([l])
-  const [{ id }] = await banco.sql<{id:string}>('SELECT id FROM empresa')
-  await situacao(a.grupo_id, false)
-  expect((await reservar(id)).linhas[0].resultado).toBe('ok')
-  await situacao(b.grupo_id, false)
-  await banco.comoUsuario(vendedor, e => e("SELECT contato_registrar($1,'interessado',NULL,NULL,NULL,'assumir')", [id]))
-  expect((await banco.comoUsuario(vendedor, e => e('SELECT * FROM empresa_perfil($1)', [id]))).linhas).toMatchObject([{disponibilidade:'comigo'}])
-  const posse = await banco.sql('SELECT * FROM empresa_fila')
-  await situacao(b.grupo_id, true)
-  expect(await banco.sql('SELECT * FROM empresa_fila')).toEqual(posse)
-  await banco.comoUsuario(vendedor, e => e("SELECT contato_registrar($1,'nao_atendeu',NULL,NULL,NULL,'devolver')", [id]))
-  const descanso = await banco.sql('SELECT * FROM empresa_fila')
-  await situacao(b.grupo_id, false)
-  await situacao(b.grupo_id, true)
-  expect(await banco.sql('SELECT * FROM empresa_fila')).toEqual(descanso)
-  expect((await reservar(id)).linhas[0].resultado).toBe('indisponivel')
-})
-test('reserva válida mantém prazo após desativação; vencida não pode ser renovada', async () => {
-  const r = await confirmar([linha()])
-  const [{ id }] = await banco.sql<{id:string}>('SELECT id FROM empresa')
-  const reserva = (await reservar(id)).linhas[0]
-  await situacao(r.grupo_id, false)
-  expect((await reservar(id)).linhas[0]).toEqual(reserva)
-  expect((await banco.comoUsuario(vendedor, e => e('SELECT * FROM empresa_perfil($1)', [id]))).linhas).toHaveLength(1)
-  await banco.sql("UPDATE empresa_fila SET reservado_ate=clock_timestamp()-interval '1 second'")
-  expect((await reservar(id)).linhas[0].resultado).toBe('indisponivel')
-  expect((await banco.comoUsuario(vendedor, e => e('SELECT * FROM empresa_perfil($1)', [id]))).linhas).toEqual([])
+test('outra origem ativa mantém disponibilidade; reativação não altera vínculo nem história',async()=>{
+ const l=linha(),a=await confirmar([l]),b=await confirmar([l]),[{id}]=await banco.sql<{id:string}>('SELECT id FROM empresa')
+ await prepararVinculo(id);await situacao(a.grupo_id,false)
+ expect(await iniciar(id)).toMatchObject({ok:true})
+ const antes=await banco.sql('SELECT * FROM empresa_vinculo')
+ await situacao(b.grupo_id,false)
+ expect(await iniciar(id)).toEqual({ok:false,motivo:'desatualizada'})
+ await situacao(b.grupo_id,true)
+ expect(await banco.sql('SELECT * FROM empresa_vinculo')).toEqual(antes)
+ expect(await iniciar(id)).toMatchObject({ok:true})
 })
 
 test('limites medem o texto completo recebido; espaços externos não burlam nome e arquivo', async () => {
@@ -263,14 +240,15 @@ test('confirmações concorrentes com mesma chave aguardam e retornam exatamente
     expect(await banco.sql('SELECT count(*)::int AS n FROM empresa')).toEqual([{n:1}])
   } finally { await a.end(); await b.end() }
 })
-test.each(['reserva', 'desativacao'])('concorrência real: %s conclui primeiro', async primeira => {
+test.each(['atendimento', 'desativacao'])('concorrência real: %s conclui primeiro', async primeira => {
   const r = await confirmar([linha()])
   const [{id}] = await banco.sql<{id:string}>('SELECT id FROM empresa')
   const a = await conexao(vendedor)
   const b = await conexao(gestor)
-  const reservarSql = "SELECT * FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)"
+  await prepararVinculo(id)
+  const reservarSql = 'SELECT atendimento_iniciar($1,gen_random_uuid(),1) AS r'
   try {
-    if (primeira === 'reserva') {
+    if (primeira === 'atendimento') {
       const reserva = (await a.query(reservarSql, [id])).rows[0]
       const [{pid}] = (await b.query('SELECT pg_backend_pid() AS pid')).rows
       const pendente = b.query('SELECT grupo_importacao_situacao_definir($1,false)', [r.grupo_id])
@@ -278,14 +256,15 @@ test.each(['reserva', 'desativacao'])('concorrência real: %s conclui primeiro',
       await a.query('COMMIT')
       await pendente
       await b.query('COMMIT')
-      expect((await reservar(id)).linhas[0]).toEqual(reserva)
+      expect(reserva.r).toMatchObject({ok:true})
+      expect(await iniciar(id)).toEqual({ok:false,motivo:'desatualizada'})
     } else {
       await b.query('SELECT grupo_importacao_situacao_definir($1,false)', [r.grupo_id])
       const [{pid}] = (await a.query('SELECT pg_backend_pid() AS pid')).rows
       const pendente = a.query(reservarSql, [id])
       await esperarLock(pid)
       await b.query('COMMIT')
-      expect((await pendente).rows[0].resultado).toBe('indisponivel')
+      expect((await pendente).rows[0].r).toEqual({ok:false,motivo:'desatualizada'})
       await a.query('COMMIT')
     }
   } finally { await a.end(); await b.end() }

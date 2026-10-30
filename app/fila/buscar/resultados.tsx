@@ -13,12 +13,14 @@ import styles from '@/src/components/crm/busca-empresas.module.css'
 const inicial: EstadoImportarBusca = { erro: null, grupoId: null, inseridas: 0, vinculadas: 0, concluido: false }
 export function ResultadosBusca({ busca, bloqueada, resumos = [] }: { busca: BuscaSalva; bloqueada: boolean; resumos?: ResumoEmpresa[] }) {
   const [estado, acao, pendente] = useActionState(concluirInclusaoAcao, inicial)
+  const atuais = estado.resumos ?? resumos
   const grupo = estado.grupoId ?? busca.grupo_id
   const concluida = estado.concluido || busca.inclusao_automatica_concluida
   const retomar = !concluida && busca.empresas.some(e => e.telefone && !e.bloqueada_por_repeticao)
   return <form action={acao} className={styles.resultado}>
     <input type="hidden" name="busca" value={busca.id} />
     {estado.erro && <Alert variant="danger" role="alert">{estado.erro}</Alert>}
+    {estado.aviso && <Alert role="status">{estado.aviso}</Alert>}
     {estado.concluido && <p role="status">{estado.inseridas} empresas novas. A lista reúne {estado.vinculadas} empresas.</p>}
     {grupo && <p role="status">{concluida ? 'As empresas válidas desta busca já foram adicionadas automaticamente à sua lista de prospecção.' : 'Lista de prospecção disponível.'}</p>}
     {bloqueada && <Alert variant="warning">Inclusões pausadas pelo gestor. Você pode conferir as empresas.</Alert>}
@@ -28,7 +30,7 @@ export function ResultadosBusca({ busca, bloqueada, resumos = [] }: { busca: Bus
         <Button type="submit" className="w-fit" disabled={bloqueada || pendente}>{pendente ? 'Incluindo empresas…' : 'Concluir inclusão'}</Button></div>}
       {!grupo && !retomar && <p>Não há empresas novas com telefone válido disponíveis para esta lista.</p>}
       <ul className="grid list-none gap-4 p-0">{busca.empresas.map(e => <li key={e.cnpj} className="min-w-0">
-        <Cartao empresa={resumos.find(r => r.cnpj === e.cnpj) ?? detalhesSnapshot(e, { tipo: 'busca', buscaId: busca.id, cnpj: e.cnpj }, busca.criado_em)} filtros={{ origem: 'banco' }} />
+        <Cartao empresa={atuais.find(r => r.cnpj === e.cnpj) ?? detalhesSnapshot(e, { tipo: 'busca', buscaId: busca.id, cnpj: e.cnpj }, busca.criado_em)} filtros={{ origem: 'banco' }} />
         {e.bloqueada_por_repeticao && <p className={styles.aviso}>Empresa ou contato já cadastrado na base global. Inclusão bloqueada.</p>}
       </li>)}</ul>
       <p className={styles.ajuda}>Somente empresas com telefone válido e sem repetição entram na lista de prospecção.</p>

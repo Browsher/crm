@@ -57,7 +57,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM google_sincronizacao')
   await banco.sql('DELETE FROM google_planejamento')
   await banco.sql('DELETE FROM google_rotina')
-  await banco.sql('DELETE FROM contato')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_origem_google')
   await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM empresa_fila')
@@ -195,8 +195,8 @@ test('exclusividade impede reserva por alvo direto e fonte compartilhada', async
   const id = await iniciado()
   await entregar(id)
   const [{ empresa_id: e }] = await banco.sql<{ empresa_id: string }>('SELECT empresa_id FROM google_exclusividade')
-  expect(await chamar(outro, "SELECT resultado FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)", [e])).toEqual([{ resultado: 'indisponivel' }])
-  expect(await chamar(vendedor, "SELECT resultado FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)", [e])).toEqual([{ resultado: 'ok' }])
+  expect(await chamar(outro, 'SELECT atendimento_iniciar($1,gen_random_uuid(),1) AS resultado', [e])).toEqual([{resultado:{ok:false,motivo:'sem_permissao'}}])
+  expect(await chamar(vendedor, 'SELECT atendimento_iniciar($1,gen_random_uuid(),1) AS resultado', [e])).toMatchObject([{resultado:{ok:true}}])
 })
 
 test('coordenador legado preserva congelamento dos pedidos antigos e sua retomada', async () => {

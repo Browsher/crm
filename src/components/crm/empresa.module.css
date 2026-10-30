@@ -6,7 +6,7 @@
 .dados dt { color:var(--muted-foreground); font-size:12px; }
 .card .dados dd, .grade .dados dd { margin:0; overflow-wrap:anywhere; }
 .dados ul { display:grid; gap:var(--space-2); list-style:none; margin:0; padding:0; }
-.acoes { display:flex; flex-wrap:wrap; gap:var(--space-2); }
+.acoes { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:auto; }
 .grade { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-4); min-width:0; }
 .grade h4 { font-size:14px; font-weight:600; }
 .dialogo:global(.ui-dialog-content) { width:min(960px,calc(100vw - 32px)); max-width:960px; max-height:calc(100dvh - 32px); overflow:hidden; grid-template-rows:auto minmax(0,1fr); }

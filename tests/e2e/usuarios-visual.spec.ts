@@ -118,8 +118,8 @@ test('perfil do vendedor usa cards e hierarquia de seção do design system', as
   await page.goto('/usuarios')
   const linha = page.locator('tbody tr').filter({ hasText: 'redesigne2e@teste.local' })
   await linha.getByRole('link', { name: /Ver perfil/ }).click()
-  await expect(page.getByRole('heading', { name: 'Carteira do vendedor', exact: true })).toHaveCSS('font-size', '18px')
-  await expect(page.getByRole('region', { name: 'Carteira do vendedor', exact: true })).toHaveCSS('border-radius', '10px')
+  await expect(page.getByRole('heading', { name: 'Empresas do vendedor', exact: true })).toHaveCSS('font-size', '18px')
+  await expect(page.getByRole('region', { name: 'Empresas do vendedor', exact: true }).first()).toHaveCSS('border-radius', '10px')
   for (const largura of [1440, 1280, 1100, 820, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light', 'dark']) {

@@ -57,32 +57,22 @@ test('banco tem seis cartões, paginação e sugestão do nome conectadas à Cas
   await expect(page).toHaveURL(/busca=[0-9a-f-]{36}/)
   await expect(page.getByRole('heading',{name:'Luminárias Horizonte fictícia',exact:true})).toBeVisible()
 })
-test('perfil e reserva vigente preservam a consulta pessoal até a próxima aquisição',async({page})=>{
-  await entrar(page)
-  const consulta='/fila/localizar?origem=google&nicho=Lojas+de+brinquedos'
-  const empresa=()=>page.getByRole('article').filter({has:page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})})
-  await page.goto(consulta)
-  await empresa().getByRole('link',{name:'Ver empresa',exact:true}).click()
-  await expect(page).toHaveURL(/pessoal=/)
-  await expect(page.getByRole('region',{name:'Pesquisa atual',exact:true})).toBeVisible()
-  await expect(page.getByRole('link',{name:'Alterar filtros',exact:true})).toHaveAttribute('href',/pessoal=/)
-  await expect(page.getByRole('link',{name:'Escolher outra lista',exact:true})).toHaveCount(0)
-  await page.getByRole('link',{name:'Voltar para localizar',exact:true}).click()
-  await expect(page.getByRole('heading',{name:'Todas as minhas empresas',exact:true})).toBeVisible()
-  const contexto=JSON.parse(new URL(page.url()).searchParams.get('pessoal')!)
-  expect(contexto).toMatchObject({origem:'google',nicho:'Lojas de brinquedos'})
-  await empresa().getByRole('button',{name:'Reservar para ligar',exact:true}).click()
-  await expect(page).toHaveURL(/\/fila\?/)
-  await expect(page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})).toBeVisible()
-  await page.goto(consulta)
-  await empresa().getByRole('link',{name:'Continuar atendimento',exact:true}).click()
-  await expect(page).toHaveURL(/pessoal=/)
-  await page.getByRole('button',{name:'Próxima',exact:true}).click()
-  await expect(page.getByRole('heading',{name:'Brinquedos do Bairro (fictícia)',exact:true})).toBeVisible()
-  await page.getByRole('button',{name:'Registrar resultado',exact:true}).click()
-  await page.getByLabel('Nota',{exact:true}).fill('Regressão fictícia da navegação pessoal')
-  await page.getByRole('button',{name:'Registrar',exact:true}).click()
-  await expect(page.getByLabel('Nota',{exact:true})).toHaveCount(0)
+test('diálogo e atendimento preservam a consulta pessoal sem nova aquisição',async({page})=>{
+ await entrar(page)
+ const consulta='/fila/localizar?origem=google&nicho=Lojas+de+brinquedos'
+ await page.goto(consulta)
+ const empresa=()=>page.locator('[data-slot=card]').filter({has:page.getByRole('heading',{name:'Mundo de Papel (fictícia)',exact:true})})
+ await empresa().getByRole('button',{name:'Ver empresa: Mundo de Papel (fictícia)',exact:true}).click()
+ await expect(page.getByRole('dialog')).toContainText('Mundo de Papel (fictícia)')
+ await page.keyboard.press('Escape')
+ expect(new URL(page.url()).searchParams.get('nicho')).toBe('Lojas de brinquedos')
+ await empresa().getByRole('button',{name:'Iniciar atendimento',exact:true}).click()
+ await expect(page).toHaveURL(/\/fila\/atendimento\//)
+ await page.getByLabel('Nota',{exact:true}).fill('Rascunho da navegação pessoal')
+ const url=page.url();await page.goto(consulta)
+ await empresa().getByRole('button',{name:'Continuar atendimento',exact:true}).click()
+ await expect(page).toHaveURL(url)
+ await expect(page.getByLabel('Nota',{exact:true})).toHaveValue('Rascunho da navegação pessoal')
 })
 
 test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',async({page})=>{
@@ -110,50 +100,19 @@ test('as quatro telas seguem a prévia em desktop e celular, nos dois temas',asy
       }
     }
   }
-  // A localização por lista usa o formulário completo, distinto da pesquisa pessoal.
-  await page.goto('/fila/localizar?legado=1&nome=Fictícia&uf=SP&cidade=3550308')
-  await expect(page.getByRole('heading',{name:'Localizar empresa',exact:true})).toBeVisible()
-  const formulario=page.locator('form').filter({has:page.getByRole('button',{name:'Consultar',exact:true})})
-  const consultar=formulario.getByRole('button',{name:'Consultar',exact:true})
-  const limpar=formulario.getByRole('link',{name:'Limpar filtros',exact:true})
-  const nomes=['nome','cnae','uf','cidade','bairro']
-  const valores=await formulario.evaluate(el=>[...new FormData(el as HTMLFormElement).entries()])
-  for(const largura of [1200,1101,1100]) {
+  await page.goto('/fila/localizar?legado=1&nome=Fictícia&uf=SP')
+  await expect(page.getByRole('heading',{name:'Todas as minhas empresas',exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Mais filtros',exact:true}).click()
+  for(const largura of [1200,1101,1100,390]) {
     await page.setViewportSize({width:largura,height:900})
     for(const tema of ['light','dark']) {
       await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
-      await page.screenshot({path:resolve(capturas,`localizar-legado-reflow-${largura}-${tema}.png`),fullPage:true})
-      const geometria=await formulario.evaluate(el=>{
-        const campos=Array.from(el.querySelectorAll<HTMLInputElement|HTMLSelectElement>('input:not([type=hidden]),select')).map(c=>c.getBoundingClientRect())
-        const acoes=Array.from(el.querySelectorAll('button,a')).map(c=>c.getBoundingClientRect())
-        const elementoGrade=el.querySelector('input[name=nome]')!.parentElement!.parentElement!
-        const grade=elementoGrade.getBoundingClientRect()
-        return {
-          colunas:getComputedStyle(elementoGrade).gridTemplateColumns.split(' ').length,
-          camposContidos:campos.every(c=>c.left>=grade.left-1&&c.right<=grade.right+1),
-          camposAlcancaveis:campos.every(c=>c.width>0&&c.left>=0&&c.right<=innerWidth),
-          acoesAbaixo:Math.min(...acoes.map(c=>c.top))>=Math.max(...campos.map(c=>c.bottom)),
-          semColisao:campos.every(c=>acoes.every(a=>c.right<=a.left||c.left>=a.right||c.bottom<=a.top||c.top>=a.bottom)),
-          overflow:document.documentElement.scrollWidth-innerWidth,
-        }
-      })
-      expect(geometria,`Reflow legado em ${largura}px/${tema}`).toEqual({colunas:largura>1100?5:2,camposContidos:true,camposAlcancaveis:true,acoesAbaixo:true,semColisao:true,overflow:0})
-      await formulario.locator('[name=nome]').focus()
-      for(let i=0;i<nomes.length;i++) {
-        await expect(formulario.locator(`[name=${nomes[i]}]`)).toBeFocused()
-        await page.keyboard.press('Tab')
-      }
-      await expect(consultar).toBeFocused()
-      await page.keyboard.press('Tab')
-      await expect(limpar).toBeFocused()
-      await expect(consultar).toBeInViewport()
-      await expect(limpar).toBeInViewport()
-      expect(await formulario.evaluate(el=>[...new FormData(el as HTMLFormElement).entries()])).toEqual(valores)
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBe(0)
+      await expect(page.getByLabel('Nome da empresa',{exact:true})).toHaveValue('Fictícia')
+      await expect(page.getByRole('button',{name:'Pesquisar empresas',exact:true})).toBeVisible()
     }
   }
-
 })
-
 
 test('novos filtros Casa conservam CNAEs separados, últimos dias e exclusões no histórico',async({page,browser})=>{
  test.setTimeout(60000)
