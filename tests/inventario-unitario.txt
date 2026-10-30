@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 2206
+# Total: 2210
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -531,6 +531,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0056.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0057.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0058.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0059.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0060.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\aplicacao\README.md não tem caractere de controle literal
@@ -548,6 +549,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\design\design-syst
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\agente-google-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\agente-google-rotina.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\operacao\arquivamento-legado.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\base-prospeccao-n8n.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\busca-empresas.md não tem caractere de controle literal
@@ -635,6 +637,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-28-adaptacao-pr53-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-28-integracao-prs-pendentes-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-29-fluxo-comercial-unificado.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-30-arquivamento-bases-antigas.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-30-retirar-importacao-manual-gestor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
@@ -688,6 +691,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-27-ultimas-buscas-correcao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-28-adaptacao-pr53-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-29-fluxo-comercial-unificado-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-30-arquivamento-bases-antigas-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-30-retirar-importacao-manual-gestor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-componentes-ui.md não tem caractere de controle literal

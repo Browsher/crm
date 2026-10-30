@@ -56,6 +56,7 @@ test('backup do CLI recupera campos e auditoria em clone isolado, preservando co
   copiaNome = 'teste_'+randomBytes(6).toString('hex')
   await comAdmin(servidor,c => c.query(`CREATE DATABASE ${copiaNome} TEMPLATE ${origem.nome}`))
   const copiaUrl = comBanco(servidor,copiaNome)
+  exigirHostLocal(copiaUrl)
   const ler = (tabela: string, ordenar: string) => comAdmin(copiaUrl,async c => (await c.query<{ dados: unknown }>(`SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY ${ordenar}),'[]'::jsonb) AS dados FROM public.${tabela} t`)).rows[0].dados)
   expect(await ler('empresa_arquivo','empresa_id')).toHaveLength(3)
   expect(await ler('negociacao','id')).not.toEqual(conteudo.manifesto.negociacao)

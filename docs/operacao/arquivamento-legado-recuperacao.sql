@@ -1,9 +1,9 @@
--- Ensaio documental em clone local descartável; não é comando de restauração comercial.
+-- Ensaio em clone descartável; o cliente deve validar a URL local antes da conexão.
 DO $$
 DECLARE v jsonb; v_texto text;
 BEGIN
-  IF current_database() !~ '^teste_[0-9a-f]{12}$' OR inet_server_addr() NOT IN ('127.0.0.1'::inet,'::1'::inet) THEN
-    RAISE EXCEPTION 'recuperacao de ensaio exige banco local descartavel';
+  IF current_database() !~ '^teste_[0-9a-f]{12}$' THEN
+    RAISE EXCEPTION 'recuperacao de ensaio exige banco descartavel do harness';
   END IF;
   IF EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend') THEN
     RAISE EXCEPTION 'clone precisa estar sem outras conexoes';
