@@ -1,0 +1,86 @@
+import { randomUUID } from 'node:crypto'
+import { afterAll, beforeAll, expect, test } from 'vitest'
+import { criarBancoDeTeste, type BancoDeTeste } from './ajuda'
+import { cenarioAtendimento, vincularEmpresaTeste } from './atendimento-fixtures'
+import { lerPerfilEmpresa } from '@/src/features/empresas/perfil'
+let banco: BancoDeTeste
+let c: Awaited<ReturnType<typeof cenarioAtendimento>>
+beforeAll(async () => { banco = await criarBancoDeTeste(); c = await cenarioAtendimento(banco) })
+afterAll(async () => { await banco?.derrubar() })
+async function ler(ids: string[], usuario = c.vendedorId) { return banco.comoUsuario(usuario, async sql => (await sql<{ r: { ok: boolean; empresas?: { id: string }[]; motivo?: string } }>('SELECT empresas_resumos_ler($1::uuid[]) AS r', [ids])).linhas[0].r) }
+test('resumo em lote deduplica e omite empresa alheia e inexistente', async () => {
+  const [e] = await banco.sql<{ id: string }>("INSERT INTO empresa(razao_social,telefone) VALUES('Outra','11988887777') RETURNING id")
+  await vincularEmpresaTeste(banco, e.id, c.outroId, 'legado')
+  const r = await ler([c.empresaId, c.empresaId, e.id, randomUUID()])
+  expect(r.ok).toBe(true)
+  expect(r.empresas?.map(e => e.id)).toEqual([c.empresaId])
+  expect(await ler([])).toEqual({ ok: true, empresas: [] })
+})
+test('recusa gestor, inativo e mais de cem IDs únicos', async () => {
+  expect((await banco.sql<{r:unknown}>("SELECT empresas_resumos_ler('{}'::uuid[]) r"))[0].r).toEqual({ok:false,motivo:'sem_permissao'})
+  expect(await ler(Array.from({length:100},()=>randomUUID()))).toEqual({ok:true,empresas:[]})
+  expect(await ler([], c.gestorId)).toEqual({ ok: false, motivo: 'sem_permissao' })
+  expect(await ler(Array.from({ length: 101 }, () => randomUUID()))).toEqual({ ok: false, motivo: 'dados_invalidos' })
+  await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1', [c.vendedorId])
+  try { expect(await ler([])).toEqual({ ok: false, motivo: 'sem_permissao' }) }
+  finally { await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1', [c.vendedorId]) }
+})
+
+test('lote pequeno avalia disponibilidade apenas dos alvos próprios distintos', async () => {
+  const empresas = await banco.sql<{id:string}>(`INSERT INTO empresa(razao_social,telefone)
+    SELECT 'Não solicitada '||i,'11977778888' FROM generate_series(1,120) i RETURNING id`)
+  for (const e of empresas) await vincularEmpresaTeste(banco,e.id,c.vendedorId,'banco')
+  const [alheia] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Alheia não projetada','11977778888') RETURNING id")
+  await vincularEmpresaTeste(banco,alheia.id,c.outroId,'banco')
+  const [original] = await banco.sql<{definicao:string}>("SELECT pg_get_functiondef('empresa_resumos_base(uuid[])'::regprocedure) definicao")
+  await banco.sql('CREATE TABLE public.teste_alvos_avaliados(empresa_id uuid)')
+  await banco.sql(`CREATE FUNCTION public.teste_avaliar_alvo(p uuid) RETURNS text LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
+    BEGIN INSERT INTO public.teste_alvos_avaliados VALUES(p); RETURN public.empresa_atendimento_motivo(p); END $$`)
+  await banco.sql('REVOKE EXECUTE ON FUNCTION public.teste_avaliar_alvo(uuid) FROM PUBLIC')
+  try {
+    await banco.sql(original.definicao.replaceAll('public.empresa_atendimento_motivo(', 'public.teste_avaliar_alvo('))
+    const ids = [empresas[0].id,empresas[1].id]
+    const r = await ler([...ids,ids[0],alheia.id,randomUUID()])
+    expect(r.empresas?.map(e=>e.id).sort()).toEqual([...ids].sort())
+    const avaliados = await banco.sql<{empresa_id:string}>('SELECT empresa_id FROM teste_alvos_avaliados')
+    expect(avaliados.map(e=>e.empresa_id).sort()).toEqual([...ids].sort())
+  } finally {
+    await banco.sql(original.definicao)
+    await banco.sql('DROP FUNCTION public.teste_avaliar_alvo(uuid)')
+    await banco.sql('DROP TABLE public.teste_alvos_avaliados')
+  }
+})
+test('lote expande histórico Banco uma vez e não cria efeitos comerciais', async () => {
+  const empresas = await banco.sql<{id:string;cnpj:string}>(`INSERT INTO empresa(cnpj,razao_social,telefone)
+    SELECT '77110000'||lpad(i::text,6,'0'),'Resumo lote '||i,'11977778888' FROM generate_series(1,20) i RETURNING id,cnpj`)
+  for (const e of empresas) await vincularEmpresaTeste(banco,e.id,c.vendedorId,'banco')
+  const itens = empresas.map(e=>({cnpj:e.cnpj,bairro:'Centro',cidade:'Cidade real',uf:'SP'}))
+  await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas) VALUES($1,'Lote resumo','{}',20,'concluida',$2)",[c.vendedorId,JSON.stringify(itens)])
+  const [original] = await banco.sql<{definicao:string}>("SELECT pg_get_functiondef('empresa_resumos_base(uuid[])'::regprocedure) definicao")
+  await banco.sql('CREATE SEQUENCE public.teste_resumos_itens')
+  await banco.sql(`CREATE FUNCTION public.teste_resumos_expandir(p jsonb) RETURNS SETOF jsonb LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
+    DECLARE item jsonb; BEGIN FOR item IN SELECT jsonb_array_elements(p) LOOP
+    PERFORM nextval('public.teste_resumos_itens'); RETURN NEXT item; END LOOP; END; $$`)
+  await banco.sql('REVOKE EXECUTE ON FUNCTION public.teste_resumos_expandir(jsonb) FROM PUBLIC')
+  try {
+    await banco.sql(original.definicao.replaceAll('jsonb_array_elements(', 'public.teste_resumos_expandir('))
+    expect((await ler(empresas.map(e=>e.id))).empresas).toHaveLength(20)
+    expect((await banco.sql<{itens:number}>('SELECT last_value::integer itens FROM teste_resumos_itens'))[0].itens).toBe(20)
+    const efeitos=await banco.sql('SELECT (SELECT count(*) FROM contato) contatos,(SELECT count(*) FROM empresa_atendimento_operacao) operacoes,(SELECT count(*) FROM empresa_fila) fila,(SELECT count(*) FROM venda) vendas')
+    await banco.sql("SELECT setval('public.teste_resumos_itens',1,false)")
+    const gerencial=await banco.comoUsuario(c.gestorId,async sql=>(await sql<{r:{empresas:{versao:number|null}[]}}>('SELECT gestor_empresas_resumos_ler($1::uuid[]) r',[empresas.map(e=>e.id)])).linhas[0].r)
+    expect(gerencial.empresas).toHaveLength(20)
+    expect(gerencial.empresas.every(e=>e.versao===null)).toBe(true)
+    expect((await banco.sql<{itens:number}>('SELECT last_value::integer itens FROM teste_resumos_itens'))[0].itens).toBe(20)
+    expect(await banco.sql('SELECT (SELECT count(*) FROM contato) contatos,(SELECT count(*) FROM empresa_atendimento_operacao) operacoes,(SELECT count(*) FROM empresa_fila) fila,(SELECT count(*) FROM venda) vendas')).toEqual(efeitos)
+    await banco.sql("SELECT setval('public.teste_resumos_itens',1,false)")
+    expect(await lerPerfilEmpresa(c.gestorId,empresas[0].id)).toMatchObject({id:empresas[0].id})
+    expect((await banco.sql<{itens:number}>('SELECT last_value::integer itens FROM teste_resumos_itens'))[0].itens).toBe(20)
+    expect((await banco.sql('SELECT id FROM contato WHERE empresa_id=ANY($1::uuid[])',[empresas.map(e=>e.id)]))).toHaveLength(0)
+    expect((await banco.sql('SELECT id FROM negociacao WHERE empresa_id=ANY($1::uuid[])',[empresas.map(e=>e.id)]))).toHaveLength(0)
+  } finally {
+    await banco.sql(original.definicao)
+    await banco.sql('DROP FUNCTION public.teste_resumos_expandir(jsonb)')
+    await banco.sql('DROP SEQUENCE public.teste_resumos_itens')
+  }
+})

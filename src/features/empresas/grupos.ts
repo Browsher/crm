@@ -64,8 +64,8 @@ export async function listarGrupos(usuarioId: string, pagina = 1): Promise<Resul
 export async function detalharGrupo(usuarioId: string, id: string, pagina = 1): Promise<ResultadoGrupo> {
   if (!UUID.test(id)) return { ok: false, motivo: 'nao_encontrado' }
   return ler(usuarioId, async executar => {
-    // A precedência de posse ativa/reserva/descanso é exclusiva. Dono inativo
-    // segue elegível como em fila_reservar; os helpers privados não são chamados.
+    // Classificação administrativa do histórico de posse/reserva/descanso.
+    // Estes indicadores não autorizam aquisição nem acesso comercial ao grupo.
     const { linhas } = await executar<Omit<Extract<ResultadoGrupo, { ok: true }>, 'ok'>>(`
       WITH grupo AS (${GRUPOS} WHERE g.id = $1), membros AS (
         SELECT e.id,e.cnpj,e.razao_social AS "razaoSocial",e.nome_fantasia AS "nomeFantasia",dono.nome AS responsavel,

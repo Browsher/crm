@@ -10,7 +10,7 @@ import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/src/components/ui/table'
 
 const tipos: Record<string, string | undefined> = {
-  nao_liguei: 'Cadastro descartado sem ligação', nao_atendeu: 'Não atendeu',
+  nao_liguei: 'Atividade sem ligação', nao_atendeu: 'Não atendeu',
   retornar_depois: 'Retorno solicitado', sem_interesse: 'Sem interesse',
   interessado: 'Cliente interessado', acompanhamento: 'Acompanhamento',
 }

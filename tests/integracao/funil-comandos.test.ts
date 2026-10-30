@@ -1,3 +1,5 @@
+import { registrarContatoDireto } from '@/src/server/atendimento/operacoes'
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { beforeAll, beforeEach, afterAll, expect, test } from 'vitest'
@@ -13,7 +15,9 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
-  await banco.sql('DELETE FROM venda; DELETE FROM negociacao; DELETE FROM contato; DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo; DELETE FROM venda; DELETE FROM negociacao; DELETE FROM contato; DELETE FROM empresa_fila')
+  await vincularGrupoAtivo(banco,[empresa])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresa,eu])
   await banco.sql('UPDATE usuario SET ativo=true,senha_provisoria_pendente=false')
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[empresa,eu])
   ciclo = (await banco.sql<{id:string}>('INSERT INTO negociacao(empresa_id,vendedor_id) VALUES($1,$2) RETURNING id',[empresa,eu]))[0].id
@@ -39,7 +43,9 @@ test('etapa confere dono, valor anterior e não modifica data de início', async
   expect(await banco.sql('SELECT iniciada_em FROM negociacao')).toEqual(antes)
 })
 test('venda é atômica, idempotente e preserva retorno na agenda', async () => {
-  await banco.comoUsuario(eu,e=>e("SELECT contato_registrar($1,'acompanhamento','nota','Ligar',CURRENT_DATE,'nenhum')",[empresa]))
+  const [{data}]=await banco.sql<{data:string}>("SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date,'YYYY-MM-DD') AS data")
+  const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+  expect(await registrarContatoDireto(eu,{empresaId:empresa,chave:randomUUID(),versao},{tipo:'acompanhamento',nota:'nota',proximoPasso:'Ligar',proximoPassoData:data})).toMatchObject({ok:true})
   const antes=await lerMinhasEmpresas(eu,true)
   expect(antes.ok && antes.carteira).toEqual([])
   const chave=randomUUID()
@@ -60,13 +66,13 @@ test('venda nega terceiros, gestor, senha pendente, valor e data futura', async 
   expect(await vender()).toBe('sem_permissao')
   expect(await banco.sql('SELECT id FROM venda')).toEqual([])
 })
-test('devolver exige motivo e grava autoria; venda concorrente não fica sem dono', async () => {
-  expect(await agir(eu,"SELECT funil_devolver($1,' ') AS resultado",[ciclo])).toBe('dados_invalidos')
-  const resultados=await Promise.all([vender(),agir(eu,"SELECT funil_devolver($1,'Sem interesse') AS resultado",[ciclo])])
-  expect(resultados.filter(x=>x==='ok')).toHaveLength(1)
-  const vendas=await banco.sql('SELECT id FROM venda')
-  if (vendas.length) expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:eu}])
-  else expect(await banco.sql('SELECT nota,criado_por FROM contato')).toEqual([{nota:'Sem interesse',criado_por:eu}])
+test('arquivo e primeira venda concorrentes preservam dono e um único desfecho',async()=>{
+ const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+ const arquivar=banco.comoUsuario(eu,e=>e<{r:{ok:boolean;motivo?:string}}>('SELECT empresa_sem_interesse_definir($1,$2,$3,$4) AS r',[empresa,randomUUID(),versao,ciclo])).then(r=>r.linhas[0].r)
+ const [venda,arquivo]=await Promise.all([vender(),arquivar])
+ expect(Number(venda==='ok')+Number(arquivo.ok)).toBe(1)
+ expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:eu}])
+ expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:venda==='ok'?'venda':'sem_interesse'}])
 })
 
 test.each(['etapa','venda'])('reconfere autorização após esperar trava de empresa: %s',async(comando)=>{

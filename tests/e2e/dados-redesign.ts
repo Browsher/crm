@@ -13,10 +13,12 @@ export async function prepararRedesign(banco: BancoDeTeste) {
     ['00000000-0000-4000-8000-000000009702', '00000000009702', 'Redesign Negociação'],
   ]) {
     await banco.sql('INSERT INTO empresa(id,cnpj,razao_social,telefone) VALUES($1,$2,$3,$4)', [id, cnpj, nome, '11955559701'])
+    await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial,iniciada_em) VALUES($1,$2,'legado',now())",[id,vendedor.id])
     await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [id, vendedor.id])
     await banco.sql("INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data) VALUES($1,'acompanhamento',$2,'Retornar para conversar',(now() AT TIME ZONE 'America/Sao_Paulo')::date)", [id, 'Observação extensa da jornada. '.repeat(40)])
   }
   await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())', [CLIENTE_REDESIGN, vendedor.id])
   await banco.sql("INSERT INTO negociacao(empresa_id,vendedor_id,etapa) VALUES('00000000-0000-4000-8000-000000009702',$1,'primeiro_contato')", [vendedor.id])
+  await banco.sql("UPDATE empresa_vinculo v SET agenda_contato_id=(SELECT c.id FROM contato c WHERE c.empresa_id=v.empresa_id ORDER BY c.criado_em DESC,c.id DESC LIMIT 1) WHERE v.vendedor_id=$1",[vendedor.id])
   await vincularGrupoAtivo(banco, [CLIENTE_REDESIGN, '00000000-0000-4000-8000-000000009702'])
 }

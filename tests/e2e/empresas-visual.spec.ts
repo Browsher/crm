@@ -82,7 +82,7 @@ async function capturarEmTamanhos(page: Page, tela: string) {
       await expect(card).toHaveCSS('padding-top', width <= 820 ? '20px' : '24px')
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.screenshot({
-        path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/empresas-${tela}-${tema}-${width}.png`,
+        path: `.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-8-captures/empresas-${tela}-${tema}-${width}.png`,
         animations: 'disabled',
         fullPage: tela !== 'lista',
       })
@@ -106,17 +106,17 @@ test.beforeAll(async () => {
   expect(await contarCnpj(CNPJ_EXISTENTE)).toBe(1)
 })
 
-test('gestor consulta a tabela e confirma somente a empresa nova depois da conferência', async ({ page }) => {
+test('gestor consulta cards e confirma somente a empresa nova depois da conferência', async ({ page }) => {
   test.setTimeout(60_000)
   expect(await contarCnpj(CNPJ_NOVA)).toBe(0)
   await entrar(page, 'gestore2e')
   await page.goto('/empresas')
   await expect(page.getByRole('heading', { name: 'Empresas', exact: true })).toBeVisible()
-  await expect(page.getByRole('table')).toBeVisible()
+  await expect(page.getByRole('region', { name:'Empresas cadastradas' })).toBeVisible()
 
   await page.getByLabel('Buscar empresas', { exact: true }).fill(NOME_EXISTENTE)
   await page.getByRole('button', { name: 'Buscar', exact: true }).click()
-  await expect(page.getByRole('table')).toContainText(NOME_EXISTENTE)
+  await expect(page.getByRole('region', { name:'Empresas cadastradas' })).toContainText('Já cadastrada E2E')
   await page.getByRole('link', { name: 'Limpar filtros', exact: true }).click()
   await expect(page).toHaveURL('/empresas')
   await expect(page.getByLabel('Buscar empresas', { exact: true })).toHaveValue('')
@@ -132,8 +132,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   expect(rolagem.conteudo).toBeLessThanOrEqual(rolagem.visivel)
   expect(rolagem.pagina).toBeLessThanOrEqual(rolagem.viewport)
   await page.getByLabel('Buscar empresas', { exact: true }).focus()
-  await tabAte(page, regiaoTabela)
-  expect(await regiaoTabela.evaluate((elemento) => getComputedStyle(elemento).outlineStyle)).not.toBe('none')
+  await tabAte(page, regiaoTabela.getByRole('button',{name:/Ver empresa:/}).first())
   await capturarEmTamanhos(page, 'lista')
 
   await page.getByRole('link', { name: 'Importar empresas', exact: true }).click()
@@ -189,7 +188,7 @@ test('gestor consulta a tabela e confirma somente a empresa nova depois da confe
   await page.getByRole('link', { name: 'Ver empresas', exact: true }).click()
   await page.getByLabel('Buscar empresas', { exact: true }).fill(NOME_NOVA)
   await page.getByRole('button', { name: 'Buscar', exact: true }).click()
-  await expect(page.getByRole('table')).toContainText(NOME_NOVA)
+  await expect(page.getByRole('region', { name:'Empresas cadastradas' })).toContainText('Importada E2E')
 })
 
 test('troca de arquivo invalida relatório, somente existentes permite grupo e CSV inválido recebe foco', async ({ page }) => {
@@ -253,4 +252,43 @@ test('vendedor não acessa Empresas nem importação por URL', async ({ page }) 
   await expect(page).toHaveURL('/meu-dia')
   await page.goto('/empresas/importar')
   await expect(page).toHaveURL('/meu-dia')
+})
+
+test('cards gerenciais e galeria permanecem legíveis com nome longo e campos ausentes', async ({page}) => {
+  const nome='Task8Visual Empresa de Serviços e Comércio de Iluminação com Nome Completo Muito Longo para Conferência do Cadastro'
+  await comBancoTemporario(cliente=>cliente.query("INSERT INTO empresa(razao_social,telefone) VALUES($1,'11955554444'),('Task8Visual Sem dados opcionais','11955553333')",[nome]))
+  await entrar(page,'gestore2e')
+  await page.goto('/empresas?q=Task8Visual')
+  const empresas=page.getByRole('region',{name:'Empresas cadastradas'})
+  await expect(empresas.getByRole('heading',{name:nome,exact:true})).toBeVisible()
+  await expect(empresas).toContainText('Não informado')
+  await expect(empresas).toContainText('Sem responsável')
+  await expect(empresas.getByRole('button',{name:/Iniciar|Retomar|Continuar atendimento/})).toHaveCount(0)
+  for(const width of [390,820,1280]) {
+    await page.setViewportSize({width,height:900})
+    for(const tema of ['light','dark']) {
+      await page.getByRole('combobox',{name:'Tema de Empresas'}).selectOption(tema)
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+      for(const card of await empresas.locator('[data-slot="card"]').all()) {
+        const limites=await card.locator(':scope > *').evaluateAll(els=>els.map(e=>{const r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom}}))
+        for(let i=1;i<limites.length;i++)expect(limites[i].top).toBeGreaterThanOrEqual(limites[i-1].bottom-1)
+      }
+      await empresas.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-8-captures/gestor-longo-'+width+'-'+tema+'.png',style:'header[class*="topbar"], a[href="#conteudo-fila"] { visibility:hidden; }'})
+    }
+  }
+  await page.goto('/design')
+  await expect(page.locator('[data-etapa-funil]')).toHaveCount(3)
+  await expect(page.locator('[data-descarte]')).toHaveCount(1)
+  await expect(page.locator('[data-etapa-funil] [data-descarte]')).toHaveCount(0)
+  await expect(page.getByText('Reserva expirada',{exact:true})).toHaveCount(0)
+  await page.getByRole('button',{name:'Simular arquivamento',exact:true}).click()
+  await expect(page.locator('[data-descarte]')).toHaveAttribute('data-estado','sucesso')
+  for(const width of [390,820,1280]) {
+    await page.setViewportSize({width,height:900})
+    for(const tema of ['light','dark']) {
+      await page.getByRole('combobox',{name:'Tema do design system'}).selectOption(tema)
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+      for(const secao of ['empresas','funil'])await page.locator('#'+secao).screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-8-captures/galeria-'+secao+'-'+width+'-'+tema+'.png',style:'header[class*="topbar"], a[href="#conteudo-fila"] { visibility:hidden; }'})
+    }
+  }
 })

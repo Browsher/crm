@@ -1,15 +1,7 @@
-import { describe, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { textoDoMotivo } from './mensagens'
-import type { Motivo } from './repositorio'
 
-const MOTIVOS: Motivo[] = ['sem_permissao', 'nao_encontrada', 'reserva_expirada', 'ja_e_sua']
-
-describe('textoDoMotivo', () => {
-  for (const m of MOTIVOS) {
-    test(`${m} tem texto de gente`, () => {
-      const texto = textoDoMotivo(m)
-      expect(texto.length).toBeGreaterThan(10)
-      expect(texto).not.toContain('_')
-    })
-  }
+test('consulta pessoal explica recusa de autorização sem sugerir aquisição global', () => {
+  expect(textoDoMotivo('sem_permissao')).toContain('Você não tem permissão')
+  expect(textoDoMotivo('sem_permissao')).not.toMatch(/Puxe|reserva|próxima/)
 })

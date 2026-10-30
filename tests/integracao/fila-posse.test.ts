@@ -1,287 +1,42 @@
+import { randomUUID } from 'node:crypto'
+import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { vincularGrupoAtivo } from './grupos-fixtures'
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
-import { conectarVerificado } from '@/src/server/db/pool'
-import { criarBancoDeTeste, criarUsuario, SQL_RESERVAR_PROXIMA, type BancoDeTeste } from './ajuda'
-
-let banco: BancoDeTeste
-let vendedorA: string
-let vendedorB: string
-
-beforeAll(async () => {
-  banco = await criarBancoDeTeste()
-  vendedorA = await criarUsuario(banco, 'vendedor', 'VendedorA')
-  vendedorB = await criarUsuario(banco, 'vendedor', 'VendedorB')
+let banco:BancoDeTeste, eu:string, outro:string, gestor:string, empresa:string
+beforeAll(async()=>{banco=await criarBancoDeTeste();eu=await criarUsuario(banco,'vendedor','Eu');outro=await criarUsuario(banco,'vendedor','Outro');gestor=await criarUsuario(banco,'gestor','Gestor')})
+afterAll(async()=>{await banco?.derrubar()})
+beforeEach(async()=>{
+  await banco.sql("UPDATE usuario SET ativo=true,senha_provisoria_pendente=false,papel=CASE WHEN id=$1 THEN 'gestor' ELSE 'vendedor' END",[gestor])
+  ;[{id:empresa}]=await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Empresa própria','11987654321') RETURNING id")
+  await vincularGrupoAtivo(banco,[empresa])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresa,eu])
 })
-afterAll(async () => {
-  await banco.derrubar()
-})
-
-beforeEach(async () => {
-  await banco.sql('DELETE FROM negociacao')
-  await banco.sql('DELETE FROM contato')
-  await banco.sql('DELETE FROM empresa_fila')
-  await banco.sql('DELETE FROM grupo_importacao_empresa')
-  await banco.sql('DELETE FROM grupo_importacao')
-  await banco.sql('DELETE FROM empresa')
-})
-
-async function criarEmpresa(sufixo = '0181'): Promise<string> {
-  const [linha] = await banco.sql<{ id: string }>(
-    `INSERT INTO empresa (cnpj, razao_social, telefone)
-     VALUES ($1, $2, '11987654321') RETURNING id`,
-    [`1122233300${sufixo}`, `Empresa ${sufixo}`],
-  )
-  await vincularGrupoAtivo(banco, [linha.id])
-  return linha.id
+async function rpc(comando:string,ator=eu,versao?:number,chave=randomUUID()) {
+  const [v]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+  return banco.comoUsuario(ator,async e=>(await e<{r:{ok:boolean;motivo?:string;versao:number;repetida:boolean}}>(`SELECT ${comando} AS r`,[empresa,chave,versao??v.versao])).linhas[0].r)
 }
+const iniciar='atendimento_iniciar($1,$2,$3)'
 
-// `empresa_assumir` e `empresa_devolver` sao internas desde a 0019: o caminho
-// da aplicacao e `contato_registrar` com desfecho. O contrato de ordem das
-// checagens continua o mesmo e continua exercitado — so que pelo chamador de
-// verdade, que e o que a tela usa.
-function assumir(usuarioId: string, empresaId: string): Promise<string> {
-  return banco.comoUsuario(usuarioId, async (e) => {
-    const r = await e<{ contato_registrar: string }>(
-      'SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)',
-      [empresaId, 'interessado', 'assumir'],
-    )
-    return r.linhas[0].contato_registrar
-  })
-}
-
-describe('empresa_assumir: a ordem das checagens', () => {
-  test('empresa sem linha de fila e nao_encontrada, nao 42501', async () => {
-    const id = await criarEmpresa()
-    expect(await assumir(vendedorA, id)).toBe('nao_encontrada')
-  })
-
-  test('quem ja e dono recebe ja_e_sua, e nao sem-permissao', async () => {
-    const id = await criarEmpresa()
-    await banco.sql(
-      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
-      [id, vendedorA],
-    )
-    // O CHECK empresa_fila_posse_ou_reserva garante que quem tem posse tem
-    // `reservado_por` nulo. Se a checagem de reserva viesse antes desta, o
-    // dono cairia em "nenhuma reserva" e receberia 42501 na PRÓPRIA empresa.
-    expect(await assumir(vendedorA, id)).toBe('ja_e_sua')
-  })
-
-  test('reserva propria expirada e reserva_expirada, texto e nao 42501', async () => {
-    const id = await criarEmpresa()
-    await banco.sql(
-      `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
-       VALUES ($1, $2, now() - interval '1 minute', now())`,
-      [id, vendedorA],
-    )
-    expect(await assumir(vendedorA, id)).toBe('reserva_expirada')
-  })
-
-  test('reserva de outra pessoa e 42501', async () => {
-    const id = await criarEmpresa()
-    await banco.sql(
-      `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
-       VALUES ($1, $2, now() + interval '30 minutes', now())`,
-      [id, vendedorB],
-    )
-    await expect(assumir(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
-  })
-
-  test('linha sem reserva e sem dono e 42501', async () => {
-    const id = await criarEmpresa()
-    await banco.sql('INSERT INTO empresa_fila (empresa_id, primeira_reserva_em) VALUES ($1, now())', [id])
-    await expect(assumir(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
-  })
-
-  test('reserva propria vigente vira posse sem prazo', async () => {
-    const id = await criarEmpresa()
-    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
-    expect(await assumir(vendedorA, id)).toBe('ok')
-    const [estado] = await banco.sql<{ vendedor_id: string; reservado_por: null; reservado_ate: null }>(
-      'SELECT vendedor_id, reservado_por, reservado_ate FROM empresa_fila WHERE empresa_id = $1',
-      [id],
-    )
-    expect(estado).toEqual({ vendedor_id: vendedorA, reservado_por: null, reservado_ate: null })
-  })
-
-  test('senha provisoria pendente e 42501', async () => {
-    const id = await criarEmpresa()
-    const pendente = await criarUsuario(banco, 'vendedor', 'PendenteAssumir')
-    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [pendente])
-    await expect(assumir(pendente, id)).rejects.toMatchObject({ code: '42501' })
-  })
+test('interesse assume comercialmente sem tirar vínculo; arquivo conserva posse e história',async()=>{
+ expect(await rpc("contato_registrar_direto($1,$2,$3,'interessado','Conversa',NULL,NULL)")).toMatchObject({ok:true})
+ expect(await rpc('empresa_sem_interesse_definir($1,$2,$3,NULL)')).toMatchObject({ok:true})
+ expect(await banco.sql('SELECT vendedor_id,elegivel_em FROM empresa_fila WHERE empresa_id=$1',[empresa])).toEqual([{vendedor_id:eu,elegivel_em:null}])
+ expect(await banco.sql('SELECT encerramento FROM negociacao WHERE empresa_id=$1',[empresa])).toEqual([{encerramento:'sem_interesse'}])
+ expect(await banco.sql('SELECT nota,criado_por FROM contato WHERE empresa_id=$1',[empresa])).toEqual([{nota:'Conversa',criado_por:eu}])
+ expect(await rpc(iniciar,outro)).toEqual({ok:false,motivo:'sem_permissao'})
 })
-
-// A correção do TOCTOU. Sem o `PERFORM ... FOR UPDATE` nas duas pontas, as
-// duas funções decidem sobre leitura velha (`now()` é o início da transação) e
-// a posse recém-tomada desaparece em silêncio. Sem este teste, o PERFORM
-// parece linha decorativa e o próximo a mexer o remove.
-describe('empresa_assumir x fila_reservar: a trava', () => {
-  test('assumir segurando a trava faz o fila_reservar concorrente PULAR a empresa', async () => {
-    const unica = await criarEmpresa('0181')
-    await banco.sql(
-      `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
-       VALUES ($1, $2, now() + interval '30 minutes', now())`,
-      [unica, vendedorA],
-    )
-    const c1 = await conectarVerificado(banco.urlApp)
-    const c2 = await conectarVerificado(banco.urlApp)
-    try {
-      await c1.query('BEGIN')
-      await c1.query("SELECT set_config('role', 'app_usuario', true)")
-      await c1.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
-      await c1.query('SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)', [unica, 'interessado', 'assumir'])
-      await c2.query('BEGIN')
-      await c2.query("SELECT set_config('role', 'app_usuario', true)")
-      await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
-      const puxada = await c2.query(SQL_RESERVAR_PROXIMA)
-      await c1.query('COMMIT')
-      await c2.query('COMMIT')
-      // A única empresa da base está travada: SKIP LOCKED pula e não há outra.
-      expect(puxada.rows).toEqual([])
-      const [estado] = await banco.sql<{ vendedor_id: string }>(
-        'SELECT vendedor_id FROM empresa_fila WHERE empresa_id = $1',
-        [unica],
-      )
-      expect(estado.vendedor_id).toBe(vendedorA)
-    } finally {
-      c1.release()
-      c2.release()
-    }
-  })
-
-  test('fila_reservar segurando a trava faz o assumir concorrente esperar e recusar', async () => {
-    const unica = await criarEmpresa('0181')
-    await banco.sql(
-      `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
-       VALUES ($1, $2, now() - interval '1 second', now())`,
-      [unica, vendedorA],
-    )
-    const c1 = await conectarVerificado(banco.urlApp)
-    const c2 = await conectarVerificado(banco.urlApp)
-    try {
-      await c1.query('BEGIN')
-      await c1.query("SELECT set_config('role', 'app_usuario', true)")
-      await c1.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorB])
-      await c1.query(SQL_RESERVAR_PROXIMA)
-      await c2.query('BEGIN')
-      await c2.query("SELECT set_config('role', 'app_usuario', true)")
-      await c2.query("SELECT set_config('app.usuario_id', $1, true)", [vendedorA])
-      // Espera a trava de c1. Só depois do COMMIT ele relê e vê a reserva de B.
-      // Captura a rejeição já: ela pode chegar antes da resposta do COMMIT.
-      const espera = c2.query('SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)', [unica, 'interessado', 'assumir'])
-        .then(() => ({ ok: true }), (erro: unknown) => ({ ok: false, erro }))
-      await c1.query('COMMIT')
-      expect(await espera).toMatchObject({ ok: false, erro: { code: '42501' } })
-      await c2.query('ROLLBACK')
-      const [estado] = await banco.sql<{ vendedor_id: string | null; reservado_por: string }>(
-        'SELECT vendedor_id, reservado_por FROM empresa_fila WHERE empresa_id = $1',
-        [unica],
-      )
-      // Quem tem a empresa é quem puxou, e não existe posse nenhuma.
-      expect(estado).toEqual({ vendedor_id: null, reservado_por: vendedorB })
-    } finally {
-      c1.release()
-      c2.release()
-    }
-  })
+test('retomar arquivo não restaura agenda nem negociação cancelada',async()=>{
+ await rpc("contato_registrar_direto($1,$2,$3,'retornar_depois',NULL,'Ligar','2020-01-01')")
+ await rpc('empresa_sem_interesse_definir($1,$2,$3,NULL)')
+ expect(await rpc('empresa_atendimento_retomar($1,$2,$3)')).toMatchObject({ok:true})
+ expect(await banco.sql('SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[empresa])).toEqual([{agenda_contato_id:null,arquivada_em:null}])
+ expect(await banco.sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[empresa])).toEqual([])
+ expect(await banco.sql('SELECT proximo_passo FROM contato WHERE empresa_id=$1',[empresa])).toEqual([{proximo_passo:'Ligar'}])
 })
-
-function devolver(usuarioId: string, empresaId: string): Promise<string> {
-  return banco.comoUsuario(usuarioId, async (e) => {
-    const r = await e<{ contato_registrar: string }>(
-      'SELECT contato_registrar($1, $2, NULL, NULL, NULL, $3)',
-      [empresaId, 'nao_atendeu', 'devolver'],
-    )
-    return r.linhas[0].contato_registrar
-  })
-}
-
-describe('empresa_devolver', () => {
-  test('devolve posse, limpa tudo e grava o piso', async () => {
-    const id = await criarEmpresa('0181')
-    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
-    await assumir(vendedorA, id)
-    expect(await devolver(vendedorA, id)).toBe('ok')
-    const [estado] = await banco.sql<{
-      vendedor_id: null
-      reservado_por: null
-      reservado_ate: null
-      dias: string
-    }>(
-      `SELECT vendedor_id, reservado_por, reservado_ate,
-              round(extract(epoch FROM elegivel_em - now()) / 86400)::text AS dias
-         FROM empresa_fila WHERE empresa_id = $1`,
-      [id],
-    )
-    expect(estado.vendedor_id).toBeNull()
-    expect(estado.reservado_por).toBeNull()
-    expect(estado.reservado_ate).toBeNull()
-    // O prazo é do banco; o teste confere que o piso existe e é de 30 dias
-    // sem escrever o número em nenhuma constante de TypeScript.
-    expect(estado.dias).toBe('30')
-  })
-
-  test('devolve reserva vigente, sem ter assumido', async () => {
-    const id = await criarEmpresa('0181')
-    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
-    expect(await devolver(vendedorA, id)).toBe('ok')
-  })
-
-  test('devolvida nao volta a ser puxavel na hora', async () => {
-    const id = await criarEmpresa('0181')
-    await banco.comoUsuario(vendedorA, (e) => e(SQL_RESERVAR_PROXIMA))
-    await devolver(vendedorA, id)
-    const r = await banco.comoUsuario(vendedorB, (e) => e(SQL_RESERVAR_PROXIMA))
-    expect(r.linhas).toEqual([])
-  })
-
-  test('empresa sem linha de fila e nao_encontrada', async () => {
-    const id = await criarEmpresa('0181')
-    expect(await devolver(vendedorA, id)).toBe('nao_encontrada')
-  })
-
-  test('empresa de outro vendedor e 42501', async () => {
-    const id = await criarEmpresa('0181')
-    await banco.sql(
-      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
-      [id, vendedorB],
-    )
-    await expect(devolver(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
-  })
-
-  // O CASO DO COALESCE, e ele é o motivo de o COALESCE existir.
-  //
-  // Linha sem dono e sem reserva: `v_dono` e `v_resv` são nulos, então
-  // `v_dono = v_eu OR v_resv = v_eu` é NULL — não false. `NOT NULL` é NULL, e
-  // `IF NULL THEN` NÃO EXECUTA: sem o default explícito, a checagem de posse
-  // seria PULADA e qualquer vendedor devolveria empresa de qualquer outro.
-  test('linha sem dono e sem reserva e 42501, nao passa direto', async () => {
-    const id = await criarEmpresa('0181')
-    await banco.sql('INSERT INTO empresa_fila (empresa_id, primeira_reserva_em) VALUES ($1, now())', [id])
-    await expect(devolver(vendedorA, id)).rejects.toMatchObject({ code: '42501' })
-  })
-
-  test('gestor NAO devolve empresa alheia nesta fatia', async () => {
-    const gestor = await criarUsuario(banco, 'gestor', 'GestorDevolve')
-    const id = await criarEmpresa('0181')
-    await banco.sql(
-      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
-      [id, vendedorA],
-    )
-    // Tirar posse é do gestor e foi adiado. Se um dia isto passar a devolver
-    // 'ok', a operação chegou sem tela — superfície sem consumidor (R-014).
-    await expect(devolver(gestor, id)).rejects.toMatchObject({ code: '42501' })
-  })
-
-  test('senha provisoria pendente e 42501', async () => {
-    const id = await criarEmpresa('0181')
-    const pendente = await criarUsuario(banco, 'vendedor', 'PendenteDevolve')
-    await banco.sql('UPDATE usuario SET senha_provisoria_pendente = true WHERE id = $1', [pendente])
-    await banco.sql(
-      'INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())',
-      [id, pendente],
-    )
-    await expect(devolver(pendente, id)).rejects.toMatchObject({ code: '42501' })
-  })
+test.each(['outro','gestor','pendente','inativo'])('arquivar recusa %s sem qualquer efeito',async tipo=>{
+ const ator=tipo==='outro'?outro:tipo==='gestor'?gestor:eu
+ if(tipo==='pendente')await banco.sql('UPDATE usuario SET senha_provisoria_pendente=true WHERE id=$1',[eu])
+ if(tipo==='inativo')await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[eu])
+ expect(await rpc('empresa_sem_interesse_definir($1,$2,$3,NULL)',ator)).toEqual({ok:false,motivo:'sem_permissao'})
+ expect(await banco.sql('SELECT arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[empresa])).toEqual([{arquivada_em:null}])
 })

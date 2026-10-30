@@ -30,7 +30,7 @@ async function comBancoAdmin<T>(trabalho: (cliente: Client) => Promise<T>): Prom
 }
 
 async function revogarPosse(empresaId: string) {
-  await comBancoAdmin((cliente) => cliente.query('UPDATE empresa_fila SET vendedor_id = NULL WHERE empresa_id = $1', [empresaId]))
+  await comBancoAdmin((cliente) => cliente.query('UPDATE empresa_vinculo SET vendedor_id = (SELECT id FROM usuario WHERE email=$2) WHERE empresa_id = $1', [empresaId,'meudiaprivadae2e@teste.local']))
 }
 
 async function dataCivilFutura(dias: number): Promise<string> {
@@ -181,7 +181,7 @@ test('Meu dia recorta a agenda, prova a rolagem, filtra e preserva os filtros na
   // Os dois vazios são distintos: busca sem resultado não é agenda vazia.
   await page.getByLabel('Nome', { exact: true }).fill('Empresa que não existe na agenda')
   await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Nenhum cliente corresponde à busca', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Nenhuma empresa corresponde à busca', exact: true })).toBeVisible()
   await expect(page.getByRole('main')).not.toContainText('Nenhum retorno pendente para hoje')
 
   await page.getByRole('link', { name: 'Limpar filtros', exact: true }).first().click()
@@ -239,7 +239,7 @@ test('Meu dia recorta a agenda, prova a rolagem, filtra e preserva os filtros na
 test('Sem retorno pendente, a agenda mostra o vazio com caminho para a Carteira', async ({ page }) => {
   await entrar(page, 'meudiavazioe2e')
   await expect(page.getByRole('heading', { name: 'Nenhum retorno pendente para hoje', exact: true })).toBeVisible()
-  await expect(page.getByRole('main')).not.toContainText('Nenhum cliente corresponde à busca')
+  await expect(page.getByRole('main')).not.toContainText('Nenhuma empresa corresponde à busca')
   await expect(page.getByRole('link', { name: 'Ver carteira completa', exact: true })).toHaveAttribute('href', '/carteira')
 })
 
@@ -270,7 +270,7 @@ test('Reagendar para o futuro pela ficha tira a empresa da agenda e mantém na C
   await expect(page.getByRole('heading', { name: 'Meu Dia Atraso Reagenda', exact: true })).toBeVisible()
 })
 
-test('Devolver pela ficha com filtros ativos some da agenda e da Carteira, e volta preserva os filtros', async ({ page }) => {
+test('Sem interesse pela ficha cancela agenda e retomar não restaura tarefa histórica', async ({ page }) => {
   test.setTimeout(45_000)
   await entrar(page, 'meudiae2e')
   await page.getByLabel('Nome', { exact: true }).fill('Devolucao')
@@ -287,18 +287,25 @@ test('Devolver pela ficha com filtros ativos some da agenda e da Carteira, e vol
 
   await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
   await page.getByLabel('Nota', { exact: true }).fill('Devolvida pelo Meu dia')
-  await page.getByLabel('Próximo passo', { exact: true }).fill('Combinado antes de devolver')
-  await page.getByLabel('Data do próximo passo', { exact: true }).fill(await dataCivilFutura(3))
-  await page.getByRole('button', { name: 'Registrar e devolver', exact: true }).click()
+  await page.getByRole('radio', { name: 'Falei, não tem interesse', exact: true }).check()
+  await page.getByRole('button', { name: 'Registrar', exact: true }).click()
+  await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
+  await page.getByRole('link', { name: 'Voltar para o Meu dia', exact: true }).click()
 
   await expect(page).toHaveURL(`/meu-dia${filtros}`)
-  await expect(page.getByRole('heading', { name: 'Nenhum cliente corresponde à busca', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Nenhuma empresa corresponde à busca', exact: true })).toBeVisible()
 
   await page.goto('/carteira')
   await expect(page.getByRole('heading', { name: 'Meu Dia Atraso Devolucao', exact: true })).toHaveCount(0)
 
   await page.goto(fichaUrl)
-  await expect(page.locator('body')).toContainText('404')
+  await expect(page.getByText('Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.')).toBeVisible()
+  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await expect(page.getByText('Devolvida pelo Meu dia', {exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Retomar atendimento',exact:true}).click()
+  await expect(page).toHaveURL(/\/fila\/atendimento\//)
+  await page.goto('/meu-dia')
+  await expect(page.getByTestId('lista-meu-dia')).not.toContainText('Meu Dia Atraso Devolucao')
 })
 
 test('Posse perdida durante a sessão remove o item, atualiza a contagem e preserva a rolagem dos itens restantes', async ({ page }) => {
@@ -342,7 +349,7 @@ test('Posse perdida durante a sessão remove o item, atualiza a contagem e prese
   // aqui o clique é só o gatilho para a checagem de posse no servidor.
   await alvoRemocao.evaluate((el) => (el as HTMLElement).click())
 
-  await expect(page.getByRole('alert').getByRole('heading', { name: 'Esta empresa não está mais na sua carteira', exact: true })).toBeVisible()
+  await expect(page.getByRole('alert').getByRole('heading', { name: 'Esta empresa não está mais na sua agenda', exact: true })).toBeVisible()
   await expect(perfil).toHaveCount(0)
   // '11999990401' é o telefone real de "Meu Dia Posse Perdida" na fixture:
   // ele só apareceria na tela se o perfil vazasse os dados da empresa.

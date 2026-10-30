@@ -4,8 +4,11 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import { EmpresasBancoRecentes } from '@/app/fila/buscar/empresas-recentes'
 import type { EmpresaBancoRecente } from '@/src/lib/empresas-banco-recentes'
-import { lerEmpresaBuscaAcao } from '@/app/empresas/busca/detalhe-acao'
-vi.mock('@/app/empresas/busca/detalhe-acao', () => ({ lerEmpresaBuscaAcao: vi.fn() }))
+import { lerDetalhesEmpresaAcao } from '@/app/empresas/busca/detalhe-acao'
+import { detalhesSnapshot } from '@/src/lib/empresa-visual'
+import type { ResultadoDetalhesEmpresa } from '@/src/server/empresas/detalhes'
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }))
+vi.mock('@/app/empresas/busca/detalhe-acao', () => ({ lerDetalhesEmpresaAcao: vi.fn() }))
 import { EmpresaEncontradaDetalhes } from './empresa-encontrada'
 import type { EmpresaEncontrada } from '@/src/features/busca-empresas/tipos'
 
@@ -40,9 +43,9 @@ test('Ver mais expande cards organizados e mostra CEP, contatos e cadastro sem d
 
 test('detalhes ignoram resposta atrasada de A depois de selecionar B', async () => {
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
-  let concluirA!: (value: { ok: true; conteudo: React.ReactNode }) => void
-  let concluirB!: (value: { ok: true; conteudo: React.ReactNode }) => void
-  vi.mocked(lerEmpresaBuscaAcao).mockImplementationOnce(() => new Promise(resolve => { concluirA = resolve }))
+  let concluirA!: (value: ResultadoDetalhesEmpresa) => void
+  let concluirB!: (value: ResultadoDetalhesEmpresa) => void
+  vi.mocked(lerDetalhesEmpresaAcao).mockImplementationOnce(() => new Promise(resolve => { concluirA = resolve }))
     .mockImplementationOnce(() => new Promise(resolve => { concluirB = resolve }))
   const recente = (nome: string): EmpresaBancoRecente => ({
     id: nome, nome, buscaId: nome, cnpj: '12345678000100', empresaId: null, cnae: null,
@@ -57,11 +60,12 @@ test('detalhes ignoram resposta atrasada de A depois de selecionar B', async () 
     // Fecha A enquanto a action continua pendente e abre B.
     await act(async () => document.querySelector<HTMLButtonElement>('.ui-dialog-close')!.click())
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Ver empresa: Empresa B"]')!.click())
-    await act(async () => concluirB({ ok: true, conteudo: <p>Detalhe correto B</p> }))
-    await act(async () => concluirA({ ok: true, conteudo: <p>Detalhe antigo A</p> }))
+    const detalhes = (nome: string) => detalhesSnapshot({ nome_fantasia: nome }, { tipo: 'busca', buscaId: nome, cnpj: '12345678000100' })
+    await act(async () => concluirB({ ok: true, dados: detalhes('Empresa B — Detalhe correto B') }))
+    await act(async () => concluirA({ ok: true, dados: detalhes('Empresa A — Detalhe antigo A') }))
     const dialogo = document.querySelector('[role="dialog"]')!
     expect(dialogo.textContent).toContain('Empresa B')
     expect(dialogo.textContent).toContain('Detalhe correto B')
     expect(dialogo.textContent).not.toContain('Detalhe antigo A')
-  } finally { vi.unstubAllGlobals(); vi.mocked(lerEmpresaBuscaAcao).mockReset() }
+  } finally { vi.unstubAllGlobals(); vi.mocked(lerDetalhesEmpresaAcao).mockReset() }
 })

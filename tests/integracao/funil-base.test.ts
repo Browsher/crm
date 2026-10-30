@@ -1,8 +1,10 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
-import { registrarContato } from '@/src/features/contato/repositorio'
+import { contatoDireto } from './fixtures/contato-direto'
 import { lerFunil, lerNegociacao } from '@/src/features/funil/consulta'
 import { lerDashboard } from '@/src/features/gestao/consulta'
+import { randomUUID } from 'node:crypto'
+import { registrarContatoDireto } from '@/src/server/atendimento/operacoes'
 
 let banco: BancoDeTeste
 let a: string, b: string, gestor: string, empresa: string
@@ -17,69 +19,63 @@ beforeAll(async () => {
 })
 afterAll(async () => { await banco?.derrubar() })
 beforeEach(async () => {
-  // Permite observar o RED antes da nova migração, sem falhar no preparo.
-  await banco.sql("DO $$ BEGIN IF to_regclass('venda') IS NOT NULL THEN DELETE FROM venda; DELETE FROM negociacao; END IF; END $$")
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo')
+  await banco.sql('DELETE FROM venda; DELETE FROM negociacao')
   await banco.sql('DELETE FROM contato; DELETE FROM empresa_fila; DELETE FROM fila_contexto')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo')
   await banco.sql('UPDATE usuario SET ativo=true, senha_provisoria_pendente=false')
 })
-async function reservar(ator: string) {
-  return banco.comoUsuario(ator, e => e<{ resultado: string }>(
-    "SELECT * FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,(SELECT versao FROM fila_contexto WHERE usuario_id=usuario_atual()))", [empresa]))
+async function vincular(ator:string) {
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado') ON CONFLICT(empresa_id) DO NOTHING",[empresa,ator])
 }
-async function assumir(ator: string) {
-  expect((await reservar(ator)).linhas[0].resultado).toBe('ok')
-  return registrarContato(ator, empresa, { tipo:'interessado',nota:'Nota de '+ator,proximoPasso:null,proximoPassoData:null,desfecho:'assumir' })
+async function assumir(ator:string) {
+  await vincular(ator)
+  return contatoDireto(banco,ator,empresa,{tipo:'interessado',nota:'Nota de '+ator,proximoPasso:null,proximoPassoData:null})
 }
-async function devolver(ator: string) {
-  return registrarContato(ator, empresa, { tipo:'sem_interesse',nota:'Devolvida',proximoPasso:null,proximoPassoData:null,desfecho:'devolver' })
+async function devolver(ator:string) {
+  return contatoDireto(banco,ator,empresa,{tipo:'sem_interesse',nota:'Arquivada',proximoPasso:null,proximoPassoData:null})
 }
 async function venda() {
   await banco.sql("INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,12500,gen_random_uuid())", [empresa,a])
 }
 
-test('reserva não cria ciclo; assumir, repetir e devolver preservam um ciclo e o contato', async () => {
-  const [schema] = await banco.sql<{ existe: boolean }>("SELECT to_regclass('negociacao') IS NOT NULL AS existe")
-  expect(schema.existe).toBe(true)
-  await reservar(a)
-  expect(await banco.sql('SELECT * FROM negociacao')).toHaveLength(0)
-  expect(await assumir(a)).toEqual({ ok:true })
-  expect(await registrarContato(a,empresa,{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null,desfecho:'assumir'})).toEqual({ok:false,motivo:'ja_e_sua'})
-  expect(await banco.sql('SELECT etapa,encerramento FROM negociacao')).toEqual([{etapa:'primeiro_contato',encerramento:null}])
-  expect(await devolver(a)).toEqual({ok:true})
-  expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:'devolucao'}])
-  expect(await banco.sql('SELECT id FROM contato')).toHaveLength(2)
-  await banco.sql('UPDATE empresa_fila SET elegivel_em=NULL')
-  expect(await assumir(b)).toEqual({ok:true})
-  expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(2)
+test('vínculo não cria ciclo; interesse repetido preserva ciclo e arquivo preserva dono',async()=>{
+ await vincular(a)
+ expect(await banco.sql('SELECT id FROM negociacao')).toEqual([])
+ expect(await assumir(a)).toMatchObject({ok:true})
+ expect(await assumir(a)).toMatchObject({ok:true})
+ expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(1)
+ expect(await devolver(a)).toMatchObject({ok:true})
+ expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:'sem_interesse'}])
+ expect(await assumir(b)).toEqual({ok:false,motivo:'sem_permissao'})
+ expect(await banco.sql('SELECT id FROM contato')).toHaveLength(3)
 })
-
-test('erro no contato desfaz assunção e ciclo na mesma transação', async () => {
-  await reservar(a)
-  await expect(registrarContato(a,empresa,{tipo:'interessado',nota:null,proximoPasso:'incompleto',proximoPassoData:null,desfecho:'assumir'})).rejects.toMatchObject({code:'23514'})
-  expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:null}])
-  expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(0)
+test('entrada inválida não assume nem cria ciclo',async()=>{
+ await vincular(a)
+ expect(await contatoDireto(banco,a,empresa,{tipo:'interessado',nota:null,proximoPasso:'incompleto',proximoPassoData:null})).toEqual({ok:false,motivo:'dados_invalidos'})
+ expect(await banco.sql('SELECT id FROM negociacao')).toEqual([])
+ expect(await banco.sql('SELECT empresa_id FROM empresa_fila')).toEqual([])
 })
-
-test('cliente não é devolvido; venda encerra ciclo e permanece com dono inativo fora da fila', async () => {
-  await assumir(a)
-  await venda()
-  expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:'venda'}])
-  expect(await devolver(a)).toEqual({ok:false,motivo:'sem_permissao'})
-  await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[a])
-  expect((await reservar(b)).linhas[0].resultado).toBe('indisponivel')
-  const r = await banco.comoUsuario(b, e=>e<{disponibilidade:string}>("SELECT disponibilidade FROM empresa_consultar('',NULL,NULL,NULL,NULL,1)"))
-  expect(r.linhas).toEqual([{disponibilidade:'outro_vendedor'}])
-  expect((await banco.comoUsuario(b,e=>e('SELECT * FROM empresa_sugestoes()'))).linhas).toEqual([])
-  expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:a}])
-  expect((await lerDashboard(gestor))?.disponiveis).toBe(0)
+test('cliente arquivado preserva dono inativo e não volta ao catálogo',async()=>{
+ await assumir(a);await venda()
+ expect(await devolver(a)).toMatchObject({ok:true})
+ await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[a])
+ expect(await assumir(b)).toEqual({ok:false,motivo:'sem_permissao'})
+ expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:a}])
+ expect((await lerDashboard(gestor))?.disponiveis).toBe(0)
 })
 
 test('funil filtra autoria também no último contato e não devolve dados de outro dono', async () => {
-  await assumir(a)
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresa,a])
+  expect(await registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:1},{tipo:'interessado',nota:'Nota de '+a,proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
   const [antiga] = await lerFunil(a)
-  await devolver(a)
-  await banco.sql('UPDATE empresa_fila SET elegivel_em=NULL')
-  await assumir(b)
+  expect(await registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:antiga.versao},{tipo:'sem_interesse',nota:'Sem interesse em conversa real',proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
+  // Mudança administrativa explícita somente da fixture para observar o novo
+  // dono. Não há comando de transferência no aplicativo.
+  await banco.sql('UPDATE empresa_vinculo SET vendedor_id=$2,arquivada_em=NULL,versao=versao+1 WHERE empresa_id=$1',[empresa,b])
+  await banco.sql('UPDATE empresa_fila SET vendedor_id=$2 WHERE empresa_id=$1',[empresa,b])
+  const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+  expect(await registrarContatoDireto(b,{empresaId:empresa,chave:randomUUID(),versao},{tipo:'interessado',nota:'Nota de '+b,proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
   const [atual] = await lerFunil(b)
   expect(atual).toMatchObject({empresaId:empresa,nome:'Aurora',cidade:null,etapa:'primeiro_contato'})
   expect(atual).not.toHaveProperty('telefone')
@@ -119,11 +115,10 @@ test('venda exige dono ativo, valor positivo, data finita e chave única; não p
   expect(await lerFunil(a)).toEqual([])
 })
 
-test('prospecto de dono inativo pode ser reassumido sem dois ciclos abertos', async () => {
-  await assumir(a)
-  await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[a])
-  expect(await assumir(b)).toEqual({ok:true})
-  expect(await banco.sql('SELECT vendedor_id FROM negociacao WHERE encerrada_em IS NULL')).toEqual([{vendedor_id:b}])
+test('prospecto de dono inativo não é redistribuído',async()=>{
+ await assumir(a);await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[a])
+ expect(await assumir(b)).toEqual({ok:false,motivo:'sem_permissao'})
+ expect(await banco.sql('SELECT vendedor_id FROM negociacao WHERE encerrada_em IS NULL')).toEqual([{vendedor_id:a}])
 })
 
 test('negociação e venda não aceitam escrita direta nem executáveis internos pelo app', async () => {
@@ -141,27 +136,11 @@ test('negociação e venda não aceitam escrita direta nem executáveis internos
   expect(await devolver(a)).toEqual({ok:false,motivo:'sem_permissao'})
 })
 
-test('duas assunções concorrentes não criam dois ciclos', async () => {
-  await reservar(a)
-  const resultados = await Promise.all([1,2].map(()=>registrarContato(a,empresa,{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null,desfecho:'assumir'})))
-  expect(resultados.filter(r=>r.ok)).toHaveLength(1)
-  expect(resultados.filter(r=>!r.ok)).toEqual([{ok:false,motivo:'ja_e_sua'}])
-  expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(1)
-  expect(await banco.sql('SELECT id FROM contato')).toHaveLength(1)
-})
-
-test('venda concorrente com devolução nunca deixa cliente disponível', async () => {
-  await assumir(a)
-  const resultados = await Promise.allSettled([venda(),devolver(a)])
-  const vendas = await banco.sql('SELECT id FROM venda')
-  if (vendas.length) {
-    expect(resultados[0].status).toBe('fulfilled')
-    expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:a}])
-    expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:'venda'}])
-  } else {
-    expect(resultados[0].status).toBe('rejected')
-    expect(resultados[1]).toMatchObject({status:'fulfilled',value:{ok:true}})
-    expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{vendedor_id:null}])
-    expect(await banco.sql('SELECT encerramento FROM negociacao')).toEqual([{encerramento:'devolucao'}])
-  }
+test('duas intenções com mesma versão não duplicam contato ou ciclo',async()=>{
+ await vincular(a)
+ const resultados=await Promise.all([1,2].map(()=>registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:1},{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null})))
+ expect(resultados.filter(r=>r.ok)).toHaveLength(1)
+ expect(resultados.filter(r=>!r.ok)).toEqual([{ok:false,motivo:'desatualizada'}])
+ expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(1)
+ expect(await banco.sql('SELECT id FROM contato')).toHaveLength(1)
 })

@@ -1,54 +1,26 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+async function entrar(page:Page,usuario:string) {
+ await page.goto('/login');await page.getByLabel('E-mail').fill(usuario+'@teste.local');await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL('/meu-dia')
+}
+const card=(page:Page,nome:string)=>page.locator('[data-slot=card]').filter({has:page.getByRole('heading',{name:nome,exact:true})})
 
-test('Fila real separa etapas, preserva notas ao voltar e troca somente após confirmar', async ({ page }) => {
-  await page.goto('/login')
-  await page.getByLabel('E-mail').fill('visuale2e@teste.local')
-  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
-  await page.goto('/fila/localizar?legado=1&cnae=8888888')
-  const etapas = page.getByRole('navigation', { name: 'Etapas da prospecção' })
-  await expect(etapas.getByRole('link')).toHaveCount(0)
-  await expect(etapas.getByRole('button')).toHaveCount(0)
-  await page.getByLabel('Tema da Fila').selectOption('light')
-  for (const width of [390, 820, 1000, 1280]) {
-    await page.setViewportSize({ width, height: 844 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+test('atendimento direto mantém rascunho e reflow nos dois temas',async({page})=>{
+ await entrar(page,'visuale2e');await page.goto('/fila/localizar?cnae=8888888')
+ await card(page,'Visual E2E A').getByRole('button',{name:'Iniciar atendimento',exact:true}).click()
+ await expect(page).toHaveURL(/\/fila\/atendimento\//)
+ const atendimento=page.url()
+ await page.getByLabel('Nota',{exact:true}).fill('Rascunho da interface nova')
+ for(const tema of ['light','dark']) {
+  await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
+  for(const width of [390,820,1000,1280]) {
+   await page.setViewportSize({width,height:844})
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+   await expect(page.getByLabel('Nota',{exact:true})).toHaveValue('Rascunho da interface nova')
   }
-  await page.screenshot({ path: 'test-results/fila-puxar.png', fullPage: true })
-  await page.getByRole('button', { name: 'Buscar cliente', exact: true }).click()
-  await expect(page).toHaveURL(/\/fila\?/)
-  await expect(etapas.locator('[aria-current="step"]')).toHaveText('Consultar')
-  await expect(etapas.getByRole('button', { name: 'Registrar', exact: true })).toHaveCount(0)
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
-  const empresa = await page.getByRole('heading', { name: /^Visual E2E / }).textContent()
-  await page.screenshot({ path: 'test-results/fila-consultar.png', fullPage: true })
-  await page.getByRole('button', { name: 'Registrar resultado', exact: true }).click()
-  await expect(etapas.locator('[aria-current="step"]')).toHaveText('Registrar')
-  await page.getByLabel('Nota', { exact: true }).fill('Rascunho da interface nova')
-  await etapas.getByRole('button', { name: 'Consultar', exact: true }).click()
-  await page.getByRole('button', { name: 'Registrar resultado', exact: true }).click()
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho da interface nova')
-  await page.getByLabel('Tema da Fila').selectOption('dark')
-  for (const width of [820, 1000, 1280]) {
-    await page.setViewportSize({ width, height: 844 })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  }
-  await page.screenshot({ path: 'test-results/fila-registrar-escuro.png', fullPage: true })
-  await page.setViewportSize({ width: 390, height: 844 })
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: 'test-results/fila-registrar-mobile.png', fullPage: true })
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await etapas.getByRole('button', { name: 'Consultar', exact: true }).click()
-  await page.getByRole('button', { name: 'Próxima', exact: true }).click()
-  const dialogo = page.getByRole('dialog')
-  await expect(dialogo).toBeVisible()
-  await dialogo.getByRole('button', { name: 'Cancelar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: empresa!, exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Próxima', exact: true }).click()
-  await dialogo.getByRole('button', { name: 'Descartar e continuar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: empresa!, exact: true })).not.toBeVisible()
-  await expect(etapas.locator('[aria-current="step"]')).toHaveText('Consultar')
-  await page.getByRole('button', { name: 'Registrar resultado', exact: true }).click()
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('')
+ }
+ await page.screenshot({path:'test-results/atendimento-visual-mobile.png',fullPage:true})
+ await page.goto('/fila/localizar?cnae=8888888')
+ await card(page,'Visual E2E B').getByRole('button',{name:'Iniciar atendimento',exact:true}).click()
+ await expect(page.getByLabel('Nota',{exact:true})).toHaveValue('')
+ await page.goto(atendimento);await expect(page.getByLabel('Nota',{exact:true})).toHaveValue('Rascunho da interface nova')
 })

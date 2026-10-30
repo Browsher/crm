@@ -60,10 +60,10 @@ describe('empresa_fila: privilégios', () => {
 })
 
 describe('empresa_fila: quem le a linha', () => {
-  test('vendedor le a reserva dele', async () => {
+  test('reserva histórica não concede leitura da fila', async () => {
     await reservarPara(vendedorA)
     const r = await banco.comoUsuario(vendedorA, (e) => e('SELECT empresa_id FROM empresa_fila'))
-    expect(r.linhas).toEqual([{ empresa_id: empresa }])
+    expect(r.linhas).toEqual([])
   })
 
   test('vendedor nao le a linha de outro vendedor', async () => {
@@ -80,10 +80,10 @@ describe('empresa_fila: quem le a linha', () => {
 })
 
 describe('empresa_leitura: o vendedor le so o que esta com ele', () => {
-  test('com reserva vigente, le a empresa', async () => {
+  test('reserva vigente histórica não concede leitura da empresa', async () => {
     await reservarPara(vendedorA)
     const r = await banco.comoUsuario(vendedorA, (e) => e('SELECT cnpj FROM empresa'))
-    expect(r.linhas).toEqual([{ cnpj: '11222333000181' }])
+    expect(r.linhas).toEqual([])
   })
 
   test('empresa alheia continua invisivel', async () => {
@@ -116,22 +116,12 @@ describe('empresa_leitura: o vendedor le so o que esta com ele', () => {
     expect(r.linhas).toHaveLength(1)
   })
 
-  // ESTE TESTE EXISTE PARA EXPLICAR, NÃO PARA PEGAR.
-  //
-  // `empresa_leitura` consulta `empresa_fila`, e a RLS de `empresa_fila` vale
-  // dentro dessa subconsulta. Se alguém estreitar `empresa_fila_leitura`, quem
-  // falha é o teste "com reserva vigente, le a empresa" — apontando `empresa`,
-  // quando a causa está na outra tabela. Este falha junto e nomeia a causa.
-  //
-  // Não existe catraca para isso: invariante que leia `qual` de política
-  // arbitrária compararia texto de expressão, que muda na primeira
-  // reformatação do Postgres.
-  test('empresa_leitura depende de empresa_fila_leitura enxergar a propria linha', async () => {
+  test('linha de reserva antiga não contorna política de vínculo', async () => {
     await reservarPara(vendedorA)
     const r = await banco.comoUsuario(vendedorA, (e) =>
       e('SELECT reservado_por FROM empresa_fila WHERE empresa_id = $1', [empresa]),
     )
-    expect(r.linhas).toEqual([{ reservado_por: vendedorA }])
+    expect(r.linhas).toEqual([])
   })
 })
 

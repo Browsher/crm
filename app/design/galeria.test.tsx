@@ -51,15 +51,15 @@ test('expõe as seções e dados fictícios da referência', () => {
   expect(container.textContent).toContain('Estado')
   expect(container.textContent).toContain('Cidade')
   expect(container.textContent).toContain('Bairro')
-  expect(container.textContent).toContain('Disponível')
-  expect(container.textContent).toContain('Reservada para você')
+  expect(container.textContent).toContain('Cliente')
+  expect(container.textContent).toContain('A contatar')
   expect(container.textContent).toContain('Indisponível')
   expect(container.textContent).toContain('Com outro vendedor')
-  expect(container.textContent).toContain('Reserva expirada')
+  expect(container.textContent).not.toContain('Reserva expirada')
   expect(container.textContent).not.toContain('Nenhuma empresa encontrada')
   expect(container.querySelector('#cnae')?.tagName).toBe('SELECT')
   expect(container.querySelector('[aria-invalid="true"]')?.getAttribute('aria-describedby')).toBe('telefone-erro')
-  expect(container.querySelector<HTMLInputElement>('#codigo-reserva')?.readOnly).toBe(true)
+  expect(container.querySelector<HTMLInputElement>('#codigo-empresa')?.readOnly).toBe(true)
   expect(container.querySelector<HTMLTextAreaElement>('#anotacoes-expiradas')?.disabled).toBe(false)
 })
 
@@ -79,16 +79,24 @@ test('aplica os filtros aos dados fictícios e limpar restaura a lista', async (
   expect(container.querySelector('[data-testid="company-list"]')?.textContent).toContain('Aurora Papelaria Ltda.')
 })
 
-test('abre o exemplo no próprio card sem o rótulo Ausente', async () => {
+test('usa o card real com detalhe cadastral local e ausências explícitas', async () => {
   const card = [...container.querySelectorAll('[data-testid="company-list"] > *')]
     .find((item) => item.textContent?.includes('Café Cedro'))
-  const abrir = [...(card?.querySelectorAll('button') ?? [])].find((item) => item.textContent === 'Ver exemplo')
+  const abrir = [...(card?.querySelectorAll('button') ?? [])].find((item) => item.textContent === 'Ver empresa')
 
   await act(async () => abrir?.click())
 
-  expect(card?.textContent).toContain('Telefone fictício')
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Telefone principal')
   expect(card?.textContent).not.toContain('Ausente')
-  expect(card?.textContent).toContain('Fechar exemplo')
+  expect(card?.textContent).toContain('AtividadeNão informado')
+})
+
+test('o descarte real fica fora das três etapas e responde à simulação', async () => {
+  expect(container.querySelectorAll('[data-etapa-funil]')).toHaveLength(3)
+  expect(container.querySelectorAll('[data-descarte]')).toHaveLength(1)
+  expect(container.querySelector('[data-etapa-funil] [data-descarte]')).toBeNull()
+  await act(async()=>botao('Simular arquivamento').click())
+  expect(container.querySelector('[data-descarte]')?.getAttribute('data-estado')).toBe('sucesso')
 })
 
 test('registra a confirmação junto à seção do diálogo', async () => {

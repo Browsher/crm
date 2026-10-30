@@ -1,138 +1,25 @@
 import { describe, expect, test } from 'vitest'
-import { validar, type Rascunho } from './regras'
+import { validarContatoDireto } from './regras'
 
-const BASE: Rascunho = {
-  tipo: 'nao_atendeu',
-  desfecho: 'devolver',
-  nota: '',
-  proximoPasso: '',
-  proximoPassoData: '',
-  posse: false,
-}
-
-describe('validar', () => {
-  test('rascunho de reserva sem proximo passo e valido', () => {
-    expect(validar(BASE)).toEqual({
-      ok: true,
-      valor: { tipo: 'nao_atendeu', desfecho: 'devolver', nota: null, proximoPasso: null, proximoPassoData: null },
-    })
+describe('validarContatoDireto', () => {
+  const entrada = { tipo: 'nao_atendeu', nota: '  Tentativa  ', proximoPasso: '', proximoPassoData: '' }
+  test('não atendeu permite próximo passo opcional em qualquer fase e normaliza nota', () => {
+    for (const fase of ['inicial', 'negociacao', 'cliente'] as const) {
+      expect(validarContatoDireto(entrada, fase)).toEqual({ ok: true, valor: { tipo: 'nao_atendeu', nota: 'Tentativa', proximoPasso: null, proximoPassoData: null } })
+      expect(validarContatoDireto({ ...entrada, proximoPasso: 'Ligar', proximoPassoData: '2027-03-02' }, fase).ok).toBe(true)
+    }
   })
-
-  test('tipo fora da lista e recusado antes do banco', () => {
-    expect(validar({ ...BASE, tipo: 'inventado' })).toEqual({ ok: false, falta: 'tipo_invalido' })
+  test('recusa par incompleto, retorno sem combinado e arquivo com agenda', () => {
+    expect(validarContatoDireto({ ...entrada, proximoPasso: 'Ligar' }, 'inicial')).toEqual({ ok: false, falta: 'par_incompleto' })
+    expect(validarContatoDireto({ ...entrada, tipo: 'retornar_depois' }, 'inicial')).toEqual({ ok: false, falta: 'proximo_passo_exigido' })
+    expect(validarContatoDireto({ ...entrada, tipo: 'sem_interesse', proximoPasso: 'Ligar', proximoPassoData: '2027-03-02' }, 'negociacao')).toEqual({ ok: false, falta: 'agenda_incompativel' })
   })
-
-  test('desfecho fora do vocabulario e recusado antes do banco', () => {
-    expect(validar({ ...BASE, desfecho: 'talvez' })).toEqual({ ok: false, falta: 'desfecho_invalido' })
+  test('acompanhamento requer fase comercial e próximo passo, não liguei preserva atividade honesta', () => {
+    expect(validarContatoDireto({ ...entrada, tipo: 'acompanhamento' }, 'inicial')).toEqual({ ok: false, falta: 'tipo_invalido' })
+    expect(validarContatoDireto({ ...entrada, tipo: 'acompanhamento' }, 'cliente')).toEqual({ ok: false, falta: 'proximo_passo_exigido' })
+    expect(validarContatoDireto({ ...entrada, tipo: 'nao_liguei' }, 'inicial')).toEqual({ ok: true, valor: { tipo: 'nao_liguei', nota: 'Tentativa', proximoPasso: null, proximoPassoData: null } })
   })
-
-  // A regra que existe por causa da posse. Sem ela, o vendedor assume uma
-  // empresa e a agenda dele nasce vazia sem ninguém perceber.
-  test('com posse, proximo passo e EXIGIDO', () => {
-    const r = validar({ ...BASE, tipo: 'acompanhamento', desfecho: 'nenhum', posse: true })
-    expect(r).toEqual({ ok: false, falta: 'proximo_passo_exigido' })
-  })
-
-  test('com posse e proximo passo completo, passa', () => {
-    const r = validar({
-      ...BASE,
-      tipo: 'acompanhamento',
-      desfecho: 'nenhum',
-      posse: true,
-      proximoPasso: 'Mandar orçamento',
-      proximoPassoData: '2026-10-01',
-    })
-    expect(r).toEqual({
-      ok: true,
-      valor: {
-        tipo: 'acompanhamento',
-        desfecho: 'nenhum',
-        nota: null,
-        proximoPasso: 'Mandar orçamento',
-        proximoPassoData: '2026-10-01',
-      },
-    })
-  })
-
-  const incompletos: [string, Partial<Rascunho>][] = [
-    ['passo sem data', { proximoPasso: 'Ligar em março', proximoPassoData: '' }],
-    ['data sem passo', { proximoPasso: '', proximoPassoData: '2026-10-01' }],
-  ]
-  for (const [nome, patch] of incompletos) {
-    test(`${nome} e recusado antes do banco, e nao vira 23514 na tela`, () => {
-      expect(validar({ ...BASE, ...patch })).toEqual({ ok: false, falta: 'par_incompleto' })
-    })
-  }
-
-  test('retornar_depois assume a reserva com data combinada', () => {
-    const r = validar({
-      ...BASE,
-      tipo: 'retornar_depois',
-      desfecho: 'assumir',
-      proximoPasso: 'Retomar contato',
-      proximoPassoData: '2027-03-02',
-    })
-    expect(r).toEqual({
-      ok: true,
-      valor: {
-        tipo: 'retornar_depois',
-        desfecho: 'assumir',
-        nota: null,
-        proximoPasso: 'Retomar contato',
-        proximoPassoData: '2027-03-02',
-      },
-    })
-  })
-
-  test('retornar_depois não pode devolver nem omitir o combinado', () => {
-    expect(validar({ ...BASE, tipo: 'retornar_depois' })).toEqual({ok:false,falta:'desfecho_invalido'})
-    expect(validar({ ...BASE, tipo: 'retornar_depois', desfecho:'assumir' })).toEqual({ok:false,falta:'proximo_passo_exigido'})
-  })
-
-  test('espaco em branco vira nulo, nao string vazia — o CHECK do banco recusa vazio', () => {
-    const r = validar({ ...BASE, nota: '   ' })
-    expect(r).toEqual({ ok: true, valor: expect.objectContaining({ nota: null }) })
-  })
-})
-
-// Achado da verificação manual: "Registrar e devolver" exigia próximo passo.
-// A empresa está SAINDO da carteira — não há o que combinar com quem você não
-// vai mais ligar. A tela raciocinava sobre o estado anterior à ação (`posse`)
-// em vez de sobre o desfecho dela.
-describe('validar: o que decide é o desfecho, não o estado anterior', () => {
-  const naCarteira: Rascunho = {
-    tipo: 'acompanhamento',
-    desfecho: 'nenhum',
-    nota: '',
-    proximoPasso: '',
-    proximoPassoData: '',
-    posse: true,
-  }
-
-  test('posse com desfecho nenhum EXIGE proximo passo, porque a empresa fica', () => {
-    expect(validar(naCarteira)).toEqual({ ok: false, falta: 'proximo_passo_exigido' })
-  })
-
-  test('posse com desfecho devolver NAO exige, porque a empresa sai', () => {
-    expect(validar({ ...naCarteira, desfecho: 'devolver' })).toEqual({
-      ok: true,
-      valor: {
-        tipo: 'acompanhamento',
-        desfecho: 'devolver',
-        nota: null,
-        proximoPasso: null,
-        proximoPassoData: null,
-      },
-    })
-  })
-
-  test('devolver com proximo passo preenchido continua valendo, e vira historico', () => {
-    const r = validar({
-      ...naCarteira,
-      desfecho: 'devolver',
-      proximoPasso: 'Retomar em marco',
-      proximoPassoData: '2027-03-02',
-    })
-    expect(r).toEqual({ ok: true, valor: expect.objectContaining({ proximoPasso: 'Retomar em marco' }) })
+  test('data inválida não alcança o banco', () => {
+    expect(validarContatoDireto({ ...entrada, proximoPasso: 'Ligar', proximoPassoData: '2027-02-30' }, 'inicial')).toEqual({ ok: false, falta: 'dados_invalidos' })
   })
 })

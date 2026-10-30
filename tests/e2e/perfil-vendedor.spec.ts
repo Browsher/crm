@@ -17,9 +17,13 @@ test.beforeAll(async () => {
         const { rows:[e] } = await cliente.query<{ id:string }>(`INSERT INTO empresa(cnpj,razao_social,telefone)
           VALUES($1,$2,'11999999999') RETURNING id`,[`8080808000000${i}`,['Alvorada Comércio','Horizonte Serviços'][i]])
         await cliente.query('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[e.id,v.id])
+        await cliente.query("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial,iniciada_em) VALUES($1,$2,'legado',now())",[e.id,v.id])
+        await cliente.query("WITH g AS (INSERT INTO grupo_importacao(nome) VALUES('Origem perfil') RETURNING id) INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) SELECT id,$1 FROM g",[e.id])
+        await cliente.query('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[e.id,v.id])
         await cliente.query("SELECT set_config('app.usuario_id',$1,true)",[v.id])
         await cliente.query(`INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data)
           VALUES($1,'acompanhamento','Cliente pediu acompanhamento','Conversar sobre a proposta',(now() AT TIME ZONE 'America/Sao_Paulo')::date+$2::int)`,[e.id,i===0 ? -1 : 0])
+        await cliente.query('UPDATE empresa_vinculo SET agenda_contato_id=(SELECT id FROM contato WHERE empresa_id=$1) WHERE empresa_id=$1',[e.id])
       }
       await cliente.query('COMMIT')
     } catch (erro) { await cliente.query('ROLLBACK'); throw erro }
@@ -43,7 +47,7 @@ test('gestor abre perfil em Usuários, consulta carteira e histórico e volta à
   await expect(page.getByRole('heading', { name:'Carlos Almeida',exact:true })).toBeVisible()
   const resumo = page.getByRole('region', { name:'Resumo do vendedor' })
   await expect(resumo.locator('strong')).toHaveText(['2','1','1','2'])
-  const carteira = page.getByRole('region', { name:'Empresas da carteira' })
+  const carteira = page.getByRole('region', { name:'Empresas do vendedor', exact:true }).first()
   await expect(carteira.getByRole('row')).toHaveCount(3)
   await expect(carteira).toContainText('Alvorada Comércio')
   const historico = page.getByRole('region', { name:'Últimos atendimentos' })

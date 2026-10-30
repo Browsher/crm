@@ -11,8 +11,8 @@ vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('404') } }
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.exigir.mockResolvedValue({ usuarioId: 'gestor' })
-  mocks.perfil.mockResolvedValue({ id: 'id', razaoSocial: 'Aurora', cnpj: '11222333000181', telefone: '11987654321',
-    situacao: 'disponivel', grupos: [], responsavel: null, proximoPasso: null, retorno: null })
+  mocks.perfil.mockResolvedValue({ id: 'id', nome:'Aurora', razaoSocial: 'Aurora', cnpj: '11222333000181', telefone: '11987654321',
+    situacao: 'a_contatar', grupos: [], responsavel: null, proximoPasso: null, retorno: null })
   mocks.historico.mockResolvedValue({ ok: true, contatos: [] })
 })
 test('ficha de consulta sem ações de vendedor e volta preserva filtros', async () => {

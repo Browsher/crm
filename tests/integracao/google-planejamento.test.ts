@@ -57,8 +57,9 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM google_sincronizacao')
   await banco.sql('DELETE FROM google_planejamento')
   await banco.sql('DELETE FROM google_rotina')
-  await banco.sql('DELETE FROM contato')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_origem_google')
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
   await banco.sql('UPDATE usuario SET ativo=true,senha_provisoria_pendente=false WHERE id IN ($1,$2)', [vendedor, outro])
@@ -194,8 +195,8 @@ test('exclusividade impede reserva por alvo direto e fonte compartilhada', async
   const id = await iniciado()
   await entregar(id)
   const [{ empresa_id: e }] = await banco.sql<{ empresa_id: string }>('SELECT empresa_id FROM google_exclusividade')
-  expect(await chamar(outro, "SELECT resultado FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)", [e])).toEqual([{ resultado: 'indisponivel' }])
-  expect(await chamar(vendedor, "SELECT resultado FROM fila_reservar($1,'',NULL,NULL,NULL,NULL,NULL)", [e])).toEqual([{ resultado: 'ok' }])
+  expect(await chamar(outro, 'SELECT atendimento_iniciar($1,gen_random_uuid(),1) AS resultado', [e])).toEqual([{resultado:{ok:false,motivo:'sem_permissao'}}])
+  expect(await chamar(vendedor, 'SELECT atendimento_iniciar($1,gen_random_uuid(),1) AS resultado', [e])).toMatchObject([{resultado:{ok:true}}])
 })
 
 test('coordenador legado preserva congelamento dos pedidos antigos e sua retomada', async () => {
@@ -246,7 +247,7 @@ test('ficha central reúne quem solicitou a mesma empresa em pedidos diferentes'
 })
 test('ficha central encontra pendências anteriores por identidade sem associar conflitos', async () => {
   const { repositorioGoogle } = await import('@/src/features/google/repositorio')
-  const [{ id: outraEmpresa }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Outra empresa','11988887777') RETURNING id")
+  const [{ id: outraEmpresa }] = await banco.sql<{ id: string }>("INSERT INTO empresa(nome_fantasia,telefone) VALUES ('Outra empresa','11977776666') RETURNING id")
   await banco.sql('INSERT INTO empresa_origem_google(google_place_id,empresa_id) VALUES ($1,$2)', ['place-outra', outraEmpresa])
   const a = await iniciado()
   const b = await iniciado(outro)
@@ -261,7 +262,7 @@ test('ficha central encontra pendências anteriores por identidade sem associar 
 test('preserva ocorrências excedentes na auditoria e entrega no máximo 50 leads', async () => {
   const { repositorioGoogle } = await import('@/src/features/google/repositorio')
   const id = await iniciado()
-  const encontradas = Array.from({ length: 51 }, (_, i) => ({ ...empresa, cnpj: null, google_place_id: 'place-limite-' + i }))
+  const encontradas = Array.from({ length: 51 }, (_, i) => ({ ...empresa, cnpj: null, google_place_id: 'place-limite-' + i, telefone: '1198888' + String(i).padStart(4, '0'), email: `loja${i}@exemplo.test` }))
   await entregar(id, encontradas)
   expect(await banco.sql("SELECT count(*)::int AS n FROM google_resultado WHERE situacao='entregue'")).toEqual([{ n: 50 }])
   expect(await banco.sql('SELECT count(*)::int AS n FROM google_resultado')).toEqual([{ n: 51 }])

@@ -28,6 +28,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM empresa_dados_cadastrais')
   await banco.sql('DELETE FROM grupo_importacao_empresa')
   await banco.sql('DELETE FROM grupo_importacao')
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
   for (const id of [vendedor, outro]) await call(gestor, 'SELECT busca_empresa_limite_definir($1,20,false)', [id])

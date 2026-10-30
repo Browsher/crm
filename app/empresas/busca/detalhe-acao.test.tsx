@@ -1,8 +1,12 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-const m = vi.hoisted(() => ({ exigir: vi.fn(), repo: vi.fn(), ler: vi.fn(), limite: vi.fn() }))
+const m = vi.hoisted(() => ({ exigir: vi.fn(), repo: vi.fn(), ler: vi.fn(), limite: vi.fn(), detalhes: vi.fn() }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: m.exigir }))
 vi.mock('@/src/features/busca-empresas/repositorio', () => ({ repositorioBusca: m.repo }))
-import { lerDetalheBuscaAcao, lerEmpresaBuscaAcao } from './detalhe-acao'
+vi.mock('@/src/server/empresas/detalhes', () => ({ lerDetalhesEmpresa: m.detalhes }))
+vi.mock('@/src/server/atendimento/consulta', () => ({ lerResumosBusca: vi.fn(async () => ({ok:true,empresas:[]})) }))
+import { lerDetalheBuscaAcao, lerEmpresaBuscaAcao, lerDetalhesEmpresaAcao } from './detalhe-acao'
+import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { isValidElement } from 'react'
 import type { BuscaSalva } from '@/src/features/busca-empresas/tipos'
 
@@ -41,15 +45,36 @@ test('papel do gestor vem da sessão e dispensa limite de vendedor', async () =>
   expect(m.limite).not.toHaveBeenCalled()
 })
 
-test('empresa recente exige vendedor e vínculo exato na busca acessível, sem consulta paga',async()=>{
- const alvo={cnpj:'99887766000105',razao_social:'Encontrada'}
- m.ler.mockResolvedValue({id:'busca',usuario_id:'da-sessao',empresas:[alvo,{cnpj:'11111111000111'}]} as BuscaSalva)
- const r=await lerEmpresaBuscaAcao('busca',alvo.cnpj)
- expect(m.exigir).toHaveBeenCalledWith('vendedor')
- expect(m.repo).toHaveBeenCalledWith('da-sessao')
+test('empresa recente usa identidade autenticada e só componente de dados, sem metadados/limite/fornecedor',async()=>{
+ const dados={nome:'Empresa B',cnpj:'99887766000105',telefones:[],dadosCadastrais:null}
+ m.detalhes.mockResolvedValue({ok:true,dados})
+ const r=await lerEmpresaBuscaAcao('busca',dados.cnpj)
+ expect(m.exigir).toHaveBeenCalledWith('usuario')
+ expect(m.detalhes).toHaveBeenCalledWith('da-sessao',{tipo:'busca',buscaId:'busca',cnpj:dados.cnpj})
  if(!r.ok||!isValidElement(r.conteudo))throw new Error('conteúdo ausente')
- expect(r.conteudo.props).toMatchObject({gestor:false,bloqueada:true,retornadas:2,busca:{empresas:[alvo]}})
- expect(await lerEmpresaBuscaAcao('busca','99999999000199')).toMatchObject({ok:false})
- m.ler.mockResolvedValue({id:'busca',usuario_id:'outro',empresas:[alvo]} as BuscaSalva)
- expect(await lerEmpresaBuscaAcao('busca',alvo.cnpj)).toMatchObject({ok:false})
+ expect(r.conteudo.type).toBe(EmpresaDetalhes)
+ expect(r.conteudo.props).toEqual({empresa:dados})
+ const conteudo=renderToStaticMarkup(r.conteudo)
+ expect(conteudo).not.toContain('Prospectar esta lista')
+ expect(conteudo).not.toContain('Filtros usados')
+ expect(m.repo).not.toHaveBeenCalled()
+ expect(m.limite).not.toHaveBeenCalled()
+ m.detalhes.mockResolvedValue({ok:false,motivo:'sem_permissao'})
+ expect(await lerEmpresaBuscaAcao('outra',dados.cnpj)).toMatchObject({ok:false})
+})
+
+test('action comum autentica antes de carregar DTO e não aceita identidade/papel da tela',async()=>{
+ m.exigir.mockRejectedValueOnce(new Error('sem sessão'))
+ await expect(lerDetalhesEmpresaAcao({tipo:'cadastro',empresaId:'id'})).rejects.toThrow('sem sessão')
+ expect(m.detalhes).not.toHaveBeenCalled()
+ m.exigir.mockResolvedValue({usuarioId:'gestor-da-sessao',papel:'gestor'})
+ m.detalhes.mockResolvedValue({ok:false,motivo:'sem_permissao'})
+ await lerDetalhesEmpresaAcao({tipo:'cadastro',empresaId:'id'})
+ expect(m.detalhes).toHaveBeenCalledWith('gestor-da-sessao',{tipo:'cadastro',empresaId:'id'})
+})
+
+test('adapter de empresa preserva a guarda antes de tratar falhas de leitura',async()=>{
+ m.exigir.mockRejectedValue(new Error('sessão necessária'))
+ await expect(lerEmpresaBuscaAcao('busca','99887766000105')).rejects.toThrow('sessão necessária')
+ expect(m.detalhes).not.toHaveBeenCalled()
 })

@@ -1,6 +1,7 @@
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }))
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, test, vi } from 'vitest'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import type { FiltrosCarteira } from './filtros'
 import { ListaCarteira } from './lista'
 
@@ -14,7 +15,7 @@ const UMA: EmpresaComigo = {
   email: null,
   cep: null,
   endereco: null,
-  reservadoAte: null,
+  situacao: 'atendimento', versao: 1, reservadoAte: null,
   posse: true,
   proximoPasso: null,
   proximoPassoData: null,
@@ -42,7 +43,7 @@ describe('ListaCarteira', () => {
   test('vazia, diz o que fazer em vez de so dizer que esta vazia', () => {
     const saida = renderToStaticMarkup(<ListaCarteira linhas={[]} />)
     expect(saida).not.toContain('<ul')
-    expect(saida).toContain('Puxar')
+    expect(saida).toContain('Prospecção')
   })
 
   const COM_PASSO = { ...UMA, id: 'a', razaoSocial: 'Alfa', proximoPasso: 'Mandar orçamento', proximoPassoData: '2026-10-01', situacaoRetorno: 'futuro' as const,
@@ -100,7 +101,7 @@ describe('ListaCarteira', () => {
     const saida = renderToStaticMarkup(<ListaCarteira linhas={[UMA]} />)
     expect(saida).toContain('Contato principal não informado')
     expect(saida).toContain('Localização não informada')
-    expect(saida).toContain('Ainda não há uma conversa registrada')
+    expect(saida).toContain('Ainda não há uma atividade registrada')
   })
 
   test('distingue filtro sem resultado de carteira vazia e conta filtradas sobre total', () => {
@@ -116,9 +117,9 @@ describe('ListaCarteira', () => {
 test('Carteira vazia oferece navegação primária no rodapé do Card', () => {
   const saida = renderToStaticMarkup(<ListaCarteira linhas={[]} filtros={{ nome: 'Inexistente', uf: '', retorno: '' }} />)
   expect(saida).toContain('Sua carteira está vazia')
-  expect(saida).toContain('Assuma uma empresa da fila para começar.')
+  expect(saida).toContain('Registre a primeira venda para incluir um cliente na carteira.')
   expect(saida).toContain('data-slot="card-footer"')
-  expect(saida).toMatch(/<a[^>]+href="\/fila"[^>]*>Puxar a próxima empresa<\/a>/)
+  expect(saida).toMatch(/<a[^>]+href="\/fila"[^>]*>Ir para Prospecção<\/a>/)
   expect(saida).toContain('data-variant="default"')
   expect(saida).not.toContain('Nenhum cliente corresponde aos filtros')
 })
@@ -151,7 +152,7 @@ test('registros mantêm caption, cabeçalhos e rótulos de todas as células no 
   expect(saida).toContain('<caption')
   expect(saida).toContain('Clientes da sua carteira')
   expect(saida.match(/scope="col"/g)).toHaveLength(6)
-  for (const rotulo of ['Empresa', 'Contato principal', 'Última conversa', 'Próximo passo', 'Retorno', 'Ações']) {
+  for (const rotulo of ['Empresa', 'Contato principal', 'Última atividade', 'Próximo passo', 'Retorno', 'Ações']) {
     expect(saida).toContain(`data-label="${rotulo}"`)
   }
   expect(saida).toContain('Contato principal não informado')

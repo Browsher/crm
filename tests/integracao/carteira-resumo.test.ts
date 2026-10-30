@@ -25,6 +25,7 @@ beforeAll(async () => {
 
 afterAll(async () => { await banco.derrubar() })
 beforeEach(async () => {
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql(
@@ -32,6 +33,7 @@ beforeEach(async () => {
      VALUES ($1, $2, now()), ($3, $4, now())`,
     [empresaA, vendedorA, empresaB, vendedorB],
   )
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado'),($3,$4,'legado')",[empresaA,vendedorA,empresaB,vendedorB])
 })
 
 async function carteira(usuario: string) {

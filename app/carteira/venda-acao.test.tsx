@@ -21,3 +21,11 @@ test('não grava sem confirmação, valor válido ou permissão',async()=>{
   expect(await vendaCarteiraAcao(form())).toMatchObject({ok:false,erro:expect.any(String)})
   expect(mocks.revalidar).not.toHaveBeenCalled()
 })
+
+test.each(['arquivada','desatualizada'])('estado %s retorna orientação definitiva sem falso sucesso',async motivo=>{
+ mocks.registrar.mockResolvedValue({ok:false,motivo})
+ const resultado=await vendaCarteiraAcao(form())
+ expect(resultado.ok).toBe(false)
+ expect(resultado.erro).toMatch(motivo==='arquivada'?/Retome/:/Atualize/)
+ expect(mocks.revalidar).not.toHaveBeenCalled()
+})

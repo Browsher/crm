@@ -12,6 +12,7 @@ beforeAll(async () => {
   for (let i = 1; i <= 13; i++) {
     const [{ id }] = await banco.sql<{id:string}>('INSERT INTO empresa(cnpj,razao_social,telefone,email) VALUES($1,$2,$3,$4) RETURNING id', [String(88000000000000 + i), 'Empresa própria ' + i, '11998760123', 'privado@empresa.test'])
     ids.push(id)
+    await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')",[id,eu])
     const nome = i === 13 ? 'Armarinhos e variedades · Região central de São Paulo · Grupo de origem com nome extenso' : 'Lista própria ' + i
     if (i === 13) nomeOriginal = nome
     const [{ id: grupo }] = await banco.sql<{id:string}>('INSERT INTO grupo_importacao(nome) VALUES($1) RETURNING id', [nome])
@@ -23,6 +24,7 @@ beforeAll(async () => {
   await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id,criado_em) VALUES($1,'Lista posterior','{}',1,'concluida',$2,'2026-10-26T12:00:00Z')", [eu,repetido])
   const [{ id: segredo }] = await banco.sql<{id:string}>("INSERT INTO grupo_importacao(nome) VALUES('SEGREDO do outro vendedor') RETURNING id")
   const [{ id: alheia }] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Empresa ALHEIA','11912345678') RETURNING id")
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')",[alheia,outro])
   await banco.sql('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) VALUES($1,$2),($1,$3)', [segredo,ids[12],alheia])
   await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id) VALUES($1,'SEGREDO do outro vendedor','{}',1,'concluida',$2)", [outro,segredo])
   await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas) VALUES($1,'Apenas candidata','{}',1,'concluida',jsonb_build_array(jsonb_build_object('cnpj','88000000000999','razao_social','CANDIDATA NÃO IMPORTADA')))", [eu])
@@ -40,7 +42,8 @@ test('grupo de origem é próprio, completo e do primeiro vínculo; ordem e unic
 test('não inclui candidatas, empresas alheias, grupos alheios nem contatos', async () => {
   const texto = JSON.stringify(await consultar())
   for (const proibido of ['SEGREDO','ALHEIA','CANDIDATA','11998760123','privado@empresa.test']) expect(texto).not.toContain(proibido)
-  expect((await consultar(outro)).total).toBe(2)
+  // Ter busca antiga para a empresa de eu não transfere o vínculo permanente.
+  expect((await consultar(outro)).total).toBe(1)
 })
 test('acesso direto aos grupos continua protegido e papel gestor não vira vendedor', async () => {
   expect((await banco.comoUsuario(eu, sql => sql('SELECT nome FROM grupo_importacao'))).linhas).toEqual([])

@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { afterAll, beforeAll, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
@@ -50,10 +51,13 @@ test('cadastro parcial conserva nome, UUID e nulos na carteira, funil e gestão'
   const gestor = await criarUsuario(banco, 'gestor', 'GestorLeituraParcial')
   const vendedor = await criarUsuario(banco, 'vendedor', 'VendedorLeituraParcial')
   const [{ id }] = await banco.sql<{ id: string }>("INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone) VALUES (NULL,NULL,'Câmeras Comerciais','11999999999') RETURNING id")
+  await vincularGrupoAtivo(banco,[id])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,vendedor])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES ($1,$2)', [id, vendedor])
   const [{ id: negociacaoId }] = await banco.sql<{ id: string }>('INSERT INTO negociacao(empresa_id,vendedor_id) VALUES ($1,$2) RETURNING id', [id, vendedor])
-  const contato = await banco.comoUsuario(vendedor, e => e<{ resultado: string }>("SELECT contato_registrar($1,'acompanhamento','Conversa comercial',NULL,NULL,'nenhum') AS resultado", [id]))
-  expect(contato.linhas[0].resultado).toBe('ok')
+  const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[id])
+  const contato = await banco.comoUsuario(vendedor, e => e<{ resultado: {ok:boolean} }>("SELECT contato_registrar_direto($1,gen_random_uuid(),$2,'interessado','Conversa comercial',NULL,NULL) AS resultado", [id,versao]))
+  expect(contato.linhas[0].resultado).toMatchObject({ok:true})
   expect(await lerMinhasEmpresas(vendedor)).toMatchObject({ ok: true, carteira: [{ id, cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Comerciais' }] })
   expect(await lerPerfilEmpresa(gestor, id)).toMatchObject({ id, cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Comerciais' })
   expect(await lerFunil(vendedor)).toMatchObject([{ empresaId: id, nome: 'Câmeras Comerciais' }])

@@ -166,8 +166,8 @@ test('API do agente publica um lote validado e reutiliza o retorno sem nova entr
   await entrar(page, 'googleapie2e')
   await page.goto('/fila/google/' + id)
   await expect(page.getByRole('heading', { name: 'Papelaria validada API (fictícia)', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Prospectar', exact: true }).click()
-  await expect(page).toHaveURL('/fila')
+  await page.getByRole('button', { name: 'Iniciar atendimento', exact: true }).click()
+  await expect(page).toHaveURL(/\/fila\/atendimento\/[0-9a-f-]{36}/)
   await expect(page.getByText('Papelaria validada API (fictícia)', { exact: true }).first()).toBeVisible()
 })
 

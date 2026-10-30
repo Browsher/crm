@@ -26,3 +26,15 @@ test('venda pede confirmação, preserva rascunho e repete a mesma chave após f
   expect(a.get('chave')).toMatch(/^[0-9a-f-]{36}$/);expect(b.get('chave')).toBe(a.get('chave'))
   expect(b.get('valor')).toBe('125,50');expect(mocks.refresh).toHaveBeenCalledOnce()
 })
+
+test.each(['Retome o atendimento','O atendimento mudou'])('recusa %s preserva dados e chave até nova intenção',async erro=>{
+ host=document.createElement('div');document.body.append(host);root=createRoot(host)
+ await act(async()=>root!.render(<RegistrarVenda empresaId="empresa" nome="Aurora" />))
+ await clicar('Registrar venda');await preencher('valor','125,50');await preencher('data','2026-01-01');await clicar('Conferir venda')
+ mocks.venda.mockResolvedValueOnce({ok:false,erro});await clicar('Confirmar venda')
+ expect(document.body.textContent).toContain(erro)
+ expect(document.querySelector<HTMLInputElement>('input[name="valor"]')!.value).toBe('125,50')
+ mocks.venda.mockResolvedValueOnce({ok:true});await clicar('Confirmar venda')
+ const [a,b]=mocks.venda.mock.calls.map(([f])=>f as FormData)
+ expect([...b.entries()]).toEqual([...a.entries()])
+})

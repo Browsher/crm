@@ -1,30 +1,17 @@
-import { renderToStaticMarkup } from 'react-dom/server'
-import { expect, test, vi } from 'vitest'
-import { rascunhoInicial } from '@/src/features/contato/rascunho'
-import { EntradaSemReserva } from './entrada-sem-reserva'
-
-const estado = vi.hoisted(() => ({ entradas: {} as Record<string, unknown> }))
-vi.mock('./rascunhos', () => ({ useRascunhos: () => estado }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }))
-vi.mock('./formulario', () => ({ Formulario: () => <div>Recuperar anotações</div> }))
-const filtros = { nome: '', cnae: null, uf: null, cidade: null, bairro: null, pagina: 1, grupo: null }
-
-test('mantém editor quando a reserva expirou mesmo com nota vazia', () => {
-  estado.entradas = { a: { nome: 'Empresa', valor: rascunhoInicial(false), expirada: true } }
-  expect(renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)).toContain('Recuperar anotações')
+import { beforeEach, expect, test, vi } from 'vitest'
+const minhas=vi.hoisted(()=>vi.fn())
+const ler=vi.hoisted(()=>vi.fn())
+vi.mock('@/src/server/autenticacao/guarda',()=>({exigir:async()=>({usuarioId:'eu'})}))
+vi.mock('@/src/features/fila/consulta',()=>({lerMinhasEmpresas:minhas}))
+vi.mock('@/src/server/atendimento/consulta',()=>({lerAtendimento:ler}))
+vi.mock('next/navigation',()=>({redirect:(url:string)=>{throw new Error(url)}}))
+import Pagina from './page'
+beforeEach(()=>vi.clearAllMocks())
+test('grupo antigo sem empresa nunca consulta próxima nem reserva global',async()=>{
+  await expect(Pagina({searchParams:Promise.resolve({grupo:'antigo',nome:'Aurora'})})).rejects.toThrow('/fila/localizar?nome=Aurora&pagina=1')
+  expect(minhas).not.toHaveBeenCalled();expect(ler).not.toHaveBeenCalled()
 })
-test('mantém anotações sem reserva atual', () => {
-  estado.entradas = { a: { nome: 'Empresa', valor: { ...rascunhoInicial(false), nota: 'Ligar amanhã' } } }
-  expect(renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)).toContain('Recuperar anotações')
-})
-test('entrada vazia oferece localizar empresa', () => {
-  estado.entradas = {}
-  expect(renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)).toContain('Localizar empresa')
-})
-
-test('entrada vazia deixa escolher uma lista sem redirecionamento automático', () => {
-  estado.entradas = {}
-  const html = renderToStaticMarkup(<EntradaSemReserva filtros={filtros} contexto={null} />)
-  expect(html).toContain('Todas as listas ativas')
-  expect(html).not.toContain('Abrindo a busca')
+test('atendimento antigo só recupera identidade inequívoca e autorizada',async()=>{
+  minhas.mockResolvedValue({ok:true,reserva:{id:'A'}});ler.mockResolvedValue({ok:true})
+  await expect(Pagina({searchParams:Promise.resolve({atendimento:'1'})})).rejects.toThrow('/fila/atendimento/A')
 })

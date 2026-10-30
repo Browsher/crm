@@ -1,5 +1,5 @@
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 
 export type FiltrosMeuDia = { nome: string; retorno: '' | 'atrasado' | 'hoje' }
 
@@ -35,7 +35,7 @@ export function agendaDoDia(linhas: EmpresaComigo[]): EmpresaComigo[] {
     .sort((a, b) =>
       PESO[a.situacaoRetorno] - PESO[b.situacaoRetorno]
       || (a.proximoPassoData ?? '').localeCompare(b.proximoPassoData ?? '')
-      || nomeEmpresa(a).localeCompare(nomeEmpresa(b), 'pt-BR')
+      || (a.empresa?.nome ?? nomeEmpresa(a)).localeCompare(b.empresa?.nome ?? nomeEmpresa(b), 'pt-BR')
       || a.id.localeCompare(b.id))
 }
 

@@ -1,3 +1,4 @@
+import { vincularEmpresaTeste } from '../integracao/atendimento-fixtures'
 import { criarUsuarioComSenha, type BancoDeTeste } from '../integracao/ajuda'
 import { vincularGrupoAtivo } from '../integracao/grupos-fixtures'
 
@@ -18,14 +19,18 @@ export async function prepararCarteiraVisual(banco: BancoDeTeste) {
   for (const [id, cnpj, nome, cep, dono] of empresas) {
     await banco.sql(`INSERT INTO empresa (id, cnpj, razao_social, cep, telefone, cnae_principal)
       VALUES ($1, $2, $3, $4, '11999990301', '8877665')`, [id, cnpj, nome, cep])
+    await vincularEmpresaTeste(banco,id,dono,'legado')
     await banco.sql('INSERT INTO empresa_fila (empresa_id, vendedor_id) VALUES ($1, $2)', [id, dono])
   }
-  await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) SELECT empresa_id,vendedor_id,CURRENT_DATE,100,gen_random_uuid() FROM empresa_fila WHERE empresa_id=ANY($1::uuid[])',[empresas.map(e=>e[0])])
+  await banco.sql(`INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) SELECT empresa_id,vendedor_id,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,gen_random_uuid() FROM empresa_fila WHERE empresa_id=ANY($1::uuid[])`,[empresas.map(e=>e[0])])
   await banco.sql("INSERT INTO empresa(id,cnpj,razao_social,telefone) VALUES('00000000-0000-4000-8000-000000000304','00000000000304','Carteira Visual Prospecto','11999990304')")
+  await vincularEmpresaTeste(banco,'00000000-0000-4000-8000-000000000304',vendedor.id,'legado')
   await banco.sql("INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES('00000000-0000-4000-8000-000000000304',$1)",[vendedor.id])
+  await vincularGrupoAtivo(banco,['00000000-0000-4000-8000-000000000304'])
   await vincularGrupoAtivo(banco, empresas.map(e => e[0]))
   await banco.sql(`INSERT INTO contato (empresa_id, tipo, nota, proximo_passo, proximo_passo_data) VALUES
-    ('00000000-0000-4000-8000-000000000301', 'acompanhamento', 'Nota inicial Aurora ' || repeat('x', 300), 'Rever proposta Aurora', CURRENT_DATE - 2),
+    ('00000000-0000-4000-8000-000000000301', 'acompanhamento', 'Nota inicial Aurora ' || repeat('x', 300), 'Rever proposta Aurora', (now() AT TIME ZONE 'America/Sao_Paulo')::date - 2),
     ('00000000-0000-4000-8000-000000000302', 'interessado', 'Nota inicial Boreal', NULL, NULL),
-    ($1, 'acompanhamento', 'Nota privada de outro vendedor', 'Retorno privado', CURRENT_DATE)`, [EMPRESA_CARTEIRA_PRIVADA])
+    ($1, 'acompanhamento', 'Nota privada de outro vendedor', 'Retorno privado', (now() AT TIME ZONE 'America/Sao_Paulo')::date)`, [EMPRESA_CARTEIRA_PRIVADA])
+  await banco.sql(`UPDATE empresa_vinculo v SET agenda_contato_id=(SELECT c.id FROM contato c WHERE c.empresa_id=v.empresa_id AND c.proximo_passo_data IS NOT NULL ORDER BY c.criado_em DESC,c.id DESC LIMIT 1) WHERE v.vendedor_id=ANY($1::uuid[])`,[[vendedor.id,outro.id]])
 }

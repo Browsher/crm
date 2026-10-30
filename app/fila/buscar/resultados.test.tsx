@@ -1,5 +1,7 @@
+import { vi } from 'vitest'
+vi.mock('next/navigation',()=>({useRouter:()=>({push:vi.fn(),refresh:vi.fn()})}))
 import { renderToStaticMarkup } from 'react-dom/server'
-import { expect, test, vi } from 'vitest'
+import { expect, test } from 'vitest'
 import { ResultadosBusca } from './resultados'
 import type { BuscaSalva, EmpresaEncontrada } from '@/src/features/busca-empresas/tipos'
 vi.mock('./acoes', () => ({ concluirInclusaoAcao: vi.fn(), importarBuscaAcao: vi.fn() }))
@@ -11,11 +13,10 @@ const busca = { id: '11111111-1111-4111-8111-111111111111', nome: 'Lojas SP', es
 test('empresa sem telefone continua visível e não pode ser selecionada para importação', () => {
   const html = renderToStaticMarkup(<ResultadosBusca busca={busca} bloqueada={false} />)
   expect(html).toContain('Empresa de teste')
-  expect(html).toContain('loja@exemplo.test')
-  expect(html).toContain('Sem telefone válido')
+  expect(html).toContain('11.222.333/0001-81')
+  expect(html).not.toContain('Iniciar atendimento')
   expect(html).not.toContain('type="checkbox"')
-  expect(html).toContain('Ver mais: Empresa de teste')
-  expect(html).toContain('aria-expanded="false"')
+  expect(html).toContain('Ver empresa: Empresa de teste')
 })
 test('pausa impede selecionar resultado mesmo quando há telefone válido', () => {
   const html = renderToStaticMarkup(<ResultadosBusca busca={{ ...busca, empresas: [{ ...empresa, telefone: '11988887777' }] }} bloqueada />)
@@ -23,12 +24,12 @@ test('pausa impede selecionar resultado mesmo quando há telefone válido', () =
   expect(html).toMatch(/type="submit"[^>]*disabled=""/)
   expect(html).not.toMatch(/<fieldset[^>]*disabled/)
   expect(html).toContain('Inclusões pausadas pelo gestor')
-  expect(html).toContain('Ver mais: Empresa de teste')
+  expect(html).toContain('Ver empresa: Empresa de teste')
 })
 
 test('lista já criada mostra inclusão automática e não pede seleção manual',()=>{
  const html=renderToStaticMarkup(<ResultadosBusca busca={{...busca,inclusao_automatica_concluida:true,grupo_id:'grupo',empresas:[{...empresa,telefone:'11988887777'}]}} bloqueada={false}/>)
- expect(html).toContain('automaticamente');expect(html).toContain('Prospectar esta lista')
+ expect(html).toContain('automaticamente');expect(html).toContain('Localizar minhas empresas')
  expect(html).not.toContain('Importar selecionadas');expect(html).not.toContain('type="checkbox"')
 })
 
@@ -36,5 +37,5 @@ test('busca histórica parcialmente incluída permite completar a lista existent
  const html=renderToStaticMarkup(<ResultadosBusca busca={{...busca,grupo_id:'grupo-parcial',inclusao_automatica_concluida:false,empresas:[{...empresa,telefone:'11988887777'}]}} bloqueada={false}/>)
  expect(html).toContain('Concluir inclusão')
  expect(html).not.toContain('já foram adicionadas automaticamente')
- expect(html).toContain('Prospectar esta lista')
+ expect(html).toContain('Localizar minhas empresas')
 })

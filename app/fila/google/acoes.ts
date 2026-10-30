@@ -1,11 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { validarPlano } from '@/src/features/google/regras'
 import { repositorioGoogle } from '@/src/features/google/repositorio'
-import { reservarEmpresa } from '@/src/features/fila/repositorio'
 import { sincronizarPedido } from '@/src/server/google/planilha/sincronizar'
 
 export type EstadoPlano = { erro: string | null; salvo: boolean; sincronizacao?: 'sincronizado' | 'pendente'; aviso?: string }
@@ -69,16 +67,8 @@ export async function sincronizarPlanoAcao(_anterior: {erro:string|null},form: F
   revalidatePath('/empresas/google')
   return r.estado==='sincronizado'?{erro:null,sucesso:true}:{erro:r.motivo}
 }
-export async function prospectarGoogleAcao(_anterior: { erro: string | null }, form: FormData): Promise<{ erro: string | null }> {
-  const eu = await exigir('vendedor')
-  const pedido = String(form.get('pedido') ?? '')
-  const empresa = String(form.get('empresa') ?? '')
-  const contexto = String(form.get('contexto') ?? '') || null
-  if (contexto && !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(contexto)) return { erro: 'Atualize a página antes de prospectar.' }
-  const entrega = await repositorioGoogle(eu.usuarioId).detalhe(pedido)
-  if (!entrega?.resultados.some(r => r.situacao === 'entregue' && r.empresa_id === empresa)) return { erro: 'Esta empresa não está disponível na sua entrega.' }
-  const r = await reservarEmpresa(eu.usuarioId, empresa, { grupo: null, nome: '', cnae: null, uf: null, cidade: null, bairro: null }, contexto)
-  if (!r.ok || r.resultado !== 'ok') return { erro: 'A disponibilidade mudou. Atualize a página ou continue seu atendimento atual.' }
-  revalidatePath('/fila')
-  redirect('/fila')
+export async function prospectarGoogleAcao(_anterior: { erro: string | null }, _form: FormData): Promise<{ erro: string | null }> {
+  void _anterior; void _form
+  await exigir('vendedor')
+  return { erro: 'Este fluxo foi encerrado. Use Iniciar atendimento na empresa escolhida.' }
 }

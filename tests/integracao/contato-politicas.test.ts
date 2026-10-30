@@ -24,7 +24,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-  await banco.sql('DELETE FROM contato')
+  await banco.sql('DELETE FROM empresa_vinculo; DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
 })
 
@@ -38,16 +38,8 @@ async function contatoDe(autor: string, tipo = 'nao_atendeu'): Promise<string> {
   return linha.id
 }
 
-async function reservarPara(usuarioId: string, minutos = 30): Promise<void> {
-  await banco.sql(
-    `INSERT INTO empresa_fila (empresa_id, reservado_por, reservado_ate, primeira_reserva_em)
-     VALUES ($1, $2, now() + ($3 || ' minutes')::interval, now())
-     ON CONFLICT (empresa_id) DO UPDATE
-        SET reservado_por = excluded.reservado_por,
-            reservado_ate = excluded.reservado_ate,
-            vendedor_id = NULL`,
-    [empresa, usuarioId, String(minutos)],
-  )
+async function vincularPara(usuarioId:string):Promise<void> {
+ await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado') ON CONFLICT(empresa_id) DO UPDATE SET vendedor_id=excluded.vendedor_id",[empresa,usuarioId])
 }
 
 async function darPosseA(usuarioId: string): Promise<void> {
@@ -99,9 +91,9 @@ describe('contato_leitura: segue a empresa, nao o autor', () => {
     expect(await lerContatos(vendedorA)).toHaveLength(1)
   })
 
-  test('vendedor com reserva vigente le os contatos da empresa', async () => {
+  test('vendedor com vínculo permanente le os contatos da empresa', async () => {
     await contatoDe(vendedorA)
-    await reservarPara(vendedorA)
+    await vincularPara(vendedorA)
     expect(await lerContatos(vendedorA)).toHaveLength(1)
   })
 
@@ -114,7 +106,7 @@ describe('contato_leitura: segue a empresa, nao o autor', () => {
   // O propósito da fatia inteira: o histórico atravessa a troca de dono.
   test('vendedor B, ao ficar com a empresa, le o contato escrito por A', async () => {
     await contatoDe(vendedorA)
-    await reservarPara(vendedorB)
+    await vincularPara(vendedorB)
     expect(await lerContatos(vendedorB)).toHaveLength(1)
   })
 
@@ -129,7 +121,7 @@ describe('contato_leitura: segue a empresa, nao o autor', () => {
 
   test('reserva expirada nao da leitura', async () => {
     await contatoDe(vendedorA)
-    await reservarPara(vendedorA, -1)
+    await banco.sql("INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES($1,$2,now()-interval '1 minute')",[empresa,vendedorA])
     expect(await lerContatos(vendedorA)).toEqual([])
   })
 
@@ -144,8 +136,8 @@ describe('contato_leitura: segue a empresa, nao o autor', () => {
 // tabela veio a causa. Sozinho, o primeiro acusa `contato` quando o problema
 // está em `empresa_leitura` ou em `empresa_fila_leitura`.
 describe('contato_leitura depende de empresa_leitura, que depende de empresa_fila_leitura', () => {
-  test('a empresa reservada e visivel para o vendedor, e e disso que contato_leitura vive', async () => {
-    await reservarPara(vendedorA)
+  test('a empresa vinculada e visivel para o vendedor, e e disso que contato_leitura vive', async () => {
+    await vincularPara(vendedorA)
     const linhas = await banco.comoUsuario(vendedorA, async (e) => {
       const r = await e<{ id: string }>('SELECT id FROM empresa')
       return r.linhas

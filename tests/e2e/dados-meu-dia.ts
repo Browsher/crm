@@ -1,3 +1,4 @@
+import { vincularEmpresaTeste } from '../integracao/atendimento-fixtures'
 import { criarUsuarioComSenha, type BancoDeTeste } from '../integracao/ajuda'
 import { vincularGrupoAtivo } from '../integracao/grupos-fixtures'
 
@@ -53,6 +54,7 @@ export async function prepararMeuDia(banco: BancoDeTeste) {
   await banco.sql(`INSERT INTO empresa (id, cnpj, razao_social, telefone, cnae_principal)
     VALUES ($1, $2, 'Meu Dia Privada Ignorada', '11999990501', '8877665')`,
     [EMPRESA_MEU_DIA_PRIVADA, cnpjDe(501)])
+  await vincularEmpresaTeste(banco,EMPRESA_MEU_DIA_PRIVADA,outro.id,'legado')
   await banco.sql('INSERT INTO empresa_fila (empresa_id, vendedor_id) VALUES ($1, $2)', [EMPRESA_MEU_DIA_PRIVADA, outro.id])
   await banco.sql(`INSERT INTO contato (empresa_id, tipo, nota, proximo_passo, proximo_passo_data) VALUES
     ($1, 'acompanhamento', 'Nota privada de outro vendedor no Meu dia', 'Retorno privado',
@@ -62,13 +64,15 @@ export async function prepararMeuDia(banco: BancoDeTeste) {
     const id = idDe(numero)
     await banco.sql(`INSERT INTO empresa (id, cnpj, razao_social, telefone, cnae_principal)
       VALUES ($1, $2, $3, '11999990401', '8877665')`, [id, cnpjDe(numero), nome])
+    await vincularEmpresaTeste(banco,id,vendedor.id,'legado')
     await banco.sql('INSERT INTO empresa_fila (empresa_id, vendedor_id) VALUES ($1, $2)', [id, vendedor.id])
-    if(id===EMPRESA_MEU_DIA_REAGENDA) await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[id,vendedor.id])
+    if(id===EMPRESA_MEU_DIA_REAGENDA) await banco.sql(`INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,gen_random_uuid())`,[id,vendedor.id])
     if (dias !== null) {
       await banco.sql(`INSERT INTO contato (empresa_id, tipo, nota, proximo_passo, proximo_passo_data) VALUES
         ($1, 'acompanhamento', $2, $3, (now() AT TIME ZONE 'America/Sao_Paulo')::date + $4::integer)`,
         [id, `Nota de ${nome}`, `Retorno de ${nome}`, dias])
     }
   }
+  await banco.sql(`UPDATE empresa_vinculo v SET agenda_contato_id=(SELECT c.id FROM contato c WHERE c.empresa_id=v.empresa_id AND c.proximo_passo_data IS NOT NULL ORDER BY c.criado_em DESC,c.id DESC LIMIT 1) WHERE v.vendedor_id=ANY($1::uuid[])`,[[vendedor.id,outro.id]])
   await vincularGrupoAtivo(banco, [EMPRESA_MEU_DIA_PRIVADA, ...AGENDA.map(([numero]) => idDe(numero))])
 }

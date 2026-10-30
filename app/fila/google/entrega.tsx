@@ -7,9 +7,10 @@ import { Button } from '@/src/components/ui/button'
 import { ESTADOS_GOOGLE, type PlanoGoogle, type ResultadoGoogle, type ExecucaoGoogle, type LoteGoogle } from '@/src/features/google/tipos'
 import { normalizarCriterios } from '@/src/lib/google/criterios'
 import { ProspectarGoogle } from './prospectar'
+import type { ResumoEmpresa } from '@/src/lib/empresa-visual'
 import styles from './google.module.css'
 
-export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lotes = [], gestor = false, contexto = null, pagina = 1, temProxima = false }: { plano: PlanoGoogle; resultados: ResultadoGoogle[]; recibo: Record<string, unknown> | null; execucao?: ExecucaoGoogle | null; lotes?: LoteGoogle[]; gestor?: boolean; contexto?: string | null; pagina?: number; temProxima?: boolean }) {
+export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lotes = [], gestor = false, empresas = [], pagina = 1, temProxima = false }: { plano: PlanoGoogle; resultados: ResultadoGoogle[]; recibo: Record<string, unknown> | null; execucao?: ExecucaoGoogle | null; lotes?: LoteGoogle[]; gestor?: boolean; contexto?: string | null; empresas?: ResumoEmpresa[]; pagina?: number; temProxima?: boolean }) {
   const texto = (v: unknown) => typeof v === 'string' ? v : ''
   const estados = { entregue: 'Entregue', repetida: 'Já entregue', indisponivel: 'Com outro responsável', pendente: 'A conferir', conflito: 'Identidade em conflito' }
   const usado = execucao?.snapshot ?? plano.snapshot ?? plano
@@ -34,14 +35,14 @@ export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lot
     {gestor && lotes.length > 0 && <Card className={styles.painel}><h2>Rodadas e comprovantes</h2>{lotes.map(l => <div key={l.id}><h3>Rodada {l.ordinal}</h3><p>{l.analisadas} candidatas, {l.resposta?.entregues ?? 0} empresas entregues. {l.concluido_em ? 'Concluída.' : 'Aguardando confirmação.'}</p>{l.recibo && <><div className={styles.acoes}>{['arquivo_original_id','arquivo_resultado_id'].map((k,i) => typeof l.recibo?.[k] === 'string' && <Button key={k} asChild variant="outline"><a href={'https://drive.google.com/file/d/'+encodeURIComponent(String(l.recibo[k]))+'/view'} target="_blank" rel="noreferrer">{i===0?'Arquivo original':'Resultado da rodada'}</a></Button>)}</div><details><summary className={styles.botaoResumo}>Conferir critérios e evidências</summary><pre className={styles.dadosBrutos}>{JSON.stringify({criterios:usado.criterios,evidencias:l.recibo.evidencias},null,2)}</pre></details></>}</div>)}</Card>}
     <section aria-label="Empresas da coleta" className={styles.entregas}>
       {!resultados.length && <EstadoVazio titulo="Nenhuma empresa liberada nesta entrega" descricao="Acompanhe o estado da coleta. Resultados pendentes ou já destinados ficam disponíveis ao gestor." acao={{ rotulo: 'Ver planejamento', href: `${gestor ? '/empresas' : '/fila'}/google?semana=${plano.dia}`, variante: 'outline' }} />}
-      {resultados.map(r => <Card className={styles.empresa} key={r.id}>
+      {resultados.map(r => !gestor && empresas.find(e => e.id === r.empresa_id) ? <ProspectarGoogle key={r.id} empresa={empresas.find(e => e.id === r.empresa_id)!} /> : <Card className={styles.empresa} key={r.id}>
         <div><Badge variant={r.situacao === 'entregue' ? 'success' : r.situacao === 'conflito' ? 'warning' : 'default'}>{estados[r.situacao]}</Badge><h2>{texto(r.dados.nome_fantasia) || texto(r.dados.razao_social) || 'Empresa sem nome confirmado'}</h2>
           <p>{texto(r.dados.endereco) || 'Endereço não informado pela origem'}</p></div>
         <dl className={styles.resumo}><div><dt>Telefone</dt><dd>{texto(r.dados.telefone) || 'Sem telefone informado'}</dd></div><div><dt>Verificação do contato</dt><dd>{(r.canais_verificados ?? []).includes('whatsapp') || (!r.lote_id && r.dados.validado === true) ? 'WhatsApp confirmado' : (r.canais_verificados ?? []).includes('fixo') ? 'Formato de telefone fixo conferido' : 'Não verificado'}</dd></div><div><dt>CNPJ</dt><dd>{texto(r.dados.cnpj) || 'Não informado'}</dd></div>
           <div><dt>Email</dt><dd>{texto(r.dados.email) || 'Não informado'}</dd></div><div><dt>Atendimento após entrega</dt><dd>{r.trabalhada ? 'Registrado' : 'Sem atendimento registrado'}</dd></div></dl>
         {r.motivo && <p className={styles.ajuda}>{r.motivo}</p>}
         <div className={styles.acoes}>{gestor && r.empresa_id ? <Button asChild variant="outline"><Link href={`/empresas/${r.empresa_id}`}>Ver ficha e histórico</Link></Button>
-          : r.situacao === 'entregue' && r.empresa_id ? <ProspectarGoogle pedido={plano.id} empresa={r.empresa_id} contexto={contexto} /> : null}</div>
+          : null}</div>
         {gestor && <details><summary className={styles.botaoResumo}>Conferir dados da origem</summary><pre className={styles.dadosBrutos}>{JSON.stringify(r.dados, null, 2)}</pre></details>}
       </Card>)}
     </section>

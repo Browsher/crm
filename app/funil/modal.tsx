@@ -8,29 +8,29 @@ import { Textarea } from '@/src/components/ui/textarea'
 import { Alert } from '@/src/components/ui/alert'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { FormularioContato } from '@/src/features/contato/formulario'
-import { rascunhoInicial } from '@/src/features/contato/rascunho'
+import { descartarRascunhoContato, rascunhoInicial } from '@/src/features/contato/rascunho'
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
 import { ROTULOS_ETAPA } from './rotulos'
-import { detalheAcao, telefoneAcao, etapaAcao, vendaAcao, devolverAcao, type EstadoFunil } from './acoes'
+import { detalheAcao, telefoneAcao, etapaAcao, vendaAcao, type EstadoFunil } from './acoes'
 import styles from './funil.module.css'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { AbasFicha } from '@/src/components/crm/abas-ficha'
 
-type Modo='resumo'|'venda'|'devolver'|'atendimento'
-export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void}) {
+type Modo='resumo'|'venda'|'arquivar'|'atendimento'
+export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fechar:(aviso?:string)=>void;aoArquivar?:()=>Promise<EstadoFunil>;bloqueada?:boolean}) {
   const tema=useTemaCrm()
   const [detalhe,setDetalhe]=useState<NegociacaoDetalhe|null>(null)
   const [carregando,setCarregando]=useState(true),[erro,setErro]=useState('')
   const [modo,setModo]=useState<Modo>('resumo')
-  const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState(''),[motivo,setMotivo]=useState('')
+  const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState('')
   const [confirmado,setConfirmado]=useState(false),[descarte,setDescarte]=useState<'fechar'|'resumo'|'voltar'|null>(null)
   const [pendente,setPendente]=useState(false),[telefone,setTelefone]=useState<string|null>(null),[buscandoTelefone,setBuscandoTelefone]=useState(false)
   const [indisponivel,setIndisponivel]=useState(false)
   const [rascunho,setRascunho]=useState(()=>rascunhoInicial(true))
   const chave=useRef(''),bloqueado=useRef(false),vivo=useRef(true),sentinela=useRef<string|null>(null)
   const pedidoTelefone=useRef(0)
-  const dirty=!!(valor||data||nota||motivo||rascunho.nota||rascunho.proximoPasso||rascunho.proximoPassoData||rascunho.tipo!=='acompanhamento')
+  const dirty=!!(valor||data||nota||rascunho.nota||rascunho.proximoPasso||rascunho.proximoPassoData||rascunho.tipo!=='acompanhamento')
   const dirtyRef=useRef(dirty)
   useEffect(()=>{dirtyRef.current=dirty},[dirty])
   useEffect(()=>{
@@ -61,9 +61,13 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
     if(dirty){setDescarte(destino);return}
     if(destino==='fechar')concluir();else {pedidoTelefone.current++;setModo('resumo')}
   }
-  function descartar() {
+  function descartar(preservar = false) {
+    if (!preservar && modo==='atendimento' && detalhe && !descartarRascunhoContato(detalhe.empresaId)) {
+      setErro('Confirme o envio anterior no atendimento antes de descartar. Você também pode fechar mantendo o rascunho.')
+      return
+    }
     const destino=descarte
-    setDescarte(null);setValor('');setData('');setNota('');setMotivo('');setConfirmado(false);setRascunho(rascunhoInicial(true))
+    setDescarte(null);setValor('');setData('');setNota('');setConfirmado(false);setRascunho(rascunhoInicial(true))
     if(destino==='voltar'){sentinela.current=null;history.go(-2);return}
     if(destino==='fechar')concluir();else {pedidoTelefone.current++;removerSentinela();setModo('resumo')}
   }
@@ -83,23 +87,31 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
     catch{if(vivo.current&&pedido===pedidoTelefone.current)setErro('Não foi possível carregar o telefone. Volte e tente novamente.')}
     finally{if(vivo.current&&pedido===pedidoTelefone.current)setBuscandoTelefone(false)}
   }
+  async function arquivar(){
+    if(bloqueado.current||!aoArquivar)return
+    informarPendente(true);setErro('')
+    try{const r=await aoArquivar();if(!vivo.current)return;if(r.ok)concluir(r.repetida?'Envio anterior confirmado. Confira a situação atual.':r.atual?'Empresa marcada como Sem interesse.':'Operação confirmada. Confira a situação atual da empresa.');else setErro(r.erro??'Não foi possível arquivar.')}
+    catch{if(vivo.current)setErro('Não foi possível confirmar. Confirme o mesmo envio no Funil.')}
+    finally{if(vivo.current)informarPendente(false)}
+  }
   return <Dialog open onOpenChange={aberto=>{if(!aberto)pedir('fechar')}}><DialogContent theme={tema} className={styles.modal} showCloseButton={!pendente}
     onCloseAutoFocus={e=>e.preventDefault()} onEscapeKeyDown={e=>{e.preventDefault();pedir('fechar')}} onPointerDownOutside={e=>{e.preventDefault();pedir('fechar')}}>
     <DialogHeader><DialogTitle>{indisponivel?'Negociação indisponível':detalhe?.nome??'Negociação'}</DialogTitle><DialogDescription>{!indisponivel&&detalhe?`${detalhe.cidade??'Cidade não cadastrada'}${detalhe.uf?' / '+detalhe.uf:''}`:'Dados da sua negociação'}</DialogDescription></DialogHeader>
     {carregando?<p role="status">Carregando negociação...</p>:null}
     {erro&&<Alert variant="danger" role="alert">{erro}</Alert>}
-    {descarte?<div className={styles.confirmacao} role="alert"><h3>Descartar alterações?</h3><p>As informações não salvas serão perdidas.</p><div className={styles.acoes}><Button onClick={()=>setDescarte(null)}>Continuar editando</Button><Button variant="outline" onClick={descartar}>Descartar</Button></div></div>:null}
-    {indisponivel&&!descarte&&<section className={styles.formulario}><h3>Rascunho preservado</h3><p>Não é possível gravar nesta negociação. Copie o que digitou antes de fechar.</p><Textarea aria-label="Rascunho preservado" readOnly rows={6} value={[valor&&`Valor: ${valor}`,data&&`Data: ${data}`,nota,motivo,rascunho.nota,rascunho.proximoPasso,rascunho.proximoPassoData].filter(Boolean).join('\n')} /><Button variant="outline" onClick={()=>pedir('fechar')}>Fechar rascunho</Button></section>}
-    {detalhe&&!descarte&&!indisponivel&&<div className={styles.corpo}>
+    {bloqueada&&<Alert role="alert">Confirme o envio anterior no Funil antes de iniciar outra operação. Feche esta janela para continuar a confirmação.</Alert>}
+    {descarte?<div className={styles.confirmacao} role="alert"><h3>Descartar alterações?</h3><p>As informações não salvas serão perdidas.</p><div className={styles.acoes}><Button onClick={()=>setDescarte(null)}>Continuar editando</Button>{modo==='atendimento' && <Button variant="outline" onClick={()=>descartar(true)}>Fechar mantendo rascunho</Button>}<Button variant="outline" onClick={()=>descartar()}>Descartar</Button></div></div>:null}
+    {indisponivel&&!descarte&&<section className={styles.formulario}><h3>Rascunho preservado</h3><p>Não é possível gravar nesta negociação. Copie o que digitou antes de fechar.</p><Textarea aria-label="Rascunho preservado" readOnly rows={6} value={[valor&&`Valor: ${valor}`,data&&`Data: ${data}`,nota,rascunho.nota,rascunho.proximoPasso,rascunho.proximoPassoData].filter(Boolean).join('\n')} /><Button variant="outline" onClick={()=>pedir('fechar')}>Fechar rascunho</Button></section>}
+    {detalhe&&!descarte&&!indisponivel&&<fieldset disabled={bloqueada} className={styles.corpo}>
       {modo==='resumo'?<>
         <div className={styles.formulario}>
           <p>Etapa atual: <strong>{ROTULOS_ETAPA[detalhe.etapa]}</strong></p>
-          {proximaEtapa(detalhe.etapa)&&<Button variant="outline" disabled={pendente} onClick={()=>void executar(etapaAcao,{etapa:proximaEtapa(detalhe.etapa)!,anterior:detalhe.etapa},'Etapa atualizada.')}>
+          {proximaEtapa(detalhe.etapa)&&<Button variant="outline" disabled={pendente||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>void executar(etapaAcao,{etapa:proximaEtapa(detalhe.etapa)!,anterior:detalhe.etapa},'Etapa atualizada.')}>
             Avançar para {ROTULOS_ETAPA[proximaEtapa(detalhe.etapa)!]}
           </Button>}
         </div>
         <AbasFicha dados={<dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj ?? 'Não informado'}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>} historico={<section><h3 className={styles.tituloSecao}>Seus atendimentos</h3>{!detalhe.historico.length?<EstadoVazio nivelTitulo={3} titulo="Nenhum atendimento seu registrado." descricao="Seus atendimentos registrados nesta negociação aparecerão aqui." />:<ol className={styles.historico}>{detalhe.historico.map(c=><li key={c.id}><time>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(c.em))}</time><p>{c.nota??'Sem anotação'}</p>{c.proximoPasso&&<p>Próximo passo: {c.proximoPasso}</p>}</li>)}</ol>}</section>} />
-        <div className={styles.acoes}><Button disabled={pendente||dirty} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty} onClick={()=>{chave.current=crypto.randomUUID();setModo('venda')}}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty} onClick={()=>setModo('devolver')}>Devolver à prospecção</Button></div>
+        <div className={styles.acoes}><Button disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>{chave.current=crypto.randomUUID();setModo('venda')}}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>setModo('arquivar')}>Marcar como Sem interesse</Button></div>
       </>:<>
         <Button variant="ghost" disabled={pendente} onClick={()=>pedir('resumo')}>Voltar ao resumo</Button>
         {modo==='atendimento'?<><h3>Registrar atendimento</h3>{buscandoTelefone?<p role="status">Carregando telefone...</p>:telefone!==null?<><p>Telefone: <strong>{telefone||'Não cadastrado'}</strong></p><FormularioContato empresaId={detalhe.empresaId} posse visual="fila" rascunho={rascunho} onDraftChange={setRascunho} onPendingChange={informarPendente} onSaved={()=>concluir('Atendimento registrado.')} /></>:null}</>:null}
@@ -108,8 +120,8 @@ export function ModalFunil({id,fechar}:{id:string;fechar:(aviso?:string)=>void})
           <p className={styles.muted}>Nesta versão, vendas não podem ser editadas nem excluídas. Confira os dados antes de confirmar.</p>
           {!confirmado?<Button type="submit">Conferir venda</Button>:<div className={styles.confirmacao}><p>Confirmar venda de R$ {valor} em {data.split('-').reverse().join('/')}?</p><div className={styles.acoes}><Button disabled={pendente} onClick={()=>void executar(vendaAcao,{valor,data,observacao:nota,chave:chave.current,confirmado:'sim'},'Venda registrada. Cliente disponível na Carteira.')} type="button">{pendente?'Registrando...':'Confirmar venda'}</Button><Button disabled={pendente} type="button" variant="outline" onClick={()=>setConfirmado(false)}>Corrigir dados</Button></div></div>}
         </form>:null}
-        {modo==='devolver'?<form className={styles.formulario} onSubmit={e=>{e.preventDefault();setConfirmado(true)}}><h3>Devolver à prospecção</h3><p>A negociação será encerrada. A empresa seguirá o prazo de disponibilidade da Prospecção.</p><label>Motivo<Textarea value={motivo} onChange={e=>setMotivo(e.target.value)} required maxLength={2000} disabled={pendente||confirmado} /></label>{!confirmado?<Button type="submit" variant="outline">Conferir devolução</Button>:<div className={styles.confirmacao}><p>Confirmar a devolução desta empresa?</p><Button type="button" disabled={pendente} onClick={()=>void executar(devolverAcao,{motivo,confirmado:'sim'},'Empresa devolvida. Motivo registrado no histórico.')}>Confirmar devolução</Button><Button type="button" variant="outline" disabled={pendente} onClick={()=>setConfirmado(false)}>Continuar editando</Button></div>}</form>:null}
+        {modo==='arquivar'?<section className={styles.formulario}><h3>Marcar como Sem interesse</h3><p>A negociação será encerrada e os retornos pendentes serão cancelados. A empresa e seu histórico continuarão disponíveis no arquivo.</p><Button type="button" disabled={pendente} onClick={()=>void arquivar()}>{pendente?'Confirmando...':'Confirmar Sem interesse'}</Button></section>:null}
       </>}
-    </div>}
+    </fieldset>}
   </DialogContent></Dialog>
 }

@@ -4,7 +4,8 @@ import { beforeAll, beforeEach, afterAll, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { lerHistorico } from '@/src/features/contato/historico'
-import { DESFECHO_SUGERIDO } from '@/src/features/contato/tipos'
+import { vincularGrupoAtivo } from './grupos-fixtures'
+import { registrarContatoDireto } from '@/src/server/atendimento/operacoes'
 import { agendaDoDia } from '@/app/meu-dia/agenda'
 let banco:BancoDeTeste, eu:string, outro:string, gestor:string, empresa:string
 beforeAll(async()=>{
@@ -13,7 +14,9 @@ beforeAll(async()=>{
 })
 afterAll(async()=>{await banco?.derrubar()})
 beforeEach(async()=>{
-  await banco.sql('DELETE FROM venda; DELETE FROM negociacao; DELETE FROM contato; DELETE FROM empresa_fila')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo; DELETE FROM venda; DELETE FROM negociacao; DELETE FROM contato; DELETE FROM empresa_fila')
+  await vincularGrupoAtivo(banco,[empresa])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresa,eu])
   await banco.sql('UPDATE usuario SET ativo=true,senha_provisoria_pendente=false')
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[empresa,eu])
   await banco.sql('INSERT INTO negociacao(empresa_id,vendedor_id) VALUES($1,$2)',[empresa,eu])
@@ -22,10 +25,14 @@ const agir=(ator:string,sql:string,args:unknown[])=>banco.comoUsuario(ator,e=>e<
 const comprar=(ator=eu,chave=randomUUID(),valor=4500,data='2026-01-02')=>agir(ator,'SELECT carteira_venda_registrar($1,$2,$3,$4,NULL) AS r',[empresa,chave,data,valor])
 async function primeira(){const [n]=await banco.sql<{id:string}>('SELECT id FROM negociacao');expect(await agir(eu,"SELECT funil_venda_registrar($1,$2,'2026-01-01',1200,NULL) AS r",[n.id,randomUUID()])).toBe('ok')}
 
-test('retorno combinado assume a reserva e alimenta Funil e Meu dia',async()=>{
+async function contatoDireto(tipo:'retornar_depois'|'acompanhamento',passo:string|null,data:string|null) {
+  const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+  return registrarContatoDireto(eu,{empresaId:empresa,chave:randomUUID(),versao},{tipo,nota:'Ligar novamente',proximoPasso:passo,proximoPassoData:data})
+}
+async function hoje(){return (await banco.sql<{data:string}>("SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date,'YYYY-MM-DD') AS data"))[0].data}
+test('retorno combinado no vínculo alimenta Funil e Meu dia sem cliente prematuro',async()=>{
   await banco.sql('DELETE FROM negociacao; DELETE FROM empresa_fila')
-  await banco.sql("INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES($1,$2,now()+interval '30 minutes')",[empresa,eu])
-  expect(await agir(eu,"SELECT contato_registrar($1,'retornar_depois',NULL,'Ligar',(now() AT TIME ZONE 'America/Sao_Paulo')::date,$2) AS r",[empresa,DESFECHO_SUGERIDO.retornar_depois])).toBe('ok')
+  expect(await contatoDireto('retornar_depois','Ligar',await hoje())).toMatchObject({ok:true})
   const agenda=await lerMinhasEmpresas(eu)
   expect(agenda.ok&&agenda.carteira).toEqual([expect.objectContaining({id:empresa,situacaoRetorno:'hoje',posse:true})])
   const clientes=await lerMinhasEmpresas(eu,true)
@@ -34,7 +41,7 @@ test('retorno combinado assume a reserva e alimenta Funil e Meu dia',async()=>{
 })
 
 test('primeira e nova compra entram no histórico sem apagar retorno de hoje',async()=>{
-  await banco.comoUsuario(eu,e=>e("SELECT contato_registrar($1,'acompanhamento','Ligar novamente','Ligar',(now() AT TIME ZONE 'America/Sao_Paulo')::date,'nenhum')",[empresa]))
+  expect(await contatoDireto('acompanhamento','Ligar',await hoje())).toMatchObject({ok:true})
   await primeira();const chave=randomUUID()
   expect(await Promise.all([comprar(eu,chave),comprar(eu,chave)])).toEqual(['ok','ok'])
   expect(await comprar(eu,chave,4600)).toBe('chave_reutilizada')
@@ -55,9 +62,9 @@ test('compra exige cliente e responsável regular; outros não registram nem lee
   await banco.sql('UPDATE usuario SET senha_provisoria_pendente=true WHERE id=$1',[eu]);expect(await comprar()).toBe('sem_permissao')
 })
 
-test('banco recusa retorno sem combinado ou com devolução sem gravar contato',async()=>{
-  for(const args of [[null,null,'assumir'],['Ligar','2026-01-01','devolver'],['   ','2026-01-01','assumir']]){
-    await expect(agir(eu,"SELECT contato_registrar($1,'retornar_depois',NULL,$2,$3,$4) AS r",[empresa,...args])).rejects.toMatchObject({code:'23514'})
+test('banco recusa retorno sem combinado sem gravar contato',async()=>{
+  for(const [passo,data] of [[null,null],['Ligar',null],['   ','2026-01-01']]) {
+    expect(await contatoDireto('retornar_depois',passo,data)).toEqual({ok:false,motivo:'dados_invalidos'})
   }
   expect(await banco.sql('SELECT id FROM contato')).toEqual([])
 })
@@ -74,8 +81,8 @@ test('gestor lê vendas; vendedor desativado e novo responsável não registram 
 
 test('retorno futuro fica no Funil, mas fora da agenda de hoje',async()=>{
   await banco.sql('DELETE FROM negociacao; DELETE FROM empresa_fila')
-  await banco.sql("INSERT INTO empresa_fila(empresa_id,reservado_por,reservado_ate) VALUES($1,$2,now()+interval '30 minutes')",[empresa,eu])
-  expect(await agir(eu,"SELECT contato_registrar($1,'retornar_depois',NULL,'Ligar',(now() AT TIME ZONE 'America/Sao_Paulo')::date+1,'assumir') AS r",[empresa])).toBe('ok')
+  const [{data}]=await banco.sql<{data:string}>("SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date+1,'YYYY-MM-DD') AS data")
+  expect(await contatoDireto('retornar_depois','Ligar',data)).toMatchObject({ok:true})
   const agenda=await lerMinhasEmpresas(eu)
   expect(agenda.ok&&agenda.carteira[0].situacaoRetorno).toBe('futuro')
   expect(agenda.ok&&agendaDoDia(agenda.carteira)).toEqual([])

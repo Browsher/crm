@@ -2,6 +2,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { aplicarFiltrosEmpresas, lerConsulta, POR_PAGINA } from '@/src/features/empresas/consulta'
 import { listarEmpresas, listarOpcoesEmpresas } from '@/src/features/empresas/listagem'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
+import { comoUsuario } from '@/src/server/db/como-usuario'
+import { lerResumosEmpresas } from '@/src/server/atendimento/consulta'
+import type { ResumoEmpresaGestor } from '@/src/lib/empresa-visual'
+import { vincularGrupoAtivo } from './grupos-fixtures'
+import { lerResumosEmpresasGestor } from '@/src/server/empresas/resumos-gestor'
 
 let banco: BancoDeTeste
 let gestor: string
@@ -274,5 +279,61 @@ describe('listarEmpresas: filtros combinados', () => {
     expect(emSp.opcoes).toContainEqual({ tipo: 'cidade', valor: '3550308', rotulo: 'São Paulo' })
     expect(emSp.opcoes.some(opcao => opcao.tipo === 'bairro')).toBe(false)
     expect(emSaoPaulo.opcoes).toContainEqual({ tipo: 'bairro', valor: 'Mooca', rotulo: 'Mooca' })
+  })
+})
+
+describe('gestor compartilha o resumo real sem comandos de vendedor', () => {
+  let empresa: string
+  beforeAll(async () => {
+    const [e] = await banco.sql<{ id: string }>("INSERT INTO empresa(cnpj,razao_social,nome_fantasia,telefone,cnae_principal) VALUES('77889900000122','Contrato Gestor Razão','Contrato Gestor Fantasia','11988887777','4742300') RETURNING id")
+    empresa = e.id
+    await vincularGrupoAtivo(banco, [empresa])
+    await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')", [empresa,vendedor])
+  })
+  const ler = (usuario: string, ids: (string | null)[] | null) => comoUsuario(usuario, async sql => (await sql<{ r: { ok: boolean; motivo?: string; empresas: ResumoEmpresaGestor[] } }>('SELECT gestor_empresas_resumos_ler($1::uuid[]) AS r',[ids])).linhas[0].r)
+  test('lote, lista e vendedor têm dados e estados iguais em todo o ciclo; cliente exige venda', async () => {
+    const conferir = async (situacao: string) => {
+      const pessoal = await lerResumosEmpresas(vendedor,[empresa])
+      const gerencial = await lerResumosEmpresasGestor(gestor,[empresa,empresa])
+      expect(pessoal.ok).toBe(true)
+      if (!pessoal.ok) throw new Error(pessoal.motivo)
+      if (!gerencial.ok) throw new Error(gerencial.motivo)
+      expect(gerencial.empresas).toHaveLength(1)
+      expect(gerencial.empresas[0]).toEqual({ ...pessoal.empresas[0], versao: null, responsavel: { id:vendedor,nome:'Vendedor',ativo:true } })
+      expect(gerencial.empresas[0].situacao).toBe(situacao)
+      const lista = await listarEmpresas(gestor,lerConsulta({ q:'Contrato Gestor' }))
+      if (!lista.ok) throw new Error(lista.motivo)
+      expect(lista.linhas[0]).toMatchObject(gerencial.empresas[0])
+      const detalhe = await comoUsuario(gestor,async sql => (await sql<{ r: { dados: ResumoEmpresaGestor } }>('SELECT empresa_detalhes_ler($1) AS r',[empresa])).linhas[0].r)
+      expect(detalhe.dados).toMatchObject(gerencial.empresas[0])
+    }
+    await conferir('a_contatar')
+    await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[empresa,vendedor])
+    await conferir('atendimento')
+    await banco.sql("INSERT INTO negociacao(empresa_id,vendedor_id,etapa) VALUES($1,$2,'primeiro_contato')",[empresa,vendedor])
+    for (const etapa of ['primeiro_contato','em_negociacao','proposta_enviada']) {
+      await banco.sql('UPDATE negociacao SET etapa=$2 WHERE empresa_id=$1',[empresa,etapa])
+      await conferir(etapa)
+    }
+    await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[empresa,vendedor])
+    await conferir('cliente')
+    await banco.sql('UPDATE empresa_vinculo SET arquivada_em=now() WHERE empresa_id=$1',[empresa])
+    await conferir('sem_interesse')
+    await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[vendedor])
+    try {
+      expect((await ler(gestor,[empresa])).empresas[0]).toMatchObject({situacao:'indisponivel',motivoIndisponibilidade:'responsavel_inativo',responsavel:{id:vendedor,ativo:false},versao:null})
+    } finally { await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1',[vendedor]) }
+  })
+  test('nega vendedor/inativo antes de vazio; limites, desconhecidos e helper privado', async () => {
+    expect(await ler(vendedor,[])).toMatchObject({ok:false,motivo:'sem_permissao'})
+    expect(await ler(gestor,[])).toEqual({ok:true,empresas:[]})
+    expect(await ler(gestor,null)).toMatchObject({ok:false,motivo:'dados_invalidos'})
+    expect(await ler(gestor,[null])).toMatchObject({ok:false,motivo:'dados_invalidos'})
+    expect(await ler(gestor,Array.from({length:101},(_,i)=>`00000000-0000-4000-8000-${String(i).padStart(12,'0')}`))).toMatchObject({ok:false,motivo:'dados_invalidos'})
+    expect(await ler(gestor,['00000000-0000-4000-8000-000000000000'])).toEqual({ok:true,empresas:[]})
+    await expect(comoUsuario(gestor,sql=>sql('SELECT * FROM empresa_resumos_base($1::uuid[])',[[empresa]]))).rejects.toMatchObject({code:'42501'})
+    const inativo=await criarUsuario(banco,'gestor','Gestor inativo')
+    await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1',[inativo])
+    expect(await ler(inativo,[])).toMatchObject({ok:false,motivo:'sem_permissao'})
   })
 })

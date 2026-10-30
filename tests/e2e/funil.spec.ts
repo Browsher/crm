@@ -1,6 +1,7 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { Client } from 'pg'
 import { FUNIL_EMPRESA } from './dados-funil'
+const cartaoAurora=(page:Page)=>page.locator('[draggable]').filter({has:page.getByRole('heading',{name:'Funil Aurora',exact:true})})
 test('Funil protege notas, conserva rascunho e registra primeira venda sem perder retorno',async({page})=>{
   await page.goto('/login');await page.getByLabel('E-mail').fill('funile2e@teste.local');await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL('/meu-dia')
   await page.goto('/funil')
@@ -13,12 +14,12 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
       await page.setViewportSize({width,height:844})
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
       await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-${tema}-${width}.png`,fullPage:true,animations:'disabled'})
-      const cardVisual = page.getByRole('button',{name:/Funil Aurora/})
-      await expect(cardVisual).toHaveCSS('border-radius','10px')
-      await expect(cardVisual).toHaveCSS('padding',width<=820?'20px':'24px')
-      await expect(cardVisual.locator('strong')).toHaveCSS('font-size','16px')
-      await expect(cardVisual.locator('strong')).toHaveCSS('line-height','24px')
-      await cardVisual.click()
+      const cardVisual = cartaoAurora(page)
+      await expect(cardVisual.locator('[data-slot=card]')).toHaveCSS('border-radius','10px')
+      await expect(cardVisual.locator('[data-slot=card]')).toHaveCSS('padding-top',width<=820?'20px':'24px')
+      await expect(cardVisual.getByRole('heading',{name:'Funil Aurora',exact:true})).toHaveCSS('font-size','16px')
+      await expect(cardVisual.getByRole('heading',{name:'Funil Aurora',exact:true})).toHaveCSS('line-height','24px')
+      await cardVisual.getByRole('button',{name:'Abrir no funil',exact:true}).click()
       const modal=page.getByRole('dialog');await expect(modal).toContainText('Nota própria Aurora');await expect(modal).not.toContainText('SEGREDO DO COLEGA');await expect(modal).not.toContainText('11977778888')
       await modal.getByRole('tab',{name:'Histórico',exact:true}).click()
       await expect(modal.getByRole('heading',{name:'Seus atendimentos',exact:true})).toHaveCSS('font-size','18px')
@@ -28,10 +29,10 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
       const fecharModal=(await modal.getByRole('button',{name:'Fechar',exact:true}).boundingBox())!
       expect(tituloModal.x+tituloModal.width<=fecharModal.x||tituloModal.y+tituloModal.height<=fecharModal.y).toBe(true)
       await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-modal-${tema}-${width}.png`,animations:'disabled'})
-      await page.keyboard.press('Escape');await expect(modal).toHaveCount(0);await expect(page.getByRole('button',{name:/Funil Aurora/})).toBeFocused()
+      await page.keyboard.press('Escape');await expect(modal).toHaveCount(0);await expect(cartaoAurora(page).getByRole('button',{name:'Abrir no funil',exact:true})).toBeFocused()
     }
   }
-  const card=page.getByRole('button',{name:/Funil Aurora/})
+  const card=cartaoAurora(page)
   const primeiro=page.getByRole('region',{name:'Primeiro contato',exact:true})
   const negociacao=page.getByRole('region',{name:'Em negociação',exact:true})
   const proposta=page.getByRole('region',{name:'Proposta enviada',exact:true})
@@ -46,19 +47,19 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.setViewportSize({width:390,height:844})
   await expect(card).toHaveAttribute('draggable','false')
-  await card.click()
+  await card.getByRole('button',{name:'Abrir no funil',exact:true}).click()
   await expect(page.getByRole('dialog').getByRole('combobox')).toHaveCount(0)
   const avancar=page.getByRole('button',{name:'Avançar para Proposta enviada',exact:true})
   await avancar.focus();await avancar.press('Enter')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('region',{name:'Proposta enviada'})).toContainText('Funil Aurora')
-  await card.click();await expect(page.getByRole('button',{name:/Avançar para/})).toHaveCount(0);await page.getByRole('button',{name:'Registrar atendimento',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('11977778888');await page.getByRole('button',{name:'Voltar ao resumo'}).click()
+  await card.getByRole('button',{name:'Abrir no funil',exact:true}).click();await expect(page.getByRole('button',{name:/Avançar para/})).toHaveCount(0);await page.getByRole('button',{name:'Registrar atendimento',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('11977778888');await page.getByRole('button',{name:'Voltar ao resumo'}).click()
   await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
   await page.getByLabel('Valor em reais').fill('123,45')
   await page.keyboard.press('Escape');await expect(page.getByText('Descartar alterações?')).toBeVisible();await page.getByRole('button',{name:'Continuar editando',exact:true}).click();await expect(page.getByLabel('Valor em reais')).toHaveValue('123,45')
   await page.evaluate(()=>history.back());await expect(page.getByText('Descartar alterações?')).toBeVisible();await page.getByRole('button',{name:'Continuar editando',exact:true}).click()
   await page.getByLabel('Data da venda').fill('2026-01-01');await page.getByRole('button',{name:'Conferir venda'}).click();await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.getByRole('button',{name:/Funil Aurora/})).toHaveCount(0)
+  await expect(page.getByRole('dialog')).toHaveCount(0);await expect(cartaoAurora(page)).toHaveCount(0)
   await page.goto('/carteira');await expect(page.getByRole('main')).toContainText('Funil Aurora')
   await page.goto(`/carteira/${FUNIL_EMPRESA}`)
   await expect(page.getByRole('main')).toContainText('Venda registrada')

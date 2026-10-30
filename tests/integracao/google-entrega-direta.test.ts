@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { beforeAll, beforeEach, afterAll, test, expect } from 'vitest'
-import { criarBancoDeTeste, criarUsuario, SQL_RESERVAR_PROXIMA, type BancoDeTeste } from './ajuda'
+import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { criteriosVazios, verificacoesNecessarias, type CriteriosGoogle } from '@/src/lib/google/criterios'
 import type { EvidenciaGoogle } from '@/src/lib/google/entrega'
 let banco: BancoDeTeste
@@ -28,6 +28,7 @@ beforeEach(async () => {
   await banco.sql('DELETE FROM google_grupo')
   await banco.sql('DELETE FROM grupo_importacao_empresa')
   await banco.sql('DELETE FROM grupo_importacao')
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
   await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1', [vendedor])
@@ -49,7 +50,7 @@ test('sem critérios entrega até sem telefone, site e endereço e sem excluir f
   const l = await p.lote([{ google_place_id: 'direta', nome_fantasia: 'Loja sem contato', fechada: true }])
   expect(await l.entregar()).toEqual([{ r: 'ok' }])
   expect(await l.entregar()).toEqual([{ r: 'repetida' }])
-  expect(await chamar(vendedor, SQL_RESERVAR_PROXIMA)).toHaveLength(1)
+  expect(await chamar(vendedor, 'SELECT empresa_id FROM empresa_vinculo WHERE vendedor_id=usuario_atual()')).toHaveLength(1)
   expect(await chamar(vendedor, 'SELECT nome_fantasia,telefone FROM empresa')).toEqual([{ nome_fantasia: 'Loja sem contato', telefone: null }])
   expect(await banco.sql('SELECT analisadas,entregues FROM google_execucao WHERE id=$1', [p.eid])).toEqual([{ analisadas: 1, entregues: 1 }])
 })
@@ -143,10 +144,11 @@ test('destino reúne mesmo vendedor, nicho e região em outras semanas e permane
   const [{proxima}]=await banco.sql<{proxima:string}>("SELECT to_char($1::date+7,'YYYY-MM-DD') AS proxima",[dia])
   const q=await preparar(criteriosVazios(),proxima)
   await (await q.lote([{google_place_id:'grupo-b',nome_fantasia:'Segunda'}])).entregar()
-  const grupos=await chamar(vendedor,'SELECT id,nome,total FROM grupos_prospeccao_listar()')
+  const grupos=await banco.sql<{id:string;nome:string;total:string}>("SELECT g.id,g.nome,count(ge.empresa_id)::text AS total FROM grupo_importacao g JOIN grupo_importacao_empresa ge ON ge.grupo_id=g.id GROUP BY g.id")
   expect(grupos).toHaveLength(1)
   expect(grupos[0]).toMatchObject({nome:expect.stringContaining('Loja'),total:'2'})
+  expect(await chamar(vendedor,'SELECT empresa_id FROM empresa_vinculo WHERE vendedor_id=usuario_atual()')).toHaveLength(2)
   const alheio=await criarUsuario(banco,'vendedor','Grupo Outro')
-  expect(await chamar(alheio,'SELECT id FROM grupos_prospeccao_listar()')).toEqual([])
-  expect(await chamar(alheio,'SELECT id FROM grupo_prospeccao_ler($1)',[grupos[0].id])).toEqual([])
+  expect(await chamar(alheio,'SELECT empresa_id FROM empresa_vinculo')).toEqual([])
+  await expect(chamar(alheio,'SELECT id FROM grupos_prospeccao_listar()')).rejects.toMatchObject({code:'42501'})
 })

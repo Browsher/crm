@@ -1,0 +1,16 @@
+.card { min-width:0; }
+.nome { min-width:0; overflow-wrap:anywhere; font-size:16px; font-weight:600; line-height:1.5; }
+.muted { color:var(--muted-foreground); }
+.card .dados, .grade .dados { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--space-3); margin:0; font-size:14px; }
+.dados > div { min-width:0; }
+.dados dt { color:var(--muted-foreground); font-size:12px; }
+.card .dados dd, .grade .dados dd { margin:0; overflow-wrap:anywhere; }
+.dados ul { display:grid; gap:var(--space-2); list-style:none; margin:0; padding:0; }
+.acoes { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:auto; }
+.grade { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-4); min-width:0; }
+.grade h4 { font-size:14px; font-weight:600; }
+.dialogo:global(.ui-dialog-content) { width:min(960px,calc(100vw - 32px)); max-width:960px; max-height:calc(100dvh - 32px); overflow:hidden; grid-template-rows:auto minmax(0,1fr); }
+.dialogo :global(.ui-dialog-header) { padding-right:var(--space-8); }
+.corpo { min-width:0; overflow:auto; overscroll-behavior:contain; }
+.corpo > * + * { margin-top:var(--space-4); }
+@media(max-width:600px) { .grade { grid-template-columns:1fr; } .dialogo:global(.ui-dialog-content) { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); } }

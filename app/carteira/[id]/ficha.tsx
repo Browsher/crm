@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 
+import { Cartao } from '../../fila/cartao'
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 
 import { useEffect, useRef, useState } from 'react'
@@ -9,9 +10,9 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { FormularioContato } from '@/src/features/contato/formulario'
 import type { Contato } from '@/src/features/contato/historico'
-import { rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
+import { descartarRascunhoContato, rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
 import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
@@ -34,24 +35,27 @@ function dataCivil(valor: string) {
 }
 function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   if (erro) return <Alert variant="danger"><AlertTitle>Não foi possível carregar o histórico</AlertTitle><AlertDescription>Tente atualizar a página.</AlertDescription></Alert>
-  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma conversa registrada." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
+  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma atividade registrada." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
   return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
     <div className={styles.historicoCabecalho}><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : c.tipo}</strong><time dateTime={c.criadoEm.toISOString()}>{new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' }).format(c.criadoEm)}</time></div>
     {c.venda ? <ResumoVenda venda={c.venda} /> : null}
     {c.nota ? <p>{c.nota}</p> : <p className={styles.ausente}>Sem anotação.</p>}
-    {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
+    {c.proximoPasso ? <p><strong>Próximo passo registrado:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
     <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>
   </li>)}</ol>
 }
 
 export function Ficha({ empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira', dadosCadastrais }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {
+  const arquivada = empresa.situacao === 'sem_interesse'
+  const acompanhamentoInicial = cliente || ['primeiro_contato','em_negociacao','proposta_enviada'].includes(empresa.situacao)
   const router = useRouter()
   const tema = useTemaCrm()
   const [editando, setEditando] = useState(false)
-  const [rascunho, setRascunho] = useState<RascunhoContato>(() => rascunhoInicial(empresa.posse))
+  const [rascunho, setRascunho] = useState<RascunhoContato>(() => rascunhoInicial(acompanhamentoInicial))
   const [pendente, setPendente] = useState(false)
   const pendenteRef = useRef(false)
   const [descarte, setDescarte] = useState<'fechar' | 'voltar' | { href: string } | null>(null)
+  const [erroDescarte, setErroDescarte] = useState('')
   const editor = useRef<HTMLDivElement>(null)
   const origemDescarte = useRef<HTMLElement | null>(null)
   const sentinela = useRef<string | null>(null)
@@ -135,10 +139,15 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
     }
     removerSentinela(() => setEditando(false))
   }
-  function confirmar() {
+  function confirmar(preservar = false) {
+    if (!preservar && !descartarRascunhoContato(empresa.id)) {
+      setErroDescarte('Confirme o envio anterior no atendimento antes de descartar. Você também pode fechar mantendo o rascunho.')
+      return
+    }
     const voltar = descarte === 'voltar'
     const href = descarte && descarte !== 'fechar' && descarte !== 'voltar' ? descarte.href : null
-    setRascunho(rascunhoInicial(empresa.posse)); setDescarte(null)
+    if (!preservar) setRascunho(rascunhoInicial(acompanhamentoInicial))
+    setDescarte(null); setErroDescarte(''); setEditando(false)
     if (voltar) {
       sentinela.current = null
       setEditando(false)
@@ -152,7 +161,8 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   }
 
   return <article className={styles.ficha}>
-    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente} /> : null}</div></header>
+    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente || arquivada}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente || arquivada} /> : null}</div></header>
+    {arquivada && <><Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>{empresa.empresa && <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} /></fieldset>}</>}
     <Card className={styles.colunas}><AbasFicha dados={<div className={styles.esquerda}>
       {dadosCadastrais}
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>
@@ -160,11 +170,12 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
       </dl></CardContent></Card>
       <Card><CardHeader><CardTitle>Próximo passo</CardTitle></CardHeader><CardContent>{empresa.proximoPasso ? <div className={empresa.vencido ? styles.atrasado : undefined}><p>{empresa.proximoPasso}</p>{empresa.proximoPassoData ? <p>{dataCivil(empresa.proximoPassoData)}{empresa.vencido ? ' · Atrasado' : ''}</p> : null}</div> : <p className={styles.ausente}>Sem próximo passo combinado.</p>}</CardContent></Card>
     </div>} historico={<Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent><Historico contatos={contatos} erro={erroHistorico} /></CardContent></Card>} /></Card>
-    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento"><div className={styles.editorCabecalho}><h2>Registrar atendimento</h2><Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button></div><FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver={!cliente} voltarPara={voltarPara} visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} onPendingChange={mudarPendente} onSaved={() => { setRascunho(rascunhoInicial(empresa.posse)); removerSentinela(() => { setEditando(false); router.refresh() }) }} /></section> : null}
+    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento"><div className={styles.editorCabecalho}><h2>Registrar atendimento</h2><Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button></div><FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver={!cliente} voltarPara={voltarPara} visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} somenteConfirmacao={arquivada} onPendingChange={mudarPendente} onSaved={() => { setRascunho(rascunhoInicial(acompanhamentoInicial)); removerSentinela(() => { setEditando(false); router.refresh() }) }} /></section> : null}
+    {arquivada && !editando && <FormularioContato empresaId={empresa.id} somenteConfirmacao onPendingChange={mudarPendente} onSaved={() => router.refresh()} />}
     <Dialog open={descarte !== null} onOpenChange={aberto => { if (!aberto && !pendente) setDescarte(null) }}><DialogContent theme={tema} onCloseAutoFocus={evento => {
       if (!origemDescarte.current?.isConnected) return
       evento.preventDefault()
       origemDescarte.current.focus()
-    }}><DialogHeader><DialogTitle>Descartar as alterações?</DialogTitle><DialogDescription>As anotações deste atendimento ainda não foram registradas.</DialogDescription></DialogHeader><DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={confirmar}>Descartar e continuar</Button></DialogFooter></DialogContent></Dialog>
+    }}><DialogHeader><DialogTitle>Descartar as alterações?</DialogTitle><DialogDescription>As anotações deste atendimento ainda não foram registradas.</DialogDescription></DialogHeader>{erroDescarte && <Alert variant="danger">{erroDescarte}</Alert>}<DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button variant="outline" onClick={() => confirmar(true)}>Fechar mantendo rascunho</Button><Button onClick={() => confirmar()}>Descartar e continuar</Button></DialogFooter></DialogContent></Dialog>
   </article>
 }

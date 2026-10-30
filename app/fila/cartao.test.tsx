@@ -1,148 +1,73 @@
-import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, test, vi } from 'vitest'
-
-// O Cartao passou a montar o FormularioContato, que é componente cliente e usa
-// useActionState. Mesmo mock dos outros testes de render deste projeto: o que
-// se prova é qual ramo renderiza, não que o estado chegue.
-vi.mock('react', async () => {
-  const real = await vi.importActual<typeof import('react')>('react')
-  return { ...real, useActionState: () => [{ erro: null, ok: false }, () => {}, false] }
-})
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+// @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
+import { beforeEach, afterEach, expect, test, vi } from 'vitest'
+const iniciar=vi.hoisted(()=>vi.fn())
+const push=vi.hoisted(()=>vi.fn())
+const refresh=vi.hoisted(()=>vi.fn())
+vi.mock('./atendimento/acoes',()=>({iniciarAtendimentoAcao:iniciar,retomarAtendimentoAcao:iniciar}))
+vi.mock('next/navigation',()=>({useRouter:()=>({push,refresh})}))
+vi.mock('@/src/components/crm/empresa-dialogo',()=>({EmpresaDialogo:({aoFechar}:{aoFechar:()=>void})=><div role="dialog"><button onClick={aoFechar}>Fechar</button></div>}))
 import { Cartao } from './cartao'
-
-const AGORA = new Date('2026-09-10T12:00:00Z')
-
-const BASE: EmpresaComigo = {
-  id: '11111111-1111-4111-8111-111111111111',
-  cnpj: '11222333000181',
-  razaoSocial: 'Aurora Comercio LTDA',
-  nomeFantasia: 'Aurora Luz',
-  contatoNome: 'Dona Aurora',
-  telefone: '11987654321',
-  email: null,
-  cep: '01310100',
-  endereco: {
-    cep: '01310100',
-    logradouro: 'Avenida Paulista',
-    faixa: 'lado par',
-    bairro: 'Bela Vista',
-    localidade: 'São Paulo',
-    uf: 'SP',
-    ibge: '3550308',
-  },
-  reservadoAte: new Date('2026-09-10T12:18:00Z'),
-  posse: false,
-  proximoPasso: null,
-  proximoPassoData: null,
-  cnaePrincipal: null,
-  ultimoContato: null,
-  situacaoRetorno: 'sem_data',
-  vencido: false,
-}
-
-describe('Cartao', () => {
-  test('empresa Google sem telefone mantém ficha e registro de atendimento', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={{ ...BASE, telefone: null }} agora={AGORA} contatos={[]} etapa="consultar" />)
-    expect(saida).toContain('Sem telefone informado')
-    expect(saida).toContain('Registrar resultado')
-  })
-  test('na etapa consultar mostra dados e historico sem montar o formulario', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} etapa="consultar" />)
-    expect(saida).toContain('Registrar resultado')
-    expect(saida).toContain('Nenhum contato registrado')
-    expect(saida).not.toContain('O que aconteceu na ligação')
-  })
-
-  test('na etapa registrar coloca os dados ao lado do formulario visual', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} etapa="registrar" />)
-    expect(saida).toContain('O que aconteceu na ligação')
-    expect(saida).toContain('data-visual="fila"')
-    expect(saida).toContain('Registrar')
-  })
-
-  test('prazo expirado oculta detalhes e histórico preservando anotações bloqueadas', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={BASE.reservadoAte!} contatos={[]}
-      rascunho={{ tipo: 'interessado', nota: 'Preservada', proximoPasso: '', proximoPassoData: '' }} />)
-    expect(saida).toContain('Aurora Comercio LTDA')
-    expect(saida).toContain('Preservada')
-    expect(saida).toContain('Reserva expirada')
-    expect(saida).not.toContain(BASE.telefone)
-    expect(saida).not.toContain(BASE.cnpj)
-    expect(saida).not.toContain('Nenhum contato registrado')
-    expect(saida).toMatch(/<button[^>]*disabled/)
-  })
-  test('mostra contato, telefone e cidade', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} />)
-    expect(saida).toContain('Aurora Comercio LTDA')
-    expect(saida).toContain('Dona Aurora')
-    expect(saida).toContain('11987654321')
-    expect(saida).toContain('São Paulo')
-  })
-
-  test('conta os minutos que faltam a partir do instante do banco', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} />)
-    expect(saida).toContain('18 minutos')
-  })
-
-  test('CEP fora da base diz que o endereco nao foi encontrado, e nao finge que nao ha CEP', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={{ ...BASE, endereco: null }} agora={AGORA} contatos={[]} />)
-    expect(saida).toContain('01310100')
-    expect(saida).toContain('não encontrado')
-  })
-
-  test('empresa sem CEP diz que nao ha endereco', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={{ ...BASE, cep: null, endereco: null }} agora={AGORA} contatos={[]} />)
-    expect(saida).toContain('sem CEP')
-  })
-
-  // Os botões soltos de assumir e devolver saíram do cartão na fatia `contato`:
-  // desfecho virou campo do formulário, e é ele que chama contato_registrar.
-  test('em posse, nao mostra prazo, e o formulario pede proximo passo', () => {
-    const saida = renderToStaticMarkup(
-      <Cartao empresa={{ ...BASE, posse: true, reservadoAte: null }} agora={AGORA} contatos={[]} />,
-    )
-    expect(saida).not.toContain('minutos')
-    expect(saida).toContain('Próximo passo')
-  })
-
-  test('o cartao mostra o historico de quem ligou antes', () => {
-    const saida = renderToStaticMarkup(
-      <Cartao
-        empresa={BASE}
-        agora={AGORA}
-        contatos={[
-          {
-            id: '22222222-2222-4222-8222-222222222222',
-            tipo: 'sem_interesse',
-            nota: 'ja tem fornecedor',
-            proximoPasso: null,
-            proximoPassoData: null,
-            criadoEm: new Date('2026-08-01T12:00:00Z'),
-            autor: 'VendedorA',
-          },
-        ]}
-      />,
-    )
-    expect(saida).toContain('ja tem fornecedor')
-    expect(saida).toContain('VendedorA')
-  })
-
-  test('cartao sem historico diz que ninguem ligou ainda', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} />)
-    expect(saida).toContain('Nenhum contato registrado')
-  })
-
-  test('o cartao NAO tem mais botoes soltos de assumir e devolver', () => {
-    const saida = renderToStaticMarkup(<Cartao empresa={BASE} agora={AGORA} contatos={[]} />)
-    expect(saida).not.toContain('value="assumir"')
-    expect(saida).not.toContain('name="acao"')
-  })
+import type { ResumoEmpresa } from '@/src/lib/empresa-visual'
+const empresa:ResumoEmpresa={referencia:{tipo:'cadastro',empresaId:'A'},id:'A',nome:'Aurora',cnpj:null,cnae:null,atividade:null,bairro:null,cidade:null,uf:null,origens:['google'],recebidaEm:null,situacao:'a_contatar',versao:2,negociacaoId:null}
+let root:ReturnType<typeof createRoot>,host:HTMLDivElement
+beforeEach(()=>{sessionStorage.clear();vi.clearAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host)})
+afterEach(async()=>{await act(async()=>root.unmount());host.remove()})
+async function montar(e=empresa,hrefCarteira?:string){await act(async()=>root.render(<Cartao empresa={e} filtros={{origem:'google',pagina:'3'}} hrefCarteira={hrefCarteira}/>))}
+async function clicar(texto:string){await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent===texto)!.click())}
+test('Ver empresa usa diálogo informativo, fechar não inicia nem navega',async()=>{
+  await montar();await clicar('Ver empresa');expect(host.querySelector('[role=dialog]')).not.toBeNull()
+  await clicar('Fechar');expect(iniciar).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
 })
-
-
-test('reserva parcial mostra nome comercial no título e CNPJ desconhecido', () => {
-  const saida = renderToStaticMarkup(<Cartao empresa={{ ...BASE, cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Aurora' }} agora={AGORA} contatos={[]} />)
-  expect(saida).toMatch(/<h2[^>]*>Câmeras Aurora<\/h2>/)
-  expect(saida).toContain('Não informado')
+test('recusa temporária de autorização não abandona chave de início desconhecido',async()=>{
+  iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
+  const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
+  iniciar.mockResolvedValueOnce({ok:false,motivo:'sem_permissao'});await clicar('Iniciar atendimento')
+  expect(host.textContent).not.toContain('Atualizar empresa')
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Iniciar atendimento')
+  expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
+  expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
+})
+test('início perdido repete mesma chave/versão mesmo após remount, depois abre empresa explícita',async()=>{
+  iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
+  const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
+  await act(async()=>root.render(null));await montar({...empresa,versao:20})
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Iniciar atendimento')
+  expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
+  expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
+  expect(refresh).toHaveBeenCalled()
+})
+test('continuar conserva filtros e snapshot sem vínculo não ganha comando',async()=>{
+  await montar({...empresa,situacao:'atendimento'});await clicar('Continuar atendimento')
+  expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
+  await montar({...empresa,id:null,versao:null,referencia:{tipo:'busca',buscaId:'B',cnpj:'12345678000199'},situacao:'indisponivel'})
+  expect([...host.querySelectorAll('button')].map(b=>b.textContent)).toEqual(['Ver empresa'])
+  expect(iniciar).not.toHaveBeenCalled()
+})
+test('resposta de início perdida é confirmada mesmo quando a leitura já mostra atendimento',async()=>{
+  iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
+  const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
+  await montar({...empresa,situacao:'atendimento',versao:3})
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Continuar atendimento')
+  expect(iniciar).toHaveBeenCalledTimes(2)
+  expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
+  expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
+})
+test('abrir carteira conserva filtros locais após confirmar comando desconhecido',async()=>{
+  iniciar.mockRejectedValueOnce(new Error('rede'))
+  await montar({...empresa,situacao:'sem_interesse'});await clicar('Retomar atendimento')
+  const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
+  const href='/carteira/A?de=meu-dia&nome=Aurora&retorno=hoje'
+  await montar({...empresa,situacao:'cliente',versao:3},href)
+  iniciar.mockRejectedValueOnce(new Error('rede'));await clicar('Abrir na carteira')
+  expect(push).not.toHaveBeenCalled()
+  expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Abrir na carteira')
+  expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
+  expect(push).toHaveBeenCalledWith(href)
+})
+test('carteira ignora destino externo e conserva destino canônico',async()=>{
+  await montar({...empresa,situacao:'cliente'},'https://example.com/fora');await clicar('Abrir na carteira')
+  expect(push).toHaveBeenCalledWith('/carteira/A')
 })

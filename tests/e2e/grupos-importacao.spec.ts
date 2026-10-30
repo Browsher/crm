@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import ExcelJS from 'exceljs'
+import { formatarCnpj } from '../../src/lib/empresa-visual'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
 import { bancoGruposDoHarness, comBancoGrupos, prepararGrupos, GRUPOS, CNPJ_JORNADA_NOVA, CNPJ_JORNADA_OVERLAP, CNPJ_JORNADA_CARTEIRA } from './dados-grupos'
 
@@ -68,10 +69,12 @@ test.beforeAll(async () => {
   const vendedor = await criarUsuarioComSenha(banco, 'vendedor', 'gruposjornadae2e', 'Senha-e2e-2026')
   const [{ id }] = await banco.sql<{ id: string }>(`INSERT INTO empresa(cnpj,razao_social,telefone,contato_nome,email,cnae_principal)
     VALUES ($1,$2,'11911112222','Contato preservado','preservado@teste.local','7777702') RETURNING id`, [CNPJ_JORNADA_CARTEIRA, CARTEIRA])
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial,iniciada_em) VALUES($1,$2,'legado',now())",[id,vendedor.id])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES ($1,$2)', [id, vendedor.id])
   await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[id,vendedor.id])
   await banco.sql(`INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data)
     VALUES ($1,'acompanhamento','Histórico preservado da jornada','Retorno preservado',(now() AT TIME ZONE 'America/Sao_Paulo')::date)`, [id])
+  await banco.sql('UPDATE empresa_vinculo SET agenda_contato_id=(SELECT id FROM contato WHERE empresa_id=$1) WHERE empresa_id=$1',[id])
 })
 
 test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva atendimento ao desativar', async ({ page, browser }) => {
@@ -146,31 +149,32 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   await page.getByRole('link', { name: 'Todas as empresas', exact: true }).click()
   await page.getByLabel('Buscar empresas').fill('Jornada Grupos')
   await page.getByRole('button', { name: 'Buscar', exact: true }).click()
-  await expect(page.getByRole('table').getByRole('row')).toHaveCount(4)
-  await expect(page.getByRole('table')).toContainText(NOVA)
+  await expect(page.getByRole('region', { name: 'Empresas cadastradas' }).getByRole('listitem')).toHaveCount(3)
+  const nova = page.getByRole('region', { name: 'Empresas cadastradas' }).getByRole('listitem').filter({ hasText: formatarCnpj(CNPJ_JORNADA_NOVA) })
+  await nova.getByRole('button', { name: 'Ver empresa: Fantasia da planilha', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText(NOVA)
+  await page.keyboard.press('Escape')
 
   const contexto = await browser.newContext({ baseURL: new URL(page.url()).origin })
   try {
     const vendedor = await contexto.newPage()
     await entrar(vendedor, 'gruposjornadae2e')
-    await expect(vendedor.getByRole('heading', { name: CARTEIRA, exact: true })).toBeVisible()
+    await expect(vendedor.getByRole('heading', { name: CARTEIRA, exact: true })).toHaveCount(0)
     await vendedor.goto('/carteira')
     await expect(vendedor.getByRole('heading', { name: CARTEIRA, exact: true })).toBeVisible()
     await vendedor.getByRole('link', { name: 'Ver cliente', exact: true }).click()
     await expect(vendedor.getByText('Histórico preservado da jornada', { exact: true })).toBeVisible()
     await vendedor.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(NOVA)}`)
-    await expect(vendedor.getByText('Nenhuma empresa encontrada.', { exact: true })).toBeVisible()
+    await expect(vendedor.getByRole('heading', { name: 'Nenhuma empresa com esses filtros', exact: true })).toBeVisible()
     await vendedor.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(OVERLAP)}`)
-    await vendedor.getByRole('button', { name: 'Reservar para ligar', exact: true }).click()
-    await expect(vendedor.getByRole('heading', { name: OVERLAP, exact: true })).toBeVisible()
-    await expect(vendedor.getByText('11999990777', { exact: true })).toBeVisible()
+    await expect(vendedor.getByRole('heading',{name:OVERLAP,exact:true})).toHaveCount(0)
     await page.goto(urlGrupo)
     await page.getByRole('button', { name: 'Reativar grupo', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByRole('table').getByRole('row').filter({ hasText: NOVA })).toContainText('Disponível')
     await vendedor.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(NOVA)}`)
-    await expect(vendedor.getByRole('heading', { name: NOVA, exact: true })).toBeVisible()
+    await expect(vendedor.getByRole('heading', { name: NOVA, exact: true })).toHaveCount(0)
   } finally { await contexto.close() }
 })
 
