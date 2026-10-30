@@ -25,6 +25,7 @@ export type RegistroDoVendedor = {
 export type PerfilVendedor = ResumoVendedor & {
   email: string
   pagina: number
+  totalEmpresas: number
   empresas: EmpresaDoVendedor[]
   atividade: RegistroDoVendedor[]
 }
@@ -76,6 +77,7 @@ export async function lerPerfilVendedor(gestorId: string, vendedorId: string, pa
         ORDER BY c.criado_em DESC,c.id DESC LIMIT 20
       )
       SELECT jsonb_build_object('id',a.id,'nome',a.nome,'email',a.email,'pagina',$3::int,
+        'totalEmpresas',(SELECT count(*)::int FROM carteira),
         'clientes',(SELECT count(*)::int FROM carteira WHERE cliente),
         'oportunidades',(SELECT count(*)::int FROM carteira WHERE oportunidade),
         'atrasados',(SELECT count(*)::int FROM carteira WHERE retorno<d.hoje),

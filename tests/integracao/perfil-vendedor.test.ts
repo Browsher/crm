@@ -18,23 +18,25 @@ beforeAll(async () => {
   await banco.sql('ALTER TABLE contato DISABLE TRIGGER contato_auditoria')
 })
 beforeEach(async () => {
+  await banco.sql('DELETE FROM empresa_atendimento_operacao')
   await banco.sql('DELETE FROM grupo_importacao_empresa')
   await banco.sql('DELETE FROM grupo_importacao')
   await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM venda')
+  await banco.sql('DELETE FROM negociacao')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
 })
 afterAll(async () => { await banco?.derrubar() })
-async function empresa(dono: string | null) {
+async function empresa(dono: string | null, cliente = true) {
   const [{ id }] = await banco.sql<{ id: string }>(`INSERT INTO empresa(cnpj,razao_social,telefone)
     VALUES($1,$2,'11999999999') RETURNING id`, [String(++sequencia).padStart(14,'0'),`Empresa ${String(sequencia).padStart(4,'0')}`])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[id,dono])
   await vincularGrupoAtivo(banco,[id])
   if (dono) {
     await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,dono])
-    await banco.sql("INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,gen_random_uuid())",[id,dono])
+    if (cliente) await banco.sql("INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,gen_random_uuid())",[id,dono])
   }
   return id
 }
@@ -91,6 +93,26 @@ test('carteira paginada não muda total e atividade limita vinte registros', asy
   expect(r?.atividade).toHaveLength(20)
   expect(r?.contatosHoje).toBe(21)
   expect(r!.atividade.map(c=>c.em)).toEqual([...r!.atividade.map(c=>c.em)].sort().reverse())
+})
+
+test('51 vínculos sem venda têm duas páginas; primeira venda depois dos 50 continua acessível',async()=>{
+  const ids:string[]=[]
+  for(let i=0;i<51;i++) ids.push(await empresa(vendedor,false))
+  const primeira=await lerPerfilVendedor(gestor,vendedor,1)
+  const segunda=await lerPerfilVendedor(gestor,vendedor,2)
+  expect(primeira).toMatchObject({totalEmpresas:51,clientes:0})
+  expect(primeira?.empresas).toHaveLength(50)
+  expect(segunda).toMatchObject({totalEmpresas:51,clientes:0,empresas:[{id:ids[50]}]})
+  const ultima=ids[50]
+  const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[ultima])
+  const contato=await banco.comoUsuario(vendedor,e=>e<{r:{ok:boolean}}>("SELECT contato_registrar_direto($1,gen_random_uuid(),$2,'interessado',NULL,NULL,NULL) AS r",[ultima,versao]))
+  expect(contato.linhas[0].r).toMatchObject({ok:true})
+  const [{id:negociacao}]=await banco.sql<{id:string}>('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[ultima])
+  const venda=await banco.comoUsuario(vendedor,e=>e("SELECT funil_venda_registrar($1,gen_random_uuid(),(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,NULL) AS r",[negociacao]))
+  expect(venda.linhas[0]).toEqual({r:'ok'})
+  const aposVenda=await lerPerfilVendedor(gestor,vendedor,2)
+  expect(aposVenda).toMatchObject({totalEmpresas:51,clientes:1,empresas:[{id:ultima,situacao:'cliente'}]})
+  expect((await lerPerfilVendedor(gestor,vendedor,1))?.empresas.some(e=>e.id===ultima)).toBe(false)
 })
 
 test('fonte inativa mantém cliente e histórico sem retorno pendente no perfil',async()=>{
