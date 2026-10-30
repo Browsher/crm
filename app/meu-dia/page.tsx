@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { lerMinhasEmpresas, type EmpresaComigo } from '@/src/features/fila/consulta'
+import { lerAgendaAtendimento } from '@/src/server/atendimento/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { agendaDoDia, filtrarAgenda, lerFiltrosMeuDia } from './agenda'
@@ -12,9 +13,9 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function PaginaMeuDia({ searchParams }: Props) {
   const eu = await exigir('vendedor')
-  const [r, params] = await Promise.all([lerMinhasEmpresas(eu.usuarioId), searchParams])
+  const [r, params] = await Promise.all([lerAgendaAtendimento(eu.usuarioId), searchParams])
   const leitura = lerFiltrosMeuDia(params)
-  const agenda = r.ok ? agendaDoDia(r.carteira) : []
+  const agenda = r.ok ? agendaDoDia(r.linhas) : []
   const filtradas = leitura.ok ? filtrarAgenda(agenda, leitura.filtros) : []
   // `agendaDoDia`/`filtrarAgenda` só deixam passar `atrasado`/`hoje` (veja o
   // type predicate de `agendaDoDia` em `app/meu-dia/agenda.ts`), mas a

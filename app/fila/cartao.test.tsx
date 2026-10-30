@@ -14,7 +14,7 @@ const empresa:ResumoEmpresa={referencia:{tipo:'cadastro',empresaId:'A'},id:'A',n
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 beforeEach(()=>{sessionStorage.clear();vi.clearAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host)})
 afterEach(async()=>{await act(async()=>root.unmount());host.remove()})
-async function montar(e=empresa){await act(async()=>root.render(<Cartao empresa={e} filtros={{origem:'google',pagina:'3'}}/>))}
+async function montar(e=empresa,hrefCarteira?:string){await act(async()=>root.render(<Cartao empresa={e} filtros={{origem:'google',pagina:'3'}} hrefCarteira={hrefCarteira}/>))}
 async function clicar(texto:string){await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent===texto)!.click())}
 test('Ver empresa usa diálogo informativo, fechar não inicia nem navega',async()=>{
   await montar();await clicar('Ver empresa');expect(host.querySelector('[role=dialog]')).not.toBeNull()
@@ -53,4 +53,21 @@ test('resposta de início perdida é confirmada mesmo quando a leitura já mostr
   expect(iniciar).toHaveBeenCalledTimes(2)
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
   expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
+})
+test('abrir carteira conserva filtros locais após confirmar comando desconhecido',async()=>{
+  iniciar.mockRejectedValueOnce(new Error('rede'))
+  await montar({...empresa,situacao:'sem_interesse'});await clicar('Retomar atendimento')
+  const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
+  const href='/carteira/A?de=meu-dia&nome=Aurora&retorno=hoje'
+  await montar({...empresa,situacao:'cliente',versao:3},href)
+  iniciar.mockRejectedValueOnce(new Error('rede'));await clicar('Abrir na carteira')
+  expect(push).not.toHaveBeenCalled()
+  expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Abrir na carteira')
+  expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
+  expect(push).toHaveBeenCalledWith(href)
+})
+test('carteira ignora destino externo e conserva destino canônico',async()=>{
+  await montar({...empresa,situacao:'cliente'},'https://example.com/fora');await clicar('Abrir na carteira')
+  expect(push).toHaveBeenCalledWith('/carteira/A')
 })

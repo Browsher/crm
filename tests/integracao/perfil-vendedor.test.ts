@@ -1,3 +1,4 @@
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { beforeAll, beforeEach, afterAll, expect, test } from 'vitest'
 import { lerPerfilVendedor } from '@/src/features/gestao/perfil-vendedor'
 import { lerDashboard } from '@/src/features/gestao/consulta'
@@ -17,6 +18,10 @@ beforeAll(async () => {
   await banco.sql('ALTER TABLE contato DISABLE TRIGGER contato_auditoria')
 })
 beforeEach(async () => {
+  await banco.sql('DELETE FROM grupo_importacao_empresa')
+  await banco.sql('DELETE FROM grupo_importacao')
+  await banco.sql('DELETE FROM empresa_vinculo')
+  await banco.sql('DELETE FROM venda')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql('DELETE FROM empresa')
@@ -26,12 +31,18 @@ async function empresa(dono: string | null) {
   const [{ id }] = await banco.sql<{ id: string }>(`INSERT INTO empresa(cnpj,razao_social,telefone)
     VALUES($1,$2,'11999999999') RETURNING id`, [String(++sequencia).padStart(14,'0'),`Empresa ${String(sequencia).padStart(4,'0')}`])
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[id,dono])
+  await vincularGrupoAtivo(banco,[id])
+  if (dono) {
+    await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[id,dono])
+    await banco.sql("INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,gen_random_uuid())",[id,dono])
+  }
   return id
 }
 async function contato(id: string, autor: string, dias: number | null, tipo = 'acompanhamento', segundos = 0) {
   await banco.sql(`INSERT INTO contato(empresa_id,criado_por,criado_em,tipo,nota,proximo_passo,proximo_passo_data)
     VALUES($1,$2,((now() AT TIME ZONE 'America/Sao_Paulo')::date::timestamp AT TIME ZONE 'America/Sao_Paulo')+make_interval(secs=>$5),
       $3,'Nota registrada',CASE WHEN $4::int IS NOT NULL THEN 'Retornar' END,(now() AT TIME ZONE 'America/Sao_Paulo')::date+$4::int)`,[id,autor,tipo,dias,segundos])
+  await banco.sql(`UPDATE empresa_vinculo SET agenda_contato_id=CASE WHEN $2::int IS NULL THEN NULL ELSE (SELECT id FROM contato WHERE empresa_id=$1 ORDER BY criado_em DESC,id DESC LIMIT 1) END WHERE empresa_id=$1`,[id,dias])
 }
 test('gestor vê vazio explícito; vendedor não consulta nem o próprio perfil', async () => {
   expect(await lerPerfilVendedor(gestor,vendedor)).toMatchObject({ nome:'Ana', clientes:0, atrasados:0, hoje:0, contatosHoje:0, empresas:[], atividade:[] })
@@ -48,7 +59,7 @@ test('alvo desativado não aparece e gestor desativado não lê', async () => {
   try { expect(await lerPerfilVendedor(gestor,vendedor)).toBeNull() }
   finally { await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1',[gestor]) }
 })
-test('resumo coincide com dashboard, autoria difere da posse, último contato governa retorno', async () => {
+test('resumo coincide com dashboard, autoria difere da posse, agenda vigente governa retorno', async () => {
   const a = await empresa(vendedor)
   const b = await empresa(outro)
   const c = await empresa(null)
@@ -80,4 +91,13 @@ test('carteira paginada não muda total e atividade limita vinte registros', asy
   expect(r?.atividade).toHaveLength(20)
   expect(r?.contatosHoje).toBe(21)
   expect(r!.atividade.map(c=>c.em)).toEqual([...r!.atividade.map(c=>c.em)].sort().reverse())
+})
+
+test('fonte inativa mantém cliente e histórico sem retorno pendente no perfil',async()=>{
+  const id=await empresa(vendedor)
+  await contato(id,vendedor,-1)
+  await banco.sql('UPDATE grupo_importacao SET ativo=false WHERE id IN (SELECT grupo_id FROM grupo_importacao_empresa WHERE empresa_id=$1)',[id])
+  const r=await lerPerfilVendedor(gestor,vendedor)
+  expect(r).toMatchObject({clientes:1,atrasados:0,hoje:0,empresas:[{id,situacao:'indisponivel',retorno:null,proximoPasso:null}]})
+  expect(r?.atividade).toHaveLength(1)
 })

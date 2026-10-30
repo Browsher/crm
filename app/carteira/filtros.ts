@@ -1,5 +1,5 @@
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 
 export type FiltrosCarteira = {
   nome: string

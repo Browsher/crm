@@ -4,6 +4,7 @@ import type { Falha } from './repositorio'
 export type Contato = {
   id: string
   tipo: string
+  natureza?: 'contato' | 'atividade_sem_ligacao' | 'venda'
   nota: string | null
   proximoPasso: string | null
   proximoPassoData: string | null
@@ -65,6 +66,7 @@ export async function lerHistorico(usuarioId: string, empresaId: string): Promis
         contatos: r.linhas.map((l) => ({
           id: l.id,
           tipo: l.tipo,
+          natureza: l.venda_centavos != null ? 'venda' : l.tipo === 'nao_liguei' ? 'atividade_sem_ligacao' : 'contato',
           nota: l.nota,
           proximoPasso: l.proximo_passo,
           proximoPassoData: l.proximo_passo_data,

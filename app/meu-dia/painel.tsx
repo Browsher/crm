@@ -1,11 +1,13 @@
 'use client'
 
+import { Cartao } from '../fila/cartao'
+import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import type { Contato } from '@/src/features/contato/historico'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import { Card } from '@/src/components/ui/card'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { Button } from '@/src/components/ui/button'
@@ -34,7 +36,7 @@ function dataHora(valor: Date): string {
 }
 
 function resumo(nota: string | null): string {
-  if (!nota) return 'Conversa registrada sem anotação'
+  if (!nota) return 'Atividade registrada sem anotação'
   return nota.length <= 180 ? nota : `${nota.slice(0, 179).trimEnd()}…`
 }
 
@@ -62,9 +64,9 @@ type EstadoHistorico =
   | { fase: 'erro'; empresaId: string; motivo: 'falha' }
 
 function Historico({ contatos }: { contatos: Contato[] }) {
-  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma conversa registrada" descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
+  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma atividade registrada" descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
   return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
-    {c.venda ? <><strong>Venda registrada</strong><ResumoVenda venda={c.venda} />{c.nota ? <p>{resumo(c.nota)}</p> : null}<p>Registrado por {c.autor ?? 'sistema'}</p></> : <p>{resumo(c.nota)}</p>}
+    {c.venda ? <><strong>Venda registrada</strong><ResumoVenda venda={c.venda} />{c.nota ? <p>{resumo(c.nota)}</p> : null}<p>Registrado por {c.autor ?? 'sistema'}</p></> : <><strong>{c.tipo === 'nao_liguei' ? 'Atividade sem ligação: Não liguei' : ehTipo(c.tipo) ? ROTULO[c.tipo] : c.tipo}</strong><p>{resumo(c.nota)}</p><p>Registrado por {c.autor ?? 'sistema'}</p></>}
     <time dateTime={c.criadoEm.toISOString()}>{dataHora(c.criadoEm)}</time>
   </li>)}</ol>
 }
@@ -162,8 +164,8 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
 
   const aviso = <div role="alert" tabIndex={-1} ref={alertaRef} className={styles.perfil}>
     <Button type="button" variant="ghost" className={styles.voltarMovel} onClick={() => setPerfilMovel(false)}>Voltar para retornos</Button>
-    <h2>Esta empresa não está mais na sua carteira</h2>
-    <p>A posse mudou desde que a agenda foi carregada.</p>
+    <h2>Esta empresa não está mais na sua agenda</h2>
+    <p>O vínculo ou a tarefa mudou desde que a agenda foi carregada.</p>
     <Link href={urlMeuDia(filtros)}>Recarregar a agenda</Link>
   </div>
 
@@ -171,7 +173,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
     const semFiltro = filtros.nome === '' && filtros.retorno === ''
     if (semFiltro) {
       // Agenda vazia de verdade: "0 de 0 retornos" não ajuda ninguém.
-      return <>{avisoAtivo && aviso}<EstadoVazio titulo="Nenhum retorno pendente para hoje" descricao="Sua carteira não tem clientes atrasados ou com retorno hoje." acao={{ rotulo: 'Ir para Prospecção', href: '/fila' }} /><Button asChild variant="outline"><Link href="/carteira">Ver carteira completa</Link></Button></>
+      return <>{avisoAtivo && aviso}<EstadoVazio titulo="Nenhum retorno pendente para hoje" descricao="Não há tentativas ou retornos atrasados ou de hoje." acao={{ rotulo: 'Ir para Prospecção', href: '/fila' }} /><Button asChild variant="outline"><Link href="/carteira">Ver carteira completa</Link></Button></>
     }
     // Busca sem resultado: a contagem continua acima do vazio, como sempre
     // apareceu (a mudança de trazer a contagem para dentro do painel não
@@ -179,7 +181,7 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
     return <>
       {avisoAtivo && aviso}
       <p className={styles.contagem}>0 de {totalEfetivo} {totalEfetivo === 1 ? 'retorno' : 'retornos'}</p>
-      <EstadoVazio titulo="Nenhum cliente corresponde à busca" descricao="Altere os campos ou limpe os filtros para ver a agenda de hoje." acao={{ rotulo: 'Limpar filtros', href: '/meu-dia' }} />
+      <EstadoVazio titulo="Nenhuma empresa corresponde à busca" descricao="Altere os campos ou limpe os filtros para ver a agenda de hoje." acao={{ rotulo: 'Limpar filtros', href: '/meu-dia' }} />
     </>
   }
 
@@ -217,10 +219,10 @@ export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[
       </div> : atual ? <div className={styles.colunaPerfil}>
         <Card role="article" className={styles.perfil}>
           <Button type="button" variant="ghost" className={styles.voltarMovel} onClick={() => { devolverFoco.current = true; setPerfilMovel(false) }}>Voltar para retornos</Button>
-          <header>
+          {atual.empresa ? <Cartao empresa={atual.empresa} hrefCarteira={urlFichaDoMeuDia(atual.id, filtros)} /> : <header>
             <h2>{nomeEmpresa(atual)}</h2>
             {atual.razaoSocial && atual.nomeFantasia ? <p>{atual.nomeFantasia}</p> : null}
-          </header>
+          </header>}
           <AbasFicha dados={<><dl className={styles.dados}>
             <div><dt>Contato principal</dt><dd>{atual.contatoNome ?? 'Contato principal não informado'}</dd></div>
             <div><dt>Telefone</dt><dd>{atual.telefone || 'Telefone não cadastrado'}</dd></div>

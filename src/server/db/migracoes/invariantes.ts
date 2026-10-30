@@ -77,6 +77,7 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.empresa_atendimento_retomar',
   'public.empresa_detalhes_ler',
   'public.empresas_resumos_ler',
+  'public.empresas_disponibilidade_ler',
   'public.busca_empresa_detalhes_ler',
 ] as const
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import {
   filtrarCarteira,
   lerFiltrosCarteira,
@@ -27,7 +27,7 @@ function empresa(parcial: Partial<EmpresaComigo> & Pick<EmpresaComigo, 'id' | 'r
     email: null,
     cep: null,
     endereco: null,
-    reservadoAte: null,
+    situacao: 'atendimento', versao: 1, reservadoAte: null,
     posse: true,
     proximoPasso: null,
     proximoPassoData: null,

@@ -10,7 +10,7 @@ import { textoDoMotivo } from '@/src/features/contato/mensagens'
 import { iniciarAtendimentoAcao, retomarAtendimentoAcao } from './atendimento/acoes'
 import { urlAtendimento } from './localizar/navegacao'
 
-export function Cartao({ empresa, filtros = {} }: { empresa: ResumoEmpresa; filtros?: FiltrosPessoais }) {
+export function Cartao({ empresa, filtros = {}, hrefCarteira }: { empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string }) {
   const router = useRouter()
   const [referencia, setReferencia] = useState<ReferenciaEmpresa | null>(null)
   const [erro, setErro] = useState('')
@@ -18,13 +18,18 @@ export function Cartao({ empresa, filtros = {} }: { empresa: ResumoEmpresa; filt
   const [pendente, iniciar] = useTransition()
   const ocupado = useRef(false)
   const storage = 'crm:acao-empresa:v1:' + empresa.id
+  function destino(acao: Extract<AcaoEmpresa, { href: string }>) {
+    if (acao.tipo === 'continuar' && empresa.id) return urlAtendimento(empresa.id, filtros)
+    if (acao.tipo === 'carteira' && hrefCarteira?.startsWith(acao.href + '?')) return hrefCarteira
+    return acao.href
+  }
   function acionar(acao: AcaoEmpresa) {
     if (ocupado.current || resolvido) return
     ocupado.current = true
     iniciar(async () => {
       try {
         const salvo = sessionStorage.getItem(storage)
-        if ('href' in acao && !salvo) { router.push(acao.tipo === 'continuar' && empresa.id ? urlAtendimento(empresa.id, filtros) : acao.href); return }
+        if ('href' in acao && !salvo) { router.push(destino(acao)); return }
         const comando = salvo ? JSON.parse(salvo) : 'empresaId' in acao ? { id: acao.empresaId, chave: crypto.randomUUID(), versao: acao.versao, tipo: acao.tipo } : null
         if (!comando) return
         sessionStorage.setItem(storage, JSON.stringify(comando))
@@ -33,7 +38,7 @@ export function Cartao({ empresa, filtros = {} }: { empresa: ResumoEmpresa; filt
         const r = await (comando.tipo === 'retomar' ? retomarAtendimentoAcao : iniciarAtendimentoAcao)(form)
         if (!r.ok) { setErro(textoDoMotivo(r.motivo)); setResolvido(!['sem_permissao','nao_encontrada'].includes(r.motivo)); return }
         sessionStorage.removeItem(storage); setErro(''); router.refresh()
-        if ('href' in acao) router.push(acao.tipo === 'continuar' && empresa.id ? urlAtendimento(empresa.id, filtros) : acao.href)
+        if ('href' in acao) router.push(destino(acao))
         else if (comando.tipo === acao.tipo) router.push(urlAtendimento(acao.empresaId, filtros))
         else setErro('Envio anterior confirmado. Confira a situação atual antes de continuar.')
       } catch { setErro('Não foi possível confirmar. Tente novamente para confirmar o mesmo envio.') }

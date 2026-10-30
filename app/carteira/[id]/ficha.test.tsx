@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, test, vi } from 'vitest'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 
 // A Ficha monta o FormularioContato, que é cliente e usa useActionState.
 vi.mock('react', async () => {
@@ -21,7 +21,7 @@ const EMPRESA: EmpresaComigo = {
   email: null,
   cep: '01310100',
   endereco: null,
-  reservadoAte: null,
+  situacao: 'atendimento', versao: 1, reservadoAte: null,
   posse: true,
   proximoPasso: 'Mandar orçamento',
   proximoPassoData: '2026-10-01',
@@ -32,6 +32,13 @@ const EMPRESA: EmpresaComigo = {
 }
 
 describe('Ficha', () => {
+  test('cliente arquivado conserva histórico e exige retomar antes de novo trabalho', () => {
+    const saida = renderToStaticMarkup(<Ficha empresa={{ ...EMPRESA, situacao: 'sem_interesse' }} cliente contatos={[]} />)
+    expect(saida).toContain('Sem interesse')
+    expect(saida).toContain('Retome o atendimento antes de registrar novo trabalho.')
+    expect(saida).not.toMatch(/<button(?![^>]*disabled)[^>]*>Registrar atendimento/)
+    expect(saida).not.toMatch(/<button(?![^>]*disabled)[^>]*>Registrar venda/)
+  })
   test('mostra cadastro, telefone e CNPJ', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('Aurora Comercio LTDA')
@@ -72,13 +79,13 @@ describe('Ficha', () => {
 
   test('a linha do tempo vazia diz que ninguem ligou ainda', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
-    expect(saida).toContain('Ainda não há uma conversa registrada')
+    expect(saida).toContain('Ainda não há uma atividade registrada')
   })
 
   test('distingue erro de historico vazio', () => {
     const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} erroHistorico />)
     expect(saida).toContain('Não foi possível carregar o histórico')
-    expect(saida).not.toContain('Ainda não há uma conversa registrada')
+    expect(saida).not.toContain('Ainda não há uma atividade registrada')
   })
 
   test('mostra ausencias e o CNAE sem inventar dados', () => {

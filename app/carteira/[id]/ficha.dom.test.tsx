@@ -3,7 +3,7 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn() }) }))
 vi.mock('@/src/components/crm/tema', () => ({ useTemaCrm: () => 'light' }))
@@ -15,7 +15,7 @@ const { Ficha } = await import('./ficha')
 const EMPRESA: EmpresaComigo = {
   id:'a',cnpj:'11222333000181',razaoSocial:'Aurora',nomeFantasia:null,cnaePrincipal:null,
   ultimoContato:null,contatoNome:null,telefone:'11999999999',email:null,cep:null,endereco:null,
-  reservadoAte:null,posse:true,proximoPasso:null,proximoPassoData:null,situacaoRetorno:'sem_data',vencido:false,
+  situacao: 'atendimento', versao: 1, reservadoAte:null,posse:true,proximoPasso:null,proximoPassoData:null,situacaoRetorno:'sem_data',vencido:false,
 }
 
 let raiz: ReturnType<typeof createRoot> | null = null
@@ -28,15 +28,25 @@ afterEach(async () => {
   sessionStorage.clear()
 })
 
-async function montar() {
+async function montar(empresa = EMPRESA) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await act(async () => raiz?.render(<Ficha empresa={EMPRESA} contatos={[]} voltarPara="/carteira?nome=Aurora" />))
+  await act(async () => raiz?.render(<Ficha empresa={empresa} contatos={[]} voltarPara="/carteira?nome=Aurora" />))
   return host
 }
 
 describe('Ficha no navegador', () => {
+  test('arquivada confirma somente o envio desconhecido da aba, sem abrir novo registro', async () => {
+    const valor={tipo:'nao_liguei',nota:'Sem resposta',proximoPasso:'Retornar',proximoPassoData:'2030-10-01'}
+    const salvo=JSON.stringify({valor,envio:{chave:'original',versao:2,valor}})
+    sessionStorage.setItem('crm:contato:v1:a',salvo)
+    const tela=await montar({...EMPRESA,situacao:'sem_interesse'})
+    expect([...tela.querySelectorAll('button')].find(b=>b.textContent==='Confirmar envio anterior')?.disabled).toBe(false)
+    expect([...tela.querySelectorAll('button')].find(b=>b.textContent==='Registrar atendimento')?.disabled).toBe(true)
+    expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
+    expect(tela.querySelector<HTMLTextAreaElement>('textarea')?.readOnly).toBe(true)
+  })
   test('descarte externo preserva comando desconhecido e permite fechar mantendo trabalho', async () => {
     vi.spyOn(history,'back').mockImplementation(()=>{})
     const valor={tipo:'acompanhamento',nota:'Sem resposta',proximoPasso:'Retornar',proximoPassoData:'2030-10-01'}
@@ -81,7 +91,7 @@ describe('Ficha no navegador', () => {
     expect(tela.querySelector('textarea')).toBe(nota)
     expect(nota.value).toBe('Não perder')
     expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('id')).toBe(EMPRESA.id)
-    expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('tipo')).toBe('acompanhamento')
+    expect(new FormData(tela.querySelector<HTMLFormElement>('form[data-visual="fila"]')!).get('tipo')).toBe('nao_liguei')
     expect(tela.querySelector('[name=posse]')).toBeNull()
   })
 
@@ -129,7 +139,7 @@ test('histórico vazio informa título e explicação sem criar uma operação',
   const tela = await montar()
   await act(async () => [...tela.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Histórico')!.click())
   const painel = tela.querySelector('[role=tabpanel]:not([hidden])')!
-  expect(painel.querySelector('h3')?.textContent).toBe('Ainda não há uma conversa registrada.')
+  expect(painel.querySelector('h3')?.textContent).toBe('Ainda não há uma atividade registrada.')
   expect(painel.textContent).toContain('Os atendimentos registrados nesta empresa aparecerão aqui.')
   expect(painel.querySelector('a, button')).toBeNull()
 })

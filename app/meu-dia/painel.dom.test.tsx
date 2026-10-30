@@ -16,13 +16,13 @@ const acaoMock = historicoDaAgendaAcao as unknown as ReturnType<typeof vi.fn>
 const aurora: LinhaMeuDia = {
   id: '11111111-1111-1111-1111-111111111111', cnpj: '11222333000181', razaoSocial: 'Aurora', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Ana', telefone: '11999999999', email: 'ana@aurora.com',
-  cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Ligar', proximoPassoData: '2026-09-10',
+  cep: null, endereco: null, situacao: 'atendimento', versao: 1, reservadoAte: null, posse: true, proximoPasso: 'Ligar', proximoPassoData: '2026-09-10',
   situacaoRetorno: 'atrasado', vencido: true,
 }
 const boreal: LinhaMeuDia = {
   id: '22222222-2222-2222-2222-222222222222', cnpj: '22333444000162', razaoSocial: 'Boreal', nomeFantasia: null,
   cnaePrincipal: null, ultimoContato: null, contatoNome: 'Beto', telefone: '11988888888', email: 'beto@boreal.com',
-  cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: 'Enviar proposta', proximoPassoData: '2026-09-11',
+  cep: null, endereco: null, situacao: 'atendimento', versao: 1, reservadoAte: null, posse: true, proximoPasso: 'Enviar proposta', proximoPassoData: '2026-09-11',
   situacaoRetorno: 'hoje', vencido: false,
 }
 // Preenchimento só para testar a contagem quando `agenda` (a lista completa,
@@ -32,7 +32,7 @@ function preenchimento(indice: number): LinhaMeuDia {
   return {
     id: `99999999-9999-9999-9999-99999999999${indice}`, cnpj: '0', razaoSocial: `Fora do filtro ${indice}`, nomeFantasia: null,
     cnaePrincipal: null, ultimoContato: null, contatoNome: null, telefone: '1', email: null,
-    cep: null, endereco: null, reservadoAte: null, posse: true, proximoPasso: null, proximoPassoData: null,
+    cep: null, endereco: null, situacao: 'atendimento', versao: 1, reservadoAte: null, posse: true, proximoPasso: null, proximoPassoData: null,
     situacaoRetorno: 'hoje', vencido: false,
   }
 }
@@ -92,7 +92,7 @@ describe('PainelMeuDia no navegador', () => {
   test('posse negada no último retorno mantém o motivo visível', async () => {
     acaoMock.mockResolvedValue({ ok: false, motivo: 'fora_da_carteira' })
     const tela = await montar([aurora])
-    expect(tela.querySelector('[role=alert]')?.textContent).toContain('A posse mudou')
+    expect(tela.querySelector('[role=alert]')?.textContent).toContain('O vínculo ou a tarefa mudou')
     expect(tela.querySelector('[data-testid=lista-meu-dia]')).toBeNull()
     expect(tela.textContent).not.toContain('11999999999')
   })
@@ -179,7 +179,7 @@ describe('PainelMeuDia no navegador', () => {
 
     const alerta = tela.querySelector('[role="alert"]')
     expect(alerta).not.toBeNull()
-    expect(alerta?.textContent ?? '').toContain('não está mais na sua carteira')
+    expect(alerta?.textContent ?? '').toContain('não está mais na sua agenda')
     expect(alerta?.textContent ?? '').not.toContain('Ana')
     expect(alerta?.textContent ?? '').not.toContain('ana@aurora.com')
     expect(tela.querySelector('dl')).toBeNull()
@@ -205,7 +205,7 @@ describe('PainelMeuDia no navegador', () => {
     await act(async () => { p1.resolver({ ok: false, motivo: 'fora_da_carteira' }) })
     expect(tela.textContent).toContain('Nenhum retorno pendente para hoje')
     expect(tela.textContent).not.toContain('Aurora')
-    expect(tela.querySelector('[role="alert"]')?.textContent).toContain('A posse mudou')
+    expect(tela.querySelector('[role="alert"]')?.textContent).toContain('O vínculo ou a tarefa mudou')
   })
 
   test('remover empresa por posse negada preserva a rolagem dos itens restantes', async () => {
@@ -241,7 +241,7 @@ describe('PainelMeuDia no navegador', () => {
 
     expect(document.activeElement).not.toBe(document.body)
     expect(document.activeElement?.getAttribute('role')).toBe('alert')
-    expect(document.activeElement?.textContent).toContain('não está mais na sua carteira')
+    expect(document.activeElement?.textContent).toContain('não está mais na sua agenda')
   })
 
   test('falha de carregamento não vira histórico vazio', async () => {
@@ -250,7 +250,7 @@ describe('PainelMeuDia no navegador', () => {
     const tela = await montar([aurora])
     await act(async () => { p1.resolver({ ok: false, motivo: 'falha' }) })
     expect(tela.querySelector('[role="alert"]')).not.toBeNull()
-    expect(tela.textContent).not.toContain('Ainda não há uma conversa registrada')
+    expect(tela.textContent).not.toContain('Ainda não há uma atividade registrada')
   })
 
   // `historicoDaAgendaAcao` não rejeita na prática (ela resolve com

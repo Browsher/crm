@@ -14,6 +14,12 @@ const UM: Contato = {
 }
 
 describe('LinhaDoTempo', () => {
+  test('não liguei conserva nota e autor como atividade sem ligação', () => {
+    const saida = renderToStaticMarkup(<LinhaDoTempo contatos={[{ ...UM, tipo: 'nao_liguei' }]} />)
+    expect(saida).toContain('Atividade sem ligação')
+    expect(saida).toContain('caiu na caixa postal')
+    expect(saida).toContain('VendedorA')
+  })
   test('lista vazia diz que ninguem ligou ainda, e nao fica em branco', () => {
     const saida = renderToStaticMarkup(<LinhaDoTempo contatos={[]} />)
     expect(saida).toContain('Nenhum contato registrado')

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import type { EmpresaComigo } from '@/src/features/fila/consulta'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import {
   agendaDoDia,
   filtrarAgenda,
@@ -13,7 +13,7 @@ function linha(p: Partial<EmpresaComigo> & { id: string }): EmpresaComigo {
   return {
     cnpj: '0', razaoSocial: 'Empresa', nomeFantasia: null,
     cnaePrincipal: null, ultimoContato: null, contatoNome: null, telefone: '1',
-    email: null, cep: null, endereco: null, reservadoAte: null, posse: true,
+    email: null, cep: null, endereco: null, situacao: 'atendimento', versao: 1, reservadoAte: null, posse: true,
     proximoPasso: null, proximoPassoData: null, situacaoRetorno: 'sem_data',
     vencido: false, ...p,
   }

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { historicoDaAgenda } from '@/app/meu-dia/historico'
+import { vincularGrupoAtivo } from './grupos-fixtures'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
 const EMPRESA_INEXISTENTE = '00000000-0000-0000-0000-000000000000'
@@ -24,11 +25,13 @@ beforeAll(async () => {
      ('11222333000343', 'Cristal', '11987654321') RETURNING id`,
   )
   ;[empresaDoA, empresaDoGestor, empresaReservada] = linhas.map((e) => e.id)
+  await vincularGrupoAtivo(banco,linhas.map(e=>e.id))
 })
 
 afterAll(async () => { await banco.derrubar() })
 
 beforeEach(async () => {
+  await banco.sql('DELETE FROM empresa_vinculo')
   await banco.sql('DELETE FROM contato')
   await banco.sql('DELETE FROM empresa_fila')
   await banco.sql(
@@ -39,6 +42,7 @@ beforeEach(async () => {
     `INSERT INTO empresa_fila (empresa_id, vendedor_id, primeira_reserva_em) VALUES ($1, $2, now())`,
     [empresaDoGestor, vendedorA],
   )
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$3,'legado'),($2,$3,'legado')",[empresaDoA,empresaDoGestor,vendedorA])
   // reserva temporária: sem vendedor_id, com reservado_por e prazo vigente.
   await banco.sql(
     `INSERT INTO empresa_fila (empresa_id, vendedor_id, reservado_por, reservado_ate, primeira_reserva_em)
@@ -69,6 +73,7 @@ test('outro vendedor não lê, e a resposta não distingue empresa inexistente',
 
 test('gestor lê a própria carteira e não a do vendedor', async () => {
   await banco.sql('UPDATE empresa_fila SET vendedor_id = $1 WHERE empresa_id = $2', [gestor, empresaDoGestor])
+  await banco.sql('UPDATE empresa_vinculo SET vendedor_id=$1 WHERE empresa_id=$2',[gestor,empresaDoGestor])
   expect((await historicoDaAgenda(gestor, empresaDoGestor)).ok).toBe(true)
   expect(await historicoDaAgenda(gestor, empresaDoA)).toEqual({ ok: false, motivo: 'fora_da_carteira' })
 })
@@ -76,7 +81,7 @@ test('gestor lê a própria carteira e não a do vendedor', async () => {
 test('perder a posse revoga a leitura, mesmo com contato antigo gravado', async () => {
   await registrar(empresaDoA, 'Conversa antiga')
   expect((await historicoDaAgenda(vendedorA, empresaDoA)).ok).toBe(true)
-  await banco.sql('UPDATE empresa_fila SET vendedor_id = NULL WHERE empresa_id = $1', [empresaDoA])
+  await banco.sql('UPDATE empresa_vinculo SET vendedor_id=$2 WHERE empresa_id=$1',[empresaDoA,vendedorB])
   expect(await historicoDaAgenda(vendedorA, empresaDoA)).toEqual({ ok: false, motivo: 'fora_da_carteira' })
 })
 
