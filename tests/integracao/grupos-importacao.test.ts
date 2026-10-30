@@ -1,3 +1,4 @@
+import { confirmarImportacaoHistorica } from './fixtures/importacao-historica'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
@@ -22,7 +23,7 @@ const linha = () => ({ cnpj: cnpjUnico(), razao_social: 'Empresa original', tele
 const sqlConfirmar = 'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6,$7)'
 const parametros = (linhas: unknown, chave = randomUUID()) => [chave, 'Mooca', 'mooca.xlsx', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ total: 2 }), JSON.stringify({ descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null })]
 async function confirmar(linhas: unknown, chave = randomUUID(), usuario = gestor) {
-  const r = await banco.comoUsuario(usuario, e => e<{grupo_id:string; inseridas:number; vinculadas:number; relatorio:unknown}>(sqlConfirmar, parametros(linhas, chave)))
+  const r = await confirmarImportacaoHistorica<{grupo_id:string; inseridas:number; vinculadas:number; relatorio:unknown}>(banco, usuario, parametros(linhas, chave))
   return r.linhas[0]
 }
 const situacao = (id: string, ativo: boolean, usuario = gestor) => banco.comoUsuario(usuario, e => e('SELECT grupo_importacao_situacao_definir($1,$2) AS resultado', [id, ativo]))
@@ -67,11 +68,11 @@ test('repetição preserva resultado inclusive após renomeação; divergência 
   await expect(confirmar(linhas, chave, outroGestor)).rejects.toMatchObject({ code: '22023' })
   const reanalisado = parametros(linhas, chave)
   reanalisado[5] = JSON.stringify({novas:0, jaCadastradas:1})
-  expect((await banco.comoUsuario(gestor, e => e(sqlConfirmar, reanalisado))).linhas[0]).toEqual(r)
+  expect((await confirmarImportacaoHistorica(banco, gestor, reanalisado)).linhas[0]).toEqual(r)
   for (const [indice, valor] of [[1, 'Outro'], [2, 'outro.xlsx'], [3, 'b'.repeat(64)], [4, JSON.stringify([linha()])]] as const) {
     const p = parametros(linhas, chave)
     p[indice] = valor
-    await expect(banco.comoUsuario(gestor, e => e(sqlConfirmar, p))).rejects.toMatchObject({ code: '22023' })
+    await expect(confirmarImportacaoHistorica(banco, gestor, p)).rejects.toMatchObject({ code: '22023' })
   }
   expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
 })
@@ -136,7 +137,7 @@ test('payload inválido ou duplicado desfaz grupo, vínculos e inserções inclu
   for (const [i, valor] of [[0, null], [1, ''], [1, 'x'.repeat(101)], [1, 'a\nb'], [2, ''], [2, 'x'.repeat(256)], [3, 'x'], [5, '[]']] as const) {
     const p: unknown[] = parametros([linha()])
     p[i] = valor
-    await expect(banco.comoUsuario(gestor, e => e(sqlConfirmar, p))).rejects.toMatchObject({code:'22023'})
+    await expect(confirmarImportacaoHistorica(banco, gestor, p)).rejects.toMatchObject({code:'22023'})
   }
 })
 async function prepararVinculo(id:string) {
@@ -167,7 +168,7 @@ test('limites medem o texto completo recebido; espaços externos não burlam nom
   for (const [indice,valor] of [[1, ' '+ 'x'.repeat(100)], [2,' '+ 'x'.repeat(255)]] as const) {
     const p = parametros([linha()])
     p[indice] = valor
-    await expect(banco.comoUsuario(gestor,e=>e(sqlConfirmar,p))).rejects.toMatchObject({code:'22023'})
+    await expect(confirmarImportacaoHistorica(banco, gestor, p)).rejects.toMatchObject({code:'22023'})
   }
 })
 
@@ -208,12 +209,13 @@ test('mutações têm retorno explícito, auditoria e FK impede remover grupo ou
   await expect(banco.sql(sqlConfirmar,parametros([linha()]))).rejects.toMatchObject({code:'42501'})
 })
 
-async function conexao(usuario: string) {
-  const c = new Client({connectionString:banco.urlApp,ssl:false})
+async function conexao(usuario: string, historica = false) {
+  const c = new Client({connectionString:historica ? banco.urlAdmin : banco.urlApp,ssl:false})
   await c.connect()
   await c.query('BEGIN')
   await c.query("SET LOCAL statement_timeout='8s'")
-  await c.query("SELECT set_config('app.usuario_id',$1,true),set_config('role','app_usuario',true)", [usuario])
+  await c.query("SELECT set_config('app.usuario_id',$1,true)", [usuario])
+  if (!historica) await c.query('SET LOCAL ROLE app_usuario')
   return c
 }
 async function esperarLock(pid: number) {
@@ -226,8 +228,8 @@ async function esperarLock(pid: number) {
 
 test('confirmações concorrentes com mesma chave aguardam e retornam exatamente um grupo', async () => {
   const p = parametros([linha()])
-  const a = await conexao(gestor)
-  const b = await conexao(gestor)
+  const a = await conexao(gestor, true)
+  const b = await conexao(gestor, true)
   try {
     const primeira = (await a.query(sqlConfirmar,p)).rows
     const [{pid}] = (await b.query('SELECT pg_backend_pid() AS pid')).rows

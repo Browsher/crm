@@ -67,6 +67,24 @@ export function bancoGruposDoHarness(): BancoDeTeste {
   }
 }
 
+// Prepara listas históricas sem atravessar a interface de importação aposentada.
+export async function criarListaHistorica(nome: string, empresas: string[], autor: string) {
+  return comBancoGrupos(async c => {
+    await c.query('BEGIN')
+    try {
+      await c.query("SELECT set_config('app.usuario_id',$1,true)", [autor])
+      const { rows: [grupo] } = await c.query<{ id: string }>(`INSERT INTO grupo_importacao(nome,arquivo_nome,descricao,origem,criterios)
+        VALUES ($1,'fixture-historica.xlsx','Lista de regressão com contato disponível','Coleta fictícia E2E','Telefone informado') RETURNING id`, [nome])
+      await c.query('INSERT INTO grupo_importacao_empresa(grupo_id,empresa_id) SELECT $1,unnest($2::uuid[])', [grupo.id, empresas])
+      await c.query('COMMIT')
+      return grupo.id
+    } catch (erro) {
+      await c.query('ROLLBACK')
+      throw erro
+    }
+  })
+}
+
 export const LISTA_CATALOGO_ALTERNATIVA = '00000000-0000-4000-8000-000000000921'
 export const NOME_CATALOGO_ALTERNATIVA = 'Receita Federal fictícia | Comércio e serviços, lista longa para conferir leitura em telas pequenas'
 export async function prepararCatalogoComercial() {

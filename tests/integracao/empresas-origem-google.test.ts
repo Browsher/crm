@@ -1,8 +1,8 @@
+import { repositorioHistorico, confirmarImportacaoHistorica } from './fixtures/importacao-historica'
 import { contatoDireto } from './fixtures/contato-direto'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { CABECALHO_GOOGLE } from '@/src/features/empresas/planilha'
-import { repositorioPostgres } from '@/src/features/empresas/repositorio'
 import { analisar, importar } from '@/src/features/empresas/servico'
 import { textoDoMotivo } from '@/src/features/empresas/mensagens'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
@@ -13,10 +13,9 @@ let vendedor: string
 let outro: string
 const prospect = (id = 'ChIJ-ficticio-a') => ({ cnpj: null, razao_social: null, nome_fantasia: 'Câmeras Aurora', telefone: '11987654321', google_place_id: id })
 async function confirmar(linhas: unknown[], chave = randomUUID(), usuario = gestor) {
-  const r = await banco.comoUsuario(usuario, e => e<{ grupo_id: string; inseridas: number; vinculadas: number; relatorio: unknown }>(
-    'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6,$7)',
+  const r = await confirmarImportacaoHistorica<{ grupo_id: string; inseridas: number; vinculadas: number; relatorio: unknown }>(banco, usuario,
     [chave, 'Mooca', 'mooca.csv', 'a'.repeat(64), JSON.stringify(linhas), JSON.stringify({ novas: linhas.length }), JSON.stringify({ descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null })],
-  ))
+  )
   return r.linhas[0]
 }
 beforeAll(async () => {
@@ -128,7 +127,7 @@ test('helper de DV não tem execução para PUBLIC nem aplicação', async () =>
   await expect(banco.comoUsuario(gestor, e => e("SELECT empresa_cnpj_valido('11222333000181')"))).rejects.toMatchObject({ code: '42501' })
 })
 test('conflito surgido após análise produz nova conferência sem salvar parte do lote', async () => {
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   const fonte = new TextEncoder().encode([
     CABECALHO_GOOGLE,
     ',,Nova,,11987654321,,,,ChIJ-nova',
@@ -150,7 +149,7 @@ test('conflito surgido após análise produz nova conferência sem salvar parte 
 
 
 test.each([true, false])('conflito antes da reanálise não muda seleção aprovada, lote misto=%s', async misto => {
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   const fonte = new TextEncoder().encode([
     CABECALHO_GOOGLE,
     '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito',
@@ -166,7 +165,7 @@ test.each([true, false])('conflito antes da reanálise não muda seleção aprov
   expect(await banco.sql('SELECT count(*)::int AS n FROM grupo_importacao')).toEqual([{ n: 1 }])
 })
 test('recusa preexistente não amplia seleção quando deixa de divergir', async () => {
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   await confirmar([{ ...prospect('ChIJ-conflito'), cnpj: '11444777000161', razao_social: 'Outra LTDA' }])
   const fonte = new TextEncoder().encode([CABECALHO_GOOGLE, '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito', ',,Nova,,11987654321,,,,ChIJ-nova'].join('\n'))
   const conferido = await analisar(repo, fonte)
@@ -177,7 +176,7 @@ test('recusa preexistente não amplia seleção quando deixa de divergir', async
   expect(r).toMatchObject({ ok: true, inseridas: 1, vinculadas: 1, relatorio: { novas: 1, jaCadastradas: 0, recusadas: [{ tipo: 'identidade', motivo: 'cnpj_divergente' }] } })
 })
 test('replay da seleção aprovada permanece válido após divergência cadastral posterior', async () => {
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   const fonte = new TextEncoder().encode([CABECALHO_GOOGLE, '11222333000181,Aurora LTDA,,,11987654321,,,,ChIJ-conflito'].join('\n'))
   const conferido = await analisar(repo, fonte)
   if (!conferido.ok) throw new Error('esperava análise válida')
@@ -194,7 +193,7 @@ test.each([['origens sem CNPJ', ''], ['CNPJ e origem', '11222333000181']] as con
   await confirmar([existente])
   await confirmar([{ ...existente, google_place_id: 'ChIJ-b' }])
   const antes = await banco.sql('SELECT * FROM empresa ORDER BY id')
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   const fonte = new TextEncoder().encode([
     CABECALHO_GOOGLE,
     `${cnpj},,Aurora,,11987654321,,,,${cnpj ? '' : 'ChIJ-a'}`,
@@ -217,7 +216,7 @@ test.each([['origens sem CNPJ', ''], ['CNPJ e origem', '11222333000181']] as con
 })
 
 test('UUID repetido surgido após conferir chega ao SQL sem reduzir seleção original', async () => {
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   const fonte = new TextEncoder().encode([CABECALHO_GOOGLE,
     '11222333000181,Aurora LTDA,,,11987654321,,,,',
     ',,Aurora,,11987654321,,,,ChIJ-b',
@@ -234,7 +233,7 @@ test('UUID repetido surgido após conferir chega ao SQL sem reduzir seleção or
 })
 
 test('replay do recibo anterior conserva resultado mesmo após origens resolverem para o mesmo UUID', async () => {
-  const repo = repositorioPostgres(gestor)
+  const repo = repositorioHistorico(banco, gestor)
   const fonte = new TextEncoder().encode([CABECALHO_GOOGLE,
     ',,Aurora,,11987654321,,,,ChIJ-a',
     ',,Aurora,,11987654321,,,,ChIJ-b',

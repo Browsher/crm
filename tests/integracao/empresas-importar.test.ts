@@ -1,8 +1,9 @@
+import { repositorioHistorico } from './fixtures/importacao-historica'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import type { LinhaAceita } from '@/src/features/empresas/planilha'
 import { CABECALHO_LEGADO } from '@/src/features/empresas/planilha'
-import { repositorioPostgres, type OperacaoGrupo } from '@/src/features/empresas/repositorio'
+import { type OperacaoGrupo } from '@/src/features/empresas/repositorio'
 import { analisar, importar, type Relatorio } from '@/src/features/empresas/servico'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 
@@ -60,7 +61,7 @@ afterAll(async () => {
 
 describe('preparar', () => {
   test('devolve a data da base, os cnpjs ja cadastrados e os enderecos', async () => {
-    const repo = repositorioPostgres(gestor)
+    const repo = repositorioHistorico(banco, gestor)
     await banco.sql(
       `INSERT INTO empresa (cnpj, razao_social, telefone)
        VALUES ('11222333000181', 'Aurora Comercio LTDA', '11987654321')`,
@@ -74,14 +75,14 @@ describe('preparar', () => {
   })
 
   test('listas vazias nao vao ao banco atoa e nao quebram', async () => {
-    const p = await repositorioPostgres(gestor).preparar([], [])
+    const p = await repositorioHistorico(banco, gestor).preparar([], [])
     if ('motivo' in p) throw new Error(p.motivo)
     expect(p.porCnpj.size).toBe(0)
     expect(p.enderecos.size).toBe(0)
   })
 
   test('vendedor nao ve empresa nem a data da base', async () => {
-    const p = await repositorioPostgres(vendedor).preparar([linha(2, '11222333000181')], [])
+    const p = await repositorioHistorico(banco, vendedor).preparar([linha(2, '11222333000181')], [])
     if ('motivo' in p) throw new Error(p.motivo)
     expect(p.porCnpj.size).toBe(0)
     expect(p.basePublicadaEm).toBe(null)
@@ -90,7 +91,7 @@ describe('preparar', () => {
 
 describe('gravar', () => {
   test('confirma grupo, insere em lote e registra o gestor', async () => {
-    const r = await repositorioPostgres(gestor).gravar(operacao(), [
+    const r = await repositorioHistorico(banco, gestor).gravar(operacao(), [
       linha(2, '11444777000161', { cep: '01310100' }),
       linha(3, '11555777000139', { nomeFantasia: 'Bela Luz', email: 'oi@bela.com.br' }),
     ], relatorio(2))
@@ -105,13 +106,13 @@ describe('gravar', () => {
   })
 
   test('vendedor recebe sem_permissao, nao excecao', async () => {
-    const r = await repositorioPostgres(vendedor).gravar(operacao(), [linha(2, '11666777000106')], relatorio(1))
+    const r = await repositorioHistorico(banco, vendedor).gravar(operacao(), [linha(2, '11666777000106')], relatorio(1))
     expect(r).toEqual({ ok: false, motivo: 'sem_permissao' })
   })
 
   test('cnpj repetido no pedido: devolve confirmacao_invalida e nao grava nenhuma', async () => {
     const antes = await banco.sql<{ n: string }>('SELECT count(*)::text AS n FROM empresa')
-    const r = await repositorioPostgres(gestor).gravar(
+    const r = await repositorioHistorico(banco, gestor).gravar(
       operacao(),
       [linha(2, '11777777000183'), linha(3, '11777777000183')],
       relatorio(2),
@@ -122,7 +123,7 @@ describe('gravar', () => {
   })
 
   test('CNPJ existente com razão social divergente exige revisão e desfaz o lote', async () => {
-    const repo = repositorioPostgres(gestor)
+    const repo = repositorioHistorico(banco, gestor)
     const existente = linha(2, '11666777000106', { razaoSocial: 'Original LTDA' })
     expect(await repo.gravar(operacao('Primeiro'), [existente], relatorio(1))).toMatchObject({ ok: true, inseridas: 1 })
     const gruposAntes = await banco.sql('SELECT * FROM grupo_importacao ORDER BY id')
@@ -149,7 +150,7 @@ describe('importar: confirmação idempotente', () => {
   )
 
   test('retry após o primeiro commit devolve grupo, contagens e relatório originais', async () => {
-    const repo = repositorioPostgres(gestor)
+    const repo = repositorioHistorico(banco, gestor)
     const op = operacao('Replay')
     const primeira = await importar(repo, duas, op, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     const segunda = await importar(repo, duas, op, { linhasAceitas: [2, 3], recusadasIdentidade: [] })
@@ -164,7 +165,7 @@ describe('importar: confirmação idempotente', () => {
   })
 
   test('arquivo somente com existentes ainda cria grupo e vínculos', async () => {
-    const r = await importar(repositorioPostgres(gestor), duas, operacao('Somente existentes'), { linhasAceitas: [2, 3], recusadasIdentidade: [] })
+    const r = await importar(repositorioHistorico(banco, gestor), duas, operacao('Somente existentes'), { linhasAceitas: [2, 3], recusadasIdentidade: [] })
     expect(r).toMatchObject({ ok: true, inseridas: 0, vinculadas: 2 })
   })
 })
@@ -177,7 +178,7 @@ describe('preparar: base de CEP nunca carregada', () => {
     const guardadas = await banco.sql<Record<string, unknown>>('SELECT * FROM cep_carga')
     await banco.sql('DELETE FROM cep_carga')
     try {
-      const p = await repositorioPostgres(gestor).preparar([], ['01310100'])
+      const p = await repositorioHistorico(banco, gestor).preparar([], ['01310100'])
       if ('motivo' in p) throw new Error(p.motivo)
       expect(p.basePublicadaEm).toBe(null)
       // A tabela cep continua cheia: os dois estados sao independentes, e e por
@@ -212,7 +213,7 @@ describe('analisar: contagem de CEP contra o banco', () => {
 
   test('um CEP presente e um ausente: conta exatamente um nao encontrado', async () => {
     const r = await analisar(
-      repositorioPostgres(gestor),
+      repositorioHistorico(banco, gestor),
       csv(
         '11666777000106,Presente LTDA,,,1134567890,,01310100',
         '11777777000183,Ausente LTDA,,,1134567891,,00000000',
@@ -225,7 +226,7 @@ describe('analisar: contagem de CEP contra o banco', () => {
   })
 
   test('so CEP presente: nenhum nao encontrado', async () => {
-    const r = await analisar(repositorioPostgres(gestor), csv('11666777000106,Presente LTDA,,,1134567890,,01310100'))
+    const r = await analisar(repositorioHistorico(banco, gestor), csv('11666777000106,Presente LTDA,,,1134567890,,01310100'))
     if (!r.ok) throw new Error('esperava ok')
     expect(r.relatorio.cepsNaoEncontrados).toBe(0)
   })

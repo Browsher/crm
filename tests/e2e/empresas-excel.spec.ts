@@ -1,56 +1,33 @@
 import { expect, test } from '@playwright/test'
-import { readFile } from 'node:fs/promises'
-import { comAdmin } from '../../src/server/db/admin'
-import { exigirAdminLocal } from './ambiente'
+import { comBancoGrupos } from './dados-grupos'
 
-// CNPJ do exemplo do arquivo oferecido pelo CRM, distinto da fixture CSV.
-const CNPJ_MODELO = '11222333000181'
-
-async function empresaDoModelo() {
-  const url = process.env.DATABASE_URL_ADMIN
-  if (!url) throw new Error('Use o harness E2E')
-  exigirAdminLocal(url)
-  if (!/^\/teste_[0-9a-f]{12}$/.test(new URL(url).pathname)) throw new Error('Banco temporário obrigatório')
-  return comAdmin(url, async cliente => {
-    const resultado = await cliente.query<{ cnpj: string; cep: string; cnae_principal: string }>(
-      'SELECT cnpj, cep, cnae_principal FROM empresa WHERE cnpj = $1', [CNPJ_MODELO],
-    )
-    return resultado.rows
+async function fotografia() {
+  return comBancoGrupos(async c => {
+    const estado = []
+    for (const tabela of ['empresa', 'grupo_importacao', 'grupo_importacao_empresa', 'empresa_origem_google']) estado.push((await c.query('SELECT * FROM '+tabela+' ORDER BY 1,2')).rows)
+    return estado
   })
 }
 
-test('modelo Excel baixado passa pela conferência e só grava ao confirmar', async ({ page }) => {
-  expect(await empresaDoModelo()).toEqual([])
+test('endereço antigo encaminha gestor sem formulário, atalhos ou escrita', async ({ page }) => {
+  const antes = await fotografia()
   await page.goto('/login')
   await page.getByLabel('E-mail').fill('gestore2e@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/gestao')
   await page.goto('/empresas/importar')
-  await expect(page.getByRole('main').locator('form [data-slot=card]')).toHaveCount(1)
-  await page.getByLabel('Nome do grupo', { exact: true }).fill('Importação de regressão E2E')
-  await page.getByLabel('Resumo da lista', { exact: true }).fill('Lista de regressão com contato disponível')
-  await page.getByLabel('Origem dos dados', { exact: true }).fill('Coleta fictícia E2E')
-  await page.getByLabel('Critérios usados', { exact: true }).fill('Telefone informado')
-  await page.getByText('Modelo e orientações de preenchimento', { exact: true }).click()
-  const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('link', { name: 'Baixe o modelo Excel' }).click()
-  const download = await downloadPromise
-  expect(download.suggestedFilename()).toBe('modelo-empresas.xlsx')
-  const caminho = await download.path()
-  if (!caminho) throw new Error('Download do modelo ausente')
-  const input = page.locator('input[name="arquivo"]')
-  await expect(input).toHaveAttribute('accept', /\.xlsx/)
-  await input.setInputFiles({
-    name: download.suggestedFilename(),
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    buffer: await readFile(caminho),
-  })
-  await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Confira antes de importar' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Confirmar importação', exact: true })).toBeVisible()
-  expect(await empresaDoModelo()).toEqual([])
-  await page.getByRole('button', { name: 'Confirmar importação', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Importação concluída' })).toBeVisible()
-  expect(await empresaDoModelo()).toEqual([{ cnpj: CNPJ_MODELO, cep: '01310100', cnae_principal: '4742300' }])
+  await expect(page).toHaveURL('/empresas')
+  await expect(page.locator('input[type=file]')).toHaveCount(0)
+  for (const caminho of ['/empresas', '/empresas?cidade=3550308', '/empresas/grupos', '/empresas/grupos?pagina=999']) {
+    await page.goto(caminho)
+    await expect(page.locator('a[href="/empresas/importar"]')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /Conferir arquivo|Confirmar importação/ })).toHaveCount(0)
+  }
+  expect(await fotografia()).toEqual(antes)
+})
+
+test('visitante continua sujeito à autenticação no endereço antigo', async ({ page }) => {
+  await page.goto('/empresas/importar')
+  await expect(page).toHaveURL('/login')
 })

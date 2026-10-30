@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
-import ExcelJS from 'exceljs'
 import { formatarCnpj } from '../../src/lib/empresa-visual'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
-import { bancoGruposDoHarness, comBancoGrupos, prepararGrupos, GRUPOS, CNPJ_JORNADA_NOVA, CNPJ_JORNADA_OVERLAP, CNPJ_JORNADA_CARTEIRA } from './dados-grupos'
+import { bancoGruposDoHarness, comBancoGrupos, criarListaHistorica, prepararGrupos, GRUPOS, CNPJ_JORNADA_NOVA, CNPJ_JORNADA_OVERLAP, CNPJ_JORNADA_CARTEIRA } from './dados-grupos'
 
 const NOVA = 'Jornada Grupos Nova fictícia'
 const OVERLAP = 'Jornada Grupos Compartilhada fictícia'
@@ -18,41 +17,8 @@ async function entrar(page: Page, apelido = 'gruposgestore2e') {
   await expect(page).toHaveURL(apelido.includes('gestor') ? '/gestao' : '/meu-dia')
 }
 
-async function planilha(linhas: string[][]) {
-  const livro = new ExcelJS.Workbook()
-  const aba = livro.addWorksheet('Empresas')
-  aba.addRow(['cnpj', 'razao_social', 'nome_fantasia', 'contato_nome', 'telefone', 'email', 'cep', 'cnae_principal'])
-  for (const linha of linhas) aba.addRow(linha)
-  return Buffer.from(await livro.xlsx.writeBuffer())
-}
-
-function linha(cnpj: string, nome: string, telefone = '11999990777') {
-  return [cnpj, nome, 'Fantasia da planilha', 'Pessoa fictícia', telefone, 'grupo@teste.local', '', '7777702']
-}
-
-async function conferir(page: Page, nome: string, buffer: Buffer) {
-  await page.goto('/empresas/importar')
-  await page.getByLabel('Nome do grupo', { exact: true }).fill(nome)
-  await page.getByLabel('Resumo da lista', { exact: true }).fill('Lista de regressão com contato disponível')
-  await page.getByLabel('Origem dos dados', { exact: true }).fill('Coleta fictícia E2E')
-  await page.getByLabel('Critérios usados', { exact: true }).fill('Telefone informado')
-  await page.getByLabel('Arquivo Excel ou CSV').setInputFiles({ name: 'jornada-grupos.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer })
-  await page.getByRole('button', { name: 'Conferir arquivo', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Confira antes de importar' })).toBeFocused()
-  await expect(page.getByText('Nada foi gravado.', { exact: false })).toBeVisible()
-}
-
 function resumo(page: Page, nome: string) {
   return page.locator('dt').filter({ hasText: new RegExp(`^${nome}$`) }).locator('xpath=following-sibling::dd')
-}
-
-async function estadoImportacao() {
-  return comBancoGrupos(async c => {
-    const tabelas = ['empresa', 'grupo_importacao', 'grupo_importacao_empresa']
-    const estado = []
-    for (const tabela of tabelas) estado.push((await c.query(`SELECT * FROM ${tabela} ORDER BY 1, 2`)).rows)
-    return estado
-  })
 }
 
 test.beforeAll(async () => {
@@ -77,25 +43,24 @@ test.beforeAll(async () => {
   await banco.sql('UPDATE empresa_vinculo SET agenda_contato_id=(SELECT id FROM contato WHERE empresa_id=$1) WHERE empresa_id=$1',[id])
 })
 
-test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva atendimento ao desativar', async ({ page, browser }) => {
+test('listas históricas permitem corrigir contexto, renomear e desativar preservando atendimento', async ({ page, browser }) => {
   test.setTimeout(90_000)
   await entrar(page)
-  const antes = await estadoImportacao()
   const cadastroAntes = await comBancoGrupos(async c => (await c.query('SELECT * FROM empresa WHERE cnpj=$1', [CNPJ_JORNADA_CARTEIRA])).rows)
   const filaAntes = await comBancoGrupos(async c => (await c.query('SELECT f.* FROM empresa_fila f JOIN empresa e ON e.id=f.empresa_id WHERE e.cnpj=$1', [CNPJ_JORNADA_CARTEIRA])).rows)
   const contatoAntes = await comBancoGrupos(async c => (await c.query('SELECT c.* FROM contato c JOIN empresa e ON e.id=c.empresa_id WHERE e.cnpj=$1', [CNPJ_JORNADA_CARTEIRA])).rows)
   expect(filaAntes).toHaveLength(1)
   expect(contatoAntes).toHaveLength(1)
-  await conferir(page, NOME, await planilha([linha(CNPJ_JORNADA_NOVA, NOVA), linha(CNPJ_JORNADA_OVERLAP, OVERLAP), linha(CNPJ_JORNADA_CARTEIRA, CARTEIRA)]))
-  await expect(resumo(page, 'Novas empresas')).toHaveText('2')
-  await expect(resumo(page, 'Já cadastradas')).toHaveText('1')
-  expect(await estadoImportacao()).toEqual(antes)
-  await page.getByRole('button', { name: 'Confirmar importação', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Importação concluída' })).toBeFocused()
-  await expect(page.getByText('2 empresas novas.', { exact: true })).toBeVisible()
-  await expect(page.getByText('3 empresas no grupo.', { exact: true })).toBeVisible()
-  await page.getByRole('link', { name: 'Ver lista', exact: true }).click()
-  await expect(page).toHaveURL(/\/empresas\/grupos\/[0-9a-f-]{36}$/)
+  const { autor, empresas } = await comBancoGrupos(async c => {
+    const { rows: [gestor] } = await c.query("SELECT id FROM usuario WHERE email='gruposgestore2e@teste.local'")
+    for (const [cnpj,nome] of [[CNPJ_JORNADA_NOVA,NOVA],[CNPJ_JORNADA_OVERLAP,OVERLAP]]) {
+      await c.query("INSERT INTO empresa(cnpj,razao_social,nome_fantasia,contato_nome,telefone,email,cnae_principal) VALUES($1,$2,'Fantasia da planilha','Pessoa fictícia','11999990777','grupo@teste.local','7777702') ON CONFLICT(cnpj) DO NOTHING",[cnpj,nome])
+    }
+    const { rows } = await c.query('SELECT id FROM empresa WHERE cnpj=ANY($1::text[])',[[CNPJ_JORNADA_NOVA,CNPJ_JORNADA_OVERLAP,CNPJ_JORNADA_CARTEIRA]])
+    return { autor: gestor.id, empresas: rows.map(e => e.id) }
+  })
+  const grupoId = await criarListaHistorica(NOME, empresas, autor)
+  await page.goto('/empresas/grupos/'+grupoId)
   await expect(page.getByRole('main').locator('[data-slot=badge]').first()).toHaveText('Ativo')
   const urlGrupo = page.url()
   await expect(page.getByRole('heading', { name: NOME, exact: true })).toBeVisible()
@@ -114,14 +79,8 @@ test('XLSX confirma grupo, reimporta existentes sem sobrescrever e preserva aten
   await expect(contextoLista.locator('dl')).toContainText('Revisão da coleta fictícia')
   expect(await comBancoGrupos(async c => (await c.query('SELECT pedido FROM grupo_importacao WHERE id=$1', [urlGrupo.split('/').at(-1)])).rows)).toEqual(pedidoOriginal)
 
-  const aposPrimeira = await estadoImportacao()
-  await conferir(page, 'Outra origem da jornada', await planilha([linha(CNPJ_JORNADA_OVERLAP, OVERLAP, '11955556666')]))
-  await expect(resumo(page, 'Novas empresas')).toHaveText('0')
-  await expect(resumo(page, 'Já cadastradas')).toHaveText('1')
-  expect(await estadoImportacao()).toEqual(aposPrimeira)
-  await page.getByRole('button', { name: 'Confirmar importação', exact: true }).click()
-  await expect(page.getByText('0 empresas novas.', { exact: true })).toBeVisible()
-  await expect(page.getByText('1 empresa no grupo.', { exact: true })).toBeVisible()
+  const overlapId = await comBancoGrupos(async c => (await c.query('SELECT id FROM empresa WHERE cnpj=$1',[CNPJ_JORNADA_OVERLAP])).rows[0].id)
+  await criarListaHistorica('Outra origem da jornada', [overlapId], autor)
   expect(await comBancoGrupos(async c => (await c.query('SELECT razao_social,telefone FROM empresa WHERE cnpj=$1', [CNPJ_JORNADA_OVERLAP])).rows)).toEqual([{ razao_social: OVERLAP, telefone: '11999990777' }])
 
   await page.goto(urlGrupo)

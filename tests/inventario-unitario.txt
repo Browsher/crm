@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 2267
+# Total: 2201
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -13,11 +13,14 @@ app/api/agente/google/route.test.tsx :: API confirma encerramento explícito da 
 app/api/agente/google/route.test.tsx :: API consulta progresso sem sincronizar planilha ou revalidar pagina
 app/api/agente/google/route.test.tsx :: API devolve reserva durável do lote
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador abre o editor real e move o foco para a nota
+app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador arquivada confirma somente o envio desconhecido da aba, sem abrir novo registro
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador cancelar descarte preserva rascunho e empresa selecionada
+app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador descarte externo preserva comando desconhecido e permite fechar mantendo trabalho
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador voltar do navegador pede confirmação quando existe rascunho
 app/carteira/[id]/ficha.dom.test.tsx :: Ficha no navegador voltar durante envio mantém o editor e não abre descarte
 app/carteira/[id]/ficha.dom.test.tsx :: histórico vazio informa título e explicação sem criar uma operação
 app/carteira/[id]/ficha.test.tsx :: Ficha a linha do tempo vazia diz que ninguem ligou ainda
+app/carteira/[id]/ficha.test.tsx :: Ficha cliente arquivado conserva histórico e exige retomar antes de novo trabalho
 app/carteira/[id]/ficha.test.tsx :: Ficha distingue erro de historico vazio
 app/carteira/[id]/ficha.test.tsx :: Ficha mostra ausencias e o CNAE sem inventar dados
 app/carteira/[id]/ficha.test.tsx :: Ficha mostra cadastro, telefone e CNPJ
@@ -53,11 +56,14 @@ app/carteira/lista.test.tsx :: ListaCarteira nao mostra o aviso de grupo quando 
 app/carteira/lista.test.tsx :: ListaCarteira o grupo sem proximo passo aparece contado e nomeado
 app/carteira/lista.test.tsx :: ListaCarteira vazia, diz o que fazer em vez de so dizer que esta vazia
 app/carteira/lista.test.tsx :: registros mantêm caption, cabeçalhos e rótulos de todas as células no celular
+app/carteira/registrar-venda.dom.test.tsx :: recusa O atendimento mudou preserva dados e chave até nova intenção
+app/carteira/registrar-venda.dom.test.tsx :: recusa Retome o atendimento preserva dados e chave até nova intenção
 app/carteira/registrar-venda.dom.test.tsx :: venda pede confirmação, preserva rascunho e repete a mesma chave após falha de rede
+app/carteira/venda-acao.test.tsx :: estado arquivada retorna orientação definitiva sem falso sucesso
+app/carteira/venda-acao.test.tsx :: estado desatualizada retorna orientação definitiva sem falso sucesso
 app/carteira/venda-acao.test.tsx :: não grava sem confirmação, valor válido ou permissão
 app/carteira/venda-acao.test.tsx :: venda usa identidade da sessão, valor em centavos e atualiza histórico e agenda
 app/design/galeria.test.tsx :: abas da ficha mostram dados e histórico sem misturar o conteúdo
-app/design/galeria.test.tsx :: abre o exemplo no próprio card sem o rótulo Ausente
 app/design/galeria.test.tsx :: aplica os filtros aos dados fictícios e limpar restaura a lista
 app/design/galeria.test.tsx :: avança apenas pelas ações e preserva anotações ao voltar
 app/design/galeria.test.tsx :: carregamento aparece na busca e termina com o resultado
@@ -65,17 +71,21 @@ app/design/galeria.test.tsx :: expõe as seções e dados fictícios da referên
 app/design/galeria.test.tsx :: falha ao salvar preserva a nota e permite tentar novamente
 app/design/galeria.test.tsx :: galeria compartilha shell e tema sem perder rascunho na ficha
 app/design/galeria.test.tsx :: galeria usa somente um shell e mostra tabela com componentes reais
+app/design/galeria.test.tsx :: o descarte real fica fora das três etapas e responde à simulação
 app/design/galeria.test.tsx :: registra a confirmação junto à seção do diálogo
 app/design/galeria.test.tsx :: simula busca com carregamento e resposta explícita
 app/design/galeria.test.tsx :: troca o tema no escopo da galeria
+app/design/galeria.test.tsx :: usa o card real com detalhe cadastral local e ausências explícitas
 app/design/page.test.tsx :: não renderiza o conteúdo quando a guarda recusa o acesso
 app/design/page.test.tsx :: pagina e galeria nao importam caminhos de escrita de negocio
 app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
 app/empresas/[id]/page.test.tsx :: falha no histórico não se apresenta como histórico vazio
 app/empresas/[id]/page.test.tsx :: ficha de consulta sem ações de vendedor e volta preserva filtros
 app/empresas/[id]/page.test.tsx :: inexistente não consulta histórico
+app/empresas/busca/detalhe-acao.test.tsx :: action comum autentica antes de carregar DTO e não aceita identidade/papel da tela
+app/empresas/busca/detalhe-acao.test.tsx :: adapter de empresa preserva a guarda antes de tratar falhas de leitura
 app/empresas/busca/detalhe-acao.test.tsx :: ausência e falha não retornam dados de outra busca
-app/empresas/busca/detalhe-acao.test.tsx :: empresa recente exige vendedor e vínculo exato na busca acessível, sem consulta paga
+app/empresas/busca/detalhe-acao.test.tsx :: empresa recente usa identidade autenticada e só componente de dados, sem metadados/limite/fornecedor
 app/empresas/busca/detalhe-acao.test.tsx :: exige sessão válida antes de qualquer leitura
 app/empresas/busca/detalhe-acao.test.tsx :: papel do gestor vem da sessão e dispensa limite de vendedor
 app/empresas/busca/detalhe-acao.test.tsx :: usa identidade da sessão e leitura protegida por RLS, sem criar consulta
@@ -104,73 +114,18 @@ app/empresas/grupos/metadados.test.tsx :: grupo antigo mostra nulos sem inventar
 app/empresas/grupos/page.test.tsx :: detalhe de lista antiga exibe origem não informada e permite corrigir contexto
 app/empresas/grupos/page.test.tsx :: detalhe identifica responsável inativo, outras origens e paginação
 app/empresas/grupos/page.test.tsx :: detalhe usa nome comercial conhecido e CNPJ não informado
-app/empresas/grupos/page.test.tsx :: estado vazio oferece importação
+app/empresas/grupos/page.test.tsx :: estado vazio orienta consultar as coletas sem oferecer importação manual
 app/empresas/grupos/page.test.tsx :: lista compacta usa totais globais, origem migrada e navegação real
 app/empresas/grupos/page.test.tsx :: página além do fim orienta voltar sem apresentar a base como vazia
 app/empresas/grupos/page.test.tsx :: recurso ausente vira 404
-app/empresas/importar/acao.test.tsx :: Action completa: lote misto=false, recusa preexistente=false
-app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=false
-app/empresas/importar/acao.test.tsx :: Action completa: lote misto=true, recusa preexistente=true
-app/empresas/importar/acao.test.tsx :: Action preserva emoji no limite 500/2000 e recusa limite excedido e controles antes de ler
-app/empresas/importar/acao.test.tsx :: configuração inválida não autoriza confirmar nem revela segredo
-app/empresas/importar/acao.test.tsx :: configuração vazia não autoriza confirmar nem revela segredo
-app/empresas/importar/acao.test.tsx :: confirmação sem conferência autêntica não chama importar
-app/empresas/importar/acao.test.tsx :: equivalência normalizada vincula os mesmos metadados na conferência e confirmação
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo 22023 volta como erro recuperavel que exige nova conferencia
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo conferencia envia formato e bytes ao servico
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo confirmacao chama importar com o arquivo original para reanalise
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo faz a guarda de gestor antes de ler o arquivo
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo formato desconhecido volta como erro recuperavel
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo tamanho acima do limite volta como erro recuperavel sem ler bytes
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { chave: 'nao-e-uuid' }
-app/empresas/importar/acao.test.tsx :: importarAcao: arquivo valida grupo e chave antes de ler bytes: { nome: '   ' }
-app/empresas/importar/acao.test.tsx :: mudar só criterios recusa confirmação sem gravar
-app/empresas/importar/acao.test.tsx :: mudar só descricao recusa confirmação sem gravar
-app/empresas/importar/acao.test.tsx :: mudar só origem recusa confirmação sem gravar
-app/empresas/importar/acao.test.tsx :: protocolo recusa arquivo alterado após conferência sem chamar importar
-app/empresas/importar/acao.test.tsx :: protocolo recusa chave alterado após conferência sem chamar importar
-app/empresas/importar/acao.test.tsx :: protocolo recusa gestor alterado após conferência sem chamar importar
-app/empresas/importar/acao.test.tsx :: protocolo recusa nome alterado após conferência sem chamar importar
-app/empresas/importar/acao.test.tsx :: protocolo recusa selecao alterado após conferência sem chamar importar
-app/empresas/importar/acao.test.tsx :: recusa resumo ausente antes de ler bytes
-app/empresas/importar/acao.test.tsx :: trocar somente origem invalida o comprovante emitido na conferência
-app/empresas/importar/formulario-transporte.test.tsx :: argumentos reais do wrapper cabem em 2 MiB sem reenviar relatório de 4.999 recusas
-app/empresas/importar/formulario.dom.test.tsx :: alterar criterios invalida conferência, renova chave e conserva arquivo
-app/empresas/importar/formulario.dom.test.tsx :: alterar descricao invalida conferência, renova chave e conserva arquivo
-app/empresas/importar/formulario.dom.test.tsx :: alterar origem invalida conferência, renova chave e conserva arquivo
-app/empresas/importar/formulario.dom.test.tsx :: conferir e confirmar usam a mesma chave, nome e arquivo
-app/empresas/importar/formulario.dom.test.tsx :: dois envios de confirmação sem mudança repetem chave e comprovante
-app/empresas/importar/formulario.dom.test.tsx :: emoji no limite atravessa duas submissões sem mudar chave e reiniciar limpa os campos
-app/empresas/importar/formulario.dom.test.tsx :: etapa de envio usa Card e conserva área de arquivo e orientações dentro do formulário
-app/empresas/importar/formulario.dom.test.tsx :: mudar arquivo invalida a conferência e inicia outra operação
-app/empresas/importar/formulario.dom.test.tsx :: pendente bloqueia troca e navegação, erro descarta confirmação antiga
-app/empresas/importar/formulario.dom.test.tsx :: reiniciar limpa nome e arquivo e gera outra chave
-app/empresas/importar/formulario.dom.test.tsx :: retornos explícitos à etapa Enviar movem o foco para o título
-app/empresas/importar/formulario.dom.test.tsx :: somente existentes ainda permite confirmar e mostra o total do grupo
-app/empresas/importar/formulario.dom.test.tsx :: trocar o arquivo preserva o foco no input
-app/empresas/importar/formulario.dom.test.tsx :: voltar mantém o File; mudar nome invalida a conferência e inicia outra operação
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render campo aceita XLSX e CSV
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render explica o CNAE opcional e a compatibilidade do modelo antigo
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render mostra o botão de conferir
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render não mostra o botão de confirmar antes de haver relatório
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render NÃO mostra o estado de gravado
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render orienta enviar o Excel diretamente e preserva a alternativa CSV UTF-8
-app/empresas/importar/formulario.test.tsx :: FormularioImportar: o primeiro render pede um nome para o grupo
-app/empresas/importar/formulario.test.tsx :: pede resumo e origem obrigatórios e critérios opcionais sem limitar emoji por UTF-16
-app/empresas/importar/relatorio.test.tsx :: recusa de identidade exige revisão e não oferece fusão automática
-app/empresas/importar/relatorio.test.tsx :: relatório explica identificação por origem e complemento seguro antes de confirmar
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece CNPJ e telefone formatados, não como estão no banco
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece explicita quando o CNAE principal não foi informado
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece mostra o código do CNAE principal informado
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece nome abre ficha administrativa da empresa
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece razão social e nome fantasia
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem e-mail, não sobra rótulo vazio
-app/empresas/linha.test.tsx :: Linha: o que sempre aparece sem nome fantasia, não sobra rótulo vazio
-app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP que a base não resolveu mostra o CEP e diz isso
-app/empresas/linha.test.tsx :: Linha: os três estados do endereço CEP resolvido mostra cidade e UF
-app/empresas/linha.test.tsx :: Linha: os três estados do endereço empresa sem CEP diz que não tem CEP
-app/empresas/linha.test.tsx :: nome comercial ocupa o título e explicita CNPJ desconhecido
+app/empresas/importar/acao.test.tsx :: aba antiga recebe recusa ao tentar conferir sem ler o formulário
+app/empresas/importar/acao.test.tsx :: aba antiga recebe recusa ao tentar confirmar sem ler o formulário
+app/empresas/importar/acao.test.tsx :: aba antiga recebe recusa ao tentar limpar sem ler o formulário
+app/empresas/importar/acao.test.tsx :: ação antiga exige gestor antes de responder
+app/empresas/importar/page.test.tsx :: endereço antigo exige gestor antes de encaminhar para Empresas
+app/empresas/importar/page.test.tsx :: guarda recusada conserva o tratamento de visitantes e vendedores
 app/empresas/lista.test.tsx :: Lista com empresas, monta uma lista
+app/empresas/lista.test.tsx :: Lista responsável inativo explícito e ficha preserva o contexto da busca
 app/empresas/lista.test.tsx :: Lista vazia, diz que não achou
 app/empresas/lista.test.tsx :: Lista vazia, oferece o caminho de volta para a lista inteira
 app/empresas/page.test.tsx :: busca tem nome acessível, conserva termo e reinicia paginação
@@ -187,22 +142,26 @@ app/empresas/paginacao.test.tsx :: Paginacao os quatro selects viajam com a pág
 app/empresas/paginacao.test.tsx :: Paginacao uma página só: não aparece
 app/empresas/socios-gestor.test.tsx :: componente exclusivo exige gestor antes de consultar documentos
 app/empresas/socios-gestor.test.tsx :: documentos aparecem apenas no componente do gestor, nunca no componente compartilhado
+app/fila/atendimento/acoes.test.tsx :: conflito é explícito e não informa sucesso
+app/fila/atendimento/acoes.test.tsx :: inicia somente a empresa explícita com versão e chave recebidas
+app/fila/atendimento/navegacao.test.tsx :: atendimento explícito preserva filtros pessoais e paginação sem parâmetros legados
+app/fila/atendimento/navegacao.test.tsx :: consulta vazia e bookmark de grupo nunca reabrem uma lista compartilhada
+app/fila/atendimento/page.test.tsx :: abrir atendimento lê somente ID explícito sem iniciar e preserva filtros locais
+app/fila/atendimento/page.test.tsx :: ID de outro vendedor não renderiza formulário nem adquire próximo
 app/fila/buscar/acesso.test.tsx :: consulta exige o papel correto antes de processar entradas
 app/fila/buscar/acesso.test.tsx :: importação exige o papel correto antes de processar entradas
 app/fila/buscar/acesso.test.tsx :: limites exige o papel correto antes de processar entradas
-app/fila/buscar/empresas-recentes.dom.test.tsx :: desktop amplia textos e informações úteis; celular volta ao resumo
-app/fila/buscar/empresas-recentes.dom.test.tsx :: fecha pedido anterior sem trocar conteúdo, permite tentar novamente sem nova busca
-app/fila/buscar/empresas-recentes.dom.test.tsx :: fechar após resize devolve foco à região se o botão de origem saiu da página
-app/fila/buscar/empresas-recentes.dom.test.tsx :: nome e grupo limitados visualmente, Cliente apenas e detalhes completos com data de São Paulo
-app/fila/buscar/empresas-recentes.dom.test.tsx :: resize na última página mantém atalho acessível e só um card no celular
-app/fila/buscar/empresas-recentes.dom.test.tsx :: teclado navega nos controles e não interfere no pop-up
-app/fila/buscar/empresas-recentes.dom.test.tsx :: três por vez, 11 únicas e último card com destino filtrado, sem rotação automática
-app/fila/buscar/empresas-recentes.dom.test.tsx :: vazio e poucos registros não geram cartões fictícios; atualização não perde o atalho
+app/fila/buscar/empresas-recentes.dom.test.tsx :: três por página, onze únicos, controles limitados e Ver busca permanece disponível
+app/fila/buscar/empresas-recentes.dom.test.tsx :: vazio explica ausência sem card fictício
+app/fila/buscar/empresas-recentes.dom.test.tsx :: Ver empresa abre diálogo comum sem aquisição; snapshot não recebe ação comercial
 app/fila/buscar/formulario.dom.test.tsx :: escolhas, exclusões e UUID persistem quando os seis filtros são recolhidos
 app/fila/buscar/formulario.dom.test.tsx :: nova busca confirmada recebe outro UUID e atualização da mesma tentativa preserva sua identidade
 app/fila/buscar/formulario.test.tsx :: banco inicia com seis cartões e somente Atividade e nome aberto
 app/fila/buscar/formulario.test.tsx :: formulário autorizado nasce utilizável com chave emitida pelo servidor e respeita a quota restante
 app/fila/buscar/formulario.test.tsx :: sem liberação do gestor o conjunto de filtros fica desabilitado
+app/fila/buscar/inclusao-acao.test.tsx :: inclusão confirmada devolve leitura canônica autorizada para atualizar o mesmo resultado
+app/fila/buscar/inclusao-acao.test.tsx :: leitura falha preserva confirmação sem repetir inclusão
+app/fila/buscar/inclusao-acao.test.tsx :: leitura negada preserva confirmação sem repetir inclusão
 app/fila/buscar/page.test.tsx :: consulta pessoal é do vendedor e do banco e só envia 11 empresas ao carrossel
 app/fila/buscar/page.test.tsx :: falha explícita de leitura mostra mensagem e não impede o formulário
 app/fila/buscar/page.test.tsx :: histórico vertical não fica duplicado na página do carrossel
@@ -211,43 +170,23 @@ app/fila/buscar/resultados.test.tsx :: busca histórica parcialmente incluída p
 app/fila/buscar/resultados.test.tsx :: empresa sem telefone continua visível e não pode ser selecionada para importação
 app/fila/buscar/resultados.test.tsx :: lista já criada mostra inclusão automática e não pede seleção manual
 app/fila/buscar/resultados.test.tsx :: pausa impede selecionar resultado mesmo quando há telefone válido
-app/fila/cartao.test.tsx :: Cartao cartao sem historico diz que ninguem ligou ainda
-app/fila/cartao.test.tsx :: Cartao CEP fora da base diz que o endereco nao foi encontrado, e nao finge que nao ha CEP
-app/fila/cartao.test.tsx :: Cartao conta os minutos que faltam a partir do instante do banco
-app/fila/cartao.test.tsx :: Cartao em posse, nao mostra prazo, e o formulario pede proximo passo
-app/fila/cartao.test.tsx :: Cartao empresa Google sem telefone mantém ficha e registro de atendimento
-app/fila/cartao.test.tsx :: Cartao empresa sem CEP diz que nao ha endereco
-app/fila/cartao.test.tsx :: Cartao mostra contato, telefone e cidade
-app/fila/cartao.test.tsx :: Cartao na etapa consultar mostra dados e historico sem montar o formulario
-app/fila/cartao.test.tsx :: Cartao na etapa registrar coloca os dados ao lado do formulario visual
-app/fila/cartao.test.tsx :: Cartao o cartao mostra o historico de quem ligou antes
-app/fila/cartao.test.tsx :: Cartao o cartao NAO tem mais botoes soltos de assumir e devolver
-app/fila/cartao.test.tsx :: Cartao prazo expirado oculta detalhes e histórico preservando anotações bloqueadas
-app/fila/cartao.test.tsx :: reserva parcial mostra nome comercial no título e CNPJ desconhecido
+app/fila/cartao.test.tsx :: abrir carteira conserva filtros locais após confirmar comando desconhecido
+app/fila/cartao.test.tsx :: carteira ignora destino externo e conserva destino canônico
+app/fila/cartao.test.tsx :: continuar conserva filtros e snapshot sem vínculo não ganha comando
+app/fila/cartao.test.tsx :: início perdido repete mesma chave/versão mesmo após remount, depois abre empresa explícita
+app/fila/cartao.test.tsx :: recusa temporária de autorização não abandona chave de início desconhecido
+app/fila/cartao.test.tsx :: resposta de início perdida é confirmada mesmo quando a leitura já mostra atendimento
+app/fila/cartao.test.tsx :: Ver empresa usa diálogo informativo, fechar não inicia nem navega
 app/fila/central.test.tsx :: entrada da Prospecção é a central aprovada com origem e ações explícitas
-app/fila/entrada-reserva.test.tsx :: a reserva transporta a lista e recusa lista malformada
-app/fila/entrada-reserva.test.tsx :: lista indisponível explica preservação da reserva e das notas
-app/fila/entrada-reserva.test.tsx :: puxar usa filtros e contexto original, sem aceitar identidade do formulário
-app/fila/entrada-reserva.test.tsx :: recusa alvo/contexto inválidos e filtros inválidos sem ampliar busca
-app/fila/entrada-reserva.test.tsx :: resultado sem candidata explica preservação e não usa travessão
-app/fila/entrada-sem-reserva.test.tsx :: entrada vazia deixa escolher uma lista sem redirecionamento automático
-app/fila/entrada-sem-reserva.test.tsx :: entrada vazia oferece localizar empresa
-app/fila/entrada-sem-reserva.test.tsx :: mantém anotações sem reserva atual
-app/fila/entrada-sem-reserva.test.tsx :: mantém editor quando a reserva expirou mesmo com nota vazia
-app/fila/etapas.test.tsx :: durante gravação, não permite sair pelas etapas
-app/fila/etapas.test.tsx :: em Puxar, etapas futuras não são links nem botões
-app/fila/etapas.test.tsx :: em Registrar, volta à consulta e à busca preservando filtros
-app/fila/formulario.dom.test.tsx :: trocar só grupo e abrir escolha mantém editor, reserva e nota digitada
-app/fila/formulario.test.tsx :: Formulario erro aparece na tela
-app/fila/formulario.test.tsx :: Formulario fila vazia diz POR QUE, e nao usa a palavra quarentena
-app/fila/formulario.test.tsx :: Formulario gravação de contato bloqueia voltar pela etapa sem bloquear o envio por si mesma
-app/fila/formulario.test.tsx :: Formulario permite tentar novamente após perder reserva expirada mesmo sem anotações
-app/fila/formulario.test.tsx :: Formulario reserva mostra próxima sem form aninhado e mantém contexto
-app/fila/formulario.test.tsx :: Formulario sem reserva, oferece puxar e nao fala de fila vazia
-app/fila/formulario.test.tsx :: Formulario troca com anotacoes usa dialogo tematico e cancelar preserva a tela
-app/fila/formulario.test.tsx :: Formulario uma reserva nova começa em consultar sem renderizar o formulario de registro
-app/fila/formulario.test.tsx :: Formulario voltar para uma empresa anterior reinicia em consultar
-app/fila/formulario.test.tsx :: sem reserva mantém ação de puxar no rodapé e submitter com filtros e contexto
+app/fila/entrada-reserva.test.tsx :: formulário antigo puxar não adquire empresa nem renova reserva
+app/fila/entrada-reserva.test.tsx :: formulário antigo renovar não adquire empresa nem renova reserva
+app/fila/entrada-sem-reserva.test.tsx :: atendimento antigo só recupera identidade inequívoca e autorizada
+app/fila/entrada-sem-reserva.test.tsx :: grupo antigo sem empresa nunca consulta próxima nem reserva global
+app/fila/formulario.dom.test.tsx :: provider preserva duas empresas ao navegar e limpa somente a empresa salva
+app/fila/formulario.test.tsx :: a_contatar não habilita registro até ação explícita
+app/fila/formulario.test.tsx :: atendimento mostra registro e histórico sem prazo ou próxima empresa
+app/fila/formulario.test.tsx :: indisponivel não habilita registro até ação explícita
+app/fila/formulario.test.tsx :: sem_interesse não habilita registro até ação explícita
 app/fila/google/acoes.test.tsx :: cópia exige campos e destinos antes de enviar ao repositório
 app/fila/google/acoes.test.tsx :: falha da planilha informa plano salvo com sincronização pendente
 app/fila/google/acoes.test.tsx :: semana aceita dia vazio e mantém aviso de sincronização pendente
@@ -264,64 +203,60 @@ app/fila/google/planejamento.dom.test.tsx :: hoje sem plano continua não defini
 app/fila/google/planejamento.dom.test.tsx :: layout segue a prévia com cinco colunas e critérios junto do nicho
 app/fila/google/planejamento.dom.test.tsx :: pendência de sincronização permite conferir novamente fora do formulário da semana
 app/fila/google/planejamento.dom.test.tsx :: tabela destaca hoje e edição só habilita datas futuras
-app/fila/grupos.test.tsx :: atendimento mantém formulário antes do chooser e preserva refinamentos na paginação do catálogo
-app/fila/grupos.test.tsx :: atendimento não carrega catálogo quando a escolha está fechada
-app/fila/grupos.test.tsx :: busca aberta para escolher lista apresenta catálogo conservando a consulta
-app/fila/grupos.test.tsx :: entrada da fila oferece cartão comercial da lista ativa sem reserva
-app/fila/grupos.test.tsx :: explica uma lista antiga sem inventar a origem e mantém CTA real
-app/fila/grupos.test.tsx :: novas listas exibem texto simples, critérios expansíveis e contagens por lista
-app/fila/grupos.test.tsx :: página do catálogo inválida avisa sem consultar listas ou apagar o atendimento
-app/fila/grupos.test.tsx :: página vazia permite voltar sem remover o contexto selecionado
-app/fila/grupos.test.tsx :: paginação contextual na busca preserva página de empresas e só a seleção limpa refinamentos
-app/fila/localizar/componentes.test.tsx :: ação automática usa puxar sem empresa e preserva os filtros
-app/fila/localizar/componentes.test.tsx :: filtro de URL antiga ausente nas opções continua visível e selecionado
-app/fila/localizar/componentes.test.tsx :: filtros, paginação, perfil e reserva conservam a lista selecionada
-app/fila/localizar/componentes.test.tsx :: formulário tem nome e seletores com rótulos e valores atuais
-app/fila/localizar/componentes.test.tsx :: paginação preserva filtros e oferece retorno mesmo em página vazia
-app/fila/localizar/componentes.test.tsx :: resultado de empresa alheia só contém cadastro resumido e estado separado
-app/fila/localizar/componentes.test.tsx :: resultado vazio informa ausência
-app/fila/localizar/componentes.test.tsx :: seletores dependentes ficam desabilitados sem seus pais
-app/fila/localizar/componentes.test.tsx :: URL usa codificação segura e mudança de filtro volta para página um
-app/fila/localizar/contexto-grupo.test.tsx :: atendimento oferece escolher a próxima lista sem sair da tela
-app/fila/localizar/contexto-grupo.test.tsx :: consulta pessoal mostra pesquisa atual e mantém filtros ao editar, atendimento=false
-app/fila/localizar/contexto-grupo.test.tsx :: consulta pessoal mostra pesquisa atual e mantém filtros ao editar, atendimento=true
-app/fila/localizar/contexto-grupo.test.tsx :: grupo inativo não busca geral e mantém atendimento vigente
-app/fila/localizar/contexto-grupo.test.tsx :: grupo malformado oferece todas as listas ativas sem consulta geral
-app/fila/localizar/contexto-grupo.test.tsx :: grupo sozinho consulta só a lista e mostra contexto comercial escapado
-app/fila/localizar/navegacao.test.tsx :: abrir e fechar escolha conserva grupo, refinamentos e paginação
-app/fila/localizar/navegacao.test.tsx :: limpar conserva somente a lista e selecionar reinicia os demais filtros
-app/fila/localizar/navegacao.test.tsx :: paginação conserva a lista selecionada
-app/fila/localizar/perfil.test.tsx :: ação valida UUID, usa sessão e revalida lista somente no sucesso
-app/fila/localizar/perfil.test.tsx :: perfil com grupo malformado oferece todas as listas ativas sem ler empresa
-app/fila/localizar/perfil.test.tsx :: perfil disponível oferece reserva sem exibir dados privados
-app/fila/localizar/perfil.test.tsx :: perfil inválido ou inexistente responde 404
-app/fila/localizar/perfil.test.tsx :: perfil mostra resumo e retorno filtrado sem gravar durante render
+app/fila/localizar/navegacao.test.tsx :: aposenta grupo e escolha de lista mantendo refinamento e paginação
+app/fila/localizar/navegacao.test.tsx :: JSON inválido, filtro alheio e destino externo não se propagam
+app/fila/localizar/navegacao.test.tsx :: query antiga com filtros pessoais mantém origem, nicho e página
+app/fila/localizar/perfil.test.tsx :: bookmark alheio retorna entrada pessoal sem revelar nem adquirir empresa
+app/fila/localizar/perfil.test.tsx :: bookmark inequívoco autorizado mantém empresa e filtros sem aquisição
 app/fila/localizar/pessoal.dom.test.tsx :: Enter/submissão recolhe filtros, mantém origem e permite reabrir
 app/fila/localizar/pessoal.dom.test.tsx :: nicho limpa o bairro anterior ao consultar opções dependentes
 app/fila/localizar/pessoal.dom.test.tsx :: perfil e continuação preservam filtros pessoais e a página da consulta
 app/fila/localizar/pessoal.dom.test.tsx :: resultado vazio explica a pesquisa e oferece editar filtros como ação local
-app/fila/localizar/recentes.test.tsx :: busca filtrada não mistura recentes e preserva filtros no perfil
-app/fila/localizar/recentes.test.tsx :: reserva atual oferece retorno para a fila com os filtros preservados
-app/fila/localizar/recentes.test.tsx :: sem filtros mostra recentes com link para o perfil
-app/fila/localizar/recentes.test.tsx :: sem recentes mostra sugestões
-app/fila/localizar/recentes.test.tsx :: sem reserva atual não oferece avanço para a fila
 app/fila/localizar/registrar-visita.test.tsx :: mount registra uma vez, revalidação não repete e falha mantém aviso
 app/fila/localizar/registrar-visita.test.tsx :: resposta atrasada da empresa anterior não apaga aviso da empresa atual
-app/fila/localizar/reservar.test.tsx :: aceitar troca mantém o submitter reservar e chama a action uma vez
-app/fila/localizar/reservar.test.tsx :: cancelar troca no diálogo preserva rascunho e não chama a action
 app/fila/localizar/visitas-ficha.test.tsx :: ficha autorizada monta registro de visita
+app/fila/sem-interesse/acoes.test.tsx :: retomada e arquivo pessoal usam comando comum e ator autenticado
+app/fila/sem-interesse/lista.dom.test.tsx :: arquivo paginado consulta empresa nunca negociada e retoma sem forjar negociação
+app/fila/sem-interesse/lista.dom.test.tsx :: retomada conclusivamente recusada libera nova intenção
+app/fila/sem-interesse/lista.dom.test.tsx :: retomada conserva comando completo após nao_encontrada, remontagem e replay
+app/fila/sem-interesse/lista.dom.test.tsx :: retomada conserva comando completo após sem_permissao, remontagem e replay
+app/fila/sem-interesse/lista.dom.test.tsx :: retomada desconhecida pode confirmar após refresh sem empresa no arquivo
+app/fila/sem-interesse/lista.dom.test.tsx :: tentativa desconhecida de A não é enviada ao clicar na retomada de B; consulta permanece livre
 app/fila/shell.test.tsx :: gestor tem links administrativos reais
 app/fila/shell.test.tsx :: menu do vendedor não oferece administração e mantém conteúdo
 app/funil/acoes.test.tsx :: action recusa salto e retrocesso antes do repositório
+app/funil/acoes.test.tsx :: arquivo exige identidade completa e usa replay antes de conferir estado atual
+app/funil/acoes.test.tsx :: arquivo expõe motivo estruturado desatualizada sem ler recibo/estado recusado
+app/funil/acoes.test.tsx :: arquivo expõe motivo estruturado nao_encontrada sem ler recibo/estado recusado
+app/funil/acoes.test.tsx :: arquivo expõe motivo estruturado sem_permissao sem ler recibo/estado recusado
+app/funil/acoes.test.tsx :: primeira venda explica indisponibilidade sem afirmar mudança de etapa ou perda de autorização
 app/funil/acoes.test.tsx :: todas ações exigem vendedor antes de acessar dados
 app/funil/acoes.test.tsx :: venda exige confirmação, usa ator da sessão e revalida consumidores
+app/funil/card-sem-interesse.dom.test.tsx :: consulta por link e drop autorizado são independentes
 app/funil/modal.dom.test.tsx :: abas mostram histórico autorizado e mantêm a alternativa de avanço por botão
+app/funil/modal.dom.test.tsx :: ação Sem interesse usa comando do quadro sem contato nem devolução; pendente não duplica
+app/funil/modal.dom.test.tsx :: confirmação histórica cujo estado atual mudou não anuncia empresa arquivada
+app/funil/modal.dom.test.tsx :: descarte externo não perde envio desconhecido e permite fechar mantendo sessão
+app/funil/modal.dom.test.tsx :: envio desconhecido do quadro bloqueia nova operação no modal do deep-link
 app/funil/modal.dom.test.tsx :: modal oferece apenas próximo avanço e última etapa não tem select nem avanço
 app/funil/modal.dom.test.tsx :: perda de posse bloqueia escrita mas preserva rascunho para copiar
 app/funil/modal.dom.test.tsx :: rascunho sobrevive ao Escape e erro de venda; envio bloqueia fechamento
 app/funil/modal.dom.test.tsx :: resposta antiga do telefone não fecha novo formulário de venda
 app/funil/modal.dom.test.tsx :: resposta tardia após desmontagem não apresenta dados em outra abertura
-app/funil/quadro.dom.test.tsx :: arraste ignora salto, envia uma vez e restaura card quando falha
+app/funil/quadro.dom.test.tsx :: arrasta em_negociacao para o único arquivo e mantém card durante envio e falha
+app/funil/quadro.dom.test.tsx :: arrasta primeiro_contato para o único arquivo e mantém card durante envio e falha
+app/funil/quadro.dom.test.tsx :: arrasta proposta_enviada para o único arquivo e mantém card durante envio e falha
+app/funil/quadro.dom.test.tsx :: avanço continua limitado à próxima etapa e restaura card após falha
+app/funil/quadro.dom.test.tsx :: menu por teclado/toque e retry desconhecido preservam chave; replay não anima
+app/funil/quadro.dom.test.tsx :: mudança de identidade na mesma tela não carrega memória privada de envio
+app/funil/quadro.dom.test.tsx :: origem indisponível não recebe intenção nova
+app/funil/quadro.dom.test.tsx :: recusa conclusiva libera nova intenção sem manter chave antiga
+app/funil/quadro.dom.test.tsx :: recusa inconclusiva nao_encontrada conserva envio após remontagem até replay
+app/funil/quadro.dom.test.tsx :: recusa inconclusiva sem_permissao conserva envio após remontagem até replay
+app/funil/quadro.dom.test.tsx :: refresh recupera card e comando desconhecido mesmo ausente na consulta atual
+app/funil/quadro.dom.test.tsx :: resposta confirmada atual retira card e devolve foco ao status
+app/funil/quadro.dom.test.tsx :: troca de usuário não recupera o card nem o comando privado da sessão anterior
+app/funil/quadro.dom.test.tsx :: ver empresa mostra dados; ação comum e deep-link abrem negociação operacional
 app/funil/quadro.test.tsx :: quadro mostra três etapas e cards essenciais sem busca nem telefone
 app/gestao/estados.test.tsx :: carregamento anuncia espera sem mostrar zeros
 app/gestao/estados.test.tsx :: falha oferece recuperação sem expor detalhes internos
@@ -378,9 +313,11 @@ app/usuarios/usuarios.dom.test.tsx :: lista combina busca e filtros, limpa resul
 app/usuarios/usuarios.dom.test.tsx :: papel continua radio nativo acessível e segue no formulário enviado
 app/usuarios/usuarios.dom.test.tsx :: pendência bloqueia botões e Escape; nova senha aguarda confirmação e falha de cópia orienta cópia manual
 app/usuarios/usuarios.dom.test.tsx :: resultado vazio oferece recuperação no rodapé e filtros possuem região nomeada
+app/usuarios/vendedores/[id]/page.test.tsx :: 51 vínculos sem vendas mantêm próxima página e rótulos de empresas, com KPI real de zero clientes
 app/usuarios/vendedores/[id]/page.test.tsx :: alvo recusado vira 404
+app/usuarios/vendedores/[id]/page.test.tsx :: cliente vendido na segunda página mantém anterior e KPI de uma venda
 app/usuarios/vendedores/[id]/page.test.tsx :: gestor vê estados vazios sem ações nem links para ficha de empresa
-app/usuarios/vendedores/[id]/page.test.tsx :: paginação preserva alvo e não inventa atividade ao consultar carteira
+app/usuarios/vendedores/[id]/page.test.tsx :: página vazia com vínculos e zero vendas oferece voltar à primeira página
 app/whatsapp/configuracao/acoes.test.tsx :: falha externa é sanitizada e não salva
 app/whatsapp/configuracao/acoes.test.tsx :: instância não configurada não é persistida
 app/whatsapp/configuracao/acoes.test.tsx :: nega ação antes de acessar dependências
@@ -489,8 +426,13 @@ src/components/crm/caminho.test.tsx :: mapeia /fila/localizar com retorno ao ní
 src/components/crm/caminho.test.tsx :: mapeia /fila/localizar/id-privado com retorno ao nível existente
 src/components/crm/caminho.test.tsx :: mapeia /usuarios/vendedores/id-privado com retorno ao nível existente
 src/components/crm/caminho.test.tsx :: mapeia /whatsapp/configuracao com retorno ao nível existente
+src/components/crm/card-empresa.dom.test.tsx :: composição informativa não renderiza comandos mesmo com versão recebida; responsável é metadado
+src/components/crm/card-empresa.dom.test.tsx :: nome completo, ausências e rótulo centralizado; callbacks recebem referência e versão opaca
 src/components/crm/criterios-banco.test.tsx :: histórico anterior mantém a descrição de uma lista e onde pesquisar
 src/components/crm/criterios-banco.test.tsx :: histórico mostra listas e exclusões de cada regime sem misturar datas
+src/components/crm/empresa-dialogo.dom.test.tsx :: falha não deixa dados antigos e retorno de foco preserva botão que abriu
+src/components/crm/empresa-dialogo.dom.test.tsx :: indisponibilidade salva distingue pendência e origem inativa sem ação comercial
+src/components/crm/empresa-dialogo.dom.test.tsx :: seleção B oculta A imediatamente e resposta atrasada A não substitui B; conteúdo só informativo
 src/components/crm/empresa-encontrada.dom.test.tsx :: detalhes ignoram resposta atrasada de A depois de selecionar B
 src/components/crm/empresa-encontrada.dom.test.tsx :: Ver mais expande cards organizados e mostra CEP, contatos e cadastro sem documentos privados
 src/components/crm/estado-vazio.dom.test.tsx :: ação local aciona uma vez sem submeter formulário e respeita desabilitada
@@ -507,7 +449,7 @@ src/components/crm/shell.dom.test.tsx :: menu móvel usa diálogo, fecha com Esc
 src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do gestor mantendo nomes e saída POST
 src/components/crm/shell.dom.test.tsx :: recolhe e expande a lateral do vendedor mantendo nomes e saída POST
 src/components/crm/shell.test.tsx :: carteira ativa seu próprio menu e não expõe administração ao vendedor
-src/components/crm/shell.test.tsx :: design compartilha navegação e tema do gestor sem expor galeria ao vendedor
+src/components/crm/shell.test.tsx :: design mantém tema e navegação do gestor sem atalho para a galeria no menu
 src/components/crm/shell.test.tsx :: empresas ativa seu menu e oferece tema próprio ao gestor
 src/components/crm/shell.test.tsx :: gestor tem início e administração sem links de atendimento
 src/components/crm/shell.test.tsx :: grupos tem somente um item ativo na navegação do gestor
@@ -576,6 +518,16 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0046.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0047.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0048.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0049.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0050.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0051.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0052.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0053.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0054.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0055.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0056.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0057.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0058.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0059.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\aplicacao\README.md não tem caractere de controle literal
@@ -596,6 +548,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\operacao\agente-go
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\base-prospeccao-n8n.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\busca-empresas.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\operacao\fluxo-comercial-unificado.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\producao-vercel.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\prospeccao-arquivos-drive.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\prospeccao-automatica.md não tem caractere de controle literal
@@ -678,6 +631,8 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-27-ultimas-buscas-correcao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-28-adaptacao-pr53-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-28-integracao-prs-pendentes-crm.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-29-fluxo-comercial-unificado.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-30-retirar-importacao-manual-gestor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-login-sessao-design.md não tem caractere de controle literal
@@ -729,6 +684,8 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-27-casa-dados-filtros-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-27-ultimas-buscas-correcao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-28-adaptacao-pr53-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-29-fluxo-comercial-unificado-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-30-retirar-importacao-manual-gestor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-componentes-ui.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-shadcn-admin.md não tem caractere de controle literal
@@ -788,10 +745,13 @@ src/features/busca-empresas/servico.test.ts :: incompatibilidade do fornecedor �
 src/features/busca-empresas/servico.test.ts :: mesma chave retorna histórico sem emitir uma segunda requisição
 src/features/busca-empresas/servico.test.ts :: reserva cota antes do HTTP e persiste antes de devolver o identificador
 src/features/busca-empresas/servico.test.ts :: sem configuração ou filtros inválidos não consome quota
-src/features/contato/acao.test.ts :: contato bem sucedido atualiza lista de empresas recentes
-src/features/contato/acao.test.ts :: devolver com destino externo nao sai do site
-src/features/contato/acao.test.ts :: devolver pela ficha volta para o destino previsto, com os filtros
-src/features/contato/acao.test.ts :: devolver pela fila, que nao manda destino, nao redireciona
+src/features/contato/acao.test.ts :: autenticação ainda precede o comando
+src/features/contato/acao.test.ts :: conflito mantém erro explícito, replay atualiza leituras
+src/features/contato/acao.test.ts :: fase do navegador não autoriza acompanhamento inicial
+src/features/contato/acao.test.ts :: ID alheio não registra nada
+src/features/contato/acao.test.ts :: leitura de disponibilidade não veta replay e não é chamada na escrita
+src/features/contato/acao.test.ts :: replay de acompanhamento alcança a RPC mesmo após arquivo encerrar a negociação
+src/features/contato/acao.test.ts :: usa ator e fase reais, preserva versão lida pelo editor e não envia posse/desfecho
 src/features/contato/destino.test.ts :: aceita a agenda sem filtro
 src/features/contato/destino.test.ts :: aceita a carteira sem filtro
 src/features/contato/destino.test.ts :: filtro vazio sai do destino em vez de derrubar a volta
@@ -822,64 +782,31 @@ src/features/contato/destino.test.ts :: recusa subida de diretorio
 src/features/contato/destino.test.ts :: recusa usuario no host
 src/features/contato/destino.test.ts :: remonta o destino em ordem canonica
 src/features/contato/destino.test.ts :: sem destino nao redireciona
-src/features/contato/formulario.test.tsx :: FormularioContato bloqueio também recusa dispatch da action
-src/features/contato/formulario.test.tsx :: FormularioContato com comDevolver, oferece o segundo botao de desfecho
-src/features/contato/formulario.test.tsx :: FormularioContato com posse oferece acompanhamento e nenhum tipo de reserva
-src/features/contato/formulario.test.tsx :: FormularioContato com posse, PEDE proximo passo e data
-src/features/contato/formulario.test.tsx :: FormularioContato descarte pelo cadastro avisa que a data nao agenda retorno
-src/features/contato/formulario.test.tsx :: FormularioContato enquanto grava congela os campos sem impedir copiar anotações
-src/features/contato/formulario.test.tsx :: FormularioContato erro no visual da fila usa alerta tematico
-src/features/contato/formulario.test.tsx :: FormularioContato falha preserva rascunho e sempre encerra envio
-src/features/contato/formulario.test.tsx :: FormularioContato label da nota tem texto fixo e associação única mesmo com rascunho
-src/features/contato/formulario.test.tsx :: FormularioContato leva o id da empresa e a posse como campos ocultos
-src/features/contato/formulario.test.tsx :: FormularioContato rascunho bloqueado mantém campos editáveis e impede registrar
-src/features/contato/formulario.test.tsx :: FormularioContato sem comDevolver, o desfecho e o sugerido pelo tipo, em campo oculto
-src/features/contato/formulario.test.tsx :: FormularioContato sem posse oferece os cinco tipos de reserva, e nao o de posse
-src/features/contato/formulario.test.tsx :: FormularioContato sem posse, NAO pede proximo passo obrigatorio
-src/features/contato/formulario.test.tsx :: FormularioContato sucesso notifica empresa submetida antes de encerrar envio
-src/features/contato/formulario.test.tsx :: FormularioContato todos os atendimentos usam controles temáticos e erro anunciado sem perder o rascunho
-src/features/contato/formulario.test.tsx :: FormularioContato troca pendente congela rascunho sem confundir com bloqueio por expiração
-src/features/contato/formulario.test.tsx :: FormularioContato visual da fila usa os componentes de campo sem mudar o padrao legado
-src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado diz que a empresa vai para o seu Funil
-src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse interessado NAO avisa dos 30 dias, porque assume em vez de devolver
-src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse na ficha, o botao de devolver avisa dos 30 dias ao lado dele
-src/features/contato/formulario.test.tsx :: FormularioContato: o aviso segue o desfecho, nao a posse tipo que devolve avisa que a empresa volta em 30 dias
+src/features/contato/envio.test.ts :: repetição mantém chave, versão e entrada mesmo depois de nova versão do servidor
+src/features/contato/formulario.test.tsx :: arquivo após resposta perdida mantém confirmação do mesmo comando (rota direta false)
+src/features/contato/formulario.test.tsx :: arquivo após resposta perdida mantém confirmação do mesmo comando (rota direta true)
+src/features/contato/formulario.test.tsx :: conflito preserva texto e exige atualizar explicitamente antes de novo comando
+src/features/contato/formulario.test.tsx :: descarte explícito sem envio limpa store e editor; envio desconhecido bloqueia descarte
+src/features/contato/formulario.test.tsx :: DTO próprio indisponível sem envio não habilita comando novo no editor preparado
+src/features/contato/formulario.test.tsx :: fase de preparação do servidor habilita acompanhamento sem posse enviada
+src/features/contato/formulario.test.tsx :: preparação indisponível e recusa temporária de auth preservam replay desconhecido até nova tentativa
+src/features/contato/formulario.test.tsx :: rascunhos separados sobrevivem troca de empresa e remontagem
+src/features/contato/formulario.test.tsx :: resposta perdida mantém chave, versão e entrada após remount e replay limpa só após sucesso
+src/features/contato/formulario.test.tsx :: restaura estado do consumidor mesmo com callback recriado a cada render
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo contato sem autor nao quebra o render
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo lista vazia diz que ninguem ligou ainda, e nao fica em branco
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo mostra o proximo passo combinado quando ha
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo mostra o rotulo do tipo, a nota e o autor
+src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo não liguei conserva nota e autor como atividade sem ligação
 src/features/contato/linha-do-tempo.test.tsx :: LinhaDoTempo tipo desconhecido cai no proprio texto, sem quebrar
-src/features/contato/mensagens.test.ts :: textoDaFalta desfecho_invalido tem texto proprio
-src/features/contato/mensagens.test.ts :: textoDaFalta par_incompleto tem texto proprio
-src/features/contato/mensagens.test.ts :: textoDaFalta proximo_passo_exigido diz o que fazer, nao so que faltou
-src/features/contato/mensagens.test.ts :: textoDaFalta proximo_passo_exigido tem texto proprio
-src/features/contato/mensagens.test.ts :: textoDaFalta tipo_invalido tem texto proprio
-src/features/contato/mensagens.test.ts :: textoDoMotivo ja_e_sua tem texto proprio e nao vazio
-src/features/contato/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto proprio e nao vazio
-src/features/contato/mensagens.test.ts :: textoDoMotivo reserva_expirada explica que o tempo acabou, e nao fala em permissao
-src/features/contato/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto proprio e nao vazio
-src/features/contato/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto proprio e nao vazio
+src/features/contato/mensagens.test.ts :: conflito explica preservação do rascunho e nunca promete devolução ou expiração
 src/features/contato/rascunho.test.ts :: qualquer campo ou escolha diferente identifica anotações a preservar
 src/features/contato/rascunho.test.ts :: rascunho inicial escolhe o tipo compatível com posse
-src/features/contato/regras.test.ts :: validar com posse e proximo passo completo, passa
-src/features/contato/regras.test.ts :: validar com posse, proximo passo e EXIGIDO
-src/features/contato/regras.test.ts :: validar data sem passo e recusado antes do banco, e nao vira 23514 na tela
-src/features/contato/regras.test.ts :: validar desfecho fora do vocabulario e recusado antes do banco
-src/features/contato/regras.test.ts :: validar espaco em branco vira nulo, nao string vazia — o CHECK do banco recusa vazio
-src/features/contato/regras.test.ts :: validar passo sem data e recusado antes do banco, e nao vira 23514 na tela
-src/features/contato/regras.test.ts :: validar rascunho de reserva sem proximo passo e valido
-src/features/contato/regras.test.ts :: validar retornar_depois assume a reserva com data combinada
-src/features/contato/regras.test.ts :: validar retornar_depois não pode devolver nem omitir o combinado
-src/features/contato/regras.test.ts :: validar tipo fora da lista e recusado antes do banco
-src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior devolver com proximo passo preenchido continua valendo, e vira historico
-src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior posse com desfecho devolver NAO exige, porque a empresa sai
-src/features/contato/regras.test.ts :: validar: o que decide é o desfecho, não o estado anterior posse com desfecho nenhum EXIGE proximo passo, porque a empresa fica
-src/features/contato/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
-src/features/contato/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
-src/features/contato/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
-src/features/contato/repositorio.test.ts :: traduzirResultado ok vira sucesso
-src/features/contato/repositorio.test.ts :: traduzirResultado reserva_expirada vira falha com motivo proprio
-src/features/contato/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
+src/features/contato/regras.test.ts :: validarContatoDireto acompanhamento requer fase comercial e próximo passo, não liguei preserva atividade honesta
+src/features/contato/regras.test.ts :: validarContatoDireto data inválida não alcança o banco
+src/features/contato/regras.test.ts :: validarContatoDireto não atendeu permite próximo passo opcional em qualquer fase e normaliza nota
+src/features/contato/regras.test.ts :: validarContatoDireto recusa par incompleto, retorno sem combinado e arquivo com agenda
+src/features/contato/repositorio.test.ts :: repositório usa apenas comando direto com chave/versão e preserva resposta
 src/features/contato/tipos.test.ts :: ehTipo aceita tipo da lista
 src/features/contato/tipos.test.ts :: ehTipo nome de propriedade herdada nao e tipo
 src/features/contato/tipos.test.ts :: ehTipo recusa tipo fora da lista — e e a UNICA defesa que existe, porque o banco so exige nao-vazio
@@ -887,12 +814,8 @@ src/features/contato/tipos.test.ts :: TIPOS_CONTATO acompanhamento e o unico tip
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO interessado e retorno assumem; outros de reserva devolvem
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO tem os seis tipos da spec, e nenhum a mais
 src/features/contato/tipos.test.ts :: TIPOS_CONTATO todo tipo tem rotulo e desfecho sugerido
-src/features/contato/um-chamador.test.ts :: a action confere o destino do redirecionamento em vez de confiar no formulario
-src/features/contato/um-chamador.test.ts :: a action importa a regra pura em vez de validar por conta propria
-src/features/contato/um-chamador.test.ts :: a action redireciona quando o desfecho tira a empresa da mao do vendedor
-src/features/contato/um-chamador.test.ts :: a ficha diz para onde voltar depois de devolver
-src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só existe pelo menos um arquivo com o literal, senão esta catraca não vigia nada
-src/features/contato/um-chamador.test.ts :: contato_registrar tem um chamador só o literal aparece em exatamente um arquivo fora de tests/
+src/features/contato/um-chamador.test.ts :: a action lê fase autorizada e usa validação pura
+src/features/contato/um-chamador.test.ts :: contato usa somente o adaptador direto comum e aposenta RPC de reserva em produção
 src/features/contato/venda-historico.test.tsx :: venda no histórico informa valor, data e autor mesmo sem observação
 src/features/empresas/arquivo.test.ts :: analisarArquivo: compatibilidade CSV mantem o chamador legado que passa somente bytes
 src/features/empresas/arquivo.test.ts :: analisarArquivo: XLSX aceita diretamente o modelo real gerado e preserva os zeros
@@ -1187,18 +1110,9 @@ src/features/empresas/telefone.test.ts :: normalizarTelefone "11 3456-7890" vira
 src/features/empresas/telefone.test.ts :: normalizarTelefone "119876543210" vira null
 src/features/empresas/telefone.test.ts :: normalizarTelefone "987654321" vira null
 src/features/empresas/telefone.test.ts :: normalizarTelefone "ligar de manha" vira null
-src/features/fila/mensagens.test.ts :: textoDoMotivo ja_e_sua tem texto de gente
-src/features/fila/mensagens.test.ts :: textoDoMotivo nao_encontrada tem texto de gente
-src/features/fila/mensagens.test.ts :: textoDoMotivo reserva_expirada tem texto de gente
-src/features/fila/mensagens.test.ts :: textoDoMotivo sem_permissao tem texto de gente
-src/features/fila/repositorio.test.ts :: reserva envia grupo final e traduz indisponibilidade preservando campos vigentes
-src/features/fila/repositorio.test.ts :: traduzirResultado ja_e_sua vira falha com motivo proprio
-src/features/fila/repositorio.test.ts :: traduzirResultado nao_encontrada vira falha com motivo proprio
-src/features/fila/repositorio.test.ts :: traduzirResultado nome de propriedade herdada nao vira resultado
-src/features/fila/repositorio.test.ts :: traduzirResultado ok vira sucesso
-src/features/fila/repositorio.test.ts :: traduzirResultado reserva_expirada vira falha com motivo proprio
-src/features/fila/repositorio.test.ts :: traduzirResultado valor fora do vocabulario LANCA, nao vira falha
+src/features/fila/mensagens.test.ts :: consulta pessoal explica recusa de autorização sem sugerir aquisição global
 src/features/funil/consulta.test.ts :: empresa acessível sem telefone permite atendimento, empresa inacessível retorna null
+src/features/funil/consulta.test.ts :: Funil enriquece em lotes de até100 e total não lê arquivo completo
 src/features/funil/regras.test.ts :: venda converte reais em centavos exatos e normaliza observação
 src/features/funil/regras.test.ts :: venda recusa valores ambíguos, fora do limite, data impossível e chave inválida
 src/features/google/regras.test.ts :: critério inválido impede salvar e critério válido acompanha o plano
@@ -1377,6 +1291,16 @@ src/lib/comercial.test.ts :: funil aceita somente as três etapas abertas
 src/lib/comercial.test.ts :: próxima etapa segue sequência fechada e termina na proposta
 src/lib/empresa-apresentacao.test.ts :: formata CNPJ numérico e alfanumérico conservando valores fora de forma
 src/lib/empresa-apresentacao.test.ts :: usa o nome conhecido sem transformar fantasia em razão social
+src/lib/empresa-visual.test.ts :: ação comum para a_contatar
+src/lib/empresa-visual.test.ts :: ação comum para atendimento
+src/lib/empresa-visual.test.ts :: ação comum para cliente
+src/lib/empresa-visual.test.ts :: ação comum para em_negociacao
+src/lib/empresa-visual.test.ts :: ação comum para primeiro_contato
+src/lib/empresa-visual.test.ts :: ação comum para proposta_enviada
+src/lib/empresa-visual.test.ts :: ação comum para sem_interesse
+src/lib/empresa-visual.test.ts :: continuação usa identidade explícita sem fallback global
+src/lib/empresa-visual.test.ts :: funil usa negociação e ausência não inventa destino
+src/lib/empresa-visual.test.ts :: snapshot e indisponibilidade não concedem ações, mesmo com ID global correspondente
 src/lib/google/calendario.test.ts :: agenda de São Paulo em 2026-10-22T17:00:00-03:00 prepara 2026-10-23
 src/lib/google/calendario.test.ts :: agenda de São Paulo em 2026-10-23T16:59:00-03:00 prepara null
 src/lib/google/calendario.test.ts :: agenda de São Paulo em 2026-10-23T17:00:00-03:00 prepara 2026-10-26
@@ -1655,6 +1579,16 @@ src/lib/whatsapp-indicadores.test.ts :: dia é de Brasília, duplicatas não con
 src/lib/whatsapp-indicadores.test.ts :: média usa primeira recebida de cada sequência e somente respostas de hoje
 src/lib/whatsapp-indicadores.test.ts :: vazio e ausência de respostas não inventam média; piloto não é vendedor
 src/prospeccao-base-python.test.ts :: campanha preserva lock portátil e compatibilidade com o Google V2 em fixtures offline
+src/server/atendimento/operacoes.test.ts :: adaptadores recusam comando inválido antes da conexão sem serializar erros SQL
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado contradição com exclusividade Google não escolhe vencedor
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado Google ativo é autoritativo quando não existe responsável
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado mantém ambiguidade pendente ({ responsavel: 'A', google: null, …(2) })
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado mantém ambiguidade pendente ({ responsavel: null, …(3) })
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado mantém ambiguidade pendente ({ responsavel: null, …(3) })
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado mantém ambiguidade pendente ({ responsavel: null, …(3) })
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado mantém ambiguidade pendente ({ responsavel: null, google: 'A', …(2) })
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado preserva responsável compatível mesmo com entrega antiga para outro vendedor
+src/server/atendimento/transicao.test.ts :: classificarVinculoLegado uma única entrega recuperável pode vincular, sem duplicar candidatos
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso exigência vendedor mantém login e troca de senha antes do papel
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor não entra no atendimento de vendedor
 src/server/autenticacao/acesso.test.ts :: avaliarAcesso gestor sem pendência passa em tudo
@@ -1865,6 +1799,7 @@ src/server/db/migracoes/invariantes.test.ts :: avaliar função de acesso ausent
 src/server/db/migracoes/invariantes.test.ts :: avaliar função de schema de aplicação executável por PUBLIC
 src/server/db/migracoes/invariantes.test.ts :: avaliar função registrada ausente ou sem GRANT é violação, não verde
 src/server/db/migracoes/invariantes.test.ts :: avaliar função SECURITY DEFINER sem search_path, em qualquer schema
+src/server/db/migracoes/invariantes.test.ts :: avaliar importação manual aposentada não pode voltar a ser concedida à aplicação
 src/server/db/migracoes/invariantes.test.ts :: avaliar papel da aplicação ausente é violação, não verde
 src/server/db/migracoes/invariantes.test.ts :: avaliar pode_escrever ausente é violação
 src/server/db/migracoes/invariantes.test.ts :: avaliar política em tabela de autenticacao
@@ -1896,9 +1831,11 @@ src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\google\acoes.
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\grupos\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\empresas\importar\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\acoes.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\fila\atendimento\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\buscar\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\google\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\fila\localizar\registrar-visita-acao.ts só exporta função
+src/server/diretivas.test.ts :: arquivos 'use server' app\fila\sem-interesse\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\funil\acoes.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\login\acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' app\meu-dia\historico-acao.ts só exporta função
@@ -1908,6 +1845,10 @@ src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\configuracao\
 src/server/diretivas.test.ts :: arquivos 'use server' app\whatsapp\historico-acao.ts só exporta função
 src/server/diretivas.test.ts :: arquivos 'use server' existe pelo menos um, senão esta catraca não vigia nada
 src/server/diretivas.test.ts :: arquivos 'use server' src\features\contato\acao.ts só exporta função
+src/server/empresas/detalhes.test.ts :: leitura deriva fase e preserva resumo indisponível para replay sem permitir ação nova
+src/server/empresas/detalhes.test.ts :: referência malformada não consulta e cadastro usa só leitura com identidade recebida
+src/server/empresas/detalhes.test.ts :: snapshot seleciona CNPJ exato e nunca consulta empresa global
+src/server/empresas/detalhes.test.ts :: SQL recusa ator inativo sem expor detalhes e falhas de infraestrutura propagam
 src/server/google/autenticacao.test.ts :: sem conexão configurada falha fechado, inclusive com bearer vazio
 src/server/google/autenticacao.test.ts :: somente token correto recebe a identidade configurada no servidor
 src/server/google/cliente.test.ts :: não envia segredo por HTTP remoto
@@ -1996,13 +1937,6 @@ src/server/google/verificacoes/workflow-basico.test.ts :: perfil sem qualificado
 src/server/google/verificacoes/workflow-basico.test.ts :: recalcula verificações do snapshot e combina site, email, Google E (WhatsApp OU fixo)
 src/server/google/verificacoes/workflow-basico.test.ts :: resposta sem o número exato fica não confirmada
 src/server/google/verificacoes/workflow-basico.test.ts :: tres contextos simultaneos retornam fora de ordem sem misturar evidencias
-src/server/grupos/prospeccao.test.ts :: catálogo corta a vigésima primeira linha e traduz exclusivamente DTO público
-src/server/grupos/prospeccao.test.ts :: catálogo identifica empresas de origem Google nas listas compartilhadas anteriores
-src/server/grupos/prospeccao.test.ts :: catálogo recusa página não inteira ou fora da faixa antes do banco
-src/server/grupos/prospeccao.test.ts :: catálogo vazio é explícito e permissão negada não vira resultado vazio
-src/server/grupos/prospeccao.test.ts :: erro de infraestrutura continua visível
-src/server/grupos/prospeccao.test.ts :: leitor comercial traduz somente campos públicos e contagens numéricas
-src/server/grupos/prospeccao.test.ts :: leitor vazio e recusa de leitura devolvem motivos próprios
 src/server/importacao/mooca-adaptador.test.ts :: CLI prepara CSV conferido, metadados e hashes com campos originais em texto
 src/server/importacao/mooca-adaptador.test.ts :: CLI recusa bytes que não são UTF-8 antes de criar saída
 src/server/importacao/mooca-adaptador.test.ts :: CLI recusa entrega sem colunas requeridas antes de criar saída

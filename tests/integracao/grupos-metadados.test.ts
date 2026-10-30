@@ -1,3 +1,4 @@
+import { confirmarImportacaoHistorica } from './fixtures/importacao-historica'
 import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { atualizarMetadadosGrupo, detalharGrupo } from '@/src/features/empresas/grupos'
@@ -8,10 +9,9 @@ let vendedor: string
 let pendente: string
 const metadados = { descricao: 'Mooca CFTV', origem: 'Google Maps', criterios: null }
 const linhas = [{ cnpj: '11222333000181', razao_social: 'Aurora', telefone: '11987654321' }]
-const sql = 'SELECT * FROM grupo_importacao_confirmar($1,$2,$3,$4,$5,$6,$7)'
 const parametros = (contexto: unknown = metadados, chave = randomUUID()) => [chave, 'Mooca', 'mooca.csv', 'a'.repeat(64), JSON.stringify(linhas), '{"novas":1}', JSON.stringify(contexto)]
 async function confirmar(contexto: unknown = metadados, chave = randomUUID(), usuario = gestor) {
-  return (await banco.comoUsuario(usuario, e => e<{grupo_id: string; inseridas: number; vinculadas: number; relatorio: unknown}>(sql, parametros(contexto, chave)))).linhas[0]
+  return (await confirmarImportacaoHistorica<{grupo_id: string; inseridas: number; vinculadas: number; relatorio: unknown}>(banco, usuario, parametros(contexto, chave))).linhas[0]
 }
 async function fotografia() {
   return Promise.all(['grupo_importacao', 'grupo_importacao_empresa', 'empresa', 'empresa_origem_google'].map(tabela => banco.sql(`SELECT * FROM ${tabela} ORDER BY 1,2`)))
@@ -109,7 +109,7 @@ test('somente assinatura de sete argumentos existe; auxiliares e PUBLIC não tê
     WHERE n.nspname='public' AND p.proname IN ('grupo_importacao_confirmar','grupo_importacao_metadados_definir','grupo_importacao_texto_normalizar','grupo_importacao_texto_valido')`)
   expect(funcoes).toHaveLength(4)
   expect(funcoes.every(f => !f.publico)).toBe(true)
-  expect(funcoes.find(f => f.nome === 'grupo_importacao_confirmar')).toMatchObject({ argumentos: 7, app: true })
+  expect(funcoes.find(f => f.nome === 'grupo_importacao_confirmar')).toMatchObject({ argumentos: 7, app: false })
   expect(funcoes.filter(f => f.nome.startsWith('grupo_importacao_texto_')).every(f => !f.app)).toBe(true)
 })
 
