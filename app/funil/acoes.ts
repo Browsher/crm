@@ -2,10 +2,13 @@
 import { revalidatePath } from 'next/cache'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerNegociacao, lerTelefoneNegociacao } from '@/src/features/funil/consulta'
-import { registrarVenda, mudarEtapa, devolverNegociacao, type Resultado } from '@/src/features/funil/repositorio'
+import { registrarVenda, mudarEtapa, type Resultado } from '@/src/features/funil/repositorio'
 import { validarVenda } from '@/src/features/funil/regras'
 import { proximaEtapa } from '@/src/lib/comercial'
-export type EstadoFunil = {ok:boolean;erro?:string;indisponivel?:boolean}
+import { arquivarSemInteresse } from '@/src/server/atendimento/operacoes'
+import { lerAtendimento } from '@/src/server/atendimento/consulta'
+import { textoDoMotivo } from '@/src/features/contato/mensagens'
+export type EstadoFunil = {ok:boolean;erro?:string;indisponivel?:boolean;repetida?:boolean;atual?:boolean}
 function resultado(r:Resultado):EstadoFunil {
   if(r.ok) {
     for(const rota of ['/funil','/carteira','/meu-dia','/gestao','/usuarios']) revalidatePath(rota)
@@ -31,8 +34,16 @@ export async function etapaAcao(form:FormData):Promise<EstadoFunil> {
   if(!r.ok&&r.motivo==='dados_invalidos')return {ok:false,erro:'Avance somente para a próxima etapa.'}
   return resultado(r)
 }
-export async function devolverAcao(form:FormData):Promise<EstadoFunil> {
+export async function semInteresseAcao(form:FormData):Promise<EstadoFunil> {
   const eu=await exigir('vendedor')
-  if(form.get('confirmado')!=='sim')return {ok:false,erro:'Confirme a devolução.'}
-  return resultado(await devolverNegociacao(eu.usuarioId,String(form.get('id')??''),String(form.get('motivo')??'')))
+  const empresaId=String(form.get('empresaId')??''), id=String(form.get('id')??''), chave=String(form.get('chave')??''), versao=Number(form.get('versao'))
+  const uuid=/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
+  if(![empresaId,id,chave].every(v=>uuid.test(v))||!Number.isInteger(versao)||versao<1) return {ok:false,erro:'Confira a empresa e atualize o Funil antes de continuar.'}
+  // A RPC resolve replay autorizado antes da versão. Uma leitura atual nunca
+  // veta a confirmação de um envio antigo após retomada ou venda posterior.
+  const r=await arquivarSemInteresse(eu.usuarioId,{empresaId,chave,versao},id)
+  if(!r.ok)return {ok:false,erro:textoDoMotivo(r.motivo),indisponivel:r.motivo==='sem_permissao'||r.motivo==='nao_encontrada'}
+  const atual=await lerAtendimento(eu.usuarioId,empresaId)
+  for(const rota of ['/funil','/fila/sem-interesse','/fila/localizar','/meu-dia','/carteira','/gestao'])revalidatePath(rota)
+  return {ok:true,repetida:r.repetida,atual:atual.ok&&atual.empresa.situacao==='sem_interesse'&&atual.empresa.versao===r.versao}
 }

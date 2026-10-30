@@ -1,0 +1,17 @@
+.card { display:flex; align-items:center; gap:16px; width:100%; max-width:620px; padding:16px 20px; border:1px dashed var(--ui-border-control); border-radius:var(--radius-card); background:var(--background); color:var(--foreground); transition:background-color 180ms,border-color 180ms; }
+.card h2 { font-size:16px; line-height:24px; font-weight:600; }
+.card h2 span { font-size:12px; color:var(--ui-muted-foreground); margin-left:8px; }
+.card p { color:var(--ui-muted-foreground); font-size:12px; line-height:18px; }
+.card a { margin-left:auto; flex-shrink:0; font-size:14px; text-decoration:underline; text-underline-offset:4px; }
+.card a:focus-visible { outline:3px solid var(--ring); outline-offset:4px; border-radius:var(--radius); }
+.icone { display:inline-flex; color:var(--ui-muted-foreground); }
+.icone svg { width:24px; height:24px; }
+.tampa { transform-origin:center; transition:transform 180ms; }
+.card[data-estado=sobre] { border-color:var(--primary); background:var(--accent); outline:2px solid var(--ring); outline-offset:2px; }
+.card[data-estado=sobre] .tampa { transform:translateY(-3px) rotate(-10deg); }
+.card[data-estado=salvando] { border-style:solid; }
+.card[data-estado=sucesso] .icone { animation:recolher 220ms ease-out; color:var(--primary); }
+.card[data-estado=erro] { border-style:solid; border-color:var(--destructive); }
+@keyframes recolher { 50% { transform:translateY(4px) scale(.85); } }
+@media(max-width:600px) { .card { flex-wrap:wrap; padding:16px; }.card a { margin-left:40px; } }
+@media(prefers-reduced-motion:reduce) { .card,.tampa { transition:none!important; }.card[data-estado=sobre] .tampa { transform:none; }.card[data-estado=sucesso] .icone { animation:none!important; } }

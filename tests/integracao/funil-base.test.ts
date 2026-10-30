@@ -3,6 +3,8 @@ import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { registrarContatoLegado } from './fixtures/contato-legado'
 import { lerFunil, lerNegociacao } from '@/src/features/funil/consulta'
 import { lerDashboard } from '@/src/features/gestao/consulta'
+import { randomUUID } from 'node:crypto'
+import { registrarContatoDireto } from '@/src/server/atendimento/operacoes'
 
 let banco: BancoDeTeste
 let a: string, b: string, gestor: string, empresa: string
@@ -20,6 +22,7 @@ beforeEach(async () => {
   // Permite observar o RED antes da nova migração, sem falhar no preparo.
   await banco.sql("DO $$ BEGIN IF to_regclass('venda') IS NOT NULL THEN DELETE FROM venda; DELETE FROM negociacao; END IF; END $$")
   await banco.sql('DELETE FROM contato; DELETE FROM empresa_fila; DELETE FROM fila_contexto')
+  await banco.sql('DELETE FROM empresa_atendimento_operacao; DELETE FROM empresa_vinculo')
   await banco.sql('UPDATE usuario SET ativo=true, senha_provisoria_pendente=false')
 })
 async function reservar(ator: string) {
@@ -75,11 +78,16 @@ test('cliente não é devolvido; venda encerra ciclo e permanece com dono inativ
 })
 
 test('funil filtra autoria também no último contato e não devolve dados de outro dono', async () => {
-  await assumir(a)
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresa,a])
+  expect(await registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:1},{tipo:'interessado',nota:'Nota de '+a,proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
   const [antiga] = await lerFunil(a)
-  await devolver(a)
-  await banco.sql('UPDATE empresa_fila SET elegivel_em=NULL')
-  await assumir(b)
+  expect(await registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:antiga.versao},{tipo:'sem_interesse',nota:'Sem interesse em conversa real',proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
+  // Mudança administrativa explícita somente da fixture para observar o novo
+  // dono. Não há comando de transferência no aplicativo.
+  await banco.sql('UPDATE empresa_vinculo SET vendedor_id=$2,arquivada_em=NULL,versao=versao+1 WHERE empresa_id=$1',[empresa,b])
+  await banco.sql('UPDATE empresa_fila SET vendedor_id=$2 WHERE empresa_id=$1',[empresa,b])
+  const [{versao}]=await banco.sql<{versao:number}>('SELECT versao FROM empresa_vinculo WHERE empresa_id=$1',[empresa])
+  expect(await registrarContatoDireto(b,{empresaId:empresa,chave:randomUUID(),versao},{tipo:'interessado',nota:'Nota de '+b,proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
   const [atual] = await lerFunil(b)
   expect(atual).toMatchObject({empresaId:empresa,nome:'Aurora',cidade:null,etapa:'primeiro_contato'})
   expect(atual).not.toHaveProperty('telefone')

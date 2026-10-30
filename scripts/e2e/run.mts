@@ -14,6 +14,7 @@ import { prepararFilaVisual } from '../../tests/e2e/dados-fila-visual'
 import { prepararCarteiraVisual } from '../../tests/e2e/dados-carteira-visual'
 import { prepararFunil } from '../../tests/e2e/dados-funil'
 import { prepararAtendimentoDireto } from '../../tests/e2e/dados-atendimento'
+import { prepararSemInteresse } from '../../tests/e2e/dados-sem-interesse'
 import { prepararMeuDia } from '../../tests/e2e/dados-meu-dia'
 import { iniciarWhatsAppDeTeste } from '../../tests/e2e/whatsapp-mock'
 import { prepararRedesign } from '../../tests/e2e/dados-redesign'
@@ -81,6 +82,7 @@ try {
   await prepararMeuDia(banco)
   await prepararFunil(banco)
   await prepararAtendimentoDireto(banco)
+  await prepararSemInteresse(banco)
   await prepararRedesign(banco)
   const google = await prepararGoogle(banco)
   await prepararBuscaDemo(banco)

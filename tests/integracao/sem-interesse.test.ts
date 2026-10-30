@@ -55,7 +55,7 @@ test('referência de negociação antiga ou encerrada recusa arquivamento sem mu
 test('venda posterior invalida aba antiga; arquivar cliente preserva venda e interesse seguinte não abre primeira venda', async () => {
   const n = await interessado()
   const velha = await versao()
-  const resultado = await banco.comoUsuario(vendedor, e => e('SELECT funil_venda_registrar($1,$2,current_date,100,NULL) AS r', [n, randomUUID()]))
+  const resultado = await banco.comoUsuario(vendedor, e => e("SELECT funil_venda_registrar($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,NULL) AS r", [n, randomUUID()]))
   expect(resultado.linhas[0]).toEqual({ r: 'ok' })
   const vendas = await banco.sql('SELECT * FROM venda WHERE empresa_id=$1', [empresa])
   expect(await rpc('empresa_sem_interesse_definir', [empresa, randomUUID(), velha, null])).toEqual({ ok: false, motivo: 'desatualizada' })
@@ -65,7 +65,7 @@ test('venda posterior invalida aba antiga; arquivar cliente preserva venda e int
   expect(await rpc('empresa_atendimento_retomar', [empresa, randomUUID(), r.versao])).toMatchObject({ ok: true })
   expect(await rpc('contato_registrar_direto', [empresa, randomUUID(), await versao(), 'interessado', null, null, null])).toMatchObject({ ok: true })
   expect(await banco.sql('SELECT * FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresa])).toEqual([])
-  const seguinte = await banco.comoUsuario(vendedor, e => e('SELECT carteira_venda_registrar($1,$2,current_date,200,NULL) AS r', [empresa, randomUUID()]))
+  const seguinte = await banco.comoUsuario(vendedor, e => e("SELECT carteira_venda_registrar($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,200,NULL) AS r", [empresa, randomUUID()]))
   expect(seguinte.linhas[0]).toEqual({ r: 'ok' })
 })
 
@@ -74,7 +74,7 @@ test('venda e arquivamento concorrentes compartilham trava e rejeitam o perdedor
   const velha = await versao()
   const [arquivo, venda] = await Promise.all([
     rpc('empresa_sem_interesse_definir', [empresa, randomUUID(), velha, n]),
-    banco.comoUsuario(vendedor, async e => (await e<{ r: string }>('SELECT funil_venda_registrar($1,$2,current_date,100,NULL) AS r', [n, randomUUID()])).linhas[0].r),
+    banco.comoUsuario(vendedor, async e => (await e<{ r: string }>("SELECT funil_venda_registrar($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,NULL) AS r", [n, randomUUID()])).linhas[0].r),
   ])
   expect(Number(arquivo.ok) + Number(venda === 'ok')).toBe(1)
   expect(await banco.sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).toHaveLength(1)
