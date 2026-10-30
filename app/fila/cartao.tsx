@@ -31,7 +31,7 @@ export function Cartao({ empresa, filtros = {} }: { empresa: ResumoEmpresa; filt
         const form = new FormData()
         form.set('id', comando.id); form.set('chave', comando.chave); form.set('versao', String(comando.versao))
         const r = await (comando.tipo === 'retomar' ? retomarAtendimentoAcao : iniciarAtendimentoAcao)(form)
-        if (!r.ok) { setErro(textoDoMotivo(r.motivo)); setResolvido(true); return }
+        if (!r.ok) { setErro(textoDoMotivo(r.motivo)); setResolvido(!['sem_permissao','nao_encontrada'].includes(r.motivo)); return }
         sessionStorage.removeItem(storage); setErro(''); router.refresh()
         if ('href' in acao) router.push(acao.tipo === 'continuar' && empresa.id ? urlAtendimento(empresa.id, filtros) : acao.href)
         else if (comando.tipo === acao.tipo) router.push(urlAtendimento(acao.empresaId, filtros))

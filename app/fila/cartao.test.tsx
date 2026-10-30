@@ -20,6 +20,15 @@ test('Ver empresa usa diálogo informativo, fechar não inicia nem navega',async
   await montar();await clicar('Ver empresa');expect(host.querySelector('[role=dialog]')).not.toBeNull()
   await clicar('Fechar');expect(iniciar).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
 })
+test('recusa temporária de autorização não abandona chave de início desconhecido',async()=>{
+  iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
+  const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
+  iniciar.mockResolvedValueOnce({ok:false,motivo:'sem_permissao'});await clicar('Iniciar atendimento')
+  expect(host.textContent).not.toContain('Atualizar empresa')
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Iniciar atendimento')
+  expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
+  expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
+})
 test('início perdido repete mesma chave/versão mesmo após remount, depois abre empresa explícita',async()=>{
   iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
   const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])

@@ -10,7 +10,7 @@ import { useRascunhos } from './rascunhos'
 export function Formulario({ empresa, fase, contatos, filtros }: { empresa: ResumoEmpresa; fase: 'inicial' | 'negociacao' | 'cliente'; contatos: Contato[]; filtros: FiltrosPessoais }) {
   const rascunhos = useRascunhos()
   return <div className="grid gap-6"><Cartao empresa={empresa} filtros={filtros} />
-    {empresa.id && empresa.versao && empresa.situacao !== 'indisponivel' && <section aria-label="Registrar atendimento">{!['a_contatar','sem_interesse'].includes(empresa.situacao) && <h2>Registrar atendimento</h2>}<FormularioContato key={empresa.id} empresaId={empresa.id} versao={empresa.versao} fase={fase} visual="fila" somenteConfirmacao={['a_contatar','sem_interesse'].includes(empresa.situacao)}
+    {empresa.id && empresa.versao && <section aria-label="Registrar atendimento">{!['a_contatar','sem_interesse','indisponivel'].includes(empresa.situacao) && <h2>Registrar atendimento</h2>}<FormularioContato key={empresa.id} empresaId={empresa.id} versao={empresa.versao} fase={fase} visual="fila" somenteConfirmacao={['a_contatar','sem_interesse','indisponivel'].includes(empresa.situacao)}
       rascunho={rascunhos.entradas[empresa.id]?.valor}
       onDraftChange={valor => rascunhos.atualizar(empresa.id!, empresa.nome, valor)}
       onSaved={rascunhos.limpar} /></section>}

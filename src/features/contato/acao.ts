@@ -16,8 +16,6 @@ export async function prepararContatoAcao(empresaId: string) {
 export async function registrarContatoAcao(_anterior: EstadoContato, form: FormData): Promise<EstadoContato> {
   const eu = await exigir('vendedor')
   const empresaId = String(form.get('id') ?? '')
-  const atual = await lerAtendimento(eu.usuarioId, empresaId)
-  if (!atual.ok) return { ok: false, erro: textoDoMotivo(atual.motivo), motivo: atual.motivo }
   // A RPC resolve replay antes da fase/versão atuais. Aqui só há estrutura;
   // uma fase nova não pode impedir a confirmação de um contato anterior.
   const r = validarContatoDireto({ tipo: String(form.get('tipo') ?? ''), nota: String(form.get('nota') ?? ''), proximoPasso: String(form.get('proximoPasso') ?? ''), proximoPassoData: String(form.get('proximoPassoData') ?? '') }, 'estrutura')

@@ -63,7 +63,7 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
     let ativo = true
     if (!versao || !fase) prepararContatoAcao(empresaId).then(r => {
       if (!ativo) return
-      if (r.ok && r.empresa.versao && (r.empresa.situacao !== 'sem_interesse' || decodificarSessao(lerSessao(chaveStorage)).envio)) setPreparado({ versao: r.empresa.versao, fase: r.fase })
+      if (r.ok && r.empresa.versao && !['sem_interesse','indisponivel'].includes(r.empresa.situacao)) setPreparado({ versao: r.empresa.versao, fase: r.fase })
       else setErroPreparacao('Esta empresa não está disponível para registro.')
     }, () => { if (ativo) setErroPreparacao('Não foi possível preparar o atendimento. Recarregue para tentar novamente.') })
     return () => { ativo = false }
@@ -83,10 +83,10 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
     salvar(proximo, envio); setInterno(proximo); onDraftChange?.(proximo)
   }
   const [estado, agir, pendente] = useActionState(async (): Promise<EstadoContato> => {
-    if ((bloqueado || somenteConfirmacao) && !envio || !preparado || !carregado) return { ok: false, erro: 'Aguarde a preparação do atendimento.' }
+    if (bloqueado || !carregado || !envio && (somenteConfirmacao || !preparado)) return { ok: false, erro: 'Aguarde a preparação do atendimento.' }
     onPendingChange?.(true)
     try {
-      const comando = prepararEnvio(envio, preparado.versao, atual)
+      const comando = envio ?? prepararEnvio(null, preparado!.versao, atual)
       salvar(atual, comando)
       const form = new FormData()
       form.set('id', empresaId); form.set('chave', comando.chave); form.set('versao', String(comando.versao))
@@ -98,9 +98,11 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
         setPreparado(null); router.refresh(); onSaved?.(empresaId)
         try {
           const novo = await prepararContatoAcao(empresaId)
-          if (novo.ok && novo.empresa.versao && novo.empresa.situacao !== 'sem_interesse') setPreparado({ versao: novo.empresa.versao, fase: novo.fase })
+          if (novo.ok && novo.empresa.versao && !['sem_interesse','indisponivel'].includes(novo.empresa.situacao)) setPreparado({ versao: novo.empresa.versao, fase: novo.fase })
         } catch { setErroPreparacao('O envio foi confirmado. Recarregue para preparar outro atendimento.') }
-      } else { const resolvido = { ...comando, resolvido: true }; salvar(atual, resolvido) }
+      } else if (r.motivo && !['sem_permissao','nao_encontrada'].includes(r.motivo)) {
+        salvar(atual, { ...comando, resolvido: true })
+      }
       return r
     } catch (erro) {
       return { ok: false, erro: erro instanceof Error && erro.message.includes('envio anterior') ? erro.message : 'Não foi possível confirmar o envio. Suas anotações foram preservadas. Tente novamente com os mesmos dados.' }
@@ -119,11 +121,11 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
     <label>Data do próximo passo<Input type="date" name="proximoPassoData" value={atual.proximoPassoData} readOnly={congelado} onChange={e => alterar({ proximoPassoData: e.target.value })} /></label>
     {atual.tipo === 'sem_interesse' && <p>Sem interesse encerra a negociação e cancela os próximos passos.</p>}
     {(atual.tipo === 'interessado' || atual.tipo === 'retornar_depois') && <p>A empresa segue no seu Funil.</p>}
-    <Button type="submit" className="self-start" disabled={pendente || bloqueado || !preparado || !carregado || Boolean(envio?.resolvido)}>{pendente ? 'Registrando…' : envio && !envio.resolvido ? 'Confirmar envio anterior' : 'Registrar'}</Button>
+    <Button type="submit" className="self-start" disabled={pendente || bloqueado || !envio && !preparado || !carregado || Boolean(envio?.resolvido)}>{pendente ? 'Registrando…' : envio && !envio.resolvido ? 'Confirmar envio anterior' : 'Registrar'}</Button>
     {!envio && <Button type="button" variant="ghost" disabled={pendente} onClick={() => { limpar(); setInterno(rascunhoInicial(false)); onDraftChange?.(rascunhoInicial(false)) }}>Descartar anotações</Button>}
     {envio?.resolvido && <Button type="button" variant="outline" onClick={async () => {
       const r = await prepararContatoAcao(empresaId)
-      if (!r.ok || !r.empresa.versao || r.empresa.situacao === 'sem_interesse') { setErroPreparacao('Esta empresa não está disponível para registro.'); return }
+      if (!r.ok || !r.empresa.versao || ['sem_interesse','indisponivel'].includes(r.empresa.situacao)) { setErroPreparacao('Esta empresa não está disponível para registro.'); return }
       salvar(atual, null); setPreparado({ versao: r.empresa.versao, fase: r.fase }); router.refresh()
     }}>Atualizar atendimento para novo envio</Button>}
   </form>

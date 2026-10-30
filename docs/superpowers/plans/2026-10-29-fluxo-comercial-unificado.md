@@ -342,6 +342,7 @@ expect(textoDoCardGerencial).not.toContain('Retomar atendimento')
 **Interfaces:**
 - Consumes: todas as tarefas anteriores; operação pública somente pelo novo contrato.
 - Produces: nenhuma função concedida sem consumidor; documentação da transição, pendências, verificação e recuperação. Histórico permanece consultável sem liberar o catálogo inteiro.
+- Produces: guardas autoritativas para comandos novos nas mesmas indisponibilidades do resumo comum (origem inativa e pendência), depois de autenticação/replay e trava. Obrigação identificada no teste da tarefa 5: a pré-leitura de estado em TypeScript impedia replay, mas a 0052 ainda permitia comando novo com origem inativa. Resolver na nova 0055, sem editar SQL antigo, com negativas reais e preservação do replay histórico autorizado.
 
 - [ ] **Step 1: Escrever testes falhando de migração e aposentadoria.** Criar banco até 0049 com reserva, negociação, cliente, descanso por Não atendeu/Sem interesse, colisão entre fontes e dono inativo; guardar IDs/autores/quantidades/datas. Aplicar as novas migrações pelo runner e comparar. Assertivas: contatos/vendas imutáveis, responsável inequívoco preservado, conflito reportado, agenda cancelada não restaurada, nenhum grant de aquisição global acessível ao vendedor, arquivos antigos não reabrem o catálogo.
 

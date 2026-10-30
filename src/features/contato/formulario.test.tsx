@@ -10,11 +10,39 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }))
 import { FormularioContato } from './formulario'
 import { descartarRascunhoContato, rascunhoInicial } from './rascunho'
 let root: ReturnType<typeof createRoot>, host: HTMLDivElement
-beforeEach(() => { sessionStorage.clear(); vi.clearAllMocks(); preparar.mockResolvedValue({ ok:true, fase:'inicial', empresa:{versao:8,situacao:'atendimento'} }); host=document.createElement('div');document.body.append(host);root=createRoot(host) })
+beforeEach(() => { sessionStorage.clear(); vi.resetAllMocks(); preparar.mockResolvedValue({ ok:true, fase:'inicial', empresa:{versao:8,situacao:'atendimento'} }); host=document.createElement('div');document.body.append(host);root=createRoot(host) })
 afterEach(async()=>{await act(async()=>root.unmount());host.remove()})
 async function montar(id='A', versao=2) { await act(async()=>root.render(<FormularioContato empresaId={id} versao={versao} fase="inicial" />)) }
 async function nota(texto:string) { await act(async()=>{ const campo=host.querySelector('textarea')!;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(campo,texto);campo.dispatchEvent(new Event('input',{bubbles:true})) }) }
 async function enviar() { await act(async()=>host.querySelector('form')!.requestSubmit()) }
+test('DTO próprio indisponível sem envio não habilita comando novo no editor preparado',async()=>{
+  preparar.mockResolvedValue({ok:true,fase:'inicial',empresa:{situacao:'indisponivel',versao:10}})
+  await act(async()=>root.render(<FormularioContato empresaId="A" />))
+  expect(host.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(true)
+  await enviar()
+  expect(gravar).not.toHaveBeenCalled()
+})
+test('preparação indisponível e recusa temporária de auth preservam replay desconhecido até nova tentativa',async()=>{
+  gravar.mockRejectedValueOnce(new Error('Resposta perdida'))
+  await montar();await nota('Original');await enviar()
+  const primeiro=Object.fromEntries(gravar.mock.calls[0][1])
+  await act(async()=>root.render(null))
+  preparar.mockResolvedValue({ok:false,motivo:'sem_permissao'})
+  await act(async()=>root.render(<FormularioContato empresaId="A" />))
+  gravar.mockResolvedValueOnce({ok:false,motivo:'sem_permissao',erro:'Acesso indisponível'})
+  await enviar()
+  expect(gravar).toHaveBeenCalledTimes(2)
+  expect(Object.fromEntries(gravar.mock.calls[1][1])).toEqual(primeiro)
+  const guardado=JSON.parse(sessionStorage.getItem('crm:contato:v1:A')!)
+  expect(guardado.envio.resolvido).not.toBe(true)
+  expect(host.textContent).not.toContain('Atualizar atendimento para novo envio')
+  expect(host.querySelector('textarea')!.value).toBe('Original')
+  expect(descartarRascunhoContato('A')).toBe(false)
+  gravar.mockResolvedValueOnce({ok:true,repetida:true,erro:null})
+  await enviar()
+  expect(Object.fromEntries(gravar.mock.calls[2][1])).toEqual(primeiro)
+  expect(sessionStorage.getItem('crm:contato:v1:A')).toBeNull()
+})
 test('restaura estado do consumidor mesmo com callback recriado a cada render',async()=>{
   const valor={...rascunhoInicial(false),nota:'Restaurada'}
   sessionStorage.setItem('crm:contato:v1:A',JSON.stringify({valor,envio:null}))
