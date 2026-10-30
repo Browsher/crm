@@ -101,6 +101,7 @@ test('jornada do gestor mantém navegação, grupos ativos e portal escuro', asy
   await capturar(page, 'usuarios-desktop-dark')
   await expect(nav.getByRole('link', { name: 'Design system', exact: true })).toHaveCount(0)
   await page.goto('/design')
+  await page.getByLabel('Tema do design system').selectOption('dark')
   await expect(page.getByLabel('Tema do design system')).toHaveValue('dark')
   await expect(nav.locator('[aria-current=page]')).toHaveCount(0)
   await expect(page.getByRole('table', { name: 'Empresas de demonstração' })).toBeVisible()
