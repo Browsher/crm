@@ -1,6 +1,6 @@
 # Fluxo comercial unificado e padrão de empresas
 
-Data: 29/10/2026. Estado: aprovado pelo usuário em 29/10/2026, incluindo a correção do destino Sem interesse para um card com animação de lixeira. Próxima etapa: revisão do plano de implementação.
+Data: 29/10/2026. Estado: aprovado pelo usuário em 29/10/2026, incluindo a correção do destino Sem interesse para um card com animação de lixeira. Implementação técnica e revisões concluídas em 30/10/2026; entrega por PR e transição operacional conforme o plano e o guia.
 
 ## Objetivo e motivo
 
