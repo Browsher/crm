@@ -3,7 +3,7 @@
 import { Suspense, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, CalendarDays, Columns3, FolderOpen, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Palette, Search, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Building2, CalendarDays, Columns3, FolderOpen, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Search, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/src/components/ui/sheet'
@@ -14,7 +14,7 @@ import styles from './shell.module.css'
 const TITULO = { funil: 'Funil', fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas', usuarios: 'Usuários', gestao: 'Gestão', whatsapp: 'WhatsApp', design: 'Design system' } as const
 const TEMA = { funil: 'Tema do Funil', fila: 'Tema da Fila', carteira: 'Tema da Carteira', 'meu-dia': 'Tema do Meu dia', empresas: 'Tema de Empresas', usuarios: 'Tema de Usuários', gestao: 'Tema da Gestão', whatsapp: 'Tema do WhatsApp', design: 'Tema do design system' } as const
 const vendedor: [string, string, LucideIcon][] = [['/meu-dia', 'Meu dia', CalendarDays], ['/fila', 'Prospecção', Search], ['/funil', 'Funil', Columns3], ['/carteira', 'Carteira', Wallet]]
-const gestor: [string, string, LucideIcon][] = [['/gestao', 'Início', LayoutDashboard], ['/empresas', 'Empresas', Building2], ['/empresas/google', 'Coletas do Google', CalendarDays], ['/empresas/grupos', 'Listas', FolderOpen], ['/usuarios', 'Usuários', Users], ['/whatsapp', 'WhatsApp', MessageCircle], ['/design', 'Design system', Palette]]
+const gestor: [string, string, LucideIcon][] = [['/gestao', 'Início', LayoutDashboard], ['/empresas', 'Empresas', Building2], ['/empresas/google', 'Coletas do Google', CalendarDays], ['/empresas/grupos', 'Listas', FolderOpen], ['/usuarios', 'Usuários', Users], ['/whatsapp', 'WhatsApp', MessageCircle]]
 
 export function ShellCrm({ children, nome, papel, area }: { children: ReactNode; nome: string; papel: 'gestor' | 'vendedor'; area: keyof typeof TITULO }) {
   const { tema, definirTema } = useControleTemaCrm()
