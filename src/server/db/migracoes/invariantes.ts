@@ -29,7 +29,6 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.credencial_definir',
   'public.usuario_situacao_definir',
   'public.empresa_recente_registrar',
-  'public.grupo_importacao_confirmar',
   'public.grupo_importacao_situacao_definir',
   'public.grupo_importacao_renomear',
   'public.grupo_importacao_metadados_definir',

@@ -14,7 +14,7 @@ export default async function PaginaGrupos({ searchParams }: { searchParams: Pro
   const pagina = paginaGrupos((await searchParams).pagina)
   const r = await listarGrupos(eu.usuarioId, pagina)
   return <main className={styles.pagina}>
-    <CabecalhoPagina titulo="Listas de empresas" descricao="Confira a origem e a disponibilidade das listas compartilhadas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/google">Planejamentos e coletas do Google</Link></Button><Button variant="outline" asChild><Link href="/empresas">Todas as empresas</Link></Button><Button asChild><Link href="/empresas/importar">Importar planilha</Link></Button> </>} />
+    <CabecalhoPagina titulo="Listas de empresas" descricao="Confira a origem e a disponibilidade das listas compartilhadas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/google">Planejamentos e coletas do Google</Link></Button><Button variant="outline" asChild><Link href="/empresas">Todas as empresas</Link></Button> </>} />
     {!r.ok ? <Alert variant="danger">Você não tem permissão para consultar os grupos.</Alert> : <>
       <dl className={styles.resumo}>
         <div><dt>Total de listas</dt><dd>{r.resumo.total}</dd></div>
@@ -23,8 +23,8 @@ export default async function PaginaGrupos({ searchParams }: { searchParams: Pro
         <div><dt>Empresas únicas vinculadas</dt><dd>{r.resumo.empresas}</dd></div>
       </dl>
       {r.grupos.length === 0 ? <EstadoVazio titulo={r.resumo.total === 0 ? 'Nenhuma lista compartilhada' : 'Nenhuma lista nesta página'}
-        descricao={r.resumo.total === 0 ? 'Importe uma planilha ou consulte as coletas do Google.' : 'Volte à primeira página para consultar as listas existentes.'}
-        acao={{ rotulo: r.resumo.total === 0 ? 'Importar planilha' : 'Voltar à primeira página', href: r.resumo.total === 0 ? '/empresas/importar' : '/empresas/grupos', variante: 'outline' }} /> :
+        descricao={r.resumo.total === 0 ? 'Consulte os planejamentos e as coletas do Google.' : 'Volte à primeira página para consultar as listas existentes.'}
+        acao={{ rotulo: r.resumo.total === 0 ? 'Consultar coletas do Google' : 'Voltar à primeira página', href: r.resumo.total === 0 ? '/empresas/google' : '/empresas/grupos', variante: 'outline' }} /> :
         <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Listas de empresas"><Table className={`${styles.tabela} crm-registros`}>
           <TableHeader><TableRow><TableHead scope="col">Lista / Origem</TableHead><TableHead scope="col">Situação</TableHead><TableHead scope="col">Empresas</TableHead><TableHead scope="col">Criada em</TableHead><TableHead scope="col">Ação</TableHead></TableRow></TableHeader>
           <TableBody>{r.grupos.map(g => <TableRow key={g.id}>

@@ -35,7 +35,6 @@ const sao = (): Estado => ({
     'public.credencial_definir', 'public.eh_gestor', 'public.pode_escrever', 'public.pode_ler',
     'public.senha_provisoria_de', 'public.usuario_atual', 'public.usuario_situacao_definir',
     'public.empresa_recente_registrar',
-    'public.grupo_importacao_confirmar',
     'public.grupo_importacao_situacao_definir',
     'public.grupo_importacao_renomear',
     'public.grupo_importacao_metadados_definir',
@@ -85,6 +84,11 @@ const umaViolacao = (estado: Estado, padrao: RegExp) => {
 }
 
 describe('avaliar', () => {
+  test('importação manual aposentada não pode voltar a ser concedida à aplicação', () => {
+    const e = sao()
+    e.funcoesConcedidasAAppUsuario.push('public.grupo_importacao_confirmar')
+    umaViolacao(e, /concedida a app_usuario e não registrada: public\.grupo_importacao_confirmar/)
+  })
   test('estado são não tem violação', () => {
     expect(avaliar(sao())).toEqual([])
   })

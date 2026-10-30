@@ -26,7 +26,7 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
   if (!filtros.ok) {
     return (
       <main className={styles.pagina}>
-        <CabecalhoPagina titulo="Empresas" descricao="Consulte os cadastros e importe novas empresas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/busca">Busca de empresas</Link></Button><Button variant="outline" asChild><Link href="/empresas/grupos">Listas de empresas</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button> </>} />
+        <CabecalhoPagina titulo="Empresas" descricao="Consulte os cadastros das empresas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/busca">Busca de empresas</Link></Button><Button variant="outline" asChild><Link href="/empresas/grupos">Listas de empresas</Link></Button> </>} />
         <Alert variant="danger"><AlertTitle><h2>Não foi possível aplicar os filtros</h2></AlertTitle>
           <AlertDescription>Revise os filtros informados e tente novamente.</AlertDescription>
           <Button asChild variant="outline"><Link href="/empresas">Limpar filtros</Link></Button>
@@ -41,7 +41,7 @@ export default async function PaginaEmpresas({ searchParams }: Props) {
   ])
   return (
     <main className={styles.pagina}>
-      <CabecalhoPagina titulo="Empresas" descricao="Consulte os cadastros e importe novas empresas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/busca">Busca de empresas</Link></Button><Button variant="outline" asChild><Link href="/empresas/grupos">Listas de empresas</Link></Button><Button asChild><Link href="/empresas/importar">Importar empresas</Link></Button> </>} />
+      <CabecalhoPagina titulo="Empresas" descricao="Consulte os cadastros das empresas." acoes={<> <Button variant="outline" asChild><Link href="/empresas/busca">Busca de empresas</Link></Button><Button variant="outline" asChild><Link href="/empresas/grupos">Listas de empresas</Link></Button> </>} />
       {resultadoOpcoes.ok ? <Formulario consulta={consulta} opcoes={resultadoOpcoes.opcoes} /> : (
         <Alert variant="danger">{textoDoMotivo(resultadoOpcoes.motivo)}</Alert>
       )}

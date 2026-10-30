@@ -20,15 +20,17 @@ test('lista compacta usa totais globais, origem migrada e navegação real', asy
   expect(html).toContain('300')
   expect(html).toContain('Cadastros anteriores')
   expect(html).toContain('Migração')
-  expect(html).toContain('href="/empresas/importar"')
+  expect(html).not.toContain('/empresas/importar')
   expect(html).toContain('href="/empresas"')
   expect(html).toContain('/empresas/grupos?pagina=2')
 })
-test('estado vazio oferece importação', async () => {
+test('estado vazio orienta consultar as coletas sem oferecer importação manual', async () => {
   deps.listar.mockResolvedValue({ ok: true, grupos: [], resumo: { total: 0, ativos: 0, desativados: 0, empresas: 0 } })
   const html = renderToStaticMarkup(await Pagina({ searchParams: Promise.resolve({}) }))
   expect(html).toContain('Nenhuma lista')
-  expect(html).toContain('href="/empresas/importar"')
+  expect(html).not.toContain('/empresas/importar')
+  expect(html).not.toContain('Importe uma planilha')
+  expect(html).toContain('href="/empresas/google"')
 })
 
 test('página além do fim orienta voltar sem apresentar a base como vazia', async () => {
