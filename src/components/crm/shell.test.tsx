@@ -70,10 +70,10 @@ test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
 })
 
 
-test('design compartilha navegação e tema do gestor sem expor galeria ao vendedor', () => {
+test('design mantém tema e navegação do gestor sem atalho para a galeria no menu', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="gestor" area="design">Galeria visual</ShellCrm>)
   expect(html).toContain('Tema do design system')
-  expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/design"')
+  expect(html).not.toContain('href="/design"')
   expect(html).toContain('href="/usuarios"')
   expect(html).toContain('Design system')
   const vendedor = renderToStaticMarkup(<ShellCrm nome="Bia" papel="vendedor" area="carteira">Carteira</ShellCrm>)
