@@ -27,7 +27,7 @@ const ORIGEM = `FROM negociacao n
   JOIN empresa_fila f ON f.empresa_id=n.empresa_id AND f.vendedor_id=$1
   JOIN empresa e ON e.id=n.empresa_id
   LEFT JOIN cep endereco ON endereco.cep=e.cep
-  WHERE n.vendedor_id=$1 AND n.encerrada_em IS NULL AND pode_ler()
+  WHERE n.vendedor_id=$1 AND n.encerrada_em IS NULL AND pode_ler() AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
     AND EXISTS (SELECT 1 FROM usuario u WHERE u.id=$1 AND u.papel='vendedor' AND u.ativo)`
 
 function conferirEtapa<T extends { etapa: string }>(dado: T): T & { etapa: EtapaFunil } {
@@ -56,7 +56,7 @@ export async function contarSemInteresse(usuarioId:string):Promise<{ok:true;tota
   return comoUsuario(usuarioId,async sql=>{
     const {linhas}=await sql<{permitido:boolean;total:number}>(`SELECT
       (pode_ler() AND EXISTS(SELECT 1 FROM usuario WHERE id=usuario_atual() AND papel='vendedor' AND ativo)) AS permitido,
-      (SELECT count(*)::integer FROM empresa_vinculo WHERE vendedor_id=usuario_atual() AND arquivada_em IS NOT NULL) AS total`)
+      (SELECT count(*)::integer FROM empresa_vinculo v WHERE vendedor_id=usuario_atual() AND arquivada_em IS NOT NULL AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=v.empresa_id)) AS total`)
     const r=linhas[0]
     return r?.permitido?{ok:true,total:r.total}:{ok:false,motivo:'sem_permissao'}
   })
@@ -101,5 +101,15 @@ export async function lerTelefoneNegociacao(usuarioId:string,id:string):Promise<
   return comoUsuario(usuarioId,async executar=>{
     const r=await executar<{telefone:string|null}>(`SELECT e.telefone ${ORIGEM} AND n.id=$2`,[usuarioId,id])
     return r.linhas[0] ? r.linhas[0].telefone ?? '' : null
+  })
+}
+
+export async function lerEmpresaArquivadaDaNegociacao(usuarioId: string, id: string): Promise<string | null> {
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return null
+  return comoUsuario(usuarioId, async executar => {
+    const { linhas } = await executar<{ empresa_id: string }>(`SELECT n.empresa_id FROM negociacao n
+      JOIN empresa_arquivo a ON a.empresa_id=n.empresa_id
+      WHERE n.id=$1 AND n.vendedor_id=usuario_atual() AND pode_ler()`, [id])
+    return linhas[0]?.empresa_id ?? null
   })
 }

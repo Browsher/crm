@@ -8,7 +8,7 @@ vi.mock('@/src/features/empresas/grupos', async original => ({ ...await original
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: deps.exigir }))
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('404') } }))
 vi.mock('./acoes', () => ({ alterarGrupoAcao: vi.fn(), atualizarMetadadosGrupoAcao: vi.fn() }))
-const grupo = { id: '11111111-1111-4111-8111-111111111111', nome: 'Base de testes', ativo: true, arquivoNome: null, autor: null, criadoEm: '2026-09-14T12:00:00Z', total: 60, descricao: null, origem: null, criterios: null }
+const grupo = { id: '11111111-1111-4111-8111-111111111111', nome: 'Base de testes', ativo: true, arquivada: false, arquivoNome: null, autor: null, criadoEm: '2026-09-14T12:00:00Z', total: 60, descricao: null, origem: null, criterios: null }
 beforeEach(() => {
   deps.exigir.mockResolvedValue({ usuarioId: 'gestor' })
   deps.listar.mockResolvedValue({ ok: true, grupos: [grupo], resumo: { total: 51, ativos: 49, desativados: 2, empresas: 300 } })
@@ -70,4 +70,16 @@ test('detalhe de lista antiga exibe origem não informada e permite corrigir con
   const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({}) }))
   expect(html).toContain('Origem não informada')
   expect(html).toContain('Salvar contexto')
+})
+
+test('lista arquivada conserva consulta e suprime reativação, renomeação e edição de contexto', async () => {
+  const atual = await deps.detalhe()
+  deps.detalhe.mockResolvedValue({ ...atual, grupo: { ...grupo, ativo: false, arquivada: true } })
+  const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({}) }))
+  expect(html).toContain('Arquivada')
+  expect(html).toContain('Arquivo histórico, somente consulta.')
+  expect(html).toContain('/empresas/arquivadas')
+  expect(html).not.toContain('Salvar contexto')
+  expect(html).not.toContain('Reativar')
+  expect(html).not.toContain('Renomear')
 })

@@ -12,6 +12,7 @@ import { lerFiltrosCarteira, urlCarteira } from '../filtros'
 import { voltarDoMeuDia } from '../../meu-dia/agenda'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
+import { empresaArquivada } from '@/src/components/crm/empresa-arquivada'
 
 // `params` tipado na mão, nunca com tipo gerado pelo build (R-004): o typecheck
 // do CI roda sem `next build`.
@@ -37,7 +38,11 @@ export default async function PaginaFicha({ params, searchParams }: {
   // Empresa fora da carteira é 404, e não "sem permissão": a existência dela
   // não é informação que o vendedor deva receber.
   const empresa = r.carteira.find((e) => e.id === id)
-  if (!empresa) notFound()
+  if (!empresa) {
+    const arquivo = await empresaArquivada(eu.usuarioId,id)
+    if (!arquivo) notFound()
+    return <main className="grid gap-6 p-6"><Button asChild variant="outline"><Link href="/carteira">Voltar para a carteira</Link></Button>{arquivo}</main>
+  }
 
   // Filtros da Carteira inválidos bloqueiam a ficha, como antes. Filtros do
   // Meu dia inválidos não bloqueiam: a origem é conhecida (lista fechada) e o

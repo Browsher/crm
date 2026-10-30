@@ -48,6 +48,7 @@ export function repositorioBusca(usuarioId: string) {
         SELECT DISTINCT ON (item.dados->>'cnpj') b.id busca_id,b.nome grupo,b.criado_em,b.filtros,item.dados,item.indice
         FROM busca_empresa b CROSS JOIN LATERAL jsonb_array_elements(b.empresas) WITH ORDINALITY item(dados,indice)
         WHERE b.usuario_id=usuario_atual() AND b.estado='concluida' AND item.dados->>'cnpj' ~ '^[0-9A-Z]{12}[0-9]{2}$'
+          AND busca_empresa_snapshot_ativo(b.id,item.dados->>'cnpj')
         ORDER BY item.dados->>'cnpj',b.criado_em DESC,b.id DESC,item.indice
       ), recentes AS (
         SELECT * FROM unicas ORDER BY criado_em DESC,busca_id DESC,indice LIMIT 11

@@ -9,6 +9,8 @@ test.each<[SituacaoEmpresa, string]>([['a_contatar','Iniciar atendimento'],['ate
 test('snapshot e indisponibilidade não concedem ações, mesmo com ID global correspondente', () => {
   expect(acaoEmpresa({ ...empresaTeste, referencia: { tipo: 'busca', buscaId: 'busca', cnpj: '12345678000199' } })).toBeNull()
   expect(acaoEmpresa({ ...empresaTeste, situacao: 'indisponivel' })).toBeNull()
+  expect(acaoEmpresa({ ...empresaTeste, situacao: 'arquivada', negociacaoId: 'historico' })).toBeNull()
+  expect(rotuloSituacao('arquivada')).toBe('Arquivada')
   expect(acaoEmpresa({ ...empresaTeste, versao: null })).toBeNull()
   expect(acaoEmpresa({ ...empresaTeste, id: null })).toBeNull()
 })

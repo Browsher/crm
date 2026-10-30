@@ -22,7 +22,7 @@ export async function lerDashboard(usuarioId: string): Promise<Dashboard | null>
       ), dia AS (
         SELECT (now() AT TIME ZONE 'America/Sao_Paulo')::date AS hoje
       ), vinculos AS MATERIALIZED (
-        SELECT v.* FROM empresa_vinculo v JOIN ativos a ON a.id=v.vendedor_id
+        SELECT v.* FROM empresa_vinculo v JOIN ativos a ON a.id=v.vendedor_id WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=v.empresa_id)
       ), numeradas AS (
         SELECT empresa_id,(row_number() OVER(ORDER BY empresa_id)-1)/100 AS lote FROM vinculos
       ), lotes AS (
@@ -43,20 +43,21 @@ export async function lerDashboard(usuarioId: string): Promise<Dashboard | null>
           (SELECT count(*)::int FROM carteira f WHERE f.vendedor_id=a.id AND f.oportunidade) AS oportunidades,
           (SELECT count(*)::int FROM carteira f WHERE f.vendedor_id=a.id AND f.retorno<d.hoje) AS atrasados,
           (SELECT count(*)::int FROM carteira f WHERE f.vendedor_id=a.id AND f.retorno=d.hoje) AS hoje,
-          (SELECT count(*)::int FROM contato c WHERE c.criado_por=a.id AND c.tipo<>'nao_liguei'
+          (SELECT count(*)::int FROM contato c WHERE c.criado_por=a.id AND c.tipo<>'nao_liguei' AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=c.empresa_id)
             AND c.criado_em >= (d.hoje::timestamp AT TIME ZONE 'America/Sao_Paulo')
             AND c.criado_em < ((d.hoje+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')) AS "contatosHoje"
         FROM ativos a CROSS JOIN dia d
       ), recentes AS (
         SELECT c.id,a.nome AS vendedor,coalesce(e.razao_social,e.nome_fantasia) AS empresa,c.tipo,CASE WHEN c.tipo='nao_liguei' THEN 'atividade_sem_ligacao' ELSE 'contato' END AS natureza,c.criado_em AS em
         FROM contato c JOIN ativos a ON a.id=c.criado_por JOIN empresa e ON e.id=c.empresa_id
+        WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
         ORDER BY c.criado_em DESC,c.id DESC LIMIT 10
       )
       SELECT jsonb_build_object(
         'vendedores',coalesce((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.nome,r.id) FROM resumos r),'[]'::jsonb),
         'atividade',coalesce((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.em DESC,r.id DESC) FROM recentes r),'[]'::jsonb),
         'disponiveis',(SELECT count(*)::int FROM empresa e
-          WHERE NOT EXISTS(SELECT 1 FROM empresa_vinculo v WHERE v.empresa_id=e.id)
+          WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id) AND NOT EXISTS(SELECT 1 FROM empresa_vinculo v WHERE v.empresa_id=e.id)
             AND NOT EXISTS(SELECT 1 FROM empresa_vinculo_pendencia p WHERE p.empresa_id=e.id)
             AND NOT EXISTS (SELECT 1 FROM venda v WHERE v.empresa_id=e.id)
             AND EXISTS (SELECT 1 FROM grupo_importacao_empresa ge JOIN grupo_importacao g ON g.id=ge.grupo_id

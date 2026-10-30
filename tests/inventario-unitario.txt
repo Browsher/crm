@@ -3,7 +3,7 @@
 # Gerado por `npm run test:inventario`. Um nome por linha, ordenado.
 # Serve para diferenciar uma falha intermitente da próxima: sem isto,
 # "1 falha em N" com a saída truncada não é comparável com nada.
-# Total: 2201
+# Total: 2210
 
 app/acesso-atendimento.test.tsx :: histórico exige vendedor antes de processar dados
 app/acesso-atendimento.test.tsx :: registrar contato exige vendedor antes de processar formulário
@@ -82,6 +82,7 @@ app/design/page.test.tsx :: protege a galeria para gestor antes de renderizar
 app/empresas/[id]/page.test.tsx :: falha no histórico não se apresenta como histórico vazio
 app/empresas/[id]/page.test.tsx :: ficha de consulta sem ações de vendedor e volta preserva filtros
 app/empresas/[id]/page.test.tsx :: inexistente não consulta histórico
+app/empresas/arquivadas/page.test.tsx :: arquivo exige gestor e pagina dentro do arquivo preservando busca
 app/empresas/busca/detalhe-acao.test.tsx :: action comum autentica antes de carregar DTO e não aceita identidade/papel da tela
 app/empresas/busca/detalhe-acao.test.tsx :: adapter de empresa preserva a guarda antes de tratar falhas de leitura
 app/empresas/busca/detalhe-acao.test.tsx :: ausência e falha não retornam dados de outra busca
@@ -115,6 +116,7 @@ app/empresas/grupos/page.test.tsx :: detalhe de lista antiga exibe origem não i
 app/empresas/grupos/page.test.tsx :: detalhe identifica responsável inativo, outras origens e paginação
 app/empresas/grupos/page.test.tsx :: detalhe usa nome comercial conhecido e CNPJ não informado
 app/empresas/grupos/page.test.tsx :: estado vazio orienta consultar as coletas sem oferecer importação manual
+app/empresas/grupos/page.test.tsx :: lista arquivada conserva consulta e suprime reativação, renomeação e edição de contexto
 app/empresas/grupos/page.test.tsx :: lista compacta usa totais globais, origem migrada e navegação real
 app/empresas/grupos/page.test.tsx :: página além do fim orienta voltar sem apresentar a base como vazia
 app/empresas/grupos/page.test.tsx :: recurso ausente vira 404
@@ -418,6 +420,7 @@ src/components/crm/busca-dialogo.dom.test.tsx :: falha de leitura permite tentar
 src/components/crm/busca-dialogo.dom.test.tsx :: resultado inicial abre sem action extra e não reabre após revalidação
 src/components/crm/busca-dialogo.dom.test.tsx :: só lê ao abrir, mostra carregamento e descarta resposta de abertura anterior
 src/components/crm/caminho.test.tsx :: mapeia /carteira/id-privado com retorno ao nível existente
+src/components/crm/caminho.test.tsx :: mapeia /empresas/arquivadas com retorno ao nível existente
 src/components/crm/caminho.test.tsx :: mapeia /empresas/grupos com retorno ao nível existente
 src/components/crm/caminho.test.tsx :: mapeia /empresas/grupos/id-privado com retorno ao nível existente
 src/components/crm/caminho.test.tsx :: mapeia /empresas/id-privado com retorno ao nível existente
@@ -528,6 +531,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\db\0056.md não te
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0057.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0058.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\0059.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\db\0060.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\divida-tecnica.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\db\fundacao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\design\2026-10-22-redesign\aplicacao\README.md não tem caractere de controle literal
@@ -545,6 +549,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\design\design-syst
 src/docs.test.ts :: documentos sem caractere de controle docs\importacao-conferencia.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\agente-google-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\agente-google-rotina.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\operacao\arquivamento-legado.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\backup-diario.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\base-prospeccao-n8n.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\operacao\busca-empresas.md não tem caractere de controle literal
@@ -632,6 +637,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-28-adaptacao-pr53-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-28-integracao-prs-pendentes-crm.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-29-fluxo-comercial-unificado.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-30-arquivamento-bases-antigas.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\plans\2026-10-30-retirar-importacao-manual-gestor.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-conexao-sem-heranca-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-09-08-fundacao-banco-design.md não tem caractere de controle literal
@@ -685,6 +691,7 @@ src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-27-ultimas-buscas-correcao.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-28-adaptacao-pr53-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-29-fluxo-comercial-unificado-design.md não tem caractere de controle literal
+src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-30-arquivamento-bases-antigas-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle docs\superpowers\specs\2026-10-30-retirar-importacao-manual-gestor-design.md não tem caractere de controle literal
 src/docs.test.ts :: documentos sem caractere de controle existe documento para varrer, senão esta catraca não vigia nada
 src/docs.test.ts :: documentos sem caractere de controle NOTICE-componentes-ui.md não tem caractere de controle literal
@@ -1267,6 +1274,8 @@ src/google-pool.test.ts :: retomada sem job precisa conferir infraestrutura ante
 src/google-pool.test.ts :: tres coletas entram antes de liberar a primeira
 src/google-pool.test.ts :: V1 vincula somente 01 e nao pede outras posicoes
 src/google-publicacao.test.ts :: publicacao exclui estado privado e backups do agente Google
+src/lib/arquivo-legado.test.ts :: assinatura do manifesto independe da ordem das chaves e muda com atividade
+src/lib/arquivo-legado.test.ts :: operação restrita exige duas listas e 43 empresas; ensaio menor só local
 src/lib/banco-empresas.test.ts :: aceita novos critérios opcionais sem reescrever seu significado
 src/lib/banco-empresas.test.ts :: datas de exclusão parciais e dias1 são válidos
 src/lib/banco-empresas.test.ts :: nome sugerido também funciona com apenas CNAE secundário

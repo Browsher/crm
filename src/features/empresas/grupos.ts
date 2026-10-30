@@ -3,14 +3,14 @@ import { comoUsuario, type Executar } from '../../server/db/como-usuario'
 
 export type ResumoGrupo = {
   id: string; nome: string; arquivoNome: string | null; ativo: boolean
-  criadoEm: string; autor: string | null; total: number
+  criadoEm: string; autor: string | null; total: number; arquivada: boolean
   descricao: string | null; origem: string | null; criterios: string | null
 }
 export type ContagensGrupo = { total: number; disponiveis: number; carteiras: number; reservadas: number; outros: number }
 export type ResumoGrupos = { total: number; ativos: number; desativados: number; empresas: number }
 export type EmpresaGrupo = {
   id: string; cnpj: string | null; razaoSocial: string | null; nomeFantasia: string | null
-  situacao: 'disponivel' | 'carteira' | 'reservada' | 'em_descanso' | 'origem_bloqueada'
+  situacao: 'disponivel' | 'carteira' | 'reservada' | 'em_descanso' | 'origem_bloqueada' | 'arquivada'
   responsavel: string | null; responsavelAtivo: boolean | null
   reservadoPor: string | null; reservadoAte: string | null; elegivelEm: string | null
   outrosGrupos: { id: string; nome: string; ativo: boolean }[]
@@ -29,6 +29,7 @@ export function paginaGrupos(valor: unknown): number {
 
 // Uma fotografia por statement: resumo global independente de LIMIT/OFFSET.
 const GRUPOS = `SELECT g.id, g.nome, g.arquivo_nome AS "arquivoNome", g.ativo, g.descricao, g.origem, g.criterios,
+  EXISTS(SELECT 1 FROM public.grupo_importacao_arquivo WHERE grupo_id=g.id) AS arquivada,
   g.criado_em::text AS "criadoEm", u.nome AS autor,
   (SELECT count(*)::integer FROM public.grupo_importacao_empresa ge WHERE ge.grupo_id = g.id) AS total
   FROM public.grupo_importacao g LEFT JOIN public.usuario u ON u.id = g.criado_por`
@@ -46,17 +47,17 @@ async function ler<T>(usuarioId: string, trabalho: (executar: Executar) => Promi
   }
 }
 
-export async function listarGrupos(usuarioId: string, pagina = 1): Promise<ResultadoGrupos> {
+export async function listarGrupos(usuarioId: string, pagina = 1, arquivadas = false): Promise<ResultadoGrupos> {
   return ler(usuarioId, async executar => {
     const { linhas } = await executar<{ grupos: ResumoGrupo[]; resumo: ResumoGrupos }>(`
-      WITH grupos AS (${GRUPOS}), pagina AS (
+      WITH grupos AS (${GRUPOS} WHERE EXISTS(SELECT 1 FROM public.grupo_importacao_arquivo WHERE grupo_id=g.id)=$2::boolean), pagina AS (
         SELECT * FROM grupos ORDER BY "criadoEm" DESC, id LIMIT 50 OFFSET $1
       ) SELECT coalesce((SELECT jsonb_agg(p ORDER BY p."criadoEm" DESC,p.id) FROM pagina p),'[]') AS grupos,
       jsonb_build_object('total',(SELECT count(*) FROM grupos),
         'ativos',(SELECT count(*) FROM grupos WHERE ativo),
         'desativados',(SELECT count(*) FROM grupos WHERE NOT ativo),
-        'empresas',(SELECT count(DISTINCT empresa_id) FROM public.grupo_importacao_empresa)) AS resumo`,
-    [(paginaGrupos(pagina) - 1) * 50])
+        'empresas',(SELECT count(DISTINCT ge.empresa_id) FROM public.grupo_importacao_empresa ge JOIN grupos g ON g.id=ge.grupo_id)) AS resumo`,
+    [(paginaGrupos(pagina) - 1) * 50, arquivadas])
     return { ok: true as const, ...linhas[0] }
   })
 }
@@ -72,7 +73,8 @@ export async function detalharGrupo(usuarioId: string, id: string, pagina = 1): 
           dono.ativo AS "responsavelAtivo",reserva.nome AS "reservadoPor",
           f.reservado_ate::text AS "reservadoAte",f.elegivel_em::text AS "elegivelEm",
           coalesce(origens.outros,'[]') AS "outrosGrupos",
-          CASE WHEN f.vendedor_id IS NOT NULL AND dono.ativo THEN 'carteira'
+          CASE WHEN EXISTS(SELECT 1 FROM public.empresa_arquivo WHERE empresa_id=e.id) THEN 'arquivada'
+            WHEN f.vendedor_id IS NOT NULL AND dono.ativo THEN 'carteira'
             WHEN f.reservado_ate > now() THEN 'reservada'
             WHEN f.elegivel_em > now() THEN 'em_descanso'
             WHEN origens.ativa THEN 'disponivel' ELSE 'origem_bloqueada' END AS situacao,
@@ -94,7 +96,7 @@ export async function detalharGrupo(usuarioId: string, id: string, pagina = 1): 
         coalesce((SELECT jsonb_agg(to_jsonb(p) - 'outra_ativa' ORDER BY coalesce(p."razaoSocial",p."nomeFantasia"),p.id) FROM pagina p),'[]') AS empresas,
         jsonb_build_object('total',count(*),'disponiveis',count(*) FILTER (WHERE situacao = 'disponivel'),
           'carteiras',count(*) FILTER (WHERE situacao = 'carteira'),'reservadas',count(*) FILTER (WHERE situacao = 'reservada'),
-          'outros',count(*) FILTER (WHERE situacao IN ('em_descanso','origem_bloqueada'))) AS contagens,
+          'outros',count(*) FILTER (WHERE situacao IN ('em_descanso','origem_bloqueada','arquivada'))) AS contagens,
         (count(*) FILTER (WHERE situacao = 'disponivel' AND NOT outra_ativa))::integer AS "impactoDesativacao"
       FROM membros`, [id, (paginaGrupos(pagina) - 1) * 50])
     if (!linhas[0]?.grupo) return { ok: false, motivo: 'nao_encontrado' } as const
