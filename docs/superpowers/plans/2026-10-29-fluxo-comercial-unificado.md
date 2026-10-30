@@ -52,7 +52,7 @@ Entregar uma PR final contra main. Commits intermediários são unidades de revi
 
 - [ ] Ler CLAUDE.md, PREFERENCIAS.md, REGRAS.md e a spec aprovada; conferir branch, arquivos alterados e worktree. Preservar alterações externas.
 - [ ] Separar o ambiente privado sem ler ou registrar segredos. Confirmar o host local pelas guardas existentes; não usar `db:aplicar` com ambiente de produção.
-- [ ] Conferir que a última migração continua `0049_banco_inclusao_automatica.sql`. Os números 0050–0057 abaixo estão reservados neste plano; a 0054 acrescenta a leitura em lote das fontes (tarefa 5), a 0055 centraliza disponibilidade (tarefa 7), a 0056 compartilha o resumo gerencial em lote (tarefa 8) e a aposentadoria passa à 0057. Se a main avançar, renumerar apenas os arquivos novos antes de publicar, sem alterar migrações existentes.
+- [ ] Conferir que a última migração continua `0049_banco_inclusao_automatica.sql`. Os números 0050–0058 abaixo estão reservados neste plano; a 0054 acrescenta a leitura em lote das fontes (tarefa 5), a 0055 centraliza disponibilidade (tarefa 7), a 0056 compartilha o resumo gerencial em lote (tarefa 8), a aposentadoria passa à 0057 e a revisão final acrescenta a 0058 somente para pertença ao arquivo e projeção delimitada dos resumos. Se a main avançar, renumerar apenas os arquivos novos antes de publicar, sem alterar migrações existentes.
 
 ## Contratos comuns decididos pelo plano
 

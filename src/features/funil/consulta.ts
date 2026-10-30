@@ -22,7 +22,7 @@ export type NegociacaoDetalhe = NegociacaoResumo & {
 
 // A leitura antiga de contato permite autores anteriores da empresa. O Funil
 // tem um contrato mais restrito: posse atual + ciclo próprio + autoria antes
-// da serialização, inclusive para o último contato que fornece o retorno.
+// da serialização. A agenda vigente é independente da autoria do histórico.
 const ORIGEM = `FROM negociacao n
   JOIN empresa_fila f ON f.empresa_id=n.empresa_id AND f.vendedor_id=$1
   JOIN empresa e ON e.id=n.empresa_id
@@ -73,11 +73,16 @@ export async function lerNegociacao(usuarioId: string, id: string): Promise<Nego
           to_char(c.proximo_passo_data,'YYYY-MM-DD') AS retorno
         FROM contato c JOIN alvo a ON a.empresa_id=c.empresa_id
         WHERE c.criado_por=$1
+      ), agenda AS (
+        SELECT c.proximo_passo,to_char(c.proximo_passo_data,'YYYY-MM-DD') AS retorno
+        FROM alvo a JOIN empresa_vinculo v ON v.empresa_id=a.empresa_id AND v.vendedor_id=$1
+        JOIN contato c ON c.id=v.agenda_contato_id AND c.empresa_id=v.empresa_id
+        WHERE v.arquivada_em IS NULL
       )
       SELECT jsonb_build_object('id',a.id,'empresaId',a.empresa_id,'nome',a.nome,
         'cnpj',a.cnpj,'cidade',a.cidade,'uf',a.uf,'etapa',a.etapa,
-        'proximoPasso',(SELECT c."proximoPasso" FROM contatos c ORDER BY c.em DESC,c.id DESC LIMIT 1),
-        'retorno',(SELECT c.retorno FROM contatos c ORDER BY c.em DESC,c.id DESC LIMIT 1),
+        'proximoPasso',(SELECT proximo_passo FROM agenda),
+        'retorno',(SELECT retorno FROM agenda),
         'historico',coalesce((SELECT jsonb_agg(to_jsonb(c) ORDER BY c.em DESC,c.id DESC) FROM contatos c),'[]'::jsonb)
       ) AS detalhe FROM alvo a`, [usuarioId,id])
     return r.linhas[0] ? conferirEtapa(r.linhas[0].detalhe) : null
@@ -85,7 +90,10 @@ export async function lerNegociacao(usuarioId: string, id: string): Promise<Nego
   if(!detalhe)return null
   const r=await lerResumosEmpresas(usuarioId,[detalhe.empresaId])
   const empresa=r.ok?r.empresas.find(e=>e.id===detalhe.empresaId):null
-  return empresa&&empresa.versao?{...detalhe,empresa,versao:empresa.versao}:null
+  if(!empresa?.versao)return null
+  const agendaDisponivel=empresa.situacao!=='indisponivel'&&empresa.situacao!=='sem_interesse'
+  return {...detalhe,empresa,versao:empresa.versao,
+    proximoPasso:agendaDisponivel?detalhe.proximoPasso:null,retorno:agendaDisponivel?detalhe.retorno:null}
 }
 
 export async function lerTelefoneNegociacao(usuarioId:string,id:string):Promise<string|null> {

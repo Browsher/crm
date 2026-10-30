@@ -18,8 +18,8 @@ export function CentralProspeccao(_props: {atendimento?:string|null} = {}) {
         </form>
       </article>
       <div className={styles.opcoes}>
-        <article className={styles.opcao}><CalendarDays aria-hidden="true" /><div><h2>Buscas no Google</h2><p>Defina o nicho e a região de cada dia. O agente entrega as empresas nos seus grupos.</p></div><Button asChild variant="outline"><Link href="/fila/google">Planejar buscas</Link></Button></article>
-        <article className={styles.opcao}><Building2 aria-hidden="true" /><div><h2>Banco de empresas</h2><p>Encontre novas empresas e adicione as selecionadas aos seus grupos.</p></div><Button asChild variant="outline"><Link href="/fila/buscar?fonte=banco">Buscar novas empresas</Link></Button></article>
+        <article className={styles.opcao}><CalendarDays aria-hidden="true" /><div><h2>Buscas no Google</h2><p>Defina o nicho e a região de cada dia. As empresas entregues entram na sua prospecção pessoal. Você escolhe quando iniciar o atendimento.</p></div><Button asChild variant="outline"><Link href="/fila/google">Planejar buscas</Link></Button></article>
+        <article className={styles.opcao}><Building2 aria-hidden="true" /><div><h2>Banco de empresas</h2><p>Busque novas empresas. Os resultados elegíveis entram automaticamente na sua prospecção pessoal, sem iniciar atendimento.</p></div><Button asChild variant="outline"><Link href="/fila/buscar?fonte=banco">Buscar novas empresas</Link></Button></article>
         <article className={styles.opcao}><Building2 aria-hidden="true" /><div><h2>Sem interesse</h2><p>Consulte as empresas arquivadas e retome o atendimento quando precisar.</p></div><Button asChild variant="outline"><Link href="/fila/sem-interesse">Consultar arquivo</Link></Button></article>
       </div>
 

@@ -20,6 +20,14 @@ test('arquivo exige identidade completa e usa replay antes de conferir estado at
  for(const p of ['/funil','/fila/sem-interesse','/meu-dia'])expect(mocks.revalidar).toHaveBeenCalledWith(p)
 })
 
+test.each(['sem_permissao','nao_encontrada','desatualizada'])('arquivo expõe motivo estruturado %s sem ler recibo/estado recusado',async motivo=>{
+ const f=new FormData()
+ for(const[k,v]of Object.entries({id:'00000000-0000-4000-8000-000000000001',empresaId:'00000000-0000-4000-8000-000000000002',chave:'00000000-0000-4000-8000-000000000003',versao:'3'}))f.set(k,v)
+ mocks.arquivar.mockResolvedValue({ok:false,motivo})
+ expect(await semInteresseAcao(f)).toMatchObject({ok:false,motivo})
+ expect(mocks.atendimento).not.toHaveBeenCalled()
+})
+
 test('action recusa salto e retrocesso antes do repositório',async()=>{
   mocks.etapa.mockResolvedValue({ok:true})
   for(const [anterior,etapa] of [['primeiro_contato','proposta_enviada'],['em_negociacao','primeiro_contato'],['proposta_enviada','proposta_enviada']]){

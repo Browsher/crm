@@ -35,7 +35,7 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
   const restante = Math.max(0, (limite?.limite_diario ?? 0) - (limite?.usado ?? 0))
   const bloqueado = !configurado || Boolean(limite?.pausado) || restante === 0
   return <main className={styles.pagina} style={{maxWidth:1420,marginInline:'auto'}}>
-    <CabecalhoPagina titulo="Banco de empresas" descricao="Encontre novas empresas para os seus grupos." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><HistoricoBuscasDialogo><HistoricoBuscas buscas={historico} /></HistoricoBuscasDialogo><Button asChild variant="outline"><Link href="/fila/localizar?origem=banco">Localizar todas as empresas</Link></Button></>} />
+    <CabecalhoPagina titulo="Banco de empresas" descricao="Busque novas empresas para inclusão automática na sua prospecção pessoal. O atendimento começa quando você escolher." acoes={<><Button asChild variant="outline"><Link href="/fila">Voltar às opções</Link></Button><HistoricoBuscasDialogo><HistoricoBuscas buscas={historico} /></HistoricoBuscasDialogo><Button asChild variant="outline"><Link href="/fila/localizar?origem=banco">Localizar todas as empresas</Link></Button></>} />
     {process.env.CRM_E2E === '1' && process.env.CASA_DOS_DADOS_API_KEY === 'chave-apenas-e2e' && <p className={styles.ajuda} role="note">Prévia local com dados fictícios. Consultas simuladas, sem consumo de créditos.</p>}
       <aside aria-label="Seu limite de hoje" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-5 py-3 text-sm">
         <p><strong>{limite?.usado ?? 0} de {limite?.limite_diario ?? 0}</strong> empresas solicitadas hoje. {restante} disponíveis.</p>

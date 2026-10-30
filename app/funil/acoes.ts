@@ -8,7 +8,8 @@ import { proximaEtapa } from '@/src/lib/comercial'
 import { arquivarSemInteresse } from '@/src/server/atendimento/operacoes'
 import { lerAtendimento } from '@/src/server/atendimento/consulta'
 import { textoDoMotivo } from '@/src/features/contato/mensagens'
-export type EstadoFunil = {ok:boolean;erro?:string;indisponivel?:boolean;repetida?:boolean;atual?:boolean}
+import type { MotivoAtendimento } from '@/src/lib/atendimento'
+export type EstadoFunil = {ok:boolean;erro?:string;motivo?:MotivoAtendimento;indisponivel?:boolean;repetida?:boolean;atual?:boolean}
 function resultado(r:Resultado):EstadoFunil {
   if(r.ok) {
     for(const rota of ['/funil','/carteira','/meu-dia','/gestao','/usuarios']) revalidatePath(rota)
@@ -42,7 +43,7 @@ export async function semInteresseAcao(form:FormData):Promise<EstadoFunil> {
   // A RPC resolve replay autorizado antes da versão. Uma leitura atual nunca
   // veta a confirmação de um envio antigo após retomada ou venda posterior.
   const r=await arquivarSemInteresse(eu.usuarioId,{empresaId,chave,versao},id)
-  if(!r.ok)return {ok:false,erro:textoDoMotivo(r.motivo),indisponivel:r.motivo==='sem_permissao'||r.motivo==='nao_encontrada'}
+  if(!r.ok)return {ok:false,motivo:r.motivo,erro:textoDoMotivo(r.motivo),indisponivel:r.motivo==='sem_permissao'||r.motivo==='nao_encontrada'}
   const atual=await lerAtendimento(eu.usuarioId,empresaId)
   for(const rota of ['/funil','/fila/sem-interesse','/fila/localizar','/meu-dia','/carteira','/gestao'])revalidatePath(rota)
   return {ok:true,repetida:r.repetida,atual:atual.ok&&atual.empresa.situacao==='sem_interesse'&&atual.empresa.versao===r.versao}

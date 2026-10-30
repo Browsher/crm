@@ -13,7 +13,7 @@ vi.mock('@/src/components/crm/empresa-dialogo',()=>({EmpresaDialogo:()=> <p>Dado
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const linha=(etapa:NegociacaoResumo['etapa']='primeiro_contato'):NegociacaoResumo=>({id:'00000000-0000-4000-8000-000000000001',empresaId:'00000000-0000-4000-8000-000000000002',nome:'Aurora',cidade:null,etapa,versao:3,empresa:{referencia:{tipo:'cadastro',empresaId:'00000000-0000-4000-8000-000000000002'},id:'00000000-0000-4000-8000-000000000002',nome:'Aurora',cnpj:null,cnae:null,atividade:null,bairro:null,cidade:null,uf:null,origens:['legado'],recebidaEm:null,situacao:etapa,versao:3,negociacaoId:'00000000-0000-4000-8000-000000000001'}})
-beforeEach(()=>{vi.clearAllMocks();sessionStorage.clear();vi.stubGlobal('requestAnimationFrame',(f:()=>void)=>{f();return 1});vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener:vi.fn(),removeEventListener:vi.fn()}))})
+beforeEach(()=>{vi.resetAllMocks();sessionStorage.clear();vi.stubGlobal('requestAnimationFrame',(f:()=>void)=>{f();return 1});vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener:vi.fn(),removeEventListener:vi.fn()}))})
 afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();vi.restoreAllMocks()})
 async function montar(dados=[linha()],selecionada:string|null=null,usuarioId='teste'){host=document.createElement('div');document.body.append(host);root=createRoot(host);await act(async()=>root.render(<Quadro usuarioId={usuarioId} linhas={dados} totalSemInteresse={21} negociacaoInicial={selecionada}/>))}
 async function evento(alvo:Element,tipo:string){const e=new Event(tipo,{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{setData:vi.fn(),effectAllowed:'move'}});await act(async()=>{alvo.dispatchEvent(e)})}
@@ -84,4 +84,34 @@ test('troca de usuário não recupera o card nem o comando privado da sessão an
  await montar();await clicar('Marcar como Sem interesse')
  await act(async()=>root.unmount());host.remove();await montar([],null,'outro')
  expect(host.textContent).not.toContain('Aurora');expect(host.textContent).not.toContain('Confirmar envio anterior')
+})
+
+test.each(['sem_permissao','nao_encontrada'] as const)('recusa inconclusiva %s conserva envio após remontagem até replay',async motivo=>{
+ vi.mocked(semInteresseAcao).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce({ok:false,motivo,erro:'Acesso temporariamente recusado'}).mockResolvedValueOnce({ok:true,repetida:true,atual:false})
+ await montar();await clicar('Marcar como Sem interesse')
+ const original=Object.fromEntries(vi.mocked(semInteresseAcao).mock.calls[0][0])
+ await clicar('Confirmar envio anterior')
+ expect(sessionStorage.getItem('crm:funil:arquivo:v1:teste')).not.toBeNull()
+ await clicar('Ver empresa');expect(host.textContent).toContain('Dados da empresa')
+ await act(async()=>root.unmount());host.remove();await montar([])
+ await clicar('Confirmar envio anterior')
+ expect(Object.fromEntries(vi.mocked(semInteresseAcao).mock.calls[2][0])).toEqual(original)
+ expect(sessionStorage.getItem('crm:funil:arquivo:v1:teste')).toBeNull()
+})
+
+test('recusa conclusiva libera nova intenção sem manter chave antiga',async()=>{
+ vi.mocked(semInteresseAcao).mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce({ok:false,motivo:'desatualizada',erro:'Mudou'})
+ await montar();await clicar('Marcar como Sem interesse');await clicar('Confirmar envio anterior')
+ expect(sessionStorage.getItem('crm:funil:arquivo:v1:teste')).toBeNull()
+ expect(host.textContent).not.toContain('Confirmar envio anterior')
+ expect(host.querySelector('[draggable=true]')).not.toBeNull()
+})
+
+test('mudança de identidade na mesma tela não carrega memória privada de envio',async()=>{
+ vi.mocked(semInteresseAcao).mockRejectedValueOnce(new Error('rede'))
+ await montar();await clicar('Marcar como Sem interesse')
+ await act(async()=>root.render(<Quadro usuarioId="outro" linhas={[]}/>))
+ expect(host.textContent).not.toContain('Aurora')
+ expect(host.textContent).not.toContain('Confirmar envio anterior')
+ expect(sessionStorage.getItem('crm:funil:arquivo:v1:teste')).not.toBeNull()
 })

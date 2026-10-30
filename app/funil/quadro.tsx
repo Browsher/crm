@@ -22,7 +22,9 @@ function enviar(acao:(form:FormData)=>Promise<EstadoFunil>,form:FormData):Promis
   // transição, para que a interface não espere a rede para mostrar salvando.
   return new Promise((resolve,reject)=>startTransition(()=>{acao(form).then(resolve,reject)}))
 }
-export function Quadro({linhas,totalSemInteresse=0,negociacaoInicial=null,usuarioId}:{linhas:NegociacaoResumo[];totalSemInteresse?:number;negociacaoInicial?:string|null;usuarioId:string}) {
+type PropsQuadro={linhas:NegociacaoResumo[];totalSemInteresse?:number;negociacaoInicial?:string|null;usuarioId:string}
+export function Quadro(props:PropsQuadro) {return <QuadroUsuario key={props.usuarioId} {...props}/>}
+function QuadroUsuario({linhas,totalSemInteresse=0,negociacaoInicial=null,usuarioId}:PropsQuadro) {
   const storage=STORAGE+':'+usuarioId
   const [selecionada,setSelecionada]=useState<string|null>(negociacaoInicial)
   const [referencia,setReferencia]=useState<ReferenciaEmpresa|null>(null)
@@ -68,7 +70,9 @@ export function Quadro({linhas,totalSemInteresse=0,negociacaoInicial=null,usuari
       const f=new FormData();f.set('id',comando.linha.id);f.set('empresaId',comando.linha.empresaId);f.set('versao',String(comando.linha.versao));f.set('chave',comando.chave)
       const r=await enviar(semInteresseAcao,f)
       if(!vivo.current)return r
-      sessionStorage.removeItem(storage);envioRef.current=null;setEnvio(null)
+      if(r.ok||(r.motivo!=='sem_permissao'&&r.motivo!=='nao_encontrada')){
+        sessionStorage.removeItem(storage);envioRef.current=null;setEnvio(null)
+      }
       if(r.ok){
         const sucesso=!r.repetida&&r.atual===true
         setEstado(sucesso?'sucesso':'repouso')
@@ -117,10 +121,10 @@ export function Quadro({linhas,totalSemInteresse=0,negociacaoInicial=null,usuari
       return <section data-etapa={etapa} key={etapa} className={styles.coluna+' '+(destino===etapa?styles.destino:'')} aria-label={ROTULOS_ETAPA[etapa]} aria-busy={pendente} onDragOver={e=>{if(desktop&&!bloqueado.current&&arraste.current&&proximaEtapa(arraste.current.etapa)===etapa)e.preventDefault()}} onDrop={e=>void soltar(e,etapa)}>
         <header><h2>{ROTULOS_ETAPA[etapa]}</h2><span aria-label={cards.length+' negociações'}>{cards.length}</span></header>
         <div className={styles.cards}>{cards.map(l=><div key={l.id} className={styles.arrastavel} tabIndex={-1} draggable={desktop&&!pendente&&!envio&&disponivel(l)} onDragStart={e=>iniciar(e,l)} onDragEnd={()=>{arraste.current=null;setArrastando(false);setDestino(null);if(!bloqueado.current)setEstado('repouso')}}>
-          <fieldset disabled={pendente||!!envio} className={styles.conteudoCard}>
-            <CardEmpresa empresa={l.empresa} aoVer={setReferencia} aoAcionar={acao=>{if(!bloqueado.current&&!envioRef.current){origem.current=document.activeElement as HTMLElement;if(acao.tipo==='funil')setSelecionada(l.id);else if('href' in acao)router.push(acao.href)}}}/>
-            {disponivel(l)&&<Button variant="ghost" onClick={()=>void arquivar(l)}>Marcar como Sem interesse</Button>}
-          </fieldset>
+          <div className={styles.conteudoCard}>
+            <CardEmpresa empresa={l.empresa} aoVer={setReferencia} aoAcionar={pendente||envio?undefined:acao=>{if(!bloqueado.current&&!envioRef.current){origem.current=document.activeElement as HTMLElement;if(acao.tipo==='funil')setSelecionada(l.id);else if('href' in acao)router.push(acao.href)}}}/>
+            {disponivel(l)&&<Button variant="ghost" disabled={pendente||!!envio} onClick={()=>void arquivar(l)}>Marcar como Sem interesse</Button>}
+          </div>
         </div>)}{!cards.length&&<p className={styles.semCards}>Sem negociações nesta etapa.</p>}</div>
       </section>
     })}</div>

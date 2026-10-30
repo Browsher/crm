@@ -25,6 +25,31 @@ test('recusa gestor, inativo e mais de cem IDs únicos', async () => {
   try { expect(await ler([])).toEqual({ ok: false, motivo: 'sem_permissao' }) }
   finally { await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1', [c.vendedorId]) }
 })
+
+test('lote pequeno avalia disponibilidade apenas dos alvos próprios distintos', async () => {
+  const empresas = await banco.sql<{id:string}>(`INSERT INTO empresa(razao_social,telefone)
+    SELECT 'Não solicitada '||i,'11977778888' FROM generate_series(1,120) i RETURNING id`)
+  for (const e of empresas) await vincularEmpresaTeste(banco,e.id,c.vendedorId,'banco')
+  const [alheia] = await banco.sql<{id:string}>("INSERT INTO empresa(razao_social,telefone) VALUES('Alheia não projetada','11977778888') RETURNING id")
+  await vincularEmpresaTeste(banco,alheia.id,c.outroId,'banco')
+  const [original] = await banco.sql<{definicao:string}>("SELECT pg_get_functiondef('empresa_resumos_base(uuid[])'::regprocedure) definicao")
+  await banco.sql('CREATE TABLE public.teste_alvos_avaliados(empresa_id uuid)')
+  await banco.sql(`CREATE FUNCTION public.teste_avaliar_alvo(p uuid) RETURNS text LANGUAGE plpgsql VOLATILE SET search_path='' AS $$
+    BEGIN INSERT INTO public.teste_alvos_avaliados VALUES(p); RETURN public.empresa_atendimento_motivo(p); END $$`)
+  await banco.sql('REVOKE EXECUTE ON FUNCTION public.teste_avaliar_alvo(uuid) FROM PUBLIC')
+  try {
+    await banco.sql(original.definicao.replaceAll('public.empresa_atendimento_motivo(', 'public.teste_avaliar_alvo('))
+    const ids = [empresas[0].id,empresas[1].id]
+    const r = await ler([...ids,ids[0],alheia.id,randomUUID()])
+    expect(r.empresas?.map(e=>e.id).sort()).toEqual([...ids].sort())
+    const avaliados = await banco.sql<{empresa_id:string}>('SELECT empresa_id FROM teste_alvos_avaliados')
+    expect(avaliados.map(e=>e.empresa_id).sort()).toEqual([...ids].sort())
+  } finally {
+    await banco.sql(original.definicao)
+    await banco.sql('DROP FUNCTION public.teste_avaliar_alvo(uuid)')
+    await banco.sql('DROP TABLE public.teste_alvos_avaliados')
+  }
+})
 test('lote expande histórico Banco uma vez e não cria efeitos comerciais', async () => {
   const empresas = await banco.sql<{id:string;cnpj:string}>(`INSERT INTO empresa(cnpj,razao_social,telefone)
     SELECT '77110000'||lpad(i::text,6,'0'),'Resumo lote '||i,'11977778888' FROM generate_series(1,20) i RETURNING id,cnpj`)

@@ -51,7 +51,9 @@ async function indisponibilizar(motivo:string) {
 }
 const retrato=()=>banco.sql(`SELECT to_jsonb(v) AS vinculo,
   (SELECT count(*) FROM contato WHERE empresa_id=$1) AS contatos,
-  (SELECT count(*) FROM negociacao WHERE empresa_id=$1) AS negociacoes,
+  (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'empresa_id',empresa_id,'vendedor_id',vendedor_id,
+    'etapa',etapa,'iniciada_em',iniciada_em,'encerramento',encerramento,'encerrada_em',encerrada_em) ORDER BY id),'[]'::jsonb)
+    FROM negociacao WHERE empresa_id=$1) AS negociacoes,
   (SELECT count(*) FROM venda WHERE empresa_id=$1) AS vendas FROM empresa_vinculo v WHERE empresa_id=$1`,[empresa])
 
 for(const [nome,comando] of Object.entries(comandos)) for(const motivo of ['origem','pendencia']) {
