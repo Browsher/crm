@@ -15,3 +15,11 @@ test('JSON inválido, filtro alheio e destino externo não se propagam',()=>{
   expect(filtrosDaConsulta({pessoal:JSON.stringify({voltar:'//fora'})})).toEqual({})
   expect(urlConsulta(selecionarGrupo(null),1)).not.toContain('grupo=')
 })
+ test('ida e volta do arquivo conservam situação e todos os refinamentos',()=>{
+  const f={disponibilidade:'sem_interesse',nome:'Aurora',cnpj:'12345678901234',nicho:'Luz',endereco:'Centro',pagina:'3'}
+  const atual=filtrosDaConsulta({origem:'sem_interesse',nome:f.nome,cnpj:f.cnpj,nicho:f.nicho,endereco:f.endereco,pagina:f.pagina})
+  expect(atual).toEqual(f)
+  const ida=urlAtendimento('empresa',atual)
+  expect(new URL(ida,'http://localhost').pathname).toBe('/fila/atendimento/empresa')
+  expect(filtrosDaConsulta(Object.fromEntries(new URL(ida,'http://localhost').searchParams))).toEqual(f)
+ })

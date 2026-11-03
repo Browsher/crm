@@ -13,14 +13,13 @@ export function CentralProspeccao(_props: {atendimento?:string|null} = {}) {
       <article className={styles.destaque}>
         <div className={styles.apresentacao}><span className={styles.icone}><Search aria-hidden="true" /></span><div><h2>Localizar empresas</h2><p>Escolha a origem das empresas. Depois, filtre por nicho e bairro para continuar os atendimentos.</p></div></div>
         <form action="/fila/localizar" className={styles.buscaOrigem}>
-          <label>Origem das empresas<NativeSelect name="origem" defaultValue=""><option value="">Google e banco de empresas</option><option value="google">Buscas no Google</option><option value="banco">Banco de empresas</option></NativeSelect></label>
+          <label>Origem das empresas<NativeSelect name="origem" defaultValue=""><option value="">Google e banco de empresas</option><option value="google">Buscas no Google</option><option value="banco">Banco de empresas</option><option value="sem_interesse">Sem interesse</option></NativeSelect></label>
           <Button type="submit">Localizar empresas</Button>
         </form>
       </article>
       <div className={styles.opcoes}>
         <article className={styles.opcao}><CalendarDays aria-hidden="true" /><div><h2>Buscas no Google</h2><p>Defina o nicho e a região de cada dia. As empresas entregues entram na sua prospecção pessoal. Você escolhe quando iniciar o atendimento.</p></div><Button asChild variant="outline"><Link href="/fila/google">Planejar buscas</Link></Button></article>
         <article className={styles.opcao}><Building2 aria-hidden="true" /><div><h2>Banco de empresas</h2><p>Busque novas empresas. Os resultados elegíveis entram automaticamente na sua prospecção pessoal, sem iniciar atendimento.</p></div><Button asChild variant="outline"><Link href="/fila/buscar?fonte=banco">Buscar novas empresas</Link></Button></article>
-        <article className={styles.opcao}><Building2 aria-hidden="true" /><div><h2>Sem interesse</h2><p>Consulte as empresas arquivadas e retome o atendimento quando precisar.</p></div><Button asChild variant="outline"><Link href="/fila/sem-interesse">Consultar arquivo</Link></Button></article>
       </div>
 
     </section>

@@ -15,5 +15,5 @@ export default async function PaginaFunil({searchParams}:{searchParams:Promise<R
     const arquivo = empresaId ? await empresaArquivada(eu.usuarioId,empresaId) : null
     if (arquivo) return <main className={styles.pagina}><Button asChild variant="outline"><Link href="/funil">Voltar para o Funil</Link></Button>{arquivo}</main>
   }
-  return <main className={styles.pagina}><CabecalhoPagina titulo="Funil comercial" descricao="Acompanhe suas negociações até a primeira venda." />{total.ok?<Quadro key={eu.usuarioId} usuarioId={eu.usuarioId} linhas={linhas} totalSemInteresse={total.total} negociacaoInicial={inicial}/>:<p role="alert">Você não tem permissão para consultar o Funil.</p>}</main>
+  return <main className={styles.pagina}><CabecalhoPagina titulo="Funil comercial" descricao="Acompanhe suas negociações até a primeira venda." />{total.ok?<Quadro key={eu.usuarioId} usuarioId={eu.usuarioId} linhas={linhas} negociacaoInicial={inicial}/>:<p role="alert">Você não tem permissão para consultar o Funil.</p>}</main>
 }

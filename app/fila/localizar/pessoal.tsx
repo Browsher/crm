@@ -15,11 +15,13 @@ import { UFS } from '@/src/features/busca-empresas/filtros'
 import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 
 
+import { useRetomadaBloqueada } from './recuperacao-retomada'
 import styles from './pessoal.module.css'
 
 type Props={filtros:FiltrosPessoais;dados:ConsultaAtendimentoPessoal;recolhido:boolean}
 export function LocalizarPessoal({filtros,dados,recolhido:inicial}:Props) {
   const router=useRouter()
+  const bloquearRetomada=useRetomadaBloqueada()
   const [recolhido,setRecolhido]=useState(inicial)
   const [mais,setMais]=useState(false)
   const [pendente,iniciar]=useTransition()
@@ -38,7 +40,7 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial}:Props) {
   return <>
     {recolhido&&<div className={styles.resumo}><div><strong>Filtros da pesquisa</strong><p>{[filtros.nicho,filtros.endereco,filtros.nome,filtros.cnpj,filtros.cnae,filtros.cidade,filtros.uf].filter(Boolean).join(' · ')||'Todos os nichos e bairros'}</p></div><Button variant="outline" onClick={()=>setRecolhido(false)} aria-expanded={false} aria-controls="filtros-pessoais">Editar filtros</Button></div>}
     <form ref={formulario} id="filtros-pessoais" className={styles.formulario} hidden={recolhido} onSubmit={pesquisar}>
-      <PainelFiltros className={styles.filtros} acoes={<div className={styles.acoes}><small>Pressione Enter para pesquisar e recolher os filtros.</small><div><Button asChild variant="outline"><Link href={urlPessoal({origem:filtros.origem})}>Limpar filtros</Link></Button><Button type="submit" disabled={pendente}>{pendente?'Pesquisando…':'Pesquisar empresas'}</Button></div></div>}>
+      <PainelFiltros className={styles.filtros} acoes={<div className={styles.acoes}><small>Pressione Enter para pesquisar e recolher os filtros.</small><div><Button asChild variant="outline"><Link href={urlPessoal({origem:filtros.origem,disponibilidade:filtros.disponibilidade})}>Limpar filtros</Link></Button><Button type="submit" disabled={pendente}>{pendente?'Pesquisando…':'Pesquisar empresas'}</Button></div></div>}>
       <div className={styles.campos}>
       <input type="hidden" name="origem" value={filtros.origem||''}/>
       <div className={styles.principais}>
@@ -68,9 +70,9 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial}:Props) {
       </div></PainelFiltros>
     </form>
     <section aria-labelledby="minhas-empresas-titulo" aria-busy={pendente} className={styles.resultados}>
-      <header className={styles.cabecalho}><div><h2 id="minhas-empresas-titulo">Todas as minhas empresas</h2><p>{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
+      <header className={styles.cabecalho}><div><h2 id="minhas-empresas-titulo">Todas as minhas empresas</h2><p>{filtros.disponibilidade==='sem_interesse'?'Sem interesse · ':''}{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
       {dados.empresas.length===0?<EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa com esses filtros" descricao="Edite os filtros ou busque novas empresas na Prospecção." acao={{rotulo:'Editar filtros',aoAcionar:()=>setRecolhido(false),variante:'outline'}}/>:<ul className={styles.cartoes}>{dados.empresas.map(e=><li key={e.id}>
-        <Cartao empresa={e} filtros={filtros} />
+        <Cartao empresa={e} filtros={filtros} bloquearRetomada={bloquearRetomada} />
       </li>)}</ul>}
       {(pagina>1||pagina*20<dados.total)&&<nav aria-label="Páginas das minhas empresas" className={styles.paginacao}>{pagina>1&&<Button asChild variant="outline"><Link href={urlPessoal(filtros,pagina-1,true)}>Página anterior</Link></Button>}<span>Página {pagina}</span>{pagina*20<dados.total&&<Button asChild variant="outline"><Link href={urlPessoal(filtros,pagina+1,true)}>Próxima página</Link></Button>}</nav>}
     </section>

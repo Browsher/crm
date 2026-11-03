@@ -17,24 +17,26 @@ let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const linha=(etapa:NegociacaoResumo['etapa']='primeiro_contato'):NegociacaoResumo=>({id:'00000000-0000-4000-8000-000000000001',empresaId:'00000000-0000-4000-8000-000000000002',nome:'Aurora',cidade:null,etapa,versao:3,empresa:{referencia:{tipo:'cadastro',empresaId:'00000000-0000-4000-8000-000000000002'},id:'00000000-0000-4000-8000-000000000002',nome:'Aurora',cnpj:null,cnae:null,atividade:null,bairro:null,cidade:null,uf:null,origens:['legado'],recebidaEm:null,situacao:etapa,versao:3,negociacaoId:'00000000-0000-4000-8000-000000000001'}})
 beforeEach(()=>{vi.resetAllMocks();sessionStorage.clear();vi.stubGlobal('requestAnimationFrame',(f:()=>void)=>{f();return 1});vi.stubGlobal('matchMedia',()=>({matches:true,addEventListener:vi.fn(),removeEventListener:vi.fn()}))})
 afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();vi.restoreAllMocks()})
-async function montar(dados=[linha()],selecionada:string|null=null,usuarioId='teste'){host=document.createElement('div');document.body.append(host);root=createRoot(host);await act(async()=>root.render(<Quadro usuarioId={usuarioId} linhas={dados} totalSemInteresse={21} negociacaoInicial={selecionada}/>))}
+async function montar(dados=[linha()],selecionada:string|null=null,usuarioId='teste'){host=document.createElement('div');document.body.append(host);root=createRoot(host);await act(async()=>root.render(<Quadro usuarioId={usuarioId} linhas={dados} negociacaoInicial={selecionada}/>))}
 async function evento(alvo:Element,tipo:string){const e=new Event(tipo,{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{setData:vi.fn(),effectAllowed:'move'}});await act(async()=>{alvo.dispatchEvent(e)})}
 async function clicar(nome:string){await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent===nome)!.click())}
-test.each(ETAPAS_FUNIL)('arrasta %s para o único arquivo e mantém card durante envio e falha',async(etapa)=>{
+test.each(ETAPAS_FUNIL)('ação individual arquiva %s sem alvo permanente e mantém card durante envio/falha',async etapa=>{
  let resolver!:(r:{ok:boolean;erro:string})=>void
  vi.mocked(semInteresseAcao).mockReturnValue(new Promise(r=>resolver=r))
  await montar([linha(etapa)])
  expect(ETAPAS_FUNIL).toEqual(['primeiro_contato','em_negociacao','proposta_enviada'])
- expect(host.querySelectorAll('[data-etapa]')).toHaveLength(3);expect(host.querySelectorAll('[data-descarte]')).toHaveLength(1)
- const card=host.querySelector<HTMLElement>('[draggable=true]')!
- expect(card).not.toBeNull()
- await evento(card,'dragstart');await evento(host.querySelector('[data-descarte]')!,'drop')
+ expect(host.querySelectorAll('[data-etapa]')).toHaveLength(3)
+ expect(host.querySelector('[data-descarte]')).toBeNull()
+ expect(host.textContent).not.toContain('ou para Sem interesse')
+ expect(host.querySelector('[draggable=true]')).not.toBeNull()
+ await clicar('Marcar como Sem interesse')
  expect(host.textContent).toContain('Aurora');expect(host.textContent).not.toContain('Negociação operacional')
- await evento(host.querySelector('[data-descarte]')!,'drop');await clicar('Marcar como Sem interesse')
+ await clicar('Marcar como Sem interesse')
  expect(semInteresseAcao).toHaveBeenCalledTimes(1)
  await act(async()=>resolver({ok:false,erro:'Falha simulada'}))
  expect(host.querySelector('[draggable=true]')).not.toBeNull();expect(host.textContent).toContain('Falha simulada')
 })
+
 test('ver empresa mostra dados; ação comum e deep-link abrem negociação operacional',async()=>{
  await montar();await clicar('Ver empresa');expect(host.textContent).toContain('Dados da empresa');expect(host.textContent).not.toContain('Negociação operacional')
  await clicar('Abrir no funil');expect(host.textContent).toContain('Negociação operacional')
@@ -64,7 +66,7 @@ test('avanço continua limitado à próxima etapa e restaura card após falha',a
 test('resposta confirmada atual retira card e devolve foco ao status',async()=>{
  vi.mocked(semInteresseAcao).mockResolvedValue({ok:true,repetida:false,atual:true})
  await montar();await clicar('Marcar como Sem interesse')
- expect(host.querySelector('[data-descarte]')?.getAttribute('data-estado')).toBe('sucesso')
+ expect(host.querySelector('[role=status]')?.textContent).toContain('Empresa marcada como Sem interesse')
  expect(host.textContent).not.toContain('Aurora')
  expect(document.activeElement).toBe(host.querySelector('[role=status]'))
 })
@@ -74,11 +76,11 @@ test('refresh recupera card e comando desconhecido mesmo ausente na consulta atu
  await montar();await clicar('Marcar como Sem interesse')
  const chave=vi.mocked(semInteresseAcao).mock.calls[0][0].get('chave')
  await act(async()=>root.unmount());host.remove();await montar([])
- expect(host.textContent).toContain('Aurora');expect(host.querySelector('[data-descarte]')?.getAttribute('data-estado')).toBe('erro')
+ expect(host.textContent).toContain('Aurora');expect(host.textContent).toContain('Confirme o envio anterior')
  vi.mocked(semInteresseAcao).mockResolvedValue({ok:true,repetida:true,atual:true})
  await clicar('Confirmar envio anterior')
  expect(vi.mocked(semInteresseAcao).mock.calls[1][0].get('chave')).toBe(chave)
- expect(host.querySelector('[data-descarte]')?.getAttribute('data-estado')).toBe('repouso')
+ expect(host.textContent).toContain('Envio anterior confirmado')
 })
 
 test('troca de usuário não recupera o card nem o comando privado da sessão anterior',async()=>{

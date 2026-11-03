@@ -12,7 +12,7 @@ async function lerAtual(usuarioId: string, empresaId: string): Promise<ResumoEmp
 function projetar(empresa: ResumoEmpresa): DestinoEmpresaAtual {
   if (empresa.situacao === 'sem_interesse') return { tipo: 'sem_interesse' }
   if (empresa.situacao === 'cliente') return { tipo: 'carteira', empresaId: empresa.id! }
-  if (empresa.situacao === 'atendimento') return { tipo: 'atendimento', empresaId: empresa.id! }
+  if (empresa.situacao === 'atendimento' || empresa.situacao === 'a_contatar') return { tipo: 'atendimento', empresaId: empresa.id! }
   if (['primeiro_contato', 'em_negociacao', 'proposta_enviada'].includes(empresa.situacao) && empresa.negociacaoId) return { tipo: 'funil', negociacaoId: empresa.negociacaoId }
   return { tipo: 'indisponivel' }
 }

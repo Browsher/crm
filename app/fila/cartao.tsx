@@ -9,9 +9,11 @@ import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 import { textoDoMotivo } from '@/src/features/contato/mensagens'
 import { iniciarAtendimentoAcao, retomarAtendimentoAcao } from './atendimento/acoes'
 import { urlAtendimento } from './localizar/navegacao'
+import { useRetomadaNaConsulta } from './localizar/recuperacao-retomada'
 
-export function Cartao({ empresa, filtros = {}, hrefCarteira }: { empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string }) {
+export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false }: { empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string; bloquearRetomada?: boolean }) {
   const router = useRouter()
+  const retomarNaConsulta = useRetomadaNaConsulta()
   const [referencia, setReferencia] = useState<ReferenciaEmpresa | null>(null)
   const [erro, setErro] = useState('')
   const [resolvido, setResolvido] = useState(false)
@@ -25,7 +27,8 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira }: { empresa: Resum
     return acao.href
   }
   function acionar(acao: AcaoEmpresa) {
-    if (ocupado.current || resolvido) return
+    if (ocupado.current || resolvido || (bloquearRetomada && acao.tipo === 'retomar')) return
+    if (acao.tipo === 'retomar' && retomarNaConsulta?.(acao, filtros)) return
     ocupado.current = true
     iniciar(async () => {
       try {
@@ -46,9 +49,8 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira }: { empresa: Resum
           const atual = sessionStorage.getItem(storage)
           if (atual && JSON.parse(atual).chave !== comando.chave) return
           sessionStorage.removeItem(storage)
-          router.refresh()
           const leitura = r.leituraDestino
-          if (!leitura?.ok || leitura.destino.tipo === 'indisponivel') return
+          if (!leitura?.ok || leitura.destino.tipo === 'indisponivel') { router.refresh(); return }
           const d = leitura.destino
           setErro(r.aviso ?? '')
           if (d.tipo === 'atendimento') router.push(urlAtendimento(d.empresaId, filtros))
@@ -63,7 +65,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira }: { empresa: Resum
       finally { ocupado.current = false }
     })
   }
-  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={setReferencia} aoAcionar={acionar} />
+  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={setReferencia} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
     {erro && <p role="alert">{erro}</p>}
     {resolvido && <Button variant="outline" onClick={() => {
       try {

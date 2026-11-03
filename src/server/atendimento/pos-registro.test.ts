@@ -24,6 +24,7 @@ test('replay arquivado vai ao recorte e retomado permanece sem ressuscitar negoc
 })
 test.each([
  ['atendimento',null,{tipo:'atendimento',empresaId:'E'}],
+ ['a_contatar',null,{tipo:'atendimento',empresaId:'E'}],
  ['cliente','antiga',{tipo:'carteira',empresaId:'E'}],
  ['em_negociacao','nova',{tipo:'funil',negociacaoId:'nova'}],
  ['sem_interesse',null,{tipo:'sem_interesse'}],

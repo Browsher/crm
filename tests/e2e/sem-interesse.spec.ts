@@ -8,7 +8,7 @@ async function entrar(page:Page){await page.goto('/login');await page.getByLabel
 const card=(page:Page,nome:string)=>page.locator('[draggable]').filter({has:page.getByRole('heading',{name:nome,exact:true})})
 test.beforeEach(async({page})=>entrar(page))
 
-for(const [i,etapa]of ['Primeiro contato','Em negociação','Proposta enviada'].entries())test('descarta '+etapa+' no mesmo alvo sem criar contato',async({page})=>{
+for(const [i,etapa]of ['Primeiro contato','Em negociação','Proposta enviada'].entries())test('arquiva '+etapa+' pela ação individual sem criar contato',async({page})=>{
  await page.setViewportSize({width:1280,height:900});await page.goto('/funil')
  const antes=(await sql('SELECT * FROM contato WHERE empresa_id=$1 ORDER BY id',[IDS[i]])).rows
  const vinculo=(await sql('SELECT vendedor_id FROM empresa_vinculo WHERE empresa_id=$1',[IDS[i]])).rows[0]
@@ -17,40 +17,42 @@ for(const [i,etapa]of ['Primeiro contato','Em negociação','Proposta enviada'].
   await page.route('**/funil*',async rota=>{
    if(rota.request().method()!=='POST')return rota.continue()
    const resposta=await rota.fetch()
-   await expect(page.locator('[data-descarte]')).toHaveAttribute('data-estado','salvando')
+   await expect(page.getByRole('status')).toContainText('Confirmando arquivamento')
    await page.evaluate(()=>window.scrollTo(0,0))
-   await page.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-6-captures/descarte-desktop-pendente-'+(i===1?'dark':'light')+'.png',fullPage:true,animations:'disabled'})
+   await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/descarte-desktop-pendente-'+(i===1?'dark':'light')+'.png',fullPage:true,animations:'disabled'})
    await rota.fulfill({response:resposta})
   })
  }
- await expect(page.locator('[data-etapa]')).toHaveCount(3);await expect(page.locator('[data-descarte]')).toHaveCount(1)
+ await expect(page.locator('[data-etapa]')).toHaveCount(3);await expect(page.locator('[data-descarte]')).toHaveCount(0)
  await expect(card(page,'Descarte '+(i+1))).toHaveAttribute('draggable','true')
- await card(page,'Descarte '+(i+1)).dragTo(page.locator('[data-descarte]'))
+ await card(page,'Descarte '+(i+1)).getByRole('button',{name:'Marcar como Sem interesse',exact:true}).click()
  await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
  await expect(card(page,'Descarte '+(i+1))).toHaveCount(0);await expect(page.getByRole('dialog')).toHaveCount(0)
  expect((await sql('SELECT * FROM contato WHERE empresa_id=$1 ORDER BY id',[IDS[i]])).rows).toEqual(antes)
  expect((await sql('SELECT vendedor_id,agenda_contato_id,arquivada_em IS NOT NULL AS arquivada FROM empresa_vinculo WHERE empresa_id=$1',[IDS[i]])).rows[0]).toEqual({...vinculo,agenda_contato_id:null,arquivada:true})
  expect((await sql('SELECT encerramento FROM negociacao WHERE empresa_id=$1',[IDS[i]])).rows[0].encerramento).toBe('sem_interesse')
- await page.reload();await expect(page.locator('[data-descarte]')).toHaveAttribute('data-estado','repouso')
+ await page.reload();await expect(page.locator('[data-descarte]')).toHaveCount(0)
 })
 
 test('arquivo pagina e filtra; empresa nunca negociada é consultável e retoma sem agenda',async({page})=>{
  await page.goto('/fila/sem-interesse')
- await expect(page.getByRole('heading',{name:/Arquivo/})).toHaveCount(20)
+ await expect(page).toHaveURL('/fila/localizar?disponibilidade=sem_interesse&pagina=1');await expect(page.getByRole('heading',{name:/Arquivo/})).toHaveCount(20)
  await page.getByRole('link',{name:'Próxima página'}).click();await expect(page).toHaveURL(/pagina=2/)
  await expect(page.getByRole('link',{name:'Página anterior'})).toBeVisible()
- await page.getByLabel('Nome da empresa').fill('Arquivo 07');await page.getByRole('button',{name:'Pesquisar empresas'}).click()
+ await page.getByRole('button',{name:'Editar filtros',exact:true}).first().click()
+ await page.getByRole('button',{name:'Mais filtros',exact:true}).click();await page.getByLabel('Nome da empresa').fill('Arquivo 07');await page.getByRole('button',{name:'Pesquisar empresas'}).click()
  await expect(page.getByRole('heading',{name:'Arquivo 07',exact:true})).toBeVisible()
  await expect(page.getByRole('heading',{name:/Arquivo/})).toHaveCount(1)
  await page.getByRole('button',{name:'Ver empresa: Arquivo 07'}).click();await expect(page.getByRole('dialog')).toContainText('Arquivo 07');await page.keyboard.press('Escape')
  expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1',[NUNCA_NEGOCIADA])).rowCount).toBe(0)
- await page.getByLabel('Nome da empresa').fill('');await page.getByLabel('CNPJ').fill('00000000009811');await page.getByRole('button',{name:'Pesquisar empresas'}).click()
+ await page.getByRole('button',{name:'Editar filtros',exact:true}).first().click();await page.getByRole('button',{name:'Mais filtros',exact:true}).click();await page.getByLabel('Nome da empresa').fill('');await page.getByLabel('CNPJ',{exact:true}).fill('00000000009811');await page.getByRole('button',{name:'Pesquisar empresas'}).click()
  await expect(page.getByRole('heading',{name:'Arquivo 07',exact:true})).toBeVisible()
  await page.getByRole('button',{name:'Retomar atendimento',exact:true}).focus();await page.keyboard.press('Enter')
- await expect(page.getByRole('status')).toContainText('Atendimento retomado')
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/atendimento/'+NUNCA_NEGOCIADA&&url.searchParams.get('disponibilidade')==='sem_interesse')
  expect((await sql('SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[NUNCA_NEGOCIADA])).rows[0]).toEqual({agenda_contato_id:null,arquivada_em:null})
  expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1',[NUNCA_NEGOCIADA])).rowCount).toBe(0)
  expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[NUNCA_NEGOCIADA])).rowCount).toBe(0)
+ await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/retomada-nunca-negociada.png',fullPage:true})
 })
 
 test('resposta perdida preserva card/chave no refresh e replay após retomada não arquiva novamente',async({page})=>{
@@ -75,7 +77,7 @@ test('resposta perdida preserva card/chave no refresh e replay após retomada n�
  await page.reload();await expect(card(page,'Descarte 4')).toHaveCount(1)
  await page.getByRole('button',{name:'Confirmar envio anterior',exact:true}).click()
  await expect(page.getByRole('status')).toContainText('Envio anterior confirmado')
- await expect(page.locator('[data-descarte]')).not.toHaveAttribute('data-estado','sucesso')
+ await expect(page.locator('[data-descarte]')).toHaveCount(0)
  expect((await sql('SELECT arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[IDS[3]])).rows[0].arquivada_em).toBeNull()
  expect((await sql('SELECT count(*)::int AS n FROM empresa_atendimento_operacao WHERE chave=$1',[comando.chave])).rows[0].n).toBe(1)
 })
@@ -84,19 +86,19 @@ test('visual claro/escuro desktop/móvel, dados separados e movimento reduzido',
  await page.goto('/fila/sem-interesse')
  for(const tema of ['light','dark']){
   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
-  for(const width of [390,1280]){
+  for(const width of [390,820,1280]){
    await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-   await page.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-6-captures/arquivo-'+tema+'-'+width+'.png',fullPage:true,animations:'disabled'})
-   await page.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-6-captures/arquivo-'+tema+'-'+width+'-viewport.png',animations:'disabled'})
+   await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/arquivo-'+tema+'-'+width+'.png',fullPage:true,animations:'disabled'})
+   await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/arquivo-'+tema+'-'+width+'-viewport.png',animations:'disabled'})
   }
  }
  await page.goto('/funil');await page.emulateMedia({reducedMotion:'reduce'})
- await expect(page.locator('[data-descarte]')).toHaveCSS('transition-duration','0s')
+ await expect(page.locator('[data-descarte]')).toHaveCount(0)
  for(const tema of ['light','dark']){
   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
-  for(const width of [390,1280]){
+  for(const width of [390,820,1280]){
    await page.setViewportSize({width,height:900})
-   await page.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-6-captures/funil-'+tema+'-'+width+'.png',fullPage:true,animations:'disabled'})
+   await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/funil-'+tema+'-'+width+'.png',fullPage:true,animations:'disabled'})
   }
  }
  const visual=card(page,'Descarte visual')
@@ -115,10 +117,10 @@ test('visual claro/escuro desktop/móvel, dados separados e movimento reduzido',
  await page.route('**/funil*',async rota=>{if(rota.request().method()!=='POST')return rota.continue();const resposta=await rota.fetch();await espera;await rota.fulfill({response:resposta})})
  await card(page,'Descarte visual').getByRole('button',{name:'Marcar como Sem interesse'}).focus()
  await page.keyboard.press('Enter')
- await expect(page.locator('[data-descarte]')).toHaveAttribute('data-estado','salvando')
+ await expect(page.getByRole('status')).toContainText('Confirmando arquivamento')
  await page.keyboard.press('Enter')
  await page.evaluate(()=>window.scrollTo(0,0))
- await page.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-6-captures/descarte-mobile-pendente-dark.png',fullPage:true,animations:'disabled'})
+ await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/descarte-mobile-pendente-dark.png',fullPage:true,animations:'disabled'})
  liberar()
  await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
  await expect(page.getByRole('status')).toBeFocused()
@@ -133,13 +135,101 @@ test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({b
   await expect(page.getByRole('dialog')).toContainText('Arquivo 08')
   await page.getByRole('dialog').getByRole('button',{name:'Fechar',exact:true}).tap()
   await page.getByRole('button',{name:'Retomar atendimento',exact:true}).tap()
-  await expect(page.getByRole('status')).toContainText('Atendimento retomado')
+  await expect(page).toHaveURL(url=>url.pathname==='/fila/atendimento/00000000-0000-4000-8000-000000009812'&&url.searchParams.get('disponibilidade')==='sem_interesse')
   expect((await sql("SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id='00000000-0000-4000-8000-000000009812'")).rows[0]).toEqual({agenda_contato_id:null,arquivada_em:null})
   await page.goto('/funil')
   await expect(card(page,'Descarte toque')).toHaveAttribute('draggable','false')
   await card(page,'Descarte toque').getByRole('button',{name:'Marcar como Sem interesse'}).tap()
   await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
   expect((await sql("SELECT count(*)::int AS n FROM contato WHERE empresa_id='00000000-0000-4000-8000-000000009827'")).rows[0].n).toBe(1)
-  await page.screenshot({path:'.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-6-captures/toque-mobile-light.png',fullPage:true,animations:'disabled'})
+  await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/toque-mobile-light.png',fullPage:true,animations:'disabled'})
  }finally{await contexto.close()}
+})
+
+
+test('central oferece quarta origem e consulta canônica, limpar conserva Sem interesse',async({page})=>{
+ await page.goto('/fila')
+ const origem=page.getByRole('combobox',{name:'Origem das empresas'})
+ await expect(origem.locator('option')).toHaveText(['Google e banco de empresas','Buscas no Google','Banco de empresas','Sem interesse'])
+ await expect(page.getByRole('link',{name:'Consultar arquivo'})).toHaveCount(0)
+ await origem.selectOption('sem_interesse');await page.getByRole('button',{name:'Localizar empresas',exact:true}).click()
+ await expect(page).toHaveURL('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+ await expect(page.locator('section[aria-labelledby="minhas-empresas-titulo"] header')).toContainText('Sem interesse')
+ await page.getByRole('button',{name:'Mais filtros',exact:true}).click()
+ await page.getByLabel('Nome da empresa').fill('Arquivo 10');await page.getByRole('button',{name:'Pesquisar empresas',exact:true}).click()
+ await expect(page.getByRole('heading',{name:'Arquivo 10',exact:true})).toBeVisible()
+ await page.getByRole('button',{name:'Editar filtros',exact:true}).first().click()
+ await page.getByRole('link',{name:'Limpar filtros',exact:true}).click()
+ await expect(page).toHaveURL('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+})
+
+test('comando legado confirmado no banco sobrevive redirect, filtro inválido e grade sem empresa; replay abre atendimento uma vez',async({page})=>{
+ const empresaId='00000000-0000-4000-8000-000000009813',chave=randomUUID()
+ const v=(await sql('SELECT vendedor_id,versao FROM empresa_vinculo WHERE empresa_id=$1',[empresaId])).rows[0]
+ const comando={id:empresaId,versao:Number(v.versao),chave}
+ await comAdmin(process.env.DATABASE_URL_ADMIN!,async c=>{
+  await c.query('BEGIN')
+  try {
+   await c.query("SELECT set_config('app.usuario_id',$1,true),set_config('role','app_usuario',true)",[v.vendedor_id])
+   const r=await c.query('SELECT empresa_atendimento_retomar($1,$2,$3) AS r',[empresaId,chave,comando.versao])
+   expect(r.rows[0].r.ok).toBe(true);await c.query('COMMIT')
+  }catch(e){await c.query('ROLLBACK');throw e}finally{await c.query('RESET ROLE')}
+ })
+ await page.evaluate(({usuarioId,comando})=>sessionStorage.setItem('crm:retomar-arquivo:v1:'+usuarioId,JSON.stringify(comando)),{usuarioId:v.vendedor_id,comando})
+ let posts=0
+ page.on('request',r=>{if(r.method()==='POST')posts++})
+ await page.goto('/fila/sem-interesse?pagina=invalida&nome=Arquivo+09')
+ await expect(page).toHaveURL(/sem-interesse/)
+ await expect(page.getByRole('main').getByRole('alert')).toContainText('filtros é inválido')
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
+ await page.getByRole('link',{name:'Limpar filtros',exact:true}).click()
+ await expect(page).toHaveURL('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+ for(const b of await page.getByRole('button',{name:'Retomar atendimento',exact:true}).all())await expect(b).toBeDisabled()
+ await page.goto('/fila/sem-interesse?nome=Arquivo+09&cnpj=00000000009813&nicho=Luz&endereco=Centro&pagina=3')
+ await expect(page).toHaveURL('/fila/localizar?nicho=Luz&endereco=Centro&nome=Arquivo+09&cnpj=00000000009813&disponibilidade=sem_interesse&pagina=3')
+ await expect(page.getByRole('heading',{name:'Arquivo 09',exact:true})).toHaveCount(0)
+ await page.reload()
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
+ expect(posts).toBe(0)
+ await page.getByRole('button',{name:'Confirmar retomada anterior',exact:true}).click()
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/atendimento/'+empresaId&&url.searchParams.get('disponibilidade')==='sem_interesse'&&url.searchParams.get('nome')==='Arquivo 09'&&url.searchParams.get('cnpj')==='00000000009813'&&url.searchParams.get('nicho')==='Luz'&&url.searchParams.get('endereco')==='Centro'&&url.searchParams.get('pagina')==='3')
+ expect((await sql('SELECT count(*)::int AS n FROM empresa_atendimento_operacao WHERE chave=$1',[chave])).rows[0].n).toBe(1)
+ expect((await sql('SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[empresaId])).rows[0]).toEqual({agenda_contato_id:null,arquivada_em:null})
+ expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1',[empresaId])).rowCount).toBe(0)
+ expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(0)
+ expect(await page.evaluate(usuarioId=>sessionStorage.getItem('crm:retomar-arquivo:v1:'+usuarioId),v.vendedor_id)).toBeNull()
+ await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/legado-confirmado-destino.png',fullPage:true})
+ await page.getByRole('link',{name:'Voltar para minhas empresas',exact:true}).click()
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/localizar'&&url.searchParams.get('nome')==='Arquivo 09'&&url.searchParams.get('disponibilidade')==='sem_interesse'&&url.searchParams.get('cnpj')==='00000000009813'&&url.searchParams.get('nicho')==='Luz'&&url.searchParams.get('endereco')==='Centro'&&url.searchParams.get('pagina')==='3')
+})
+
+
+test('retomada moderna com resposta perdida recupera comando fora da grade após reload',async({page})=>{
+ const empresaId='00000000-0000-4000-8000-000000009815'
+ await page.goto('/fila/localizar?nome=Arquivo+11&disponibilidade=sem_interesse&pagina=1')
+ let perder=true,posts=0
+ page.on('request',r=>{if(r.method()==='POST')posts++})
+ await page.route('**/fila/localizar*',async rota=>{
+  if(rota.request().method()!=='POST'||!perder)return rota.continue()
+  perder=false;await rota.fetch();await rota.abort('failed')
+ })
+ await page.getByRole('button',{name:'Retomar atendimento',exact:true}).click()
+ await expect(page.getByText(/Não foi possível confirmar/)).toBeVisible()
+ const salvo=await page.evaluate(empresaId=>sessionStorage.getItem('crm:acao-empresa:v1:'+empresaId),empresaId)
+ expect(salvo).toBeTruthy();const comando=JSON.parse(salvo!)
+ const usuarioId=(await sql('SELECT vendedor_id FROM empresa_vinculo WHERE empresa_id=$1',[empresaId])).rows[0].vendedor_id
+ expect(comando).toMatchObject({id:empresaId,tipo:'retomar',usuarioId})
+ expect((await sql('SELECT arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[empresaId])).rows[0].arquivada_em).toBeNull()
+ await page.reload()
+ await expect(page.getByRole('heading',{name:'Arquivo 11',exact:true})).toHaveCount(0)
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
+ expect(posts).toBe(1)
+ await page.getByRole('button',{name:'Confirmar retomada anterior',exact:true}).click()
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/atendimento/'+empresaId&&url.searchParams.get('nome')==='Arquivo 11'&&url.searchParams.get('disponibilidade')==='sem_interesse')
+ expect(posts).toBe(2)
+ expect((await sql('SELECT count(*)::int AS n FROM empresa_atendimento_operacao WHERE chave=$1',[comando.chave])).rows[0].n).toBe(1)
+ expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(0)
+ expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1',[empresaId])).rowCount).toBe(0)
+ expect(await page.evaluate(empresaId=>sessionStorage.getItem('crm:acao-empresa:v1:'+empresaId),empresaId)).toBeNull()
+ await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/moderna-resposta-perdida-destino.png',fullPage:true})
 })

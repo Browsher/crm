@@ -36,7 +36,7 @@ test('início perdido repete mesma chave/versão mesmo após remount, depois abr
   iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}});await clicar('Iniciar atendimento')
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
   expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
-  expect(refresh).toHaveBeenCalled()
+  expect(refresh).not.toHaveBeenCalled()
 })
 test('continuar conserva filtros e snapshot sem vínculo não ganha comando',async()=>{
   await montar({...empresa,situacao:'atendimento'});await clicar('Continuar atendimento')
@@ -95,4 +95,11 @@ test('Atualizar empresa após confirmar A não descarta comando B mais recente',
  await clicar('Atualizar empresa')
  expect(JSON.parse(sessionStorage.getItem('crm:acao-empresa:v1:A')!)).toEqual(novo)
  expect(push).not.toHaveBeenCalled()
+})
+
+test('retomada com destino confirmado navega sem refresh concorrente na consulta Sem interesse',async()=>{
+ iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:false,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}})
+ await montar({...empresa,situacao:'sem_interesse'});await clicar('Retomar atendimento')
+ expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
+ expect(refresh).not.toHaveBeenCalled()
 })

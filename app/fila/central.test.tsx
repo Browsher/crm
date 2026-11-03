@@ -13,3 +13,10 @@ test('entrada da Prospecção é a central aprovada com origem e ações explíc
   expect(html).toContain('action="/fila/localizar"')
   expect(html).not.toContain('Escolha uma lista para prospectar')
 })
+
+ test('Sem interesse é quarta origem visual, sem card separado de arquivo', async()=>{
+  const html=renderToStaticMarkup(await Pagina({searchParams:Promise.resolve({})}))
+  expect(html).toContain('<option value="sem_interesse">Sem interesse</option>')
+  expect(html).not.toContain('Consultar arquivo')
+  expect(html).not.toContain('href="/fila/sem-interesse"')
+ })
