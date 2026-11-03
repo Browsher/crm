@@ -111,13 +111,14 @@
 
 **Files:** novo src/lib/retorno-gestor.ts e testes; app/empresas/{lista,arquivadas/page,[id]/page,grupos/[id]/page,paginacao}.tsx; grupos/paginacao; entregas/coletas gerenciais e componentes compartilhados.
 **Interfaces:** funções puras lerRetornoGestor(entrada:string|string[]|undefined):ContextoRetornoGestor|null, serializarRetornoGestor(contexto):string e urlRetornoGestor(contexto):string. Parâmetro de transporte retorno, conteúdo limitado e sem segredos. ContextoRetornoGestor é união fechada de origens internas (empresas/arquivo/grupo/coleta/WhatsApp); parser e serializador puros com limites, UUIDs e páginas validados, recusando externos/duplicados/controles. Callers usam URLs locais reconstruídas. Google e WhatsApp adicionam seus campos fechados nas tarefas respectivas.
-- [ ] Red: 51 listas arquivadas, gruposPagina independente de pagina; busca/limpeza/paginadores conservam os parâmetros apropriados.
-- [ ] Red: arquivo filtrado página2→ficha→voltar preserva recorte; vazio limpa somente q; página fora do fim oferece primeira página sem inventar total.
-- [ ] Red: grupo arquivado→ficha→grupo mantém origem do arquivo; breadcrumb não cruza para ativas.
-- [ ] Red: coleta com semana/vendedor/estado→página2→ficha→voltar mantém consulta; ficha Histórico→coleta→Histórico mantém aba.
-- [ ] Implementar props opcionais nos componentes compartilhados de entrega/abas preservando defaults de vendedor. Autorizar cada leitura independentemente do contexto.
-- [ ] Green: parsers/URLs, páginas/listas, integrações necessárias e E2E de arquivo/contexto.
-- [ ] Revisão separada e commit.
+- [x] Red: 51 listas arquivadas, gruposPagina independente de pagina; busca/limpeza/paginadores conservam os parâmetros apropriados.
+- [x] Red: arquivo filtrado página2→ficha→voltar preserva recorte; vazio limpa somente q; página fora do fim oferece primeira página sem inventar total.
+- [x] Red: grupo arquivado→ficha→grupo mantém origem do arquivo; breadcrumb não cruza para ativas.
+- [x] Red: coleta com semana/vendedor/estado→página2→ficha→voltar mantém consulta; ficha Histórico→coleta→Histórico mantém aba.
+- [x] Implementar props opcionais nos componentes compartilhados de entrega/abas preservando defaults de vendedor. Autorizar cada leitura independentemente do contexto.
+- [x] Green: parsers/URLs, páginas/listas, integrações necessárias e E2E de arquivo/contexto.
+- [x] Revisão separada e commit.
+- [x] Breadcrumb da ficha usa origem de arquivo/grupo arquivado válida, com recorte e página após reload. Harness aceita CRM_E2E_PORT validada para isolamento local, preservando padrão e CI.
 
 ## Task 7: Retorno à conversa correta do gestor
 
