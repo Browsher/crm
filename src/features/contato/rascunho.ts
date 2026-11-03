@@ -11,8 +11,8 @@ export function rascunhoInicial(posse: boolean): RascunhoContato {
   return { tipo: posse ? 'acompanhamento' : 'nao_liguei', nota: '', proximoPasso: '', proximoPassoData: '' }
 }
 
-export function rascunhoAlterado(rascunho: RascunhoContato): boolean {
-  return rascunho.tipo !== 'nao_liguei' || Boolean(rascunho.nota || rascunho.proximoPasso || rascunho.proximoPassoData)
+export function rascunhoAlterado(rascunho: RascunhoContato, inicial = rascunhoInicial(false)): boolean {
+  return (Object.keys(inicial) as (keyof RascunhoContato)[]).some(campo => rascunho[campo] !== inicial[campo])
 }
 
 export type EnvioContato = { chave: string; versao: number; valor: RascunhoContato; resolvido?: boolean }
@@ -36,4 +36,20 @@ export function prepararEnvio(anterior: EnvioContato | null, versao: number, val
     return anterior
   }
   return { chave: crypto.randomUUID(), versao, valor: normalizado }
+}
+
+// A resposta de A não pode remover o comando B gravado durante a espera.
+export function limparContatoConfirmado(empresaId: string, chaveConfirmada: string): boolean {
+  const chave = 'crm:contato:v1:' + empresaId
+  const salvo = sessionStorage.getItem(chave)
+  if (!salvo || JSON.parse(salvo)?.envio?.chave !== chaveConfirmada) return false
+  sessionStorage.removeItem(chave)
+  window.dispatchEvent(new Event('crm-contato'))
+  return true
+}
+export function contatoPendente(empresaId: string): boolean {
+  try {
+    const salvo = sessionStorage.getItem('crm:contato:v1:' + empresaId)
+    return Boolean(salvo && JSON.parse(salvo)?.envio && !JSON.parse(salvo).envio.resolvido)
+  } catch { return true }
 }

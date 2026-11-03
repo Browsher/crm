@@ -10,6 +10,7 @@ import { formatarCnpj } from '@/src/features/empresas/formato'
 import { ehTipo, ROTULO } from '@/src/features/contato/tipos'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
+import { lerRecorteUsuarios, urlPerfilUsuario, urlUsuarios } from '@/src/lib/recorte-usuarios'
 import geral from '../../../gestao/gestao.module.css'
 import styles from './perfil.module.css'
 
@@ -26,9 +27,10 @@ export default async function Perfil({ params, searchParams }: {
   const dados = await lerPerfilVendedor(eu.usuarioId,id,paginaDoPerfil(query.pagina))
   if (!dados) notFound()
   const paginas = Math.max(1, Math.ceil(dados.totalEmpresas / EMPRESAS_POR_PAGINA))
-  const endereco = (pagina: number) => `/usuarios/vendedores/${dados.id}?pagina=${pagina}`
+  const recorte = lerRecorteUsuarios(query, true)
+  const endereco = (pagina: number) => urlPerfilUsuario(dados.id, recorte, pagina)
   return <main className={geral.pagina}>
-    <div><Button asChild variant="outline"><Link href="/usuarios">Voltar para Usuários</Link></Button></div>
+    <div><Button asChild variant="outline"><Link href={urlUsuarios(recorte)}>Voltar para Usuários</Link></Button></div>
     <div><p className={styles.auxiliar}>Perfil do vendedor</p><CabecalhoPagina titulo={dados.nome} descricao={dados.email} acoes={<div className={styles.acoes}><Badge variant="success">Ativo</Badge><Button asChild variant="outline"><a href={endereco(dados.pagina)}>Atualizar</a></Button></div>} /></div>
     <section aria-label="Resumo do vendedor" className={geral.resumo}>
       {[

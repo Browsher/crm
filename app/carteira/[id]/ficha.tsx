@@ -10,7 +10,7 @@ import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { FormularioContato } from '@/src/features/contato/formulario'
 import type { Contato } from '@/src/features/contato/historico'
-import { descartarRascunhoContato, rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
+import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
 import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import { useTemaCrm } from '@/src/components/crm/tema'
@@ -45,7 +45,7 @@ function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   </li>)}</ol>
 }
 
-export function Ficha({ empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira', dadosCadastrais }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {
+export function Ficha({ usuarioId, empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira', dadosCadastrais }: { usuarioId:string; empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {
   const arquivada = empresa.situacao === 'sem_interesse'
   const acompanhamentoInicial = cliente || ['primeiro_contato','em_negociacao','proposta_enviada'].includes(empresa.situacao)
   const router = useRouter()
@@ -61,7 +61,8 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   const sentinela = useRef<string | null>(null)
   const removendoSentinela = useRef(false)
   const depoisDeRemover = useRef<(() => void) | null>(null)
-  const alterado = editando && rascunhoAlterado(rascunho)
+  const [baseline, setBaseline] = useState(() => rascunhoInicial(acompanhamentoInicial))
+  const alterado = editando && (rascunhoAlterado(rascunho, baseline) || contatoPendente(empresa.id))
 
   function mudarPendente(valor: boolean) {
     pendenteRef.current = valor
@@ -161,7 +162,7 @@ export function Ficha({ empresa, contatos, erroHistorico = false, cliente = fals
   }
 
   return <article className={styles.ficha}>
-    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => setEditando(true)} disabled={editando || pendente || arquivada}>Registrar atendimento</Button>{cliente ? <RegistrarVenda empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente || arquivada} /> : null}</div></header>
+    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => { setBaseline(rascunhoInicial(acompanhamentoInicial)); setEditando(true) }} disabled={editando || pendente || arquivada}>Registrar atendimento</Button>{cliente ? <RegistrarVenda usuarioId={usuarioId} empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente || arquivada} /> : null}</div></header>
     {arquivada && <><Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>{empresa.empresa && <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} /></fieldset>}</>}
     <Card className={styles.colunas}><AbasFicha dados={<div className={styles.esquerda}>
       {dadosCadastrais}

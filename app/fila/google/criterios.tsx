@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/src/components/ui/button'
 import { Textarea } from '@/src/components/ui/textarea'
 import { Choice } from '@/src/components/ui/choice'
@@ -10,6 +10,7 @@ import { NativeSelect } from '@/src/components/ui/native-select'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { normalizarCriterios, type CriteriosGoogle } from '@/src/lib/google/criterios'
+import type { InformarEdicao } from './guarda-edicao'
 import styles from './google.module.css'
 
 type CampoTexto = 'termos' | 'produtos' | 'excluir' | 'prioridades' | 'observacoes'
@@ -22,25 +23,42 @@ const EXEMPLOS: Record<CampoTexto, string> = {
   observacoes: 'Ex.: verificar se a loja oferece orçamento para condomínios.',
 }
 
-export function DialogoCriterios({ dia, valor, onAplicar, leitura = false }: { dia: string; valor: CriteriosGoogle; onAplicar: (c: CriteriosGoogle) => void; leitura?: boolean }) {
+function compararCampos(c: CriteriosGoogle) {
+  return JSON.stringify(c, (_chave, valor: unknown) => Array.isArray(valor) ? [...valor].sort() : valor)
+}
+
+export function DialogoCriterios({ dia, valor, onAplicar, leitura = false, informarEdicao, pedirFechar }: {
+  dia: string; valor: CriteriosGoogle; onAplicar: (c: CriteriosGoogle) => void; leitura?: boolean
+  informarEdicao: InformarEdicao; pedirFechar: () => void
+}) {
   const [aberto, setAberto] = useState(false)
+  const fechar = useCallback(() => setAberto(false), [])
   const titulo = useRef<HTMLHeadingElement>(null)
   const tema = useTemaCrm()
-  return <Dialog open={aberto} onOpenChange={setAberto}>
+  return <Dialog open={aberto} onOpenChange={valor => valor ? setAberto(true) : pedirFechar()}>
     <DialogTrigger asChild><Button type="button" variant="outline" size="sm">{leitura ? 'Ver critérios' : 'Critérios de busca'}</Button></DialogTrigger>
     {aberto && <DialogContent theme={tema} className={`${styles.dialogoCriterios} ${styles.editorCriterios}`} onOpenAutoFocus={e => { e.preventDefault(); titulo.current?.focus() }}>
       <DialogHeader><DialogTitle ref={titulo} tabIndex={-1}>Critérios de busca</DialogTitle><DialogDescription>{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(dia + 'T12:00:00Z'))}. Todos os critérios são opcionais.</DialogDescription></DialogHeader>
-      <EditorCriterios valor={valor} leitura={leitura} cancelar={() => setAberto(false)} aplicar={c => { onAplicar(c); setAberto(false) }} />
+      <EditorCriterios valor={valor} leitura={leitura} fechar={fechar} informarEdicao={informarEdicao} cancelar={pedirFechar} aplicar={c => { onAplicar(c); fechar() }} />
     </DialogContent>}
   </Dialog>
 }
-function EditorCriterios({ valor, leitura, cancelar, aplicar }: { valor: CriteriosGoogle; leitura: boolean; cancelar: () => void; aplicar: (c: CriteriosGoogle) => void }) {
+function EditorCriterios({ valor, leitura, fechar, informarEdicao, cancelar, aplicar }: {
+  valor: CriteriosGoogle; leitura: boolean; fechar: () => void; informarEdicao: InformarEdicao
+  cancelar: () => void; aplicar: (c: CriteriosGoogle) => void
+}) {
+  const [baseline] = useState(() => compararCampos(valor))
   const [c, setC] = useState(() => structuredClone(valor))
   const [erro, setErro] = useState<string | null>(null)
+  const alterado = !leitura && compararCampos(c) !== baseline
+  useLayoutEffect(() => {
+    informarEdicao({ alterado, pendente: false, fechar })
+    return () => informarEdicao(null)
+  }, [alterado, fechar, informarEdicao])
   const alterar = <K extends keyof CriteriosGoogle>(k: K, v: CriteriosGoogle[K]) => setC(anterior => ({ ...anterior, [k]: v }))
   const texto = (k: CampoTexto, rotulo: string) => <label>{rotulo}<Textarea name={k} placeholder={EXEMPLOS[k]} rows={2} maxLength={2000} value={c[k]} onChange={e => alterar(k, e.target.value)} /></label>
   const caixas = (k: 'tipos' | 'site' | 'email' | 'telefone', rotulo: string, opcoes: [string, string][]) => <fieldset className={styles.caixas}><legend>{rotulo}</legend>{opcoes.map(([v, nome]) => <label key={v}><Choice type="checkbox" name={k} value={v} checked={(c[k] as string[]).includes(v)} onChange={e => alterar(k, (e.target.checked ? [...c[k], v] : c[k].filter(x => x !== v)) as typeof c[typeof k])} />{nome}</label>)}</fieldset>
-  return <form onSubmit={e => { e.preventDefault(); const r = normalizarCriterios(c); if (!r.ok) { setErro(r.motivo); return }; aplicar(r.valor) }} className={styles.formulario}>
+  return <form onSubmit={e => { e.preventDefault(); if (leitura) return; const r = normalizarCriterios(c); if (!r.ok) { setErro(r.motivo); return }; aplicar(r.valor) }} className={styles.formulario}>
     <div className={styles.corpoDialogo}><fieldset disabled={leitura} className={styles.gruposCriterios}>
       <fieldset className={styles.grupoCriterios}><legend>O que procurar</legend>
         {texto('termos', 'Termos adicionais')}{texto('produtos', 'Produtos de interesse')}

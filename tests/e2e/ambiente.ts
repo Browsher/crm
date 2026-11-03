@@ -1,5 +1,14 @@
 import { exigirHostLocal } from '../../src/server/db/host-local'
 
+export function portaDoE2E(valor: string | undefined): number {
+  if (valor === undefined) return 3100
+  const porta = Number(valor)
+  if (!/^[1-9]\d{0,4}$/.test(valor) || porta > 65_535) {
+    throw new Error('CRM_E2E_PORT deve ser uma porta TCP entre 1 e 65535')
+  }
+  return porta
+}
+
 export function exigirAdminLocal(url: string) {
   exigirHostLocal(url)
   const parsed = new URL(url)

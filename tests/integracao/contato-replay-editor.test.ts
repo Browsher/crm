@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, type BancoDeTeste } from './ajuda'
 import { cenarioAtendimento } from './atendimento-fixtures'
 import { vincularGrupoAtivo } from './grupos-fixtures'
+import { lerDestinoContato, lerDestinoEmpresaAtual } from '@/src/server/atendimento/pos-registro'
 import { lerAtendimento } from '@/src/server/atendimento/consulta'
 import { registrarContatoDireto, arquivarSemInteresse, retomarAtendimento } from '@/src/server/atendimento/operacoes'
 let banco: BancoDeTeste
@@ -34,18 +35,40 @@ test('replay do editor depois de arquivo e retomada mantém efeito único; acomp
   const c=await cenarioAtendimento(banco)
   const interesse=await registrarContatoDireto(c.vendedorId,{empresaId:c.empresaId,chave:randomUUID(),versao:c.versao},{tipo:'interessado',nota:null,proximoPasso:null,proximoPassoData:null})
   if(!interesse.ok)throw new Error('Interesse recusado')
+  const [{id:negociacaoId}]=await banco.sql<{id:string}>('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[c.empresaId])
+  expect(await lerDestinoContato(c.vendedorId,c.empresaId,'interessado')).toEqual({ok:true,destino:{tipo:'funil',negociacaoId}})
+  expect(await lerDestinoContato(c.outroId,c.empresaId,'interessado')).toMatchObject({ok:false})
   const comando={empresaId:c.empresaId,chave:randomUUID(),versao:interesse.versao}
   const entrada={tipo:'acompanhamento' as const,nota:'Nota preservada',proximoPasso:'Ligar',proximoPassoData:'2030-01-01'}
   const original=await registrarContatoDireto(c.vendedorId,comando,entrada)
   if(!original.ok)throw new Error('Acompanhamento recusado')
   const arquivo=await arquivarSemInteresse(c.vendedorId,{empresaId:c.empresaId,chave:randomUUID(),versao:original.versao},null)
   if(!arquivo.ok)throw new Error('Arquivo recusado')
+  expect(await lerDestinoContato(c.vendedorId,c.empresaId,'interessado')).toEqual({ok:true,destino:{tipo:'sem_interesse'}})
   expect(await registrarContatoDireto(c.vendedorId,comando,entrada)).toEqual({...original,repetida:true})
   const retomada=await retomarAtendimento(c.vendedorId,{empresaId:c.empresaId,chave:randomUUID(),versao:arquivo.versao})
   if(!retomada.ok)throw new Error('Retomada recusada')
+  expect(await lerDestinoContato(c.vendedorId,c.empresaId,'interessado')).toEqual({ok:true,destino:{tipo:'permanecer'}})
+  expect(await lerDestinoEmpresaAtual(c.vendedorId,c.empresaId)).toEqual({ok:true,destino:{tipo:'atendimento',empresaId:c.empresaId}})
   expect(await registrarContatoDireto(c.vendedorId,comando,entrada)).toEqual({...original,repetida:true})
   expect(await registrarContatoDireto(c.vendedorId,{...comando,chave:randomUUID(),versao:retomada.versao},entrada)).toEqual({ok:false,motivo:'dados_invalidos'})
   expect(await banco.sql("SELECT nota FROM contato WHERE empresa_id=$1 AND tipo='acompanhamento'",[c.empresaId])).toEqual([{nota:'Nota preservada'}])
   expect(await banco.sql('SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1',[c.empresaId])).toEqual([{agenda_contato_id:null}])
   expect(await banco.sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[c.empresaId])).toHaveLength(0)
+})
+
+test('replay de interesse vendido conserva gravação única e destino atual de cliente',async()=>{
+ const c=await cenarioAtendimento(banco)
+ const comando={empresaId:c.empresaId,chave:randomUUID(),versao:c.versao}
+ const entrada={tipo:'interessado' as const,nota:'Original',proximoPasso:null,proximoPassoData:null}
+ const original=await registrarContatoDireto(c.vendedorId,comando,entrada)
+ expect(original).toMatchObject({ok:true,repetida:false})
+ const [{id}]=await banco.sql<{id:string}>('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[c.empresaId])
+ const venda=await banco.comoUsuario(c.vendedorId,sql=>sql<{r:string}>("SELECT funil_venda_registrar($1,$2,'2026-01-01',1000,NULL) AS r",[id,randomUUID()]))
+ expect(venda.linhas[0].r).toBe('ok')
+ expect(await registrarContatoDireto(c.vendedorId,comando,entrada)).toEqual({...original,repetida:true})
+ expect(await lerDestinoContato(c.vendedorId,c.empresaId,'interessado')).toEqual({ok:true,destino:{tipo:'permanecer'}})
+ expect(await lerDestinoEmpresaAtual(c.vendedorId,c.empresaId)).toEqual({ok:true,destino:{tipo:'carteira',empresaId:c.empresaId}})
+ expect(await banco.sql("SELECT id FROM contato WHERE empresa_id=$1 AND nota='Original'",[c.empresaId])).toHaveLength(1)
+ expect(await banco.sql('SELECT id FROM venda WHERE empresa_id=$1',[c.empresaId])).toHaveLength(1)
 })

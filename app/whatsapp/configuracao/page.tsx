@@ -1,15 +1,18 @@
 import Link from 'next/link'
+import { lerRetornoGestor, urlRetornoGestor } from '@/src/lib/retorno-gestor'
 import { Button } from '@/src/components/ui/button'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { listarVendedores, listarVinculos } from '@/src/server/whatsapp/vinculos'
 import { FormularioRemover, FormularioVinculo } from './formulario'
 import styles from './configuracao.module.css'
 
-export default async function PaginaConfiguracao() {
+export default async function PaginaConfiguracao({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> } = {}) {
   const eu = await exigir('gestor')
+  const retorno = lerRetornoGestor((await searchParams)?.retorno)
+  const voltar = retorno?.tipo === 'whatsapp' ? urlRetornoGestor(retorno) : '/whatsapp'
   const [vendedores, vinculos] = await Promise.all([listarVendedores(eu.usuarioId), listarVinculos(eu.usuarioId)])
   return <main className={styles.pagina}>
-    <header><Button asChild variant="outline" className="justify-self-start"><Link href="/whatsapp">Voltar ao WhatsApp</Link></Button><h1>Configurar vendedores</h1><p>Associe cada vendedor à sua conexão do WhatsApp.</p></header>
+    <header><Button asChild variant="outline" className="justify-self-start"><Link href={voltar} prefetch={false}>Voltar ao WhatsApp</Link></Button><h1>Configurar vendedores</h1><p>Associe cada vendedor à sua conexão do WhatsApp.</p></header>
     <section className={styles.cartao} aria-labelledby="titulo-vincular">
       <h2 id="titulo-vincular">Vincular instância</h2>
       <FormularioVinculo vendedores={vendedores} />

@@ -1,3 +1,5 @@
+import { lerDestinoVenda } from '@/src/server/vendas/pos-venda'
+import { lerNegociacao } from '@/src/features/funil/consulta'
 import { registrarContatoDireto } from '@/src/server/atendimento/operacoes'
 import { vincularGrupoAtivo } from './grupos-fixtures'
 import { randomUUID } from 'node:crypto'
@@ -90,4 +92,30 @@ test.each(['etapa','venda'])('reconfere autorização após esperar trava de emp
     expect(await banco.sql('SELECT etapa,encerramento FROM negociacao')).toEqual([{etapa:'primeiro_contato',encerramento:null}])
     expect(await banco.sql('SELECT id FROM venda')).toEqual([])
   }finally{await trava.query('ROLLBACK');await trava.end()}
+})
+
+test('replay de primeira venda espera commit em voo e resolve ficha mesmo sem negociação aberta',async()=>{
+ const chave=randomUUID()
+ let liberar!:()=>void,gravou!:()=>void
+ const pronta=new Promise<void>(r=>gravou=r),espera=new Promise<void>(r=>liberar=r)
+ const original=banco.comoUsuario(eu,async executar=>{
+  const r=await executar<{resultado:string}>("SELECT funil_venda_registrar($1,$2,'2026-01-01',1234,NULL) AS resultado",[ciclo,chave])
+  gravou();await espera;return r.linhas[0].resultado
+ })
+ await pronta
+ const replay=vender(eu,chave)
+ try{
+  await expect.poll(async()=>{
+   const [r]=await banco.sql<{esperando:boolean}>("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT funil_venda_registrar%') AS esperando")
+   return r.esperando
+  }).toBe(true)
+ }finally{liberar()}
+ expect(await original).toBe('ok');expect(await replay).toBe('ok')
+ expect(await lerNegociacao(eu,ciclo)).toBeNull()
+ expect(await lerDestinoVenda(eu,chave,{tipo:'primeira',negociacaoId:ciclo})).toEqual({ok:true,destino:{tipo:'carteira',empresaId:empresa}})
+ expect(await lerDestinoVenda(outro,chave,{tipo:'primeira',negociacaoId:ciclo})).toMatchObject({ok:false})
+ expect(await banco.sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[chave])).toEqual([{n:1}])
+ await banco.sql('UPDATE usuario SET senha_provisoria_pendente=true WHERE id=$1',[eu])
+ expect(await vender(eu,chave)).toBe('sem_permissao')
+ expect(await banco.sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[chave])).toEqual([{n:1}])
 })

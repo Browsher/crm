@@ -2,15 +2,35 @@
 
 import { useActionState, useState } from 'react'
 import { Button } from '@/src/components/ui/button'
+import { useDescarteEdicao } from '@/src/components/crm/descarte-edicao'
+import { RESULTADO_INCERTO } from '@/src/lib/edicao-administrativa'
+import { validarMetadadosGrupo } from '@/src/lib/grupo-metadados'
 import { atualizarMetadadosGrupoAcao, type EstadoGrupo } from './acoes'
 import { Textarea } from '@/src/components/ui/textarea'
 import styles from './grupos.module.css'
 
 type Props = { id: string; descricao: string | null; origem: string | null; criterios: string | null }
 export function MetadadosGrupo({ id, descricao, origem, criterios }: Props) {
-  const [valores, setValores] = useState({ descricao: descricao ?? '', origem: origem ?? '', criterios: criterios ?? '' })
+  const [salvo, setSalvo] = useState({ descricao: descricao ?? '', origem: origem ?? '', criterios: criterios ?? '' })
+  const [valores, setValores] = useState(salvo)
+  const [aberto, setAberto] = useState(false)
   const inicial: EstadoGrupo = { erro: null, sucesso: false }
-  const [estado, acao, pendente] = useActionState(atualizarMetadadosGrupoAcao, inicial)
+  const [estado, acao, pendente] = useActionState(async (anterior: EstadoGrupo, form: FormData) => {
+    const resultado = await atualizarMetadadosGrupoAcao(anterior, form)
+      .catch(() => ({ erro: RESULTADO_INCERTO, sucesso: false, incerto: true } satisfies EstadoGrupo))
+    if (resultado.sucesso) {
+      const validado = validarMetadadosGrupo(valores)
+      if (validado.ok) {
+        const persistido = { ...validado.metadados, criterios: validado.metadados.criterios ?? '' }
+        setSalvo(persistido)
+        setValores(persistido)
+      }
+    }
+    return resultado
+  }, inicial)
+  const alterado = valores.descricao !== salvo.descricao || valores.origem !== salvo.origem || valores.criterios !== salvo.criterios
+  const { pedir, confirmacao } = useDescarteEdicao(alterado, pendente)
+  function fechar() { pedir(() => { setValores(salvo); setAberto(false) }) }
   return <section aria-label="Contexto da lista">
     <h2>Contexto da lista</h2>
     <dl>
@@ -18,8 +38,10 @@ export function MetadadosGrupo({ id, descricao, origem, criterios }: Props) {
       <dt>Origem dos dados</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{origem ?? 'Origem não informada'}</dd>
       <dt>Critérios usados</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{criterios ?? 'Critérios não informados'}</dd>
     </dl>
-    <details>
-      <summary>Corrigir contexto da lista</summary>
+    <details open={aberto} onKeyDown={e => {
+      if (aberto && e.key === 'Escape') { e.preventDefault(); fechar() }
+    }}>
+      <summary onClick={e => { e.preventDefault(); if (aberto) fechar(); else setAberto(true) }}>Corrigir contexto da lista</summary>
       <form action={acao} className={styles.formulario}>
         <input type="hidden" name="id" value={id} />
         <fieldset disabled={pendente}>
@@ -31,11 +53,13 @@ export function MetadadosGrupo({ id, descricao, origem, criterios }: Props) {
               aria-describedby={`correcao-${campo}`} onChange={e => setValores(anterior => ({ ...anterior, [campo]: e.target.value }))} />
             <span id={`correcao-${campo}`}>Até {limite} caracteres. {campo === 'criterios' ? 'Opcional.' : 'Obrigatório.'}</span>
           </label>)}
-          <Button type="submit">{pendente ? 'Salvando…' : 'Salvar contexto'}</Button>
+          <Button type="button" variant="outline" onClick={fechar}>Cancelar</Button>
+          <Button type="submit" disabled={estado.incerto}>{pendente ? 'Salvando…' : 'Salvar contexto'}</Button>
         </fieldset>
         {estado.erro && <p role="alert">{estado.erro}</p>}
-        {estado.sucesso && <p role="status">Contexto atualizado.</p>}
+        {estado.sucesso && <p role="status">{estado.aviso ?? 'Contexto atualizado.'}</p>}
       </form>
     </details>
+    {confirmacao}
   </section>
 }

@@ -3,7 +3,7 @@ import { expect, test, vi } from 'vitest'
 import { ShellCrm } from './shell'
 
 const rota = vi.hoisted(() => ({ atual: null as string | null }))
-vi.mock('next/navigation', () => ({ usePathname: () => rota.atual }))
+vi.mock('next/navigation', () => ({ usePathname: () => rota.atual, useSearchParams: () => new URLSearchParams() }))
 
 test('grupos tem somente um item ativo na navegação do gestor', () => {
   rota.atual = '/empresas/grupos/grupo'
@@ -56,7 +56,7 @@ test('WhatsApp é exclusivo do menu do gestor', () => {
 test('meu dia ativa seu próprio menu e aparece para o vendedor', () => {
   const html = renderToStaticMarkup(<ShellCrm nome="Ana" papel="vendedor" area="meu-dia">Agenda</ShellCrm>)
   const menu = html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? ''
-  expect([...menu.matchAll(/href="([^"]+)"/g)].map(link => link[1])).toEqual(['/meu-dia', '/fila', '/funil', '/carteira'])
+  expect([...menu.matchAll(/href="([^"]+)"/g)].map(link => link[1])).toEqual(['/meu-dia', '/fila', '/funil', '/carteira', '/trocar-senha'])
   expect(html.match(/<a[^>]*aria-current="page"[^>]*>/)?.[0]).toContain('href="/meu-dia"')
   expect(html).toContain('href="/carteira"')
   expect(html).not.toContain('href="/usuarios"')

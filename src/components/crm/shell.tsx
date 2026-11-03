@@ -3,12 +3,13 @@
 import { Suspense, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, CalendarDays, Columns3, FolderOpen, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Search, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Building2, CalendarDays, Columns3, FolderOpen, KeyRound, LayoutDashboard, LogOut, Menu, MessageCircle, PanelLeftClose, PanelLeftOpen, Search, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/src/components/ui/sheet'
 import { TemaCrmContext, useControleTemaCrm, type TemaCrm } from './tema'
 import { CaminhoCrm } from './caminho'
+import { FormularioSair } from './formulario-sair'
 import styles from './shell.module.css'
 
 const TITULO = { funil: 'Funil', fila: 'Prospecção', carteira: 'Carteira', 'meu-dia': 'Meu dia', empresas: 'Empresas', usuarios: 'Usuários', gestao: 'Gestão', whatsapp: 'WhatsApp', design: 'Design system' } as const
@@ -31,8 +32,9 @@ export function ShellCrm({ children, nome, papel, area }: { children: ReactNode;
         const atual = google ? href === '/empresas/google' : grupos ? href === '/empresas/grupos' : href === `/${area}`
         return <Link key={href} href={href} aria-current={atual ? 'page' : undefined} title={rotulo}><Icone size={18} aria-hidden="true" /><span className={styles.rotuloMenu}>{rotulo}</span></Link>
       })}
+      <Link href="/trocar-senha" title="Trocar senha"><KeyRound size={18} aria-hidden="true" /><span className={styles.rotuloMenu}>Trocar senha</span></Link>
     </nav>
-    <form className={styles.saida} action="/sair" method="post"><Button type="submit" variant="ghost" title="Sair"><LogOut size={18} aria-hidden="true" /><span className={styles.rotuloMenu}>Sair</span></Button></form>
+    <FormularioSair className={styles.saida} icone={<LogOut size={18} aria-hidden="true" />} rotulo={styles.rotuloMenu} />
   </>
   return <TemaCrmContext.Provider value={tema}>
     <div className={`crm-ui ${styles.shell} ${recolhido ? styles.recolhido : ''}`} data-theme={tema}>

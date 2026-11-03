@@ -43,8 +43,15 @@ test('cadastro parcial histórico permanece interno; vínculo explícito autoriz
   await vendedor.getByLabel('Falei, tem interesse',{exact:true}).check()
   await vendedor.getByLabel('Nota',{exact:true}).fill('Atendimento de cadastro parcial')
   await vendedor.getByRole('button',{name:'Registrar',exact:true}).click()
-  await expect(vendedor.getByRole('status').filter({hasText:'Atendimento registrado.'})).toBeVisible();await vendedor.goto('/funil')
-  await expect(vendedor.getByRole('heading',{name:nomeEmpresa+' 21',exact:true})).toBeVisible()
+  await expect(vendedor).toHaveURL(url => url.pathname === '/funil' && url.searchParams.has('negociacao'))
+  const banco = bancoGruposDoHarness()
+  const [negociacao] = await banco.sql<{ id: string }>(
+    'SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresas[21]],
+  )
+  await expect(vendedor).toHaveURL('/funil?negociacao=' + negociacao.id)
+  await expect(vendedor.getByRole('dialog', { name: nomeEmpresa + ' 21', exact: true })).toBeVisible()
+  expect(await banco.sql('SELECT tipo,nota FROM contato WHERE empresa_id=$1', [empresas[21]]))
+    .toEqual([{ tipo: 'interessado', nota: 'Atendimento de cadastro parcial' }])
   await criarListaHistorica('Outra origem da jornada', empresas, autor)
   expect(await comBancoGrupos(async c=>(await c.query("SELECT google_place_id,empresa_id FROM empresa_origem_google WHERE google_place_id LIKE 'place-catalogo-jornada-%' ORDER BY 1")).rows)).toEqual(idsAntes)
  }finally{await contexto.close()}

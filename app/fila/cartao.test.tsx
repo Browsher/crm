@@ -25,7 +25,7 @@ test('recusa temporária de autorização não abandona chave de início desconh
   const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
   iniciar.mockResolvedValueOnce({ok:false,motivo:'sem_permissao'});await clicar('Iniciar atendimento')
   expect(host.textContent).not.toContain('Atualizar empresa')
-  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Iniciar atendimento')
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}});await clicar('Iniciar atendimento')
   expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
   expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
 })
@@ -33,10 +33,10 @@ test('início perdido repete mesma chave/versão mesmo após remount, depois abr
   iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
   const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
   await act(async()=>root.render(null));await montar({...empresa,versao:20})
-  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Iniciar atendimento')
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}});await clicar('Iniciar atendimento')
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
   expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
-  expect(refresh).toHaveBeenCalled()
+  expect(refresh).not.toHaveBeenCalled()
 })
 test('continuar conserva filtros e snapshot sem vínculo não ganha comando',async()=>{
   await montar({...empresa,situacao:'atendimento'});await clicar('Continuar atendimento')
@@ -49,7 +49,7 @@ test('resposta de início perdida é confirmada mesmo quando a leitura já mostr
   iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
   const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])
   await montar({...empresa,situacao:'atendimento',versao:3})
-  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Continuar atendimento')
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}});await clicar('Continuar atendimento')
   expect(iniciar).toHaveBeenCalledTimes(2)
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
   expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
@@ -63,11 +63,53 @@ test('abrir carteira conserva filtros locais após confirmar comando desconhecid
   iniciar.mockRejectedValueOnce(new Error('rede'));await clicar('Abrir na carteira')
   expect(push).not.toHaveBeenCalled()
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
-  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true});await clicar('Abrir na carteira')
+  iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'carteira',empresaId:'A'}}});await clicar('Abrir na carteira')
   expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
   expect(push).toHaveBeenCalledWith(href)
 })
 test('carteira ignora destino externo e conserva destino canônico',async()=>{
   await montar({...empresa,situacao:'cliente'},'https://example.com/fora');await clicar('Abrir na carteira')
   expect(push).toHaveBeenCalledWith('/carteira/A')
+})
+
+test('replay de retomar agora vendido usa destino atual em vez da ação antiga',async()=>{
+ iniciar.mockRejectedValueOnce(new Error('rede'));await montar({...empresa,situacao:'sem_interesse'});await clicar('Retomar atendimento')
+ iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'carteira',empresaId:'A'}}})
+ await clicar('Retomar atendimento')
+ expect(push).toHaveBeenCalledWith('/carteira/A')
+ expect(push).not.toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
+})
+test('destino indisponível e falha de limpeza não anunciam mutação desconhecida',async()=>{
+ iniciar.mockImplementation(async()=>{vi.spyOn(Storage.prototype,'removeItem').mockImplementation(()=>{throw new Error('storage')});return {ok:true,versao:3,repetida:true,leituraDestino:{ok:false,motivo:'leitura_indisponivel'}}})
+ await montar();await clicar('Iniciar atendimento')
+ expect(push).not.toHaveBeenCalled()
+ expect(host.textContent).toContain('Envio confirmado')
+ expect(host.textContent).not.toContain('Tente novamente para confirmar')
+ vi.restoreAllMocks()
+})
+
+test('Atualizar empresa após confirmar A não descarta comando B mais recente',async()=>{
+ const novo={id:'A',tipo:'iniciar',chave:'B',versao:9}
+ iniciar.mockImplementation(async()=>{sessionStorage.setItem('crm:acao-empresa:v1:A',JSON.stringify(novo));return {ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}}})
+ await montar();await clicar('Iniciar atendimento')
+ await clicar('Atualizar empresa')
+ expect(JSON.parse(sessionStorage.getItem('crm:acao-empresa:v1:A')!)).toEqual(novo)
+ expect(push).not.toHaveBeenCalled()
+})
+
+test('retomada com destino confirmado navega sem refresh concorrente na consulta Sem interesse',async()=>{
+ iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:false,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'A'}}})
+ await montar({...empresa,situacao:'sem_interesse'});await clicar('Retomar atendimento')
+ expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
+ expect(refresh).not.toHaveBeenCalled()
+})
+
+test.each([['sem_interesse','Retomar atendimento'],['a_contatar','Iniciar atendimento'],['atendimento','Continuar atendimento']] as const)('comando identificado no snapshot %s exige Provider e oferece retorno seguro a Localizar',async(situacao,rotulo)=>{
+ const comando={id:'A',tipo:'retomar',usuarioId:'eu',chave:'identificada',versao:1}
+ sessionStorage.setItem('crm:acao-empresa:v1:A',JSON.stringify(comando))
+ await montar({...empresa,situacao});await clicar(rotulo)
+ expect(iniciar).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
+ expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBe(JSON.stringify(comando))
+ const link=host.querySelector<HTMLAnchorElement>('a[href*="/fila/localizar"]')
+ expect(link).not.toBeNull();expect(link?.textContent).toContain('Confirmar')
 })

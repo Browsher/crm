@@ -8,7 +8,7 @@ export default async function PaginaTrocarSenha() {
   return (
     <Acesso titulo="Trocar senha" descricao="Escolha uma senha para proteger sua conta.">
       {eu.senhaProvisoriaPendente && <Alert className="mb-6">Sua senha é provisória. Escolha uma definitiva para continuar.</Alert>}
-      <Formulario />
+      <Formulario obrigatoria={eu.senhaProvisoriaPendente} />
     </Acesso>
   )
 }

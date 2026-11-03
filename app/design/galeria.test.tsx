@@ -91,12 +91,10 @@ test('usa o card real com detalhe cadastral local e ausências explícitas', asy
   expect(card?.textContent).toContain('AtividadeNão informado')
 })
 
-test('o descarte real fica fora das três etapas e responde à simulação', async () => {
-  expect(container.querySelectorAll('[data-etapa-funil]')).toHaveLength(3)
-  expect(container.querySelectorAll('[data-descarte]')).toHaveLength(1)
-  expect(container.querySelector('[data-etapa-funil] [data-descarte]')).toBeNull()
-  await act(async()=>botao('Simular arquivamento').click())
-  expect(container.querySelector('[data-descarte]')?.getAttribute('data-estado')).toBe('sucesso')
+test('Funil demonstra somente três etapas, sem alvo de arquivo aposentado',async()=>{
+ expect(container.querySelectorAll('[data-etapa-funil]')).toHaveLength(3)
+ expect(container.querySelector('[data-descarte]')).toBeNull()
+ expect(container.textContent).not.toContain('Simular arquivamento')
 })
 
 test('registra a confirmação junto à seção do diálogo', async () => {

@@ -5,7 +5,7 @@ import { createServer } from 'node:net'
 import { parseEnv } from 'node:util'
 import { setTimeout as esperar } from 'node:timers/promises'
 import { criarBancoDeTeste, criarUsuarioComSenha, type BancoDeTeste } from '../../tests/integracao/ajuda'
-import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal } from '../../tests/e2e/ambiente'
+import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal, portaDoE2E } from '../../tests/e2e/ambiente'
 import { iniciarProcesso, encerrarProcesso } from './processos'
 import { prepararEmpresasConsulta } from '../../tests/e2e/dados-consulta'
 import { prepararVinculosPermanentes } from '../../tests/e2e/dados-reserva'
@@ -43,9 +43,9 @@ async function executar(args: string[], env: NodeJS.ProcessEnv) {
   if (codigo !== 0) throw new Error(`Processo de E2E terminou com código ${codigo}`)
 }
 
-async function conferirPorta() {
+async function conferirPorta(porta: number) {
   const servidor = createServer()
-  servidor.listen(3100, '127.0.0.1')
+  servidor.listen(porta, '127.0.0.1')
   await once(servidor, 'listening')
   await new Promise<void>((resolve, reject) => servidor.close((erro) => erro ? reject(erro) : resolve()))
 }
@@ -55,11 +55,12 @@ let whatsapp: Awaited<ReturnType<typeof iniciarWhatsAppDeTeste>> | undefined
 let cnpj: Awaited<ReturnType<typeof iniciarCnpjBizDeTeste>> | undefined
 let sheets: Awaited<ReturnType<typeof iniciarSheetsDeTeste>> | undefined
 try {
+  const porta = portaDoE2E(process.env.CRM_E2E_PORT)
   const padrao = parseEnv(await readFile('.env.test', 'utf8'))
   const urlAdmin = process.env.DATABASE_URL_ADMIN || padrao.DATABASE_URL_ADMIN
   if (!urlAdmin) throw new Error('DATABASE_URL_ADMIN local ausente')
   exigirAdminLocal(urlAdmin)
-  await conferirPorta()
+  await conferirPorta(porta)
   process.env.DATABASE_URL_ADMIN = urlAdmin
   process.env.PG_SSL = 'off'
   process.env.ALVO = ''
@@ -94,7 +95,7 @@ try {
   Object.assign(ambiente, { GOOGLE_PLANILHA_ID:'planilha-somente-e2e',GOOGLE_PLANILHA_ABA_ID:'123',GOOGLE_PLANILHA_CLIENT_EMAIL:sheets.email,GOOGLE_PLANILHA_PRIVATE_KEY:sheets.chave,GOOGLE_PLANILHA_MOCK_URL:sheets.url })
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
   Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CASA_DOS_DADOS_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
-  const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, '--import',pathToFileURL(resolve('scripts/e2e/google-planilha-preload.mjs')).href,'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', '3100'], ambiente)
+  const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, '--import',pathToFileURL(resolve('scripts/e2e/google-planilha-preload.mjs')).href,'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(porta)], ambiente)
   let erroServidor: Error | undefined
   servidor.on('error', (erro) => { erroServidor = erro })
   const prazo = Date.now() + 30_000
@@ -103,7 +104,7 @@ try {
     if (erroServidor) throw erroServidor
     if (servidor.exitCode !== null || servidor.signalCode !== null) throw new Error('Servidor E2E encerrou antes de ficar pronto')
     try {
-      const resposta = await fetch('http://127.0.0.1:3100/login', { signal: AbortSignal.timeout(1_000) })
+      const resposta = await fetch(`http://127.0.0.1:${porta}/login`, { signal: AbortSignal.timeout(1_000) })
       await resposta.arrayBuffer()
       if (resposta.ok) break
     } catch { /* Aguarda somente até o prazo abaixo. */ }
@@ -115,7 +116,7 @@ try {
   // banco temporário como admin, fora do app. `DATABASE_URL_ADMIN` some do
   // ambiente do servidor (`ambienteDoServidor`) de propósito; aqui ela volta
   // só para o processo do Playwright, que roda local e nunca é o app servido.
-  await executar(['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2).filter(arg => arg !== '--sem-build')], { ...ambiente, DATABASE_URL_ADMIN: banco.urlAdmin })
+  await executar(['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2).filter(arg => arg !== '--sem-build')], { ...ambiente, CRM_E2E_PORT: String(porta), DATABASE_URL_ADMIN: banco.urlAdmin })
 } catch (erro) {
   console.error(erro instanceof Error ? erro.message : erro)
   process.exitCode = 1

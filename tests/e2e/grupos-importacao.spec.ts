@@ -110,7 +110,7 @@ test('listas históricas permitem corrigir contexto, renomear e desativar preser
   await page.getByRole('button', { name: 'Buscar', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Empresas cadastradas' }).getByRole('listitem')).toHaveCount(3)
   const nova = page.getByRole('region', { name: 'Empresas cadastradas' }).getByRole('listitem').filter({ hasText: formatarCnpj(CNPJ_JORNADA_NOVA) })
-  await nova.getByRole('button', { name: 'Ver empresa: Fantasia da planilha', exact: true }).click()
+  await nova.getByRole('button', { name: 'Consulta rápida: Fantasia da planilha', exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText(NOVA)
   await page.keyboard.press('Escape')
 

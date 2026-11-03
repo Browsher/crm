@@ -33,33 +33,33 @@ const EMPRESA: EmpresaComigo = {
 
 describe('Ficha', () => {
   test('cliente arquivado conserva histórico e exige retomar antes de novo trabalho', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={{ ...EMPRESA, situacao: 'sem_interesse' }} cliente contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={{ ...EMPRESA, situacao: 'sem_interesse' }} cliente contatos={[]} />)
     expect(saida).toContain('Sem interesse')
     expect(saida).toContain('Retome o atendimento antes de registrar novo trabalho.')
     expect(saida).not.toMatch(/<button(?![^>]*disabled)[^>]*>Registrar atendimento/)
     expect(saida).not.toMatch(/<button(?![^>]*disabled)[^>]*>Registrar venda/)
   })
   test('mostra cadastro, telefone e CNPJ', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('Aurora Comercio LTDA')
     expect(saida).toContain('11987654321')
     expect(saida).toContain('11222333000181')
   })
 
   test('mostra o proximo passo que vale hoje', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('Mandar orçamento')
     expect(saida).toContain('01/10/2026')
   })
 
   test('vencido aparece com palavra', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={{ ...EMPRESA, vencido: true }} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={{ ...EMPRESA, vencido: true }} contatos={[]} />)
     expect(saida).toContain('Atrasado')
   })
 
   test('sem proximo passo, diz que nao ha combinado', () => {
     const saida = renderToStaticMarkup(
-      <Ficha empresa={{ ...EMPRESA, proximoPasso: null, proximoPassoData: null }} contatos={[]} />,
+      <Ficha usuarioId="teste" empresa={{ ...EMPRESA, proximoPasso: null, proximoPassoData: null }} contatos={[]} />,
     )
     expect(saida).toContain('Sem próximo passo combinado')
   })
@@ -67,29 +67,29 @@ describe('Ficha', () => {
   // O gap da fila.1 que esta fatia fecha: hoje não existe caminho de tela para
   // devolver empresa da carteira. Quem assume por engano fica com ela.
   test('tem o caminho de devolver, que a carteira nao tinha', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('Registrar atendimento')
     expect(saida).not.toContain('value="devolver"')
   })
 
   test('o formulario fica fechado inicialmente', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} />)
     expect(saida).not.toContain('O que aconteceu na ligação')
   })
 
   test('a linha do tempo vazia diz que ninguem ligou ainda', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('Ainda não há uma atividade registrada')
   })
 
   test('distingue erro de historico vazio', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} erroHistorico />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} erroHistorico />)
     expect(saida).toContain('Não foi possível carregar o histórico')
     expect(saida).not.toContain('Ainda não há uma atividade registrada')
   })
 
   test('mostra ausencias e o CNAE sem inventar dados', () => {
-    const saida = renderToStaticMarkup(<Ficha empresa={EMPRESA} contatos={[]} />)
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={EMPRESA} contatos={[]} />)
     expect(saida).toContain('E-mail não cadastrado')
     expect(saida).toContain('CNAE não cadastrado')
     expect(saida).not.toContain('—')

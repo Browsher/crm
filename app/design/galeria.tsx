@@ -7,7 +7,6 @@ import { Button } from '@/src/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { CardEmpresa } from '@/src/components/crm/card-empresa'
 import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
-import { CardSemInteresse, type EstadoDescarte } from '@/app/funil/card-sem-interesse'
 import { detalhesSnapshot, rotuloSituacao, type ResumoEmpresa } from '@/src/lib/empresa-visual'
 import { ETAPAS_FUNIL } from '@/src/lib/comercial'
 import empresaStyles from '@/src/components/crm/empresa.module.css'
@@ -32,7 +31,7 @@ const secoes = [
   ['botoes', 'Botões'],
   ['filtros', 'Filtros'],
   ['empresas', 'Empresas'],
-  ['funil', 'Funil e arquivo'],
+  ['funil', 'Funil'],
   ['tabelas', 'Tabelas'],
   ['ficha', 'Ficha e histórico'],
   ['avisos', 'Avisos'],
@@ -55,7 +54,6 @@ export function Galeria() {
   const [respostaFiltros, setRespostaFiltros] = useState('')
   const [respostaDialogo, setRespostaDialogo] = useState('')
   const [empresaAberta, setEmpresaAberta] = useState<ResumoEmpresa | null>(null)
-  const [descarte, setDescarte] = useState<EstadoDescarte>('repouso')
   const [carregando, setCarregando] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>(0)
   const [anotacoes, setAnotacoes] = useState('Cliente pediu retorno após conferir a agenda.')
@@ -160,10 +158,8 @@ export function Galeria() {
             {empresasFiltradas.length === 0 && <EstadoVazio titulo="Nenhuma empresa encontrada" descricao="Altere um filtro para ampliar a busca nos dados fictícios." acao={{ rotulo: 'Limpar filtros', variante: 'outline', aoAcionar: limparFiltros }} />}
           </Secao>
 
-          <Secao id="funil" titulo="Funil e arquivo" descricao="Três etapas de negociação. Sem interesse encerra a negociação e fica no arquivo.">
+          <Secao id="funil" titulo="Funil" descricao="Três etapas de negociação. Consulte as empresas sem interesse em Localizar empresas.">
             <div className={styles.companyGrid}>{ETAPAS_FUNIL.map(etapa=><Card key={etapa} data-etapa-funil={etapa}><CardHeader><CardTitle>{rotuloSituacao(etapa)}</CardTitle></CardHeader><CardContent><p>Nenhuma negociação de exemplo.</p></CardContent></Card>)}</div>
-            <CardSemInteresse estado={descarte} total={descarte==='sucesso'?1:0} aceitaArraste={false} aoMudarSobre={()=>{}} aoSoltar={()=>{}} />
-            <div className={styles.row}><Button variant="outline" onClick={()=>setDescarte('sucesso')}>Simular arquivamento</Button><Button variant="ghost" onClick={()=>setDescarte('repouso')}>Reiniciar exemplo</Button></div>
           </Secao>
 
           <Secao id="tabelas" titulo="Tabelas" descricao="Os mesmos registros fictícios em linhas confortáveis, empilhadas no celular.">

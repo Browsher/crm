@@ -49,7 +49,7 @@ async function medirContraste(controle: Locator) {
   })
 }
 
-test('Empresas conserva filtros e reflow com dados longos', async ({ page, browser }) => {
+test('Empresas conserva filtros e reflow com dados longos', async ({ page, browser, baseURL }) => {
   test.setTimeout(60_000)
   const url = process.env.DATABASE_URL_ADMIN
   if (!url) throw new Error('Use o harness E2E')
@@ -100,7 +100,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
     await page.getByLabel('Tema de Empresas').selectOption(tema)
     for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 900 })
-      const empresaLonga = tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha administrativa', exact: true })
+      const empresaLonga = tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha completa', exact: true })
       await empresaLonga.scrollIntoViewIfNeeded()
       await expect(empresaLonga).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -108,7 +108,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
     }
   }
   // A ficha conserva filtros aplicados e pode não ter sócios enriquecidos.
-  await tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha administrativa', exact: true }).click()
+  await tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha completa', exact: true }).click()
   await expect(page.getByRole('heading', { name: NOME_LONGO, exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dados dos sócios e representantes', exact: true })).toHaveCount(0)
   for (const tema of ['light', 'dark']) {
@@ -204,7 +204,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
   await expect(page.getByLabel('Buscar empresas', { exact: true })).toHaveValue('')
   await expect(cnae).toHaveValue('')
   const contextoToque = await browser.newContext({
-    baseURL: 'http://localhost:3100', hasTouch: true, viewport: { width: 1280, height: 900 },
+    baseURL, hasTouch: true, viewport: { width: 1280, height: 900 },
     storageState: await page.context().storageState(),
   })
   try {

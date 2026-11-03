@@ -65,3 +65,22 @@ test('guarda negada precede correção', async () => {
   await expect(atualizarMetadadosGrupoAcao({ erro: null, sucesso: false }, form('metadados'))).rejects.toThrow('negado')
   expect(deps.metadados).not.toHaveBeenCalled()
 })
+
+test('falha inesperada do repositório orienta conferência antes de alterar de novo', async () => {
+  deps.renomear.mockRejectedValueOnce(new Error('falha interna'))
+  const resultado = await alterarGrupoAcao({ erro: null, sucesso: false }, form('renomear'))
+  expect(resultado.erro).toContain('confira')
+  expect(resultado).toMatchObject({ sucesso: false, incerto: true })
+  expect(deps.revalidate).not.toHaveBeenCalled()
+})
+
+test('falha de revalidação conserva sucesso conhecido do contexto', async () => {
+  deps.metadados.mockResolvedValue({ ok: true })
+  deps.revalidate.mockImplementationOnce(() => { throw new Error('falha de revalidação') })
+  const dados = form('metadados')
+  dados.set('descricao', 'Mooca')
+  dados.set('origem', 'Google Maps')
+  const resultado = await atualizarMetadadosGrupoAcao({ erro: null, sucesso: false }, dados)
+  expect(resultado).toMatchObject({ sucesso: true, erro: null })
+  expect(resultado).toHaveProperty('aviso', expect.stringContaining('Atualize'))
+})

@@ -27,7 +27,7 @@ describe('Lista', () => {
     expect(saida).toContain('data-slot="card"')
     expect(saida).not.toContain('<table')
     expect(saida).toContain('aria-label="Empresas cadastradas"')
-    for (const campo of ['Localização', 'CNAE', 'Atividade', 'Origem', 'Recebida em', 'Em atendimento', 'Ana', 'Ver empresa', 'Ficha administrativa']) expect(saida).toContain(campo)
+    for (const campo of ['Localização', 'CNAE', 'Atividade', 'Origem', 'Recebida em', 'Em atendimento', 'Ana', 'Consulta rápida', 'Ficha completa']) expect(saida).toContain(campo)
     expect(saida).not.toContain('Iniciar atendimento')
     expect(saida).not.toContain('Retomar atendimento')
     expect(saida).not.toContain('Continuar atendimento')

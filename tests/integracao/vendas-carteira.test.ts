@@ -1,3 +1,4 @@
+import { lerDestinoVenda } from '@/src/server/vendas/pos-venda'
 import { randomUUID } from 'node:crypto'
 import { Client } from 'pg'
 import { beforeAll, beforeEach, afterAll, expect, test } from 'vitest'
@@ -105,4 +106,27 @@ test('compra reconfere autorização revogada durante espera pelo lock',async()=
     expect(await resultado).toBe('sem_permissao')
     expect(await banco.sql('SELECT valor_centavos FROM venda')).toEqual([{valor_centavos:'1200'}])
   }finally{await trava.query('ROLLBACK');await trava.end();await resultado}
+})
+
+test('recompra em voo serializa replay antes da fase arquivada e mantém uma venda por chave',async()=>{
+ await primeira();const chave=randomUUID()
+ let liberar!:()=>void,gravou!:()=>void
+ const pronta=new Promise<void>(r=>gravou=r),espera=new Promise<void>(r=>liberar=r)
+ const original=banco.comoUsuario(eu,async executar=>{
+  const r=await executar<{r:string}>("SELECT carteira_venda_registrar($1,$2,'2026-01-02',4500,NULL) AS r",[empresa,chave])
+  gravou();await espera;return r.linhas[0].r
+ })
+ await pronta;const replay=comprar(eu,chave)
+ try{
+  await expect.poll(async()=>{
+   const [r]=await banco.sql<{esperando:boolean}>("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE 'SELECT carteira_venda_registrar%') AS esperando")
+   return r.esperando
+  }).toBe(true)
+ }finally{liberar()}
+ expect(await original).toBe('ok');expect(await replay).toBe('ok')
+ await banco.sql('UPDATE empresa_vinculo SET arquivada_em=now() WHERE empresa_id=$1',[empresa])
+ expect(await comprar(eu,chave)).toBe('ok')
+ expect(await comprar()).toBe('arquivada')
+ expect(await lerDestinoVenda(eu,chave,{tipo:'recompra'})).toEqual({ok:true,destino:{tipo:'carteira',empresaId:empresa}})
+ expect(await banco.sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[chave])).toEqual([{n:1}])
 })

@@ -6,7 +6,10 @@ import type { ResultadoGrupo } from '@/src/features/empresas/grupos'
 const deps = vi.hoisted(() => ({ listar: vi.fn(), detalhe: vi.fn(), exigir: vi.fn() }))
 vi.mock('@/src/features/empresas/grupos', async original => ({ ...await original<object>(), listarGrupos: deps.listar, detalharGrupo: deps.detalhe }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: deps.exigir }))
-vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('404') } }))
+vi.mock('next/navigation', () => ({
+  notFound: () => { throw new Error('404') },
+  redirect: (destino: string) => { throw new Error(destino) },
+}))
 vi.mock('./acoes', () => ({ alterarGrupoAcao: vi.fn(), atualizarMetadadosGrupoAcao: vi.fn() }))
 const grupo = { id: '11111111-1111-4111-8111-111111111111', nome: 'Base de testes', ativo: true, arquivada: false, arquivoNome: null, autor: null, criadoEm: '2026-09-14T12:00:00Z', total: 60, descricao: null, origem: null, criterios: null }
 beforeEach(() => {
@@ -75,11 +78,20 @@ test('detalhe de lista antiga exibe origem não informada e permite corrigir con
 test('lista arquivada conserva consulta e suprime reativação, renomeação e edição de contexto', async () => {
   const atual = await deps.detalhe()
   deps.detalhe.mockResolvedValue({ ...atual, grupo: { ...grupo, ativo: false, arquivada: true } })
-  const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({}) }))
+  const retorno = '{"tipo":"arquivo","q":"Luz","pagina":2,"gruposPagina":3}'
+  const html = renderToStaticMarkup(await Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({ retorno }) }))
   expect(html).toContain('Arquivada')
   expect(html).toContain('Arquivo histórico, somente consulta.')
-  expect(html).toContain('/empresas/arquivadas')
+  expect(html).toContain('/empresas/arquivadas?q=Luz&amp;pagina=2&amp;gruposPagina=3')
+  expect(html).not.toContain('/empresas/grupos?pagina=')
   expect(html).not.toContain('Salvar contexto')
   expect(html).not.toContain('Reativar')
   expect(html).not.toContain('Renomear')
+})
+
+test('acesso direto à lista arquivada adota o arquivo no breadcrumb', async () => {
+  const atual = await deps.detalhe()
+  deps.detalhe.mockResolvedValue({ ...atual, grupo: { ...grupo, ativo: false, arquivada: true } })
+  const render = Detalhe({ params: Promise.resolve({ id: grupo.id }), searchParams: Promise.resolve({ pagina: '2' }) })
+  await expect(render).rejects.toThrow('/empresas/grupos/' + grupo.id + '?pagina=2&retorno=')
 })

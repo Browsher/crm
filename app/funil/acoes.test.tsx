@@ -1,11 +1,12 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-const mocks=vi.hoisted(()=>({exigir:vi.fn(),ler:vi.fn(),vender:vi.fn(),etapa:vi.fn(),devolver:vi.fn(),arquivar:vi.fn(),atendimento:vi.fn(),revalidar:vi.fn()}))
+const mocks=vi.hoisted(()=>({destino:vi.fn(),exigir:vi.fn(),ler:vi.fn(),vender:vi.fn(),etapa:vi.fn(),devolver:vi.fn(),arquivar:vi.fn(),atendimento:vi.fn(),revalidar:vi.fn()}))
 vi.mock('@/src/server/atendimento/operacoes',()=>({arquivarSemInteresse:mocks.arquivar}))
 vi.mock('@/src/server/atendimento/consulta',()=>({lerAtendimento:mocks.atendimento}))
 vi.mock('@/src/server/autenticacao/guarda',()=>({exigir:mocks.exigir}))
 vi.mock('@/src/features/funil/consulta',()=>({lerNegociacao:mocks.ler}))
 vi.mock('@/src/features/funil/repositorio',()=>({registrarVenda:mocks.vender,mudarEtapa:mocks.etapa,devolverNegociacao:mocks.devolver}))
 vi.mock('next/cache',()=>({revalidatePath:mocks.revalidar}))
+vi.mock('@/src/server/vendas/pos-venda',()=>({lerDestinoVenda:mocks.destino}))
 import { detalheAcao, vendaAcao, etapaAcao, semInteresseAcao } from './acoes'
 beforeEach(()=>{vi.clearAllMocks();mocks.exigir.mockResolvedValue({usuarioId:'eu'});mocks.vender.mockResolvedValue({ok:true})})
 
@@ -56,6 +57,28 @@ test('primeira venda explica indisponibilidade sem afirmar mudança de etapa ou 
   for(const[k,v]of Object.entries({id:'ciclo',valor:'12,34',data:'2026-09-15',chave:'12345678-1234-1234-1234-123456789012',confirmado:'sim'}))f.set(k,v)
   const r=await vendaAcao(f)
   expect(r).toMatchObject({ok:false,indisponivel:false})
+  if(r.ok)throw Error('Esperava recusa')
   expect(r.erro).toContain('indisponível')
   expect(mocks.revalidar).not.toHaveBeenCalled()
+})
+
+test('venda confirmada resolve destino depois da RPC, não consulta negociação aberta e preserva sucesso se atualização falhar',async()=>{
+ const f=new FormData();for(const[k,v]of Object.entries({id:'ciclo',valor:'12,34',data:'2026-01-01',chave:'12345678-1234-1234-1234-123456789012',confirmado:'sim',empresaId:'forjada'}))f.set(k,v)
+ mocks.destino.mockResolvedValue({ok:true,destino:{tipo:'carteira',empresaId:'real'}})
+ expect(await vendaAcao(f)).toMatchObject({ok:true,leituraDestino:{ok:true,destino:{empresaId:'real'}}})
+ expect(mocks.destino).toHaveBeenCalledWith('eu',f.get('chave'),{tipo:'primeira',negociacaoId:'ciclo'})
+ expect(mocks.vender.mock.invocationCallOrder[0]).toBeLessThan(mocks.destino.mock.invocationCallOrder[0]);expect(mocks.ler).not.toHaveBeenCalled()
+ mocks.destino.mockRejectedValueOnce(Error('leitura'));mocks.revalidar.mockImplementation(()=>{throw Error('cache')})
+ expect(await vendaAcao(f)).toMatchObject({ok:true,leituraDestino:{ok:false}})
+})
+test.each(['sem_permissao','dados_invalidos','chave_reutilizada','encerrada','desatualizada'])('recusa venda %s informa se é conclusiva para aquele comando',async motivo=>{
+ mocks.vender.mockResolvedValue({ok:false,motivo})
+ const f=new FormData();for(const[k,v]of Object.entries({id:'ciclo',valor:'12,34',data:'2026-01-01',chave:'12345678-1234-1234-1234-123456789012',confirmado:'sim'}))f.set(k,v)
+ expect(await vendaAcao(f)).toMatchObject({ok:false,recusaConclusiva:['encerrada','desatualizada'].includes(motivo)})
+ expect(mocks.destino).not.toHaveBeenCalled()
+})
+test('venda inválida devolve erro de campos estruturado sem inferir ausência de escrita no replay',async()=>{
+ const f=new FormData();for(const[k,v]of Object.entries({id:'ciclo',valor:'abc',data:'2026-01-01',chave:'12345678-1234-1234-1234-123456789012',confirmado:'sim'}))f.set(k,v)
+ expect(await vendaAcao(f)).toMatchObject({ok:false,erroDeCampos:true})
+ expect(mocks.vender).not.toHaveBeenCalled()
 })

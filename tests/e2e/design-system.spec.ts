@@ -52,7 +52,7 @@ async function montarVariantes(page: Page) {
   }, html)
 }
 
-test('controles mantêm tema e medidas em desktop e toque', async ({ page, browser }) => {
+test('controles mantêm tema e medidas em desktop e toque', async ({ page, browser, baseURL }) => {
   test.setTimeout(90_000)
   await page.setViewportSize({ width: 1920, height: 1080 })
   await entrar(page, 'gestore2e')
@@ -109,7 +109,7 @@ test('controles mantêm tema e medidas em desktop e toque', async ({ page, brows
   await expect(card).toHaveCSS('box-shadow', 'none')
   await expect(page.getByText('Card do contrato', { exact: true })).toHaveCSS('line-height', '24px')
 
-  const toque = await browser.newContext({ baseURL: 'http://localhost:3100', hasTouch: true, viewport: { width: 1280, height: 900 } })
+  const toque = await browser.newContext({ baseURL, hasTouch: true, viewport: { width: 1280, height: 900 } })
   try {
     const tela = await toque.newPage()
     await entrar(tela, 'gestore2e')
@@ -156,9 +156,6 @@ test('Carteira realmente vazia orienta primeiro uso em Card e navega pelo CTA co
   await expect(page.getByRole('main')).not.toContainText('Nenhum cliente corresponde aos filtros')
   const card = page.locator('[data-slot="card"]').filter({ has: titulo })
   const cta = card.getByRole('link', { name: 'Ir para Prospecção', exact: true })
-  const referencia = await page.context().newPage()
-  await referencia.setContent(readFileSync('docs/design/design-system-padrao.html', 'utf8'))
-  const cardReferencia = referencia.locator('[data-component="empty-state"]')
   for (const tema of ['light', 'dark']) {
     await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
     for (const width of [1280, 390]) {
@@ -169,18 +166,17 @@ test('Carteira realmente vazia orienta primeiro uso em Card e navega pelo CTA co
       await expect(card).toHaveCSS('box-shadow', 'none')
       await expect(card).toHaveCSS('background-color', tema === 'light' ? 'rgb(255, 255, 255)' : 'rgb(28, 36, 45)')
       await expect(card).toHaveCSS('padding-top', width === 390 ? '20px' : '24px')
-      await referencia.setViewportSize({ width, height: 844 })
-      await referencia.locator('html').evaluate((elemento, valor) => elemento.setAttribute('data-theme', valor), tema)
-      // A referência aprovada ancora composição, espaçamento e superfície.
-      for (const propriedade of ['min-height', 'border-radius', 'border-top-style', 'background-color']) {
-        await expect(card).toHaveCSS(propriedade, await cardReferencia.evaluate((elemento, chave) => getComputedStyle(elemento).getPropertyValue(chave), propriedade))
-      }
-      await cardReferencia.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-4-captures/task-2-captures/referencia-vazia-${tema}-${width}.png`, animations: 'disabled' })
+      const faixa = (await card.boundingBox())!
+      const texto = (await titulo.boundingBox())!
+      const acao = (await cta.boundingBox())!
+      expect(faixa.height).toBeLessThan(286)
+      if (width === 390) expect(acao.y).toBeGreaterThanOrEqual(texto.y + texto.height)
+      else expect(acao.x).toBeGreaterThanOrEqual(texto.x + texto.width)
       await expect(titulo).toHaveCSS('font-size', '16px')
       await expect(titulo).toHaveCSS('line-height', '24px')
       await expect(card.locator('[data-slot="card-description"]')).toHaveCSS('font-size', '14px')
       await expect(card.locator('[data-slot="card-description"]')).toHaveCSS('line-height', '21px')
-      await expect(card.locator('[data-slot="card-footer"] a')).toHaveAttribute('href', '/fila')
+      await expect(cta).toHaveAttribute('href', '/fila')
       await expect(cta).toHaveAttribute('data-slot', 'button')
       await expect(cta).toHaveAttribute('data-variant', 'default')
       await expect(card.locator('a button, button a')).toHaveCount(0)
@@ -195,7 +191,6 @@ test('Carteira realmente vazia orienta primeiro uso em Card e navega pelo CTA co
       await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-4-captures/task-2-captures/carteira-vazia-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
     }
   }
-  await referencia.close()
   await cta.press('Enter')
   await expect(page).toHaveURL('/fila')
 })
@@ -221,7 +216,7 @@ test('filtro sem resultado oferece recuperação no Card e conserva rota da fich
       await expect(card).toHaveCSS('border-top-style', 'solid')
       await expect(card).toHaveCSS('border-radius', '10px')
       await expect(cta).toHaveAttribute('data-variant', 'outline')
-      await expect(card.locator('[data-slot="card-footer"] a')).toHaveAttribute('href', '/carteira')
+      await expect(cta).toHaveAttribute('href', '/carteira')
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
       await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-4-captures/task-2-captures/carteira-filtro-sem-resultado-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
     }
@@ -315,7 +310,7 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
   }
 })
 
-test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browser }) => {
+test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browser, baseURL }) => {
   test.setTimeout(120_000)
   const pasta = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-10-captures')
   await mkdir(pasta, { recursive: true })
@@ -324,7 +319,7 @@ test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browse
     { conta: 'designsystemvazioe2e', caminhos: ['/meu-dia', '/fila', '/fila/buscar', '/fila/localizar', '/fila/google', '/funil', '/carteira'] },
   ] as const
   for (const { conta, caminhos } of perfis) {
-    const contexto = await browser.newContext({ baseURL: 'http://localhost:3100', viewport: { width: 320, height: 900 } })
+    const contexto = await browser.newContext({ baseURL, viewport: { width: 320, height: 900 } })
     try {
       const page = await contexto.newPage()
       await entrar(page, conta)

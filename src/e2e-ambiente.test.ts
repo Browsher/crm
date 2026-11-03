@@ -1,5 +1,14 @@
 import { expect, test } from 'vitest'
-import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal } from '../tests/e2e/ambiente'
+import { ambienteDoBuild, ambienteDoServidor, exigirAdminLocal, portaDoE2E } from '../tests/e2e/ambiente'
+
+test('E2E conserva a porta padrão e aceita uma porta local explícita', () => {
+  expect(portaDoE2E(undefined)).toBe(3100)
+  expect(portaDoE2E('3156')).toBe(3156)
+})
+
+test.each(['', '0', '-1', '65536', '3e3', ' 3156 ', '0.0.0.0:3156'])('E2E recusa porta inválida %j', valor => {
+  expect(() => portaDoE2E(valor)).toThrow(/CRM_E2E_PORT/)
+})
 
 test('isola credenciais e SSL herdados sem alterar o ambiente pai', () => {
   const fonte: NodeJS.ProcessEnv = { NODE_ENV: 'test', DATABASE_URL_ADMIN: 'admin', DATABASE_URL: 'remota', ALVO: 'railway', PG_SSL: 'verify', PG_SSL_CA: 'ca' }

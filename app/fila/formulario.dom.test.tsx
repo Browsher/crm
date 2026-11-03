@@ -2,8 +2,9 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect,test,vi } from 'vitest'
+vi.mock('next/navigation',()=>({useRouter:()=>({replace:vi.fn()})}))
 vi.mock('./cartao',()=>({Cartao:()=>null}))
-vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({rascunho,onDraftChange,onSaved,empresaId}:{rascunho?:{nota:string};onDraftChange:(v:unknown)=>void;onSaved:(id:string)=>void;empresaId:string})=><div><p>{rascunho?.nota}</p><button onClick={()=>onDraftChange({tipo:'nao_liguei',nota:'Nota '+empresaId,proximoPasso:'',proximoPassoData:''})}>Anotar</button><button onClick={()=>onSaved(empresaId)}>Salvar</button></div>}))
+vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({rascunho,onDraftChange,onSaved,empresaId}:{rascunho?:{nota:string};onDraftChange:(v:unknown)=>void;onSaved:(id:string,r:unknown)=>void;empresaId:string})=><div><p>{rascunho?.nota}</p><button onClick={()=>onDraftChange({tipo:'nao_liguei',nota:'Nota '+empresaId,proximoPasso:'',proximoPassoData:''})}>Anotar</button><button onClick={()=>onSaved(empresaId,{ok:true,erro:null,repetida:false,leituraDestino:{ok:true,destino:{tipo:'permanecer'}},chave:'confirmada',rascunho})}>Salvar</button></div>}))
 import { Formulario } from './formulario'
 import { RascunhosProvider } from './rascunhos'
 import type { ResumoEmpresa } from '@/src/lib/empresa-visual'

@@ -28,6 +28,12 @@ export async function iniciarWhatsAppDeTeste(banco: BancoDeTeste) {
       { key: { id: 'texto-sem-nome', remoteJid: '99988776655@lid', fromMe: false }, messageTimestamp: agora - 280, message: { conversation: 'Mensagem sintética sem identificação disponível.' } },
       ...Array.from({ length: 40 }, (_, indice) => ({ key: { id: `historico-aurora-${indice}`, remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, pushName: 'Contato Aurora', messageTimestamp: agora - 300 - indice * 60, message: { conversation: `Mensagem antiga ${indice + 1} do histórico local de teste.` } })),
     ]
+    const alvoRetorno = { ...registros[0], pushName: 'Contato Aurora no histórico',
+      messageTimestamp: agora - 6000, message: { conversation: 'Histórico da fonte correta.' } }
+    const paginasRetorno = [...Array.from({ length: 50 }, (_, indice) => ({
+      ...registros[3], key: { ...registros[3].key, id: 'retorno-boreal-' + indice },
+      messageTimestamp: agora - 300 - indice * 60,
+    })), alvoRetorno]
     const servidor = createServer({ key: await readFile(chave), cert: await readFile(certificado) }, async (pedido, resposta) => {
       if (pedido.headers.apikey !== 'chave-apenas-e2e') { resposta.writeHead(403).end(); return }
       const partes: Buffer[] = []
@@ -36,7 +42,13 @@ export async function iniciarWhatsAppDeTeste(banco: BancoDeTeste) {
       resposta.setHeader('Content-Type', 'application/json')
       if (pedido.url?.startsWith('/chat/findMessages/')) {
         const id = corpo.where?.key?.id
-        resposta.end(JSON.stringify({ messages: { records: id ? registros.filter(r => r.key.id === id) : registros, total: registros.length } }))
+        const instancia = pedido.url.split('/').at(-1)
+        const pagina = Number(corpo.page ?? 1)
+        if (instancia === 'retorno-falha-e2e' && pagina > 1) { resposta.writeHead(503).end('{}'); return }
+        const dados = instancia === 'retorno-alvo-e2e' || instancia === 'retorno-falha-e2e' ? paginasRetorno
+          : instancia === 'retorno-outra-e2e' ? [{ ...registros[0], pushName: 'Contato Aurora em outra fonte' }] : registros
+        const encontrados = id ? dados.filter(r => r.key.id === id) : dados.slice((pagina - 1) * 50, pagina * 50)
+        resposta.end(JSON.stringify({ messages: { records: encontrados, total: dados.length } }))
       } else if (pedido.url?.startsWith('/chat/getBase64FromMediaMessage/') && corpo.message?.key?.id === 'imagem-aurora') {
         resposta.end(JSON.stringify({ mimetype: 'image/png', base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+cXioAAAAASUVORK5CYII=' }))
       } else resposta.writeHead(503).end('{}')

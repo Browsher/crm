@@ -2,12 +2,14 @@
 .cabecalho h1 { margin: 0; font-size: 28px; line-height: 36px; font-weight: 650; }
 .cabecalho p { margin: 8px 0 0; color: var(--muted-foreground); font-size: 14px; line-height: 21px; }
 .acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.vazio { min-width: 0; min-height: 286px; overflow-wrap: anywhere; }
-.vazioCabecalho { gap: 16px; }
-.vazioIcone { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 8px; background: var(--success-background); color: var(--primary); }
+.vazio { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 16px; padding: var(--card-padding); min-width: 0; overflow-wrap: anywhere; }
+.vazioCabecalho { display: flex; align-items: flex-start; gap: 12px; flex: 1 1 300px; min-width: 0; }
+.vazioIcone { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: var(--radius-control); background: var(--muted); color: var(--muted-foreground); }
+.vazioTexto { min-width: 0; }
 .vazioTitulo h2, .vazioTitulo h3 { margin: 0; font: inherit; }
-.vazioDescricao { margin-top: 8px; max-width: 76ch; line-height: 21px; }
-.vazioRodape { margin-top: auto; flex-wrap: wrap; gap: 8px; }
+.vazioDescricao { margin-top: 4px; max-width: 76ch; line-height: 21px; }
+.vazioAcao { display: flex; min-width: 0; max-width: 100%; }
+.vazioAcao > [data-slot='button'] { max-width: 100%; white-space: normal; text-align: center; overflow-wrap: anywhere; }
 @media (max-width: 700px) { .cabecalho { flex-direction: column; gap: 16px; } }
 
 .painelFiltros { min-width: 0; }

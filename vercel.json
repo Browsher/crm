@@ -5,7 +5,8 @@
   "buildCommand": "npm run build",
   "git": {
     "deploymentEnabled": {
-      "main": false
+      "main": false,
+      "codex/simplificar-crm-fluxos": false
     }
   }
 }

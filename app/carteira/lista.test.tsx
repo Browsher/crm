@@ -114,11 +114,11 @@ describe('ListaCarteira', () => {
 })
 
 // O contrato do consumidor distingue primeiro uso de recuperação dos filtros.
-test('Carteira vazia oferece navegação primária no rodapé do Card', () => {
+test('Carteira vazia oferece navegação primária na faixa compacta', () => {
   const saida = renderToStaticMarkup(<ListaCarteira linhas={[]} filtros={{ nome: 'Inexistente', uf: '', retorno: '' }} />)
   expect(saida).toContain('Sua carteira está vazia')
   expect(saida).toContain('Registre a primeira venda para incluir um cliente na carteira.')
-  expect(saida).toContain('data-slot="card-footer"')
+  expect(saida).toContain('data-slot="card"')
   expect(saida).toMatch(/<a[^>]+href="\/fila"[^>]*>Ir para Prospecção<\/a>/)
   expect(saida).toContain('data-variant="default"')
   expect(saida).not.toContain('Nenhum cliente corresponde aos filtros')
@@ -129,7 +129,7 @@ test('Filtro sem resultado preserva filtros e oferece recuperação outline no C
   const saida = renderToStaticMarkup(<ListaCarteira linhas={[UMA]} filtros={filtros} />)
   expect(saida).toContain('<h3')
   expect(saida).toContain('Nenhum cliente corresponde aos filtros')
-  expect(saida).toContain('data-slot="card-footer"')
+  expect(saida).toContain('data-slot="card"')
   expect(saida).toContain('data-variant="outline"')
   expect(saida).toMatch(/<a[^>]+href="\/carteira"[^>]*>Limpar filtros<\/a>/)
   expect(filtros).toEqual({ nome: 'Inexistente', uf: '', retorno: '' })

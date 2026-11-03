@@ -13,9 +13,11 @@ import {
   type ResultadoSimples,
 } from '@/src/features/usuarios/servico'
 import { exigir } from '@/src/server/autenticacao/guarda'
+import { avisarSeRevalidacaoFalhar, RESULTADO_INCERTO } from '@/src/lib/edicao-administrativa'
 
-export type EstadoCriar = { erro: string | null; criado: { nome: string; senhaProvisoria: string } | null }
-export type EstadoLinha = { erro: string | null; senhaProvisoria: string | null }
+type EstadoEdicao = { erro: string | null; incerto?: boolean; aviso?: string }
+export type EstadoCriar = EstadoEdicao & { criado: { nome: string; senhaProvisoria: string } | null }
+export type EstadoLinha = EstadoEdicao & { senhaProvisoria: string | null }
 
 const CRIAR_INICIAL: EstadoCriar = { erro: null, criado: null }
 
@@ -28,10 +30,10 @@ export async function criarUsuarioAcao(_anterior: EstadoCriar, form: FormData): 
     nome,
     email: String(form.get('email') ?? ''),
     papel: String(form.get('papel') ?? ''),
-  })
+  }).catch(() => null)
+  if (!r) return { erro: RESULTADO_INCERTO, incerto: true, criado: null }
   if (!r.ok) return { erro: mensagemDeUsuario(r), criado: null }
-  revalidatePath('/usuarios')
-  return { erro: null, criado: { nome: nome.trim(), senhaProvisoria: r.senhaProvisoria } }
+  return { erro: null, criado: { nome: nome.trim(), senhaProvisoria: r.senhaProvisoria }, ...revalidarUsuarios() }
 }
 
 const ACOES: readonly string[] = ['nova_senha', 'mudar_papel', 'desativar', 'reativar']
@@ -48,16 +50,20 @@ export async function agirNaLinhaAcao(_anterior: EstadoLinha, form: FormData): P
   // `'senhaProvisoria' in r` no resultado unido daria `unknown`: o membro sem
   // o campo ganha a propriedade como desconhecida em vez de sumir da união.
   if (acao === 'nova_senha') {
-    const r = await novaSenhaProvisoria(repo, id)
+    const r = await novaSenhaProvisoria(repo, id).catch(() => null)
+    if (!r) return { erro: RESULTADO_INCERTO, incerto: true, senhaProvisoria: null }
     if (!r.ok) return { erro: mensagemDeUsuario(r), senhaProvisoria: null }
-    revalidatePath('/usuarios')
-    return { erro: null, senhaProvisoria: r.senhaProvisoria }
+    return { erro: null, senhaProvisoria: r.senhaProvisoria, ...revalidarUsuarios() }
   }
 
-  const r = await executar(acao as Exclude<Acao, 'nova_senha'>, repo, id, form)
+  const r = await executar(acao as Exclude<Acao, 'nova_senha'>, repo, id, form).catch(() => null)
+  if (!r) return { erro: RESULTADO_INCERTO, incerto: true, senhaProvisoria: null }
   if (!r.ok) return { erro: mensagemDeUsuario(r), senhaProvisoria: null }
-  revalidatePath('/usuarios')
-  return { erro: null, senhaProvisoria: null }
+  return { erro: null, senhaProvisoria: null, ...revalidarUsuarios() }
+}
+
+function revalidarUsuarios() {
+  return avisarSeRevalidacaoFalhar(() => revalidatePath('/usuarios'))
 }
 
 function executar(

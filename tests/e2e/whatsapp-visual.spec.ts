@@ -208,8 +208,8 @@ for (const tema of ['light', 'dark'] as const) {
   })
 }
 
-test('busca e configuração usam controles de toque em tela larga', async ({ browser }) => {
-  const contexto = await browser.newContext({ viewport: { width: 1280, height: 900 }, hasTouch: true, baseURL: 'http://localhost:3100' })
+test('busca e configuração usam controles de toque em tela larga', async ({ browser, baseURL }) => {
+  const contexto = await browser.newContext({ viewport: { width: 1280, height: 900 }, hasTouch: true, baseURL })
   const page = await contexto.newPage()
   try {
     await entrar(page)

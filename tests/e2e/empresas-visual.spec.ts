@@ -104,7 +104,7 @@ test('gestor consulta cards com filtros e navegação sem importação manual', 
   expect(rolagem.conteudo).toBeLessThanOrEqual(rolagem.visivel)
   expect(rolagem.pagina).toBeLessThanOrEqual(rolagem.viewport)
   await page.getByLabel('Buscar empresas', { exact: true }).focus()
-  await tabAte(page, regiaoTabela.getByRole('button',{name:/Ver empresa:/}).first())
+  await tabAte(page, regiaoTabela.getByRole('button',{name:/Consulta rápida:/}).first())
   await capturarEmTamanhos(page, 'lista')
 
   await expect(page.getByRole('link', { name: /Importar/ })).toHaveCount(0)
@@ -147,11 +147,10 @@ test('cards gerenciais e galeria permanecem legíveis com nome longo e campos au
   }
   await page.goto('/design')
   await expect(page.locator('[data-etapa-funil]')).toHaveCount(3)
-  await expect(page.locator('[data-descarte]')).toHaveCount(1)
+  await expect(page.locator('[data-descarte]')).toHaveCount(0)
   await expect(page.locator('[data-etapa-funil] [data-descarte]')).toHaveCount(0)
   await expect(page.getByText('Reserva expirada',{exact:true})).toHaveCount(0)
-  await page.getByRole('button',{name:'Simular arquivamento',exact:true}).click()
-  await expect(page.locator('[data-descarte]')).toHaveAttribute('data-estado','sucesso')
+  await expect(page.getByRole('button',{name:'Simular arquivamento',exact:true})).toHaveCount(0)
   for(const width of [390,820,1280]) {
     await page.setViewportSize({width,height:900})
     for(const tema of ['light','dark']) {

@@ -1,10 +1,26 @@
 import type { Filtros } from '@/src/features/prospeccao/tipos'
 import { CAMPOS_PESSOAIS, lerFiltrosPessoais, urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 
-export function filtrosDaConsulta(params: Record<string, string | string[] | undefined>): FiltrosPessoais {
+export function lerConsultaPessoal(params: Record<string, string | string[] | undefined>, semInteresse = false): ReturnType<typeof lerFiltrosPessoais> {
   let bruto: unknown = Object.fromEntries(CAMPOS_PESSOAIS.filter(k => params[k] !== undefined).map(k => [k, params[k]]))
-  if (typeof params.pessoal === 'string') { try { bruto = JSON.parse(params.pessoal) } catch { return {} } }
-  const r = lerFiltrosPessoais(bruto)
+  if (params.pessoal !== undefined) {
+    if (typeof params.pessoal !== 'string') return { ok: false }
+    try { bruto = JSON.parse(params.pessoal) } catch { return { ok: false } }
+  }
+  let selecionarSemInteresse = semInteresse
+  // Sem interesse é uma seleção visual. O parser de domínio continua aceitando
+  // somente as origens de aquisição; a consulta abrange qualquer uma delas.
+  if (bruto && typeof bruto === 'object' && !Array.isArray(bruto)) {
+    const entrada = { ...bruto } as Record<string, unknown>
+    if (entrada.origem === 'sem_interesse') { delete entrada.origem; selecionarSemInteresse = true }
+    bruto = entrada
+  }
+  const lidos = lerFiltrosPessoais(bruto)
+  if (!lidos.ok || !selecionarSemInteresse) return lidos
+  return { ok: true, filtros: { ...lidos.filtros, disponibilidade: 'sem_interesse' } }
+}
+export function filtrosDaConsulta(params: Record<string, string | string[] | undefined>): FiltrosPessoais {
+  const r = lerConsultaPessoal(params)
   return r.ok ? r.filtros : {}
 }
 export function urlAtendimento(empresaId: string, filtros: FiltrosPessoais): string {

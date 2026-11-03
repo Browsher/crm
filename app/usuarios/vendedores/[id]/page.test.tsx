@@ -66,3 +66,12 @@ test('página vazia com vínculos e zero vendas oferece voltar à primeira pági
   expect(html).toContain('href="/usuarios/vendedores/vendedor?pagina=1"')
   expect(html).not.toContain('Nenhuma empresa vinculada')
 })
+
+test('recorte da lista acompanha atualização do perfil e o link Voltar', async () => {
+  const html = renderToStaticMarkup(await Pagina({ params: Promise.resolve({ id: 'vendedor' }),
+    searchParams: Promise.resolve({ busca: 'Maria Luz', papel: 'vendedor', situacao: 'ativos', paginaLista: '2', senha: 'sem-vazamento' }),
+  }))
+  expect(html).toContain('href="/usuarios?busca=Maria+Luz&amp;papel=vendedor&amp;situacao=ativos&amp;pagina=2"')
+  expect(html).toContain('href="/usuarios/vendedores/vendedor?busca=Maria+Luz&amp;papel=vendedor&amp;situacao=ativos&amp;paginaLista=2&amp;pagina=1"')
+  expect(html).not.toContain('sem-vazamento')
+})

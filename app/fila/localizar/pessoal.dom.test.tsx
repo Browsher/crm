@@ -69,3 +69,14 @@ test('resultado vazio explica a pesquisa e oferece editar filtros como ação lo
   await act(async()=>editar.click())
   expect(div.querySelector('form')!.hidden).toBe(false)
 })
+
+ test.each([false,true])('situação Sem interesse fica visível, inclusive recolhida=%s; limpar conserva recorte',async recolhido=>{
+  const div=await montar({disponibilidade:'sem_interesse',nome:'Aurora',nicho:'Armarinhos'},[],recolhido)
+  const resultados=div.querySelector('section[aria-labelledby="minhas-empresas-titulo"]')!
+  expect(resultados.querySelector('header')?.textContent).toContain('Sem interesse')
+  const link=div.querySelector<HTMLAnchorElement>('a')!
+  expect(link.getAttribute('href')).toBe('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+  const form=div.querySelector('form')!
+  await act(async()=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})))
+  expect(push.mock.calls[0][0]).toContain('disponibilidade=sem_interesse')
+ })

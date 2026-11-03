@@ -1,4 +1,6 @@
 'use server'
+import type { EstadoVenda } from '@/src/lib/venda-envio'
+import { lerDestinoVenda } from '@/src/server/vendas/pos-venda'
 import { revalidatePath } from 'next/cache'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerNegociacao, lerTelefoneNegociacao } from '@/src/features/funil/consulta'
@@ -20,12 +22,23 @@ function resultado(r:Resultado):EstadoFunil {
 }
 export async function detalheAcao(id:string) {const eu=await exigir('vendedor');return lerNegociacao(eu.usuarioId,id)}
 export async function telefoneAcao(id:string) {const eu=await exigir('vendedor');return lerTelefoneNegociacao(eu.usuarioId,id)}
-export async function vendaAcao(form:FormData):Promise<EstadoFunil> {
+export async function vendaAcao(form:FormData):Promise<EstadoVenda> {
   const eu=await exigir('vendedor')
   if(form.get('confirmado')!=='sim')return {ok:false,erro:'Confirme os dados antes de registrar.'}
   const r=validarVenda({valor:String(form.get('valor')??''),data:String(form.get('data')??''),observacao:String(form.get('observacao')??''),chave:String(form.get('chave')??'')})
-  if(!r.ok)return {ok:false,erro:r.erro}
-  return resultado(await registrarVenda(eu.usuarioId,String(form.get('id')??''),r.dados))
+  if(!r.ok)return {ok:false,erro:r.erro,erroDeCampos:true}
+  const id=String(form.get('id')??'')
+  const venda=await registrarVenda(eu.usuarioId,id,r.dados)
+  if(!venda.ok){
+    const resposta=resultado(venda)
+    // Essas recusas vêm depois do lookup, serializado pelo lock do vendedor/empresa.
+    return {ok:false,erro:resposta.erro!,indisponivel:resposta.indisponivel,recusaConclusiva:['encerrada','desatualizada'].includes(venda.motivo),erroDeCampos:venda.motivo==='dados_invalidos'}
+  }
+  let leituraDestino:Extract<EstadoVenda,{ok:true}>['leituraDestino']={ok:false,motivo:'leitura_indisponivel'}
+  try {leituraDestino=await lerDestinoVenda(eu.usuarioId,r.dados.chave,{tipo:'primeira',negociacaoId:id})}catch{/* A venda já foi confirmada. */}
+  let aviso:string|undefined
+  try {for(const rota of ['/funil','/carteira','/meu-dia','/gestao','/usuarios'])revalidatePath(rota)}catch{aviso='Venda registrada. Atualize a página para conferir os dados.'}
+  return {ok:true,leituraDestino,aviso}
 }
 export async function etapaAcao(form:FormData):Promise<EstadoFunil> {
   const eu=await exigir('vendedor')

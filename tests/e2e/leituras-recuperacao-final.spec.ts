@@ -75,35 +75,50 @@ test('Funil separa agenda vigente de outro autor do histórico próprio e não r
 
 for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta perdida, recusa antes do recibo, reload e replay preservam intenção`, async ({ page }) => {
   const nome = 'Revisão recuperação ' + tipo, c = await preparar(nome + ' A', tipo === 'retomar'), b = await preparar(nome + ' B', tipo === 'retomar')
-  const rota = tipo === 'arquivar' ? '/funil' : '/fila/sem-interesse?nome=' + encodeURIComponent(nome)
-  const confirmar = tipo === 'arquivar' ? 'Confirmar envio anterior' : 'Confirmar retomada anterior'
-  const storagePrefix = tipo === 'arquivar' ? 'crm:funil:arquivo:v1:' : 'crm:retomar-arquivo:v1:'
+  const arquivar = tipo === 'arquivar'
+  const rota = arquivar ? '/funil' : '/fila/localizar?disponibilidade=sem_interesse&nome=' + encodeURIComponent(nome)
+  const confirmar = arquivar ? 'Confirmar envio anterior' : 'Confirmar retomada anterior'
+  const storage = arquivar ? 'crm:funil:arquivo:v1:' + c.eu : 'crm:acao-empresa:v1:' + c.empresa
+  const status = arquivar ? page.getByRole('status') : page.getByRole('region', { name: 'Retomada anterior' }).getByRole('status')
   await entrar(page); await page.goto(rota)
-  let perder = true
-  await page.route(tipo === 'arquivar' ? '**/funil*' : '**/fila/sem-interesse*', async route => {
-    if (!perder || route.request().method() !== 'POST') return route.continue()
-    perder = false; await route.fetch(); await route.abort('failed')
+  const envios: string[] = []
+  await page.route(arquivar ? '**/funil*' : '**/fila/localizar*', async route => {
+    const corpo = route.request().postData()
+    if (route.request().method() !== 'POST' || !corpo?.includes(c.empresa)) return route.continue()
+    envios.push(corpo)
+    if (envios.length > 1) return route.continue()
+    const resposta = await route.fetch()
+    expect(resposta.ok()).toBe(true)
+    await route.abort('failed')
   })
   const origem = tipo === 'arquivar' ? page.locator('[draggable]').filter({ has: page.getByRole('heading', { name: nome + ' A', exact: true }) }) : card(page, nome + ' A')
   await origem.getByRole('button', { name: tipo === 'arquivar' ? 'Marcar como Sem interesse' : 'Retomar atendimento', exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('Não foi possível confirmar')
-  const salvo = await page.evaluate(k => sessionStorage.getItem(k), storagePrefix + c.eu)
+  await expect(status).toContainText('Não foi possível confirmar')
+  const salvo = await page.evaluate(k => sessionStorage.getItem(k), storage)
   expect(salvo).toBeTruthy()
   const comando = JSON.parse(salvo!), chave = comando.chave
   const retratoB = (await sql('SELECT to_jsonb(v) v FROM empresa_vinculo v WHERE empresa_id=$1', [b.empresa])).rows
-  await expect(card(page, nome + ' B').getByRole('button', { name: 'Retomar atendimento', exact: true })).toHaveCount(0)
+  const retomarB = card(page, nome + ' B').getByRole('button', { name: 'Retomar atendimento', exact: true })
+  if (arquivar) await expect(retomarB).toHaveCount(0)
+  else await expect(retomarB).toBeDisabled()
   await card(page, nome + ' B').getByRole('button', { name: 'Ver empresa: ' + nome + ' B' }).click()
   await expect(page.getByRole('dialog')).toContainText(nome + ' B'); await page.keyboard.press('Escape')
+  expect(envios).toHaveLength(1)
   // Simula a alteração de autorização por outra sessão depois do primeiro commit.
   await sql('UPDATE empresa_vinculo SET vendedor_id=$2 WHERE empresa_id=$1', [c.empresa, c.outro])
   await page.getByRole('button', { name: confirmar, exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('não tem permissão')
-  expect(await page.evaluate(k => sessionStorage.getItem(k), storagePrefix + c.eu)).toBe(salvo)
+  await expect(status).toContainText('não tem permissão')
+  expect(await page.evaluate(k => sessionStorage.getItem(k), storage)).toBe(salvo)
   await page.reload(); await expect(page.getByRole('button', { name: confirmar, exact: true })).toBeVisible()
+  expect(await page.evaluate(k => sessionStorage.getItem(k), storage)).toBe(salvo)
+  expect(envios).toHaveLength(2)
   await sql('UPDATE empresa_vinculo SET vendedor_id=$2 WHERE empresa_id=$1', [c.empresa, c.eu])
   await page.getByRole('button', { name: confirmar, exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('Envio anterior confirmado')
-  expect(await page.evaluate(k => sessionStorage.getItem(k), storagePrefix + c.eu)).toBeNull()
+  if (arquivar) await expect(status).toContainText('Envio anterior confirmado')
+  else await expect(page).toHaveURL(url => url.pathname === '/fila/atendimento/' + c.empresa && url.searchParams.get('nome') === nome)
+  expect(envios).toHaveLength(3)
+  for (const corpo of envios) expect(corpo).toContain(chave)
+  expect(await page.evaluate(k => sessionStorage.getItem(k), storage)).toBeNull()
   expect((await sql('SELECT count(*)::int n FROM empresa_atendimento_operacao WHERE chave=$1', [chave])).rows).toEqual([{ n: 1 }])
   expect((await sql('SELECT to_jsonb(v) v FROM empresa_vinculo v WHERE empresa_id=$1', [b.empresa])).rows).toEqual(retratoB)
 })

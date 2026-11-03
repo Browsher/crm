@@ -21,7 +21,7 @@ async function montar(remover = false) {
   await act(async () => root.render(remover ? <FormularioRemover id="vinculo1" nome="Ana" /> : <FormularioVinculo vendedores={[{ id: 'v1', nome: 'Ana' }]} />))
 }
 async function enviar() {
-  const botao = host.querySelector('button')!
+  const botao = host.querySelector<HTMLButtonElement>('button[type=submit]')!
   await act(async () => { botao.form!.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: botao })) })
 }
 test('erro preserva vendedor e instância e permite tentar salvar novamente', async () => {
@@ -67,4 +67,19 @@ test('sucesso usa retorno de estado comum e campos continuam disponíveis', asyn
   expect(host.querySelector('button')?.disabled).toBe(false)
   expect(host.querySelector('input[name="instancia"]')?.getAttribute('type')).not.toBe('password')
   expect(host.querySelector('input[name="apiKey"]')).toBeNull()
+})
+test('cancelar vínculo alterado pede confirmação e pode preservar a instância', async () => {
+  await montar()
+  const input = host.querySelector<HTMLInputElement>('input[name=instancia]')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'rascunho-ficticio')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const cancelar = [...host.querySelectorAll('button')].find(botao => botao.textContent === 'Cancelar')
+  expect(cancelar).toBeDefined()
+  await act(async () => cancelar!.click())
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('Descartar alterações?')
+  const continuar = [...document.querySelectorAll('button')].find(botao => botao.textContent === 'Continuar editando')
+  await act(async () => continuar!.click())
+  expect(input.value).toBe('rascunho-ficticio')
 })

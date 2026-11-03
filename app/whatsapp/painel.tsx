@@ -17,6 +17,8 @@ import { Input } from '@/src/components/ui/input'
 import { Badge } from '@/src/components/ui/badge'
 import { Alert } from '@/src/components/ui/alert'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
+import { MAX_BUSCA_WHATSAPP, urlFichaGestor, urlRetornoGestor, type RetornoWhatsApp } from '@/src/lib/retorno-gestor'
+import { CabecalhoWhatsApp } from './cabecalho'
 
 function EtiquetaCadastro({ cadastro }: { cadastro?: CadastroWhatsApp }) {
   const situacao = cadastro?.estado === 'encontrada' ? cadastro.empresa.situacao : undefined
@@ -47,8 +49,12 @@ function mesclar(anteriores: Mensagem[], novas: Mensagem[]) {
   return [...new Map([...anteriores, ...novas].map(m => [JSON.stringify([m.fonteId, m.conversa, m.id]), m])).values()]
 }
 
-export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas, total, opcoes, consultaParcial = false, children }: {
-  mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean, cursores?: Cursores, filtro?: string, fontesAtivas?: string[], total?: number
+function identificarConversa(mensagem: Mensagem | undefined): RetornoWhatsApp['conversa'] {
+  return mensagem?.fonteId ? { fonteId: mensagem.fonteId, id: mensagem.conversa } : undefined
+}
+
+export function PainelWhatsApp({ retorno, piloto, mensagens, limiteHistorico, temMais = false, cursores, filtro = 'todos', fontesAtivas, total, opcoes, consultaParcial = false, children }: {
+  retorno?: RetornoWhatsApp, piloto?: boolean, mensagens: Mensagem[], limiteHistorico?: string, temMais?: boolean, cursores?: Cursores, filtro?: string, fontesAtivas?: string[], total?: number
   opcoes?: { id: string; nome: string }[], consultaParcial?: boolean, children?: ReactNode
 }) {
   const escopo = JSON.stringify(fontesAtivas?.toSorted() ?? null)
@@ -80,14 +86,12 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   const rolagem = useRef<HTMLOListElement>(null)
   const posicao = useRef({ id: '', topo: 0, noFim: true })
   const ancora = useRef<{ id: string; altura: number; topo: number } | null>(null)
-  const [busca, mudarBusca] = useState('')
-  const [painelMovel, mudarPainelMovel] = useState<'lista' | 'conversa'>('lista')
-  const origemConversa = useRef<HTMLButtonElement | null>(null)
-  function voltarParaConversas() {
-    mudarPainelMovel('lista')
-    requestAnimationFrame(() => origemConversa.current?.focus())
-  }
-  const [filtroConversa, mudarFiltroConversa] = useState<'todas' | 'pendentes' | 'ausentes'>('todas')
+  const [busca, mudarBusca] = useState(retorno?.busca ?? '')
+  const [painelMovel, mudarPainelMovel] = useState<RetornoWhatsApp['painel']>(retorno?.painel ?? 'lista')
+  const [filtroConversa, mudarFiltroConversa] = useState<RetornoWhatsApp['categoria']>(retorno?.categoria ?? 'todas')
+  const [intencao, mudarIntencao] = useState(retorno?.conversa)
+  const origemConversa = useRef<HTMLButtonElement>(null)
+  const campoBusca = useRef<HTMLInputElement>(null)
   const carregar = useCallback(async () => {
     if (requisicao.current || !mais || !limite) return
     requisicao.current = true
@@ -170,11 +174,73 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
     vendedor: itens[0].vendedor,
     ultima: itens.reduce((atual, item) => item.em > atual.em ? item : atual),
   })).toSorted((a, b) => b.ultima.em.localeCompare(a.ultima.em))
-  const [selecionada, selecionar] = useState(conversas[0]?.id ?? '')
+  const [selecionada, selecionar] = useState(retorno ? '' : conversas[0]?.id ?? '')
   const filtradas = conversas.filter(c => filtroConversa === 'todas' || (filtroConversa === 'pendentes'
     ? c.ultima.direcao === 'recebida' && !c.ultima.conversa.endsWith('@g.us') && !c.ultima.conversa.endsWith('@broadcast')
     : c.cadastro?.estado === 'ausente'))
-  const conversaAtual = filtradas.find(item => item.id === selecionada) ?? filtradas[0]
+  const alvo = intencao && conversas.find(item => item.ultima.fonteId === intencao.fonteId && item.ultima.conversa === intencao.id)
+  const escolhida = filtradas.find(item => item.id === selecionada)
+  // Só a consulta inicial abre a primeira conversa automaticamente.
+  const conversaAtual = intencao ? alvo : escolhida ?? (retorno ? undefined : filtradas[0])
+  const fonteDisponivel = intencao && (fontesAtivas?.includes(intencao.fonteId) ?? true)
+  const cursorAlvo = intencao && proximos?.[intencao.fonteId]
+  const podeEncontrar = fonteDisponivel && limite && (cursorAlvo?.temMais ?? mais)
+  const erroRetorno = erro || (consultaParcial && cursorAlvo?.pagina === 1)
+  const avisoRetorno = !intencao || alvo ? null
+    : !podeEncontrar ? 'Conversa anterior indisponível neste filtro.'
+      : erroRetorno ? 'Não foi possível restaurar a conversa anterior. Tente novamente.'
+        : 'Localizando a conversa anterior no histórico…'
+  const conversaRetorno = identificarConversa(conversaAtual?.ultima) ?? intencao
+  const recorte: RetornoWhatsApp = {
+    tipo: 'whatsapp', vendedor: filtro, busca, categoria: filtroConversa,
+    painel: conversaRetorno ? painelMovel : 'lista', conversa: conversaRetorno,
+  }
+  const ficha = conversaAtual?.cadastro?.estado === 'encontrada'
+    ? urlFichaGestor(conversaAtual.cadastro.empresa.id, conversaRetorno ? recorte : undefined)
+    : undefined
+
+  function atualizarRetorno(alteracao: Partial<RetornoWhatsApp>) {
+    if (!retorno) return
+    const atualizado = { ...recorte, ...alteracao }
+    if (!atualizado.conversa) atualizado.painel = 'lista'
+    window.history.replaceState(null, '', urlRetornoGestor(atualizado))
+  }
+
+  function voltarParaConversas() {
+    mudarPainelMovel('lista')
+    atualizarRetorno({ painel: 'lista' })
+    requestAnimationFrame(() => (origemConversa.current ?? campoBusca.current)?.focus())
+  }
+
+  function escolherConversa(id: string, mensagem: Mensagem) {
+    mudarIntencao(undefined)
+    selecionar(id)
+    mudarPainelMovel('conversa')
+    atualizarRetorno({ painel: 'conversa', conversa: identificarConversa(mensagem) })
+  }
+
+  function editarBusca(valor: string) {
+    const busca = valor.replace(/\p{Cc}/gu, '').toWellFormed()
+    if (alvo) selecionar(alvo.id)
+    if (intencao && !alvo) mudarPainelMovel('lista')
+    mudarIntencao(undefined)
+    mudarBusca(busca)
+    atualizarRetorno({ busca, conversa: identificarConversa(conversaAtual?.ultima) })
+  }
+
+  function limparSelecao() {
+    mudarIntencao(undefined)
+    selecionar('')
+    mudarPainelMovel('lista')
+  }
+
+  function mudarCategoria(categoria: RetornoWhatsApp['categoria']) {
+    if (categoria === filtroConversa) return
+    if (retorno) limparSelecao()
+    mudarFiltroConversa(categoria)
+    atualizarRetorno({ categoria, conversa: undefined })
+  }
+
   const termo = normalizar(busca)
   const digitos = busca.replace(/\D/g, '')
   const visiveis = filtradas.filter(c => !termo || normalizar(c.nome).includes(termo)
@@ -207,16 +273,20 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
   }, [opcoes, mais, erro, consultaParcial, avisos.length, limiteHistorico, dados.acumuladas, fontesAtivas])
 
   return <>
-  {opcoes && <VisaoGeralWhatsApp opcoes={opcoes} filtro={filtro} valores={valores} estado={erro || consultaParcial || avisos.length ? 'Histórico incompleto' : 'Carregando histórico…'} />}
+  {piloto !== undefined && <CabecalhoWhatsApp piloto={piloto} retorno={recorte} />}
+  {opcoes && <VisaoGeralWhatsApp opcoes={opcoes} filtro={filtro} retorno={retorno ? recorte : undefined} aoMudarVendedor={retorno ? limparSelecao : undefined} valores={valores} estado={erro || consultaParcial || avisos.length ? 'Histórico incompleto' : 'Carregando histórico…'} />}
   {children}
+  {avisoRetorno && (podeEncontrar && erroRetorno
+    ? <Alert variant="danger">{avisoRetorno}</Alert>
+    : <p role="status">{avisoRetorno}</p>)}
   {!conversas.length ? <div role="status"><EstadoVazio titulo="Nenhuma mensagem carregada" descricao={mais ? 'O histórico será carregado automaticamente.' : 'As novas mensagens aparecerão automaticamente.'} /></div> : <section className={styles.painel} aria-label="Conversas carregadas" data-painel-movel={painelMovel}>
     <div className={styles.lista}>
       <div className={styles.listaCabecalho}>
         <h2>Conversas carregadas <small>{conversas.length}</small></h2>
-        <label className={styles.busca}><span>Buscar conversa</span><Input type="search" value={busca} onChange={e => mudarBusca(e.target.value)} placeholder="Nome, telefone ou mensagem" aria-describedby="alcance-busca" /></label>
+        <label className={styles.busca}><span>Buscar conversa</span><Input ref={campoBusca} type="search" maxLength={MAX_BUSCA_WHATSAPP} value={busca} onChange={e => editarBusca(e.target.value)} placeholder="Nome, telefone ou mensagem" aria-describedby="alcance-busca" /></label>
         <p id="alcance-busca">Busca nas conversas carregadas.</p>
         <div className={styles.filtrosConversas} role="group" aria-label="Filtrar conversas">
-          {([['todas', 'Todas'], ['pendentes', 'Sem resposta'], ['ausentes', 'Não cadastradas']] as const).map(([id, nome]) => <Button key={id} type="button" variant="outline" aria-pressed={filtroConversa === id} onClick={() => mudarFiltroConversa(id)}>{nome}</Button>)}
+          {([['todas', 'Todas'], ['pendentes', 'Sem resposta'], ['ausentes', 'Não cadastradas']] as const).map(([id, nome]) => <Button key={id} type="button" variant="outline" aria-pressed={filtroConversa === id} onClick={() => mudarCategoria(id)}>{nome}</Button>)}
         </div>
       </div>
       <div className={styles.conversas} aria-label="Lista de conversas" tabIndex={0} onWheel={e => {
@@ -226,7 +296,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
         const el = e.currentTarget
         if (!erro && el.scrollTop > 0 && el.scrollHeight - el.clientHeight - el.scrollTop < 80) void carregar()
       }}>
-        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={e => { origemConversa.current = e.currentTarget; selecionar(conversa.id); mudarPainelMovel('conversa') }}>
+        {visiveis.map(conversa => <button key={conversa.id} type="button" className={styles.conversa} ref={conversaAtual?.id === conversa.id ? origemConversa : undefined} aria-current={conversaAtual?.id === conversa.id ? 'true' : undefined} onClick={() => escolherConversa(conversa.id, conversa.ultima)}>
           <span className={styles.avatar} aria-hidden="true">{iniciais(conversa.nome)}</span>
           <span className={styles.conversaConteudo}>
             <span className={styles.conversaTopo}>
@@ -245,8 +315,8 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       </div>
     </div>
     <div className={styles.chat}>
-      {!conversaAtual ? <div className={styles.semResultado} role="status"><Button variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><EstadoVazio titulo="Nenhuma conversa neste filtro" descricao="Escolha outro filtro para consultar as conversas carregadas." /></div> : <>
-      <header className={styles.chatCabecalho}><Button type="button" variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{conversaAtual.cadastro?.estado === 'encontrada' && <Button asChild variant="outline"><Link href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Ver empresa</Link></Button>}<Badge variant="outline" className={styles.leitura}>Somente visualização</Badge></header>
+      {!conversaAtual ? <div className={styles.semResultado} role="status"><Button variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><EstadoVazio titulo={intencao ? 'Conversa anterior' : retorno ? 'Nenhuma conversa selecionada' : 'Nenhuma conversa neste filtro'} descricao={intencao ? 'Volte à lista para escolher outra conversa.' : retorno ? 'Escolha uma conversa na lista para ler as mensagens.' : 'Escolha outro filtro para consultar as conversas carregadas.'} /></div> : <>
+      <header className={styles.chatCabecalho}><Button type="button" variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{ficha && <Button asChild variant="outline" className={styles.fichaCompacta}><Link href={ficha}>Abrir ficha da empresa</Link></Button>}<Badge variant="outline" className={styles.leitura}>Somente visualização</Badge></header>
       <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
         if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
       }} onScroll={e => {
@@ -263,7 +333,7 @@ export function PainelWhatsApp({ mensagens, limiteHistorico, temMais = false, cu
       </li>)}</ol>
       </>}
     </div>
-    {conversaAtual && <aside className={styles.contexto} aria-label="Contexto da empresa"><h2>Contexto da empresa</h2>{conversaAtual.cadastro?.estado === 'encontrada' ? <><h3>{conversaAtual.cadastro.empresa.nome}</h3><EtiquetaCadastro cadastro={conversaAtual.cadastro} /><Button asChild variant="outline"><Link href={`/empresas/${conversaAtual.cadastro.empresa.id}`}>Abrir ficha da empresa</Link></Button></> : <p>{rotuloCadastro(conversaAtual.cadastro)}</p>}<dl><dt>Contato</dt><dd>{conversaAtual.nome}</dd><dt>Telefone</dt><dd>{conversaAtual.telefone ?? 'Não disponibilizado pela integração'}</dd><dt>Vendedor</dt><dd>{conversaAtual.vendedor ?? 'Origem não identificada'}</dd></dl><p>Somente visualização. As conversas são atualizadas automaticamente.</p></aside>}
+    {conversaAtual && <aside className={styles.contexto} aria-label="Contexto da empresa"><h2>Contexto da empresa</h2>{conversaAtual.cadastro?.estado === 'encontrada' ? <><h3>{conversaAtual.cadastro.empresa.nome}</h3><EtiquetaCadastro cadastro={conversaAtual.cadastro} />{ficha && <Button asChild variant="outline"><Link href={ficha}>Abrir ficha da empresa</Link></Button>}</> : <p>{rotuloCadastro(conversaAtual.cadastro)}</p>}<dl><dt>Contato</dt><dd>{conversaAtual.nome}</dd><dt>Telefone</dt><dd>{conversaAtual.telefone ?? 'Não disponibilizado pela integração'}</dd><dt>Vendedor</dt><dd>{conversaAtual.vendedor ?? 'Origem não identificada'}</dd></dl><p>Somente visualização. As conversas são atualizadas automaticamente.</p></aside>}
   </section>}
   <div className={styles.historico}>
     <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
