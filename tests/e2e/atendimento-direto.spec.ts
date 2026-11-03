@@ -122,13 +122,19 @@ for (const [tipo,empresaId,nome,rotulo] of [
     expect(contatos.rows).toEqual([{tipo,nota:'Smoke '+tipo}])
     await expect(page.getByLabel('Nota',{exact:true})).toHaveCount(0)
     expect(await page.evaluate(id=>sessionStorage.getItem('crm:contato:v1:'+id),empresaId)).toBeNull()
+    await page.evaluate(()=>{
+      const estado=window as typeof window & {__smokePopstates:number}
+      estado.__smokePopstates=0
+      window.addEventListener('popstate',()=>estado.__smokePopstates++)
+    })
     await modal.getByRole('button',{name:'Registrar atendimento',exact:true}).click()
     await modal.getByLabel('Nota',{exact:true}).fill('Contato embutido '+tipo)
     await modal.getByLabel('Próximo passo',{exact:true}).fill('Enviar proposta')
     await modal.getByLabel('Data do próximo passo',{exact:true}).fill('2030-01-02')
     await modal.getByRole('button',{name:'Registrar',exact:true}).click()
     await expect(modal).toHaveCount(0)
-    await expect(page).toHaveURL(url=>url.pathname==='/funil')
+    await expect(page).toHaveURL('/funil')
+    expect(await page.evaluate(()=>(window as typeof window & {__smokePopstates:number}).__smokePopstates)).toBe(1)
     await expect(page.getByRole('status')).toContainText('Atendimento registrado.')
     expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(2)
     expect((await sql("SELECT id FROM contato WHERE empresa_id=$1 AND tipo='acompanhamento' AND nota=$2",[empresaId,'Contato embutido '+tipo])).rowCount).toBe(1)
@@ -137,10 +143,43 @@ for (const [tipo,empresaId,nome,rotulo] of [
     const aposFechar=page.url()
     await page.reload()
     const selecionadaNaUrl=new URL(aposFechar).searchParams.has('negociacao')
-    await expect(page.getByRole('dialog')).toHaveCount(selecionadaNaUrl?1:0)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(selecionadaNaUrl).toBe(false)
     await test.info().attach('contexto-apos-fechar-'+tipo,{
-      body:JSON.stringify({aposFechar,queryPermaneceu:selecionadaNaUrl,reloadReabreModal:selecionadaNaUrl}),
+      body:JSON.stringify({aposFechar,queryPermaneceu:selecionadaNaUrl,reloadReabreModal:false}),
       contentType:'application/json',
     })
+    const card=page.locator('[data-slot=card]').filter({has:page.getByRole('heading',{name:nome,exact:true})})
+    await card.getByRole('button',{name:'Abrir no funil',exact:true}).click()
+    await expect(modal).toBeVisible()
+    await expect(page).toHaveURL('/funil')
+    await modal.getByRole('button',{name:'Registrar atendimento',exact:true}).click()
+    await modal.getByLabel('Nota',{exact:true}).fill('Contato manual '+tipo)
+    await modal.getByLabel('Próximo passo',{exact:true}).fill('Conferir proposta')
+    await modal.getByLabel('Data do próximo passo',{exact:true}).fill('2030-01-03')
+    await modal.getByRole('button',{name:'Registrar',exact:true}).click()
+    await expect(modal).toHaveCount(0)
+    await expect(page).toHaveURL('/funil')
+    expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(3)
+    await card.getByRole('button',{name:'Abrir no funil',exact:true}).click()
+    await modal.getByRole('tab',{name:'Histórico',exact:true}).click()
+    await expect(modal).toContainText('Contato manual '+tipo)
+    await modal.getByRole('button',{name:'Fechar',exact:true}).click()
+    await expect(modal).toHaveCount(0)
+    const contexto='/funil?origem=google&pagina=3#negociacoes'
+    for(const fecharCom of ['Escape','Fechar'] as const){
+      await page.goto('/funil?negociacao='+negociacoes.rows[0].id+'&origem=google&pagina=3#negociacoes')
+      await expect(modal).toBeVisible()
+      if(fecharCom==='Escape'){
+        await modal.getByRole('button',{name:'Registrar atendimento',exact:true}).click()
+        await modal.getByRole('button',{name:'Voltar ao resumo',exact:true}).click()
+        await expect(modal).toBeVisible()
+        await page.keyboard.press('Escape')
+      }else await modal.getByRole('button',{name:'Fechar',exact:true}).click()
+      await expect(modal).toHaveCount(0)
+      await expect(page).toHaveURL(contexto)
+      await page.reload()
+      await expect(modal).toHaveCount(0)
+    }
   })
 }

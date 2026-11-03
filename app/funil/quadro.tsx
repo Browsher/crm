@@ -106,8 +106,14 @@ function QuadroUsuario({linhas,totalSemInteresse=0,negociacaoInicial=null,usuari
   }
   function fechar(texto?:string){
     setSelecionada(null)
-    if(negociacaoInicial)history.replaceState(history.state,'','/funil')
-    if(texto){setAviso(texto);router.refresh();focar()}
+    const url=new URL(location.href)
+    const limparSelecao=url.pathname==='/funil'&&url.searchParams.has('negociacao')
+    if(limparSelecao){
+      url.searchParams.delete('negociacao')
+      // Atualizar também o estado do App Router evita que um refresh restaure o deep-link.
+      router.replace(url.pathname+url.search+url.hash,{scroll:false})
+    }
+    if(texto){setAviso(texto);if(!limparSelecao)router.refresh();focar()}
     else requestAnimationFrame(()=>origem.current?.focus())
   }
   return <>

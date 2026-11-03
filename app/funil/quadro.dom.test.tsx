@@ -6,9 +6,11 @@ import { Quadro } from './quadro'
 import { etapaAcao, semInteresseAcao } from './acoes'
 import { ETAPAS_FUNIL } from '@/src/lib/comercial'
 import type { NegociacaoResumo } from '@/src/features/funil/consulta'
-vi.mock('next/navigation',()=>({useRouter:()=>({refresh:vi.fn()})}))
+const replace=vi.hoisted(()=>vi.fn())
+const refresh=vi.hoisted(()=>vi.fn())
+vi.mock('next/navigation',()=>({useRouter:()=>({refresh,replace})}))
 vi.mock('./acoes',()=>({etapaAcao:vi.fn(),semInteresseAcao:vi.fn()}))
-vi.mock('./modal',()=>({ModalFunil:()=> <p>Negociação operacional</p>}))
+vi.mock('./modal',()=>({ModalFunil:({fechar}:{fechar:(aviso?:string)=>void})=> <><p>Negociação operacional</p><button onClick={()=>fechar('Atendimento registrado.')}>Fechar modal de teste</button></>}))
 vi.mock('@/src/components/crm/empresa-dialogo',()=>({EmpresaDialogo:()=> <p>Dados da empresa</p>}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
@@ -114,4 +116,24 @@ test('mudança de identidade na mesma tela não carrega memória privada de envi
  expect(host.textContent).not.toContain('Aurora')
  expect(host.textContent).not.toContain('Confirmar envio anterior')
  expect(sessionStorage.getItem('crm:funil:arquivo:v1:teste')).not.toBeNull()
+})
+
+test('fechar deep-link remove somente negociação e conserva consulta/hash',async()=>{
+ history.replaceState({origem:'teste'},'','/funil?negociacao='+linha().id+'&origem=google&pagina=3#negociacoes')
+ await montar([linha()],linha().id)
+ await clicar('Fechar modal de teste')
+ expect(replace).toHaveBeenCalledWith('/funil?origem=google&pagina=3#negociacoes',{scroll:false})
+ expect(history.state.origem).toBe('teste')
+ expect(host.textContent).not.toContain('Negociação operacional')
+ history.replaceState(null,'','/')
+})
+
+test('abertura manual sem deep-link conserva refresh após contato e não faz replace redundante',async()=>{
+ history.replaceState(null,'','/funil')
+ await montar();await clicar('Abrir no funil')
+ expect(location.pathname+location.search).toBe('/funil')
+ await clicar('Fechar modal de teste')
+ expect(refresh).toHaveBeenCalledTimes(1);expect(replace).not.toHaveBeenCalled()
+ expect(host.textContent).toContain('Atendimento registrado.')
+ expect(host.textContent).not.toContain('Negociação operacional')
 })

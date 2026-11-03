@@ -12,10 +12,11 @@ let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const detalhe={id:'a',empresaId:'e',nome:'Aurora',cidade:null,uf:null,cnpj:'123',etapa:'primeiro_contato' as const,versao:3,empresa:{...detalhesSnapshot({razao_social:'Aurora'},{tipo:'cadastro',empresaId:'e'}),id:'e',versao:3,situacao:'primeiro_contato' as const,negociacaoId:'a'},proximoPasso:null,retorno:null,historico:[]}
 afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();sessionStorage.clear();vi.restoreAllMocks()})
 async function montar(id='a'){host=document.createElement('div');document.body.append(host);root=createRoot(host);const fechar=vi.fn();await act(async()=>root.render(<ModalFunil id={id} fechar={fechar}/>));return fechar}
-async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome);expect(b, nome).toBeTruthy();await act(async()=>b!.click())}
+async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome||e.getAttribute('aria-label')===nome);expect(b, nome).toBeTruthy();await act(async()=>b!.click())}
 async function escrever(valor:string){const e=document.querySelector('input')!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(e,valor);e.dispatchEvent(new Event('input',{bubbles:true}))})}
 
 test('ação Sem interesse usa comando do quadro sem contato nem devolução; pendente não duplica',async()=>{
+ vi.spyOn(history,'back').mockImplementation(()=>{})
  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
  let liberar!:(r:{ok:boolean;repetida:boolean})=>void
@@ -26,6 +27,7 @@ test('ação Sem interesse usa comando do quadro sem contato nem devolução; pe
  await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})))
  expect(arquivar).toHaveBeenCalledTimes(1);expect(fechar).not.toHaveBeenCalled()
  await act(async()=>liberar({ok:true,repetida:true}))
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
  expect(fechar).toHaveBeenCalledWith('Envio anterior confirmado. Confira a situação atual.')
 })
 
@@ -39,11 +41,13 @@ test('envio desconhecido do quadro bloqueia nova operação no modal do deep-lin
 })
 
 test('confirmação histórica cujo estado atual mudou não anuncia empresa arquivada',async()=>{
+ vi.spyOn(history,'back').mockImplementation(()=>{})
  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
  const fechar=vi.fn()
  await act(async()=>root.render(<ModalFunil id="a" fechar={fechar} aoArquivar={async()=>({ok:true,repetida:false,atual:false})}/>))
  await clicar('Marcar como Sem interesse');await clicar('Confirmar Sem interesse')
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
  expect(fechar).toHaveBeenCalledWith('Operação confirmada. Confira a situação atual da empresa.')
 })
 
@@ -56,6 +60,7 @@ test('descarte externo não perde envio desconhecido e permite fechar mantendo s
   expect(document.body.textContent).toContain('Confirme o envio anterior')
   expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
   await clicar('Fechar mantendo rascunho')
+  await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
   expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
   expect(fechar).not.toHaveBeenCalled()
   expect(document.body.textContent).toContain('Etapa atual:')
@@ -68,6 +73,7 @@ test('modal oferece apenas próximo avanço e última etapa não tem select nem 
   const fechar=await montar()
   expect(document.querySelector('select')).toBeNull()
   await clicar('Avançar para Em negociação')
+  await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
   const f=vi.mocked(etapaAcao).mock.calls.at(-1)![0]
   expect(f.get('etapa')).toBe('em_negociacao');expect(f.get('anterior')).toBe('primeiro_contato')
   expect(fechar).toHaveBeenCalledWith('Etapa atualizada.')
@@ -148,5 +154,76 @@ test('reverter ao baseline remove proteção temporária do histórico do modal'
  expect(voltar).toHaveBeenCalledTimes(1)
  await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
  expect(document.body.textContent).not.toContain('Descartar alterações?')
+ expect(fechar).not.toHaveBeenCalled()
+})
+
+test('fechamento após contato aguarda popstate da sentinela e só então chama o Quadro',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste')
+ await clicar('Confirmar contato de teste')
+ expect(voltar).toHaveBeenCalledTimes(1)
+ expect(fechar).not.toHaveBeenCalled()
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ expect(fechar).toHaveBeenCalledTimes(1)
+ expect(fechar).toHaveBeenCalledWith('Atendimento registrado.')
+})
+test('Escape durante retirada por reversão aguarda a mesma navegação sem recuar duas vezes',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
+ await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+ expect(voltar).toHaveBeenCalledTimes(1);expect(fechar).not.toHaveBeenCalled()
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).toHaveBeenCalledTimes(1)
+})
+test('Escape intocado fecha imediatamente sem recuo de histórico',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
+ const fechar=await montar()
+ await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+ expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).not.toHaveBeenCalled()
+})
+
+test('X intocado fecha sem sentinela e Voltar ao resumo não navega',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo')
+ expect(fechar).not.toHaveBeenCalled();expect(voltar).not.toHaveBeenCalled()
+ await clicar('Fechar')
+ expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).not.toHaveBeenCalled()
+})
+test.each(['Fechar','Escape'])('fechar com %s preserva comando desconhecido e aguarda só um recuo',async(como)=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
+ const valor={tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''}
+ const salvo=JSON.stringify({valor,envio:{chave:'anterior',versao:2,valor}})
+ sessionStorage.setItem('crm:contato:v1:e',salvo)
+ const fechar=await montar();await clicar('Registrar atendimento')
+ if(como==='Escape')await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+ else await clicar('Fechar')
+ await clicar('Fechar mantendo rascunho')
+ expect(fechar).not.toHaveBeenCalled();expect(voltar).toHaveBeenCalledTimes(1)
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).toHaveBeenCalledTimes(1)
+ expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
+})
+test('Voltar do navegador confirmado remove só a sentinela e a intenção original de voltar',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{}),ir=vi.spyOn(history,'go').mockImplementation(()=>{})
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste')
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ await clicar('Descartar')
+ expect(ir).toHaveBeenCalledTimes(1);expect(ir).toHaveBeenCalledWith(-2)
+ expect(voltar).not.toHaveBeenCalled();expect(fechar).not.toHaveBeenCalled()
+})
+
+test('nova edição enquanto a sentinela sai continua protegida no próximo Voltar',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ vi.spyOn(history,'back').mockImplementation(()=>{})
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste');await clicar('Editar rascunho de teste')
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ expect(document.body.textContent).toContain('Descartar alterações?')
  expect(fechar).not.toHaveBeenCalled()
 })

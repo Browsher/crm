@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader } from '@/src/components/ui/dialog'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -30,6 +30,13 @@ export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fec
   const [rascunho,setRascunho]=useState(()=>rascunhoInicial(true))
   const chave=useRef(''),bloqueado=useRef(false),vivo=useRef(true),sentinela=useRef<string|null>(null)
   const pedidoTelefone=useRef(0)
+  const removendoSentinela=useRef(false),depoisDeRemover=useRef<(()=>void)|null>(null),finalizando=useRef(false)
+  const removerSentinela=useCallback((depois?:()=>void)=>{
+    if(removendoSentinela.current){if(depois)depoisDeRemover.current=depois;return}
+    if(!sentinela.current){depois?.();return}
+    sentinela.current=null;removendoSentinela.current=true;depoisDeRemover.current=depois??null
+    history.back()
+  },[])
   const [baseline]=useState(()=>rascunhoInicial(true))
   const dirty=!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||(modo==='atendimento'&&detalhe&&contatoPendente(detalhe.empresaId)))
   const dirtyRef=useRef(dirty)
@@ -44,6 +51,16 @@ export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fec
   useEffect(()=>{
     const guardar=(e:BeforeUnloadEvent)=>{if(dirtyRef.current||bloqueado.current)e.preventDefault()}
     const voltar=(e:PopStateEvent)=>{
+      if(removendoSentinela.current){
+        removendoSentinela.current=false
+        const continuar=depoisDeRemover.current;depoisDeRemover.current=null
+        if(continuar)continuar()
+        else if((dirtyRef.current||bloqueado.current)&&!finalizando.current){
+          const nova=crypto.randomUUID();sentinela.current=nova
+          history.pushState({...history.state,__funilRascunho:nova},'',location.href)
+        }
+        return
+      }
       const s=sentinela.current
       if(!s||e.state?.__funilRascunho===s)return
       history.pushState({...history.state,__funilRascunho:s},'',location.href)
@@ -53,17 +70,21 @@ export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fec
     return()=>{window.removeEventListener('beforeunload',guardar);window.removeEventListener('popstate',voltar)}
   },[])
   useEffect(()=>{
-    if((dirty||pendente)&&!sentinela.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
+    if((dirty||pendente)&&!sentinela.current&&!removendoSentinela.current&&!finalizando.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
   },[dirty,pendente])
   useEffect(()=>{
-    if(!dirty&&!pendente&&sentinela.current){sentinela.current=null;history.back()}
-  },[dirty,pendente])
-  function removerSentinela(){if(sentinela.current){sentinela.current=null;history.back()}}
-  function concluir(aviso?:string){pedidoTelefone.current++;removerSentinela();fechar(aviso??(indisponivel?'Negociação indisponível. Agenda atualizada.':undefined))}
+    if(!dirty&&!pendente)removerSentinela()
+  },[dirty,pendente,removerSentinela])
+  function concluir(aviso?:string){
+    if(finalizando.current)return
+    finalizando.current=true;pedidoTelefone.current++
+    // O Quadro limpa a query somente depois que o back da sentinela terminou.
+    removerSentinela(()=>{if(vivo.current)fechar(aviso??(indisponivel?'Negociação indisponível. Agenda atualizada.':undefined))})
+  }
   function pedir(destino:'fechar'|'resumo') {
-    if(bloqueado.current)return
+    if(bloqueado.current||finalizando.current)return
     if(dirty){setDescarte(destino);return}
-    if(destino==='fechar')concluir();else {pedidoTelefone.current++;setModo('resumo')}
+    if(destino==='fechar')concluir();else removerSentinela(()=>{pedidoTelefone.current++;setModo('resumo')})
   }
   function descartar(preservar = false) {
     if (!preservar && modo==='atendimento' && detalhe && !descartarRascunhoContato(detalhe.empresaId)) {
@@ -72,8 +93,8 @@ export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fec
     }
     const destino=descarte
     setDescarte(null);setValor('');setData('');setNota('');setConfirmado(false);setRascunho(rascunhoInicial(true))
-    if(destino==='voltar'){sentinela.current=null;history.go(-2);return}
-    if(destino==='fechar')concluir();else {pedidoTelefone.current++;removerSentinela();setModo('resumo')}
+    if(destino==='voltar'){finalizando.current=true;sentinela.current=null;history.go(-2);return}
+    if(destino==='fechar')concluir();else removerSentinela(()=>{pedidoTelefone.current++;setModo('resumo')})
   }
   function informarPendente(p:boolean){bloqueado.current=p;setPendente(p)}
   async function executar(acao:(f:FormData)=>Promise<EstadoFunil>,campos:Record<string,string>,sucesso:string) {
