@@ -118,3 +118,40 @@ test.each([true,false])('arquivo após resposta perdida mantém confirmação do
   if(direto)expect(host.querySelector('form')).toBeNull()
   else expect(host.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(true)
 })
+
+test.each(['callback','storage'])('sucesso confirmado conserva confirmação se falhar %s',async(falha)=>{
+  const onSaved=vi.fn(()=>{if(falha==='callback')throw new Error('callback local')})
+  gravar.mockImplementation(async()=>{
+    if(falha==='storage')vi.spyOn(Storage.prototype,'removeItem').mockImplementation(()=>{throw new Error('storage')})
+    return {ok:true,erro:null,repetida:false,leituraDestino:{ok:true,destino:{tipo:'permanecer'}}}
+  })
+  await act(async()=>root.render(<FormularioContato empresaId="A" versao={2} fase="inicial" onSaved={onSaved}/>))
+  await nota('Registrada');await enviar()
+  expect(host.textContent).toContain('Atendimento registrado.')
+  expect(host.textContent).not.toContain('Não foi possível confirmar o envio.')
+  expect(onSaved).toHaveBeenCalledWith('A',expect.objectContaining({ok:true}))
+  expect(host.textContent).not.toContain('Confirmar envio anterior')
+  vi.restoreAllMocks()
+})
+
+test('confirmar A não apaga comando B que substituiu a sessão durante a resposta',async()=>{
+  const valor={...rascunhoInicial(false),nota:'B'}
+  const novo={valor,envio:{chave:'B',versao:8,valor}}
+  gravar.mockImplementation(async()=>{sessionStorage.setItem('crm:contato:v1:A',JSON.stringify(novo));return {ok:true,erro:null}})
+  const onSaved=vi.fn()
+  await act(async()=>root.render(<FormularioContato empresaId="A" versao={2} fase="inicial" onSaved={onSaved}/>))
+  await nota('A');await enviar()
+  expect(JSON.parse(sessionStorage.getItem('crm:contato:v1:A')!)).toEqual(novo)
+  expect(onSaved).not.toHaveBeenCalled()
+})
+
+test('confirmação somente de replay conserva mensagem e aviso mesmo quando o destino falha',async()=>{
+ const valor={...rascunhoInicial(false),nota:'Original'}
+ sessionStorage.setItem('crm:contato:v1:A',JSON.stringify({valor,envio:{chave:'original',versao:2,valor}}))
+ gravar.mockResolvedValueOnce({ok:true,erro:null,repetida:true,leituraDestino:{ok:false,motivo:'leitura_indisponivel'}})
+ await act(async()=>root.render(<FormularioContato empresaId="A" versao={3} fase="inicial" somenteConfirmacao/>))
+ await enviar()
+ expect(host.textContent).toContain('Envio anterior confirmado.')
+ expect(host.textContent).toContain('Não foi possível abrir o destino.')
+ expect(host.querySelector('form')).toBeNull()
+})

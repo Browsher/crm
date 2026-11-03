@@ -8,7 +8,7 @@ import { Textarea } from '@/src/components/ui/textarea'
 import { Alert } from '@/src/components/ui/alert'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { FormularioContato } from '@/src/features/contato/formulario'
-import { descartarRascunhoContato, rascunhoInicial } from '@/src/features/contato/rascunho'
+import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial } from '@/src/features/contato/rascunho'
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
 import { ROTULOS_ETAPA } from './rotulos'
@@ -30,7 +30,8 @@ export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fec
   const [rascunho,setRascunho]=useState(()=>rascunhoInicial(true))
   const chave=useRef(''),bloqueado=useRef(false),vivo=useRef(true),sentinela=useRef<string|null>(null)
   const pedidoTelefone=useRef(0)
-  const dirty=!!(valor||data||nota||rascunho.nota||rascunho.proximoPasso||rascunho.proximoPassoData||rascunho.tipo!=='acompanhamento')
+  const [baseline]=useState(()=>rascunhoInicial(true))
+  const dirty=!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||(modo==='atendimento'&&detalhe&&contatoPendente(detalhe.empresaId)))
   const dirtyRef=useRef(dirty)
   useEffect(()=>{dirtyRef.current=dirty},[dirty])
   useEffect(()=>{
@@ -53,6 +54,9 @@ export function ModalFunil({id,fechar,aoArquivar,bloqueada=false}:{id:string;fec
   },[])
   useEffect(()=>{
     if((dirty||pendente)&&!sentinela.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
+  },[dirty,pendente])
+  useEffect(()=>{
+    if(!dirty&&!pendente&&sentinela.current){sentinela.current=null;history.back()}
   },[dirty,pendente])
   function removerSentinela(){if(sentinela.current){sentinela.current=null;history.back()}}
   function concluir(aviso?:string){pedidoTelefone.current++;removerSentinela();fechar(aviso??(indisponivel?'Negociação indisponível. Agenda atualizada.':undefined))}

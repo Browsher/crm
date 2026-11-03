@@ -13,3 +13,10 @@ test('qualquer campo ou escolha diferente identifica anotações a preservar', (
   }
   expect(rascunhoAlterado({ ...rascunhoInicial(false), tipo: 'interessado' })).toBe(true)
 })
+
+test('baseline de acompanhamento intocado e editado/revertido', () => {
+  const inicial=rascunhoInicial(true)
+  expect(rascunhoAlterado(inicial,inicial)).toBe(false)
+  expect(rascunhoAlterado({...inicial,nota:'Editar'},inicial)).toBe(true)
+  expect(rascunhoAlterado({...inicial},inicial)).toBe(false)
+})

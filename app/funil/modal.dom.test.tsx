@@ -6,7 +6,7 @@ import { ModalFunil } from './modal'
 import { detalheAcao, vendaAcao, telefoneAcao, etapaAcao } from './acoes'
 import { detalhesSnapshot } from '@/src/lib/empresa-visual'
 vi.mock('./acoes',()=>({detalheAcao:vi.fn(),telefoneAcao:vi.fn(),etapaAcao:vi.fn(),vendaAcao:vi.fn(),devolverAcao:vi.fn()}))
-vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({onDraftChange}:{onDraftChange:(r:unknown)=>void})=><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button>}))
+vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({onDraftChange,onSaved}:{onDraftChange:(r:unknown)=>void;onSaved:(id:string,r:unknown)=>void})=><><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''})}>Reverter rascunho de teste</button><button onClick={()=>onSaved('e',{ok:true,leituraDestino:{ok:true,destino:{tipo:'funil',negociacaoId:'atual'}}})}>Confirmar contato de teste</button></>}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const detalhe={id:'a',empresaId:'e',nome:'Aurora',cidade:null,uf:null,cnpj:'123',etapa:'primeiro_contato' as const,versao:3,empresa:{...detalhesSnapshot({razao_social:'Aurora'},{tipo:'cadastro',empresaId:'e'}),id:'e',versao:3,situacao:'primeiro_contato' as const,negociacaoId:'a'},proximoPasso:null,retorno:null,historico:[]}
@@ -126,4 +126,27 @@ test('resposta antiga do telefone não fecha novo formulário de venda',async()=
   let liberar!:(t:string|null)=>void;vi.mocked(telefoneAcao).mockReturnValue(new Promise(r=>liberar=r))
   const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo');await clicar('Registrar venda');await escrever('40,00')
   await act(async()=>liberar(null));expect(fechar).not.toHaveBeenCalled();expect(document.querySelector('input')?.value).toBe('40,00')
+})
+
+test('contato confirmado no modal conserva callback de fechamento contextual',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Confirmar contato de teste')
+ expect(fechar).toHaveBeenCalledWith('Atendimento registrado.')
+})
+test('acompanhamento intocado do modal volta ao resumo sem descarte',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo')
+ expect(document.body.textContent).not.toContain('Descartar alterações?')
+ expect(document.body.textContent).toContain('Registrar venda')
+ expect(fechar).not.toHaveBeenCalled()
+})
+
+test('reverter ao baseline remove proteção temporária do histórico do modal',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
+ const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
+ expect(voltar).toHaveBeenCalledTimes(1)
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ expect(document.body.textContent).not.toContain('Descartar alterações?')
+ expect(fechar).not.toHaveBeenCalled()
 })

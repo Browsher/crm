@@ -143,3 +143,52 @@ test('histórico vazio informa título e explicação sem criar uma operação',
   expect(painel.textContent).toContain('Os atendimentos registrados nesta empresa aparecerão aqui.')
   expect(painel.querySelector('a, button')).toBeNull()
 })
+
+test('acompanhamento intocado fecha sem descarte usando baseline da abertura',async()=>{
+ const tela=await montar({...EMPRESA,situacao:'primeiro_contato'})
+ const clicar=async(nome:string)=>act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent===nome)!.click())
+ await clicar('Registrar atendimento')
+ expect(tela.querySelector<HTMLInputElement>('input[value=acompanhamento]')?.checked).toBe(true)
+ await clicar('Cancelar atendimento')
+ expect(document.body.textContent).not.toContain('Descartar as alterações?')
+ expect(tela.querySelector('form')).toBeNull()
+})
+
+test('reverter edição para acompanhamento inicial remove pedido de descarte',async()=>{
+ vi.spyOn(history,'back').mockImplementation(()=>{})
+ const tela=await montar({...EMPRESA,situacao:'primeiro_contato'})
+ const clicar=async(nome:string)=>act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent===nome)!.click())
+ await clicar('Registrar atendimento')
+ const campo=tela.querySelector('textarea')!
+ for(const texto of ['Mudança','']){
+  await act(async()=>{Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')!.set!.call(campo,texto);campo.dispatchEvent(new Event('input',{bubbles:true}))})
+ }
+ await clicar('Cancelar atendimento')
+ expect(document.body.textContent).not.toContain('Descartar as alterações?')
+ vi.restoreAllMocks()
+})
+test('comando desconhecido intocado continua protegido mesmo com rascunho igual ao baseline',async()=>{
+ vi.spyOn(history,'back').mockImplementation(()=>{})
+ const valor={tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''}
+ const salvo=JSON.stringify({valor,envio:{chave:'anterior',versao:2,valor}})
+ sessionStorage.setItem('crm:contato:v1:a',salvo)
+ const tela=await montar({...EMPRESA,situacao:'primeiro_contato'})
+ const clicar=async(nome:string)=>act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent===nome)!.click())
+ await clicar('Registrar atendimento');await clicar('Cancelar atendimento')
+ expect(document.body.textContent).toContain('Descartar as alterações?')
+ expect(tela.querySelector('textarea')!.readOnly).toBe(true)
+ expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
+ vi.restoreAllMocks()
+})
+test('sucesso de contato fecha editor da ficha sem navegar ao Funil',async()=>{
+ vi.spyOn(history,'back').mockImplementation(()=>{})
+ acao.executar=async()=>({ok:true,erro:null,repetida:false,leituraDestino:{ok:true,destino:{tipo:'funil',negociacaoId:'atual'}}})
+ const tela=await montar()
+ await act(async()=>[...tela.querySelectorAll('button')].find(b=>b.textContent==='Registrar atendimento')!.click())
+ await act(async()=>tela.querySelector('form')!.requestSubmit())
+ await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
+ expect(tela.querySelector('form')).toBeNull()
+ expect(tela.querySelector('h1')!.textContent).toBe('Aurora')
+ acao.executar=async()=>({erro:null,ok:false})
+ vi.restoreAllMocks()
+})

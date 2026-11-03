@@ -3,7 +3,7 @@ import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStor
 import { useRouter } from 'next/navigation'
 import { prepararContatoAcao, registrarContatoAcao, type EstadoContato } from './acao'
 import { ROTULO, TIPOS_CONTATO, type TipoContato } from './tipos'
-import { prepararEnvio, rascunhoInicial, type EnvioContato, type RascunhoContato } from './rascunho'
+import { limparContatoConfirmado, prepararEnvio, rascunhoInicial, type EnvioContato, type RascunhoContato } from './rascunho'
 import { Button } from '@/src/components/ui/button'
 import { Choice } from '@/src/components/ui/choice'
 import { Input } from '@/src/components/ui/input'
@@ -11,12 +11,13 @@ import { Label } from '@/src/components/ui/label'
 import { Textarea } from '@/src/components/ui/textarea'
 import { Alert } from '@/src/components/ui/alert'
 
+export type ConfirmacaoContato = Extract<EstadoContato, { ok: true }> & { chave: string; rascunho: RascunhoContato }
 type Props = {
   empresaId: string; posse?: boolean; comDevolver?: boolean; tipoInicial?: TipoContato; voltarPara?: string
   versao?: number; fase?: 'inicial' | 'negociacao' | 'cliente'
   somenteConfirmacao?: boolean
   rascunho?: RascunhoContato; onDraftChange?: (valor: RascunhoContato) => void
-  onSaved?: (empresaId: string) => void; bloqueado?: boolean; somenteLeitura?: boolean
+  onSaved?: (empresaId: string, confirmacao: ConfirmacaoContato) => void; bloqueado?: boolean; somenteLeitura?: boolean
   onPendingChange?: (valor: boolean) => void; visual?: 'fila'
 }
 const INICIAL: EstadoContato = { erro: null, ok: false }
@@ -47,11 +48,13 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
   const [interno, setInterno] = useState<RascunhoContato>(() => ({ ...rascunhoInicial(false), tipo: tipoInicial ?? 'nao_liguei' }))
   const [preparado, setPreparado] = useState<{ versao: number; fase: NonNullable<Props['fase']> } | null>(() => versao && fase ? { versao, fase } : null)
   const snapshot = useSyncExternalStore(assinarSessao, () => lerSessao(chaveStorage), () => null)
+  const [confirmado, setConfirmado] = useState<string | null>(null)
   const sessao = decodificarSessao(snapshot)
-  const envio = sessao.envio ?? null
+  const sessaoConfirmada = Boolean(sessao.envio && sessao.envio.chave === confirmado)
+  const envio = sessaoConfirmada ? null : sessao.envio ?? null
   const carregado = snapshot !== null && !sessao.erro
   const [erroPreparacao, setErroPreparacao] = useState('')
-  const atual = sessao.valor ?? rascunho ?? interno
+  const atual = (sessaoConfirmada ? undefined : sessao.valor) ?? rascunho ?? interno
   const notificado = useRef<string | null>(null)
   useEffect(() => {
     if (notificado.current === snapshot) return
@@ -84,37 +87,57 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
   }
   const [estado, agir, pendente] = useActionState(async (): Promise<EstadoContato> => {
     if (bloqueado || !carregado || !envio && (somenteConfirmacao || !preparado)) return { ok: false, erro: 'Aguarde a preparação do atendimento.' }
-    onPendingChange?.(true)
+    try { onPendingChange?.(true) } catch { /* A guarda local não altera o resultado da gravação. */ }
+    let comando: EnvioContato
+    let r: EstadoContato
     try {
-      const comando = envio ?? prepararEnvio(null, preparado!.versao, atual)
+      comando = envio ?? prepararEnvio(null, preparado!.versao, atual)
       salvar(atual, comando)
       const form = new FormData()
       form.set('id', empresaId); form.set('chave', comando.chave); form.set('versao', String(comando.versao))
       for (const [campo, valor] of Object.entries(comando.valor)) form.set(campo, valor)
-      const r = await registrarContatoAcao(INICIAL, form)
+      r = await registrarContatoAcao(INICIAL, form)
+    } catch (erro) {
+      try { onPendingChange?.(false) } catch { /* Guarda local. */ }
+      return { ok: false, erro: erro instanceof Error && erro.message.includes('envio anterior') ? erro.message : 'Não foi possível confirmar o envio. Suas anotações foram preservadas. Tente novamente com os mesmos dados.' }
+    }
+    // A partir daqui a RPC já respondeu: falhas locais não tornam o resultado desconhecido.
+    try {
       if (r.ok) {
-        limpar()
-        setInterno(rascunhoInicial(false)); onDraftChange?.(rascunhoInicial(false))
-        setPreparado(null); router.refresh(); onSaved?.(empresaId)
-        try {
-          const novo = await prepararContatoAcao(empresaId)
-          if (novo.ok && novo.empresa.versao && !['sem_interesse','indisponivel'].includes(novo.empresa.situacao)) setPreparado({ versao: novo.empresa.versao, fase: novo.fase })
-        } catch { setErroPreparacao('O envio foi confirmado. Recarregue para preparar outro atendimento.') }
+        setConfirmado(comando.chave)
+        let correspondente = true
+        let limpo = false
+        try { limpo = limparContatoConfirmado(empresaId, comando.chave); correspondente = limpo } catch {
+          r = { ...r, aviso: 'Atendimento registrado. Atualize a página para conferir as anotações desta aba.' }
+        }
+        if (correspondente) {
+          setInterno(rascunhoInicial(false)); setPreparado(null)
+          try { if (!onSaved) onDraftChange?.(rascunhoInicial(false)) } catch { r = { ...r, aviso: 'Atendimento registrado. Atualize a página para conferir os dados.' } }
+          try { onSaved?.(empresaId, { ...r, chave: comando.chave, rascunho: atual }) } catch { r = { ...r, aviso: 'Atendimento registrado. Não foi possível abrir o destino. Atualize a página ou abra o Funil.' } }
+          try { router.refresh() } catch { r = { ...r, aviso: 'Atendimento registrado. Atualize a página para conferir os dados.' } }
+          if (limpo) {
+            try {
+              const novo = await prepararContatoAcao(empresaId)
+              if (novo.ok && novo.empresa.versao && !['sem_interesse','indisponivel'].includes(novo.empresa.situacao)) setPreparado({ versao: novo.empresa.versao, fase: novo.fase })
+            } catch { r = { ...r, aviso: 'Atendimento registrado. Recarregue para preparar outro atendimento.' } }
+          }
+        }
       } else if (r.motivo && !['sem_permissao','nao_encontrada'].includes(r.motivo)) {
-        salvar(atual, { ...comando, resolvido: true })
+        try { salvar(atual, { ...comando, resolvido: true }) } catch { /* Preservar o comando original é seguro para replay. */ }
       }
       return r
-    } catch (erro) {
-      return { ok: false, erro: erro instanceof Error && erro.message.includes('envio anterior') ? erro.message : 'Não foi possível confirmar o envio. Suas anotações foram preservadas. Tente novamente com os mesmos dados.' }
-    } finally { onPendingChange?.(false) }
+    } finally { try { onPendingChange?.(false) } catch { /* Guarda local. */ } }
   }, INICIAL)
   const congelado = pendente || somenteLeitura || Boolean(envio && !envio.resolvido)
   const oferecidos = TIPOS_CONTATO.filter(t => t !== 'acompanhamento' || preparado?.fase !== 'inicial' && preparado !== null)
-  if (somenteConfirmacao && !envio) return null
+  const mensagemConfirmacao = estado.ok ? estado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.' : null
+  const avisoConfirmacao = estado.ok ? estado.aviso || (estado.leituraDestino?.ok === false ? 'Atendimento registrado. Não foi possível abrir o destino. Atualize a página ou abra o Funil.' : null) : null
+  if (somenteConfirmacao && !envio) return mensagemConfirmacao ? <div><p role="status">{mensagemConfirmacao}</p>{avisoConfirmacao && <p role="status">{avisoConfirmacao}</p>}</div> : null
   return <form data-visual={visual} action={agir} onSubmit={e => { if (pendente || bloqueado) e.preventDefault() }} className="flex flex-col gap-4">
     <input type="hidden" name="id" value={empresaId} />
     {(estado.erro || erroPreparacao || sessao.erro) && <Alert variant="danger">{estado.erro || erroPreparacao || 'Não foi possível recuperar as anotações desta aba.'}</Alert>}
-    {estado.ok && <p role="status">{estado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.'}</p>}
+    {mensagemConfirmacao && <p role="status">{mensagemConfirmacao}</p>}
+    {avisoConfirmacao && <p role="status">{avisoConfirmacao}</p>}
     <fieldset className="grid gap-2"><legend className="text-sm font-medium">O que aconteceu na ligação</legend>{oferecidos.map(t => <label key={t} className="flex min-h-11 items-center gap-3 rounded-md border border-border px-3 py-2 text-sm"><Choice type="radio" name="tipo" value={t} disabled={congelado} checked={atual.tipo === t} onChange={() => alterar({ tipo: t })} />{ROTULO[t]}</label>)}</fieldset>
     <Label htmlFor={camposId + '-nota'}>Nota</Label><Textarea id={camposId + '-nota'} name="nota" rows={3} maxLength={2000} readOnly={congelado} value={atual.nota} onChange={e => alterar({ nota: e.target.value })} />
     <label>Próximo passo<Input name="proximoPasso" value={atual.proximoPasso} maxLength={2000} readOnly={congelado} onChange={e => alterar({ proximoPasso: e.target.value })} /></label>
