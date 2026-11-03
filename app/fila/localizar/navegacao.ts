@@ -7,15 +7,17 @@ export function lerConsultaPessoal(params: Record<string, string | string[] | un
     if (typeof params.pessoal !== 'string') return { ok: false }
     try { bruto = JSON.parse(params.pessoal) } catch { return { ok: false } }
   }
+  let selecionarSemInteresse = semInteresse
   // Sem interesse é uma seleção visual. O parser de domínio continua aceitando
   // somente as origens de aquisição; a consulta abrange qualquer uma delas.
   if (bruto && typeof bruto === 'object' && !Array.isArray(bruto)) {
     const entrada = { ...bruto } as Record<string, unknown>
-    if (entrada.origem === 'sem_interesse') { delete entrada.origem; entrada.disponibilidade = 'sem_interesse' }
-    if (semInteresse) entrada.disponibilidade = 'sem_interesse'
+    if (entrada.origem === 'sem_interesse') { delete entrada.origem; selecionarSemInteresse = true }
     bruto = entrada
   }
-  return lerFiltrosPessoais(bruto)
+  const lidos = lerFiltrosPessoais(bruto)
+  if (!lidos.ok || !selecionarSemInteresse) return lidos
+  return { ok: true, filtros: { ...lidos.filtros, disponibilidade: 'sem_interesse' } }
 }
 export function filtrosDaConsulta(params: Record<string, string | string[] | undefined>): FiltrosPessoais {
   const r = lerConsultaPessoal(params)

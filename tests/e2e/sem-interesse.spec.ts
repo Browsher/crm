@@ -204,14 +204,18 @@ test('comando legado confirmado no banco sobrevive redirect, filtro inválido e 
 })
 
 
-test('retomada moderna com resposta perdida recupera comando fora da grade após reload',async({page})=>{
- const empresaId='00000000-0000-4000-8000-000000009815'
- await page.goto('/fila/localizar?nome=Arquivo+11&disponibilidade=sem_interesse&pagina=1')
- let perder=true,posts=0
+for(const [n,situacao,rotulo] of [[11,'a_contatar','Iniciar atendimento'],[12,'atendimento','Continuar atendimento']] as const) test('retomada moderna perdida mantém Provider no snapshot '+situacao+', fora da consulta e durante confirmação',async({page})=>{
+ const empresaId='00000000-0000-4000-8000-'+String(9804+n).padStart(12,'0'),nome='Arquivo '+n
+ if(situacao==='atendimento')await sql('UPDATE empresa_vinculo SET iniciada_em=now() WHERE empresa_id=$1',[empresaId])
+ await page.goto('/fila/localizar?nome='+encodeURIComponent(nome)+'&disponibilidade=sem_interesse&pagina=1')
+ let perder=true,posts=0,segurar=false,liberar!:()=>void
+ const espera=new Promise<void>(r=>liberar=r)
  page.on('request',r=>{if(r.method()==='POST')posts++})
  await page.route('**/fila/localizar*',async rota=>{
-  if(rota.request().method()!=='POST'||!perder)return rota.continue()
-  perder=false;await rota.fetch();await rota.abort('failed')
+  if(rota.request().method()!=='POST')return rota.continue()
+  if(perder){perder=false;await rota.fetch();await rota.abort('failed');return}
+  if(segurar){const resposta=await rota.fetch();await espera;await rota.fulfill({response:resposta});return}
+  return rota.continue()
  })
  await page.getByRole('button',{name:'Retomar atendimento',exact:true}).click()
  await expect(page.getByText(/Não foi possível confirmar/)).toBeVisible()
@@ -221,15 +225,62 @@ test('retomada moderna com resposta perdida recupera comando fora da grade após
  expect(comando).toMatchObject({id:empresaId,tipo:'retomar',usuarioId})
  expect((await sql('SELECT arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[empresaId])).rows[0].arquivada_em).toBeNull()
  await page.reload()
- await expect(page.getByRole('heading',{name:'Arquivo 11',exact:true})).toHaveCount(0)
+ await expect(page.getByRole('heading',{name:nome,exact:true})).toHaveCount(0)
  await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
  expect(posts).toBe(1)
+ // Mudar o filtro altera a ação visual, mas não pode trocar o emissor do comando.
+ await page.getByRole('button',{name:'Mais filtros',exact:true}).click()
+ await page.getByRole('combobox',{name:'Disponibilidade',exact:true}).selectOption('')
+ await page.getByRole('button',{name:'Pesquisar empresas',exact:true}).click()
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/localizar'&&!url.searchParams.has('disponibilidade'))
+ await page.getByRole('button',{name:rotulo,exact:true}).click()
+ expect(posts).toBe(1)
+ expect(await page.evaluate(empresaId=>sessionStorage.getItem('crm:acao-empresa:v1:'+empresaId),empresaId)).toBe(salvo)
+ // Registro identificado de outro ator não ganha autoridade por esse snapshot.
+ const alheio=JSON.stringify({...comando,usuarioId:randomUUID()})
+ await page.evaluate(({empresaId,alheio})=>sessionStorage.setItem('crm:acao-empresa:v1:'+empresaId,alheio),{empresaId,alheio})
+ await page.reload()
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toHaveCount(0)
+ await page.getByRole('button',{name:rotulo,exact:true}).click()
+ expect(posts).toBe(1)
+ expect(await page.evaluate(empresaId=>sessionStorage.getItem('crm:acao-empresa:v1:'+empresaId),empresaId)).toBe(alheio)
+ await page.evaluate(({empresaId,salvo})=>sessionStorage.setItem('crm:acao-empresa:v1:'+empresaId,salvo),{empresaId,salvo:salvo!})
+ // Fora do Provider, o card encaminha para a consulta autenticada sem transmitir.
+ await page.goto('/fila/atendimento/'+empresaId+'?nome='+encodeURIComponent(nome)+'&pagina=1')
+ await page.getByRole('button',{name:rotulo,exact:true}).click()
+ expect(posts).toBe(1)
+ await page.getByRole('link',{name:'Confirmar em Localizar empresas',exact:true}).click()
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/localizar'&&url.searchParams.get('nome')===nome)
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
+ segurar=true
  await page.getByRole('button',{name:'Confirmar retomada anterior',exact:true}).click()
- await expect(page).toHaveURL(url=>url.pathname==='/fila/atendimento/'+empresaId&&url.searchParams.get('nome')==='Arquivo 11'&&url.searchParams.get('disponibilidade')==='sem_interesse')
+ await expect.poll(()=>posts).toBe(2)
+ try {
+  await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeDisabled()
+  await page.getByRole('button',{name:rotulo,exact:true}).click()
+  expect(posts).toBe(2)
+  expect(await page.evaluate(empresaId=>sessionStorage.getItem('crm:acao-empresa:v1:'+empresaId),empresaId)).toBe(salvo)
+ }finally{liberar()}
+ await expect(page).toHaveURL(url=>url.pathname==='/fila/atendimento/'+empresaId&&url.searchParams.get('nome')===nome&&!url.searchParams.has('disponibilidade'))
  expect(posts).toBe(2)
  expect((await sql('SELECT count(*)::int AS n FROM empresa_atendimento_operacao WHERE chave=$1',[comando.chave])).rows[0].n).toBe(1)
  expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(0)
  expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1',[empresaId])).rowCount).toBe(0)
  expect(await page.evaluate(empresaId=>sessionStorage.getItem('crm:acao-empresa:v1:'+empresaId),empresaId)).toBeNull()
- await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/moderna-resposta-perdida-destino.png',fullPage:true})
+ await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/review-moderna-'+situacao+'.png',fullPage:true})
+})
+
+for(const [rota,origem] of [['/fila/sem-interesse',''],['/fila/localizar','origem=sem_interesse&']] as const)for(const disponibilidade of ['disponibilidade=invalida','disponibilidade=sem_interesse&disponibilidade=sem_interesse'])test('erro de disponibilidade não é apagado em '+rota+'?'+origem+disponibilidade,async({page})=>{
+ const v=(await sql('SELECT vendedor_id,versao FROM empresa_vinculo WHERE empresa_id=$1',[IDS[0]])).rows[0]
+ const comando={id:IDS[0],versao:Number(v.versao),chave:randomUUID()}
+ await page.evaluate(({usuarioId,comando})=>sessionStorage.setItem('crm:retomar-arquivo:v1:'+usuarioId,JSON.stringify(comando)),{usuarioId:v.vendedor_id,comando})
+ let posts=0;page.on('request',r=>{if(r.method()==='POST')posts++})
+ await page.goto(rota+'?'+origem+disponibilidade)
+ await expect(page).toHaveURL(rota+'?'+origem+disponibilidade)
+ await expect(page.getByRole('main').getByRole('alert')).toContainText('inválido')
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
+ await page.getByRole('link',{name:'Limpar filtros',exact:true}).click()
+ await expect(page).toHaveURL('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+ await expect(page.getByRole('button',{name:'Confirmar retomada anterior',exact:true})).toBeVisible()
+ expect(posts).toBe(0)
 })

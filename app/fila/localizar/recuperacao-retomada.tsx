@@ -10,7 +10,7 @@ import { urlAtendimento } from './navegacao'
 
 type Comando = { id: string; versao: number; chave: string }
 type Envio = { storage: string; comando: Comando; registro: string }
-type Intencao = { empresaId: string; versao: number }
+type Intencao = { empresaId: string; versao?: number }
 type RetomarNaConsulta = (intencao: Intencao, filtros: FiltrosPessoais) => boolean
 type Props = { usuarioId: string; filtros: FiltrosPessoais; children: ReactNode }
 const BloqueioRetomada = createContext(false)
@@ -142,6 +142,10 @@ function RecuperacaoUsuario({ usuarioId, filtros, children }: Props) {
       const anterior = lerEnvios(usuarioId)[0]
       if (anterior) {
         setEnvio(anterior); setEstado('incerto'); setMensagem('Confirme a retomada anterior antes de retomar outra empresa.')
+        return true
+      }
+      if (typeof intencao.versao !== 'number' || !Number.isSafeInteger(intencao.versao) || intencao.versao < 1) {
+        setMensagem('Confira a retomada anterior no painel antes de continuar.')
         return true
       }
       const comando = { id: intencao.empresaId, versao: intencao.versao, chave: crypto.randomUUID(), tipo: 'retomar', usuarioId }

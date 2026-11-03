@@ -37,3 +37,11 @@ test('consulta autorizada usa recorte existente e inclui recuperação sem resul
  expect(m.ler).toHaveBeenCalledWith('eu',{disponibilidade:'sem_interesse',pagina:'2'})
  expect(html).toContain('data-recuperacao="eu"')
 })
+
+for(const [nome,pagina,origem] of [['antiga',Antiga,undefined],['alias',Pagina,'sem_interesse']] as const){
+ test.each([{disponibilidade:'invalida'},{disponibilidade:['sem_interesse','sem_interesse']}])('rota '+nome+' conserva erro e painel quando disponibilidade é %j',async({disponibilidade})=>{
+  const html=renderToStaticMarkup(await pagina({searchParams:Promise.resolve({origem,disponibilidade,nome:'Aurora'})}))
+  expect(html).toContain('role="alert"');expect(html).toContain('inválido');expect(html).toContain('data-recuperacao="eu"')
+  expect(m.redirect).not.toHaveBeenCalled();expect(m.ler).not.toHaveBeenCalled()
+ })
+}

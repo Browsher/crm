@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CardEmpresa } from '@/src/components/crm/card-empresa'
@@ -16,6 +17,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   const retomarNaConsulta = useRetomadaNaConsulta()
   const [referencia, setReferencia] = useState<ReferenciaEmpresa | null>(null)
   const [erro, setErro] = useState('')
+  const [confirmarNaConsulta, setConfirmarNaConsulta] = useState(false)
   const [resolvido, setResolvido] = useState(false)
   const [pendente, iniciar] = useTransition()
   const ocupado = useRef(false)
@@ -27,12 +29,27 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     return acao.href
   }
   function acionar(acao: AcaoEmpresa) {
-    if (ocupado.current || resolvido || (bloquearRetomada && acao.tipo === 'retomar')) return
+    if (ocupado.current || resolvido) return
+    let salvo: string | null
+    try {
+      salvo = sessionStorage.getItem(storage)
+      const c: unknown = salvo ? JSON.parse(salvo) : null
+      // O comando transmitido tem precedência sobre a ação do snapshot atual.
+      // Identificados só podem sair pelo controlador autenticado da consulta.
+      if (c && typeof c === 'object' && 'usuarioId' in c) {
+        if (retomarNaConsulta?.({ empresaId: empresa.id ?? '' }, filtros)) return
+        if (!retomarNaConsulta || ('tipo' in c && c.tipo === 'retomar')) {
+          setConfirmarNaConsulta(true)
+          setErro('Há um envio identificado pendente. Abra Localizar empresas para conferir e confirmar a retomada.')
+          return
+        }
+      }
+    } catch { setErro('Não foi possível recuperar o envio anterior. Confira o armazenamento desta aba.'); return }
+    if (bloquearRetomada && acao.tipo === 'retomar') return
     if (acao.tipo === 'retomar' && retomarNaConsulta?.(acao, filtros)) return
     ocupado.current = true
     iniciar(async () => {
       try {
-        const salvo = sessionStorage.getItem(storage)
         if ('href' in acao && !salvo) { router.push(destino(acao)); return }
         const comando = salvo ? JSON.parse(salvo) : 'empresaId' in acao ? { id: acao.empresaId, chave: crypto.randomUUID(), versao: acao.versao, tipo: acao.tipo } : null
         if (!comando) return
@@ -67,6 +84,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   }
   return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={setReferencia} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
     {erro && <p role="alert">{erro}</p>}
+    {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}
     {resolvido && <Button variant="outline" onClick={() => {
       try {
         const salvo = sessionStorage.getItem(storage)

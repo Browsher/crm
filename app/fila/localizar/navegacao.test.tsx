@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { selecionarGrupo, urlConsulta, urlEscolhaLista, urlAtendimento, filtrosDaConsulta } from './navegacao'
+import { selecionarGrupo, urlConsulta, urlEscolhaLista, urlAtendimento, filtrosDaConsulta, lerConsultaPessoal } from './navegacao'
 test('aposenta grupo e escolha de lista mantendo refinamento e paginação',()=>{
   const f={...selecionarGrupo('grupo'),nome:'Luz & Cia',pagina:3}
   expect(urlConsulta(f,4)).toBe('/fila/localizar?nome=Luz+%26+Cia&pagina=4')
@@ -23,3 +23,13 @@ test('JSON inválido, filtro alheio e destino externo não se propagam',()=>{
   expect(new URL(ida,'http://localhost').pathname).toBe('/fila/atendimento/empresa')
   expect(filtrosDaConsulta(Object.fromEntries(new URL(ida,'http://localhost').searchParams))).toEqual(f)
  })
+
+test.each([{disponibilidade:'invalida'},{disponibilidade:['sem_interesse','sem_interesse']}])('recorte forçado valida disponibilidade fornecida %j antes de impor Sem interesse',({disponibilidade})=>{
+ expect(lerConsultaPessoal({disponibilidade},true)).toEqual({ok:false})
+ expect(lerConsultaPessoal({origem:'sem_interesse',disponibilidade})).toEqual({ok:false})
+ expect(lerConsultaPessoal({pessoal:JSON.stringify({origem:'sem_interesse',disponibilidade})})).toEqual({ok:false})
+})
+test('recorte Sem interesse continua normalizando uma disponibilidade válida fornecida',()=>{
+ expect(lerConsultaPessoal({origem:'sem_interesse',disponibilidade:'comigo'})).toEqual({ok:true,filtros:{disponibilidade:'sem_interesse'}})
+ expect(lerConsultaPessoal({disponibilidade:'disponivel'},true)).toEqual({ok:true,filtros:{disponibilidade:'sem_interesse'}})
+})

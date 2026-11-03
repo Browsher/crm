@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { RecuperacaoRetomada } from './recuperacao-retomada'
 import { LocalizarPessoal } from './pessoal'
 import { retomarAtendimentoAcao, iniciarAtendimentoAcao } from '../atendimento/acoes'
+import type { FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 import type { ConsultaAtendimentoPessoal } from '@/src/server/prospeccao-pessoal'
 const push=vi.hoisted(()=>vi.fn())
 const refresh=vi.hoisted(()=>vi.fn())
@@ -17,7 +18,7 @@ const comando={id:'desaparecida',versao:4,chave:'original'}
 const filtros={disponibilidade:'sem_interesse',nome:'Aurora',cnpj:'12345678901234',nicho:'Luz',endereco:'Centro',pagina:'3'}
 const dados:ConsultaAtendimentoPessoal={empresas:[],total:0,nichos:[],bairros:[]}
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
-function tela(usuarioId='eu',comEmpresa=false){return <RecuperacaoRetomada usuarioId={usuarioId} filtros={filtros}><LocalizarPessoal filtros={filtros} recolhido={false} dados={comEmpresa?{...dados,empresas:[{id:'outra',referencia:{tipo:'cadastro',empresaId:'outra'},nome:'Outra empresa',cnpj:null,cnae:null,atividade:null,recebidaEm:null,negociacaoId:null,versao:5,situacao:'sem_interesse',origens:['banco'],bairro:null,cidade:null,uf:null,cep:null,porte:null,abertura:null,nichos:[],regioes:[],entrada:''}],total:1}:dados}/></RecuperacaoRetomada>}
+function tela(usuarioId='eu',comEmpresa=false,situacao:'sem_interesse'|'a_contatar'|'atendimento'='sem_interesse',consulta:FiltrosPessoais=filtros){return <RecuperacaoRetomada usuarioId={usuarioId} filtros={consulta}><LocalizarPessoal filtros={consulta} recolhido={false} dados={comEmpresa?{...dados,empresas:[{id:'outra',referencia:{tipo:'cadastro',empresaId:'outra'},nome:'Outra empresa',cnpj:null,cnae:null,atividade:null,recebidaEm:null,negociacaoId:null,versao:5,situacao,origens:['banco'],bairro:null,cidade:null,uf:null,cep:null,porte:null,abertura:null,nichos:[],regioes:[],entrada:''}],total:1}:dados}/></RecuperacaoRetomada>}
 async function montar(comEmpresa=false){host=document.createElement('div');document.body.append(host);root=createRoot(host);await act(async()=>root.render(tela('eu',comEmpresa)))}
 async function clicar(nome:string){const b=[...host.querySelectorAll('button')].find(b=>b.textContent===nome);expect(b).toBeDefined();await act(async()=>b!.click())}
 beforeEach(()=>{vi.resetAllMocks();sessionStorage.clear()})
@@ -238,5 +239,42 @@ test('confirmação moderna não limpa intenção posterior no mesmo namespace',
  })
  await clicar('Confirmar retomada anterior')
  expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual(posterior);expect(push).not.toHaveBeenCalled()
+ expect(host.textContent).toContain('Confirmar retomada anterior')
+})
+
+test.each([['a_contatar','Iniciar atendimento'],['atendimento','Continuar atendimento']] as const)('comando identificado controla ação visual %s sem replay pelo card',async(situacao,rotulo)=>{
+ const key='crm:acao-empresa:v1:outra',registro=JSON.stringify(moderno())
+ sessionStorage.setItem(key,registro);await montar(true)
+ await act(async()=>root.render(tela('eu',true,situacao)))
+ await clicar(rotulo)
+ expect(retomarAtendimentoAcao).not.toHaveBeenCalled();expect(iniciarAtendimentoAcao).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
+ expect(sessionStorage.getItem(key)).toBe(registro)
+ expect(host.textContent).toContain('Confirmar retomada anterior')
+})
+test.each([['a_contatar','Iniciar atendimento'],['atendimento','Continuar atendimento']] as const)('confirmação pending não recebe segundo emissor pelo snapshot %s',async(situacao,rotulo)=>{
+ sessionStorage.setItem('crm:acao-empresa:v1:outra',JSON.stringify(moderno()));await montar(true)
+ await act(async()=>root.render(tela('eu',true,situacao)))
+ let resolver!:(r:Awaited<ReturnType<typeof retomarAtendimentoAcao>>)=>void
+ vi.mocked(retomarAtendimentoAcao).mockReturnValue(new Promise(r=>resolver=r))
+ await clicar('Confirmar retomada anterior')
+ try {
+  await clicar(rotulo)
+  expect(retomarAtendimentoAcao).toHaveBeenCalledTimes(1)
+  expect(iniciarAtendimentoAcao).not.toHaveBeenCalled()
+ }finally{await act(async()=>resolver({ok:false,motivo:'sem_permissao'}))}
+})
+test.each([['a_contatar','Iniciar atendimento'],['atendimento','Continuar atendimento']] as const)('snapshot %s não transmite comando identificado de outro ator',async(situacao,rotulo)=>{
+ const key='crm:acao-empresa:v1:outra',registro=JSON.stringify(moderno('outra','outro'))
+ sessionStorage.setItem(key,registro);await montar(true)
+ await act(async()=>root.render(tela('eu',true,situacao)))
+ await clicar(rotulo)
+ expect(retomarAtendimentoAcao).not.toHaveBeenCalled();expect(iniciarAtendimentoAcao).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
+ expect(sessionStorage.getItem(key)).toBe(registro)
+})
+test('trocar filtro Sem interesse pela consulta geral conserva controle da retomada identificada',async()=>{
+ sessionStorage.setItem('crm:acao-empresa:v1:outra',JSON.stringify(moderno()));await montar(true)
+ await act(async()=>root.render(tela('eu',true,'a_contatar',{})))
+ await clicar('Iniciar atendimento')
+ expect(retomarAtendimentoAcao).not.toHaveBeenCalled();expect(iniciarAtendimentoAcao).not.toHaveBeenCalled()
  expect(host.textContent).toContain('Confirmar retomada anterior')
 })

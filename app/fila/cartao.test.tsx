@@ -103,3 +103,13 @@ test('retomada com destino confirmado navega sem refresh concorrente na consulta
  expect(push).toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
  expect(refresh).not.toHaveBeenCalled()
 })
+
+test.each([['sem_interesse','Retomar atendimento'],['a_contatar','Iniciar atendimento'],['atendimento','Continuar atendimento']] as const)('comando identificado no snapshot %s exige Provider e oferece retorno seguro a Localizar',async(situacao,rotulo)=>{
+ const comando={id:'A',tipo:'retomar',usuarioId:'eu',chave:'identificada',versao:1}
+ sessionStorage.setItem('crm:acao-empresa:v1:A',JSON.stringify(comando))
+ await montar({...empresa,situacao});await clicar(rotulo)
+ expect(iniciar).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
+ expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBe(JSON.stringify(comando))
+ const link=host.querySelector<HTMLAnchorElement>('a[href*="/fila/localizar"]')
+ expect(link).not.toBeNull();expect(link?.textContent).toContain('Confirmar')
+})
