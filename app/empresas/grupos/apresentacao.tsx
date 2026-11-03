@@ -9,11 +9,14 @@ export function dataGrupo(valor: string) {
 export function SituacaoGrupo({ ativo }: { ativo: boolean }) {
   return <Badge variant={ativo ? 'success' : 'outline'}>{ativo ? 'Ativo' : 'Desativado'}</Badge>
 }
-export function PaginacaoGrupos({ pagina, total, caminho, gruposPagina }: { pagina: number; total: number; caminho: string; gruposPagina?: number }) {
+type DestinoPaginacao = { caminho: string } | { endereco: (pagina: number) => string }
+
+export function PaginacaoGrupos(props: { pagina: number; total: number; rotulo?: string } & DestinoPaginacao) {
+  const { pagina, total, rotulo = 'Paginação' } = props
   const paginas = Math.max(1, Math.ceil(total / 50))
   if (paginas === 1 && pagina === 1) return null
-  const endereco = (n: number) => `${caminho}?pagina=${n}${gruposPagina ? `&gruposPagina=${gruposPagina}` : ''}`
-  return <nav aria-label="Paginação" className={styles.paginacao}>
+  const endereco = 'endereco' in props ? props.endereco : (n: number) => `${props.caminho}?pagina=${n}`
+  return <nav aria-label={rotulo} className={styles.paginacao}>
     {pagina > 1 ? <Button asChild variant="outline"><Link href={endereco(Math.min(pagina - 1, paginas))}>Anterior</Link></Button> : <Button variant="outline" disabled>Anterior</Button>}
     <span>Página {pagina} de {paginas}</span>
     {pagina < paginas ? <Button asChild variant="outline"><Link href={endereco(pagina + 1)}>Próxima</Link></Button> : <Button variant="outline" disabled>Próxima</Button>}

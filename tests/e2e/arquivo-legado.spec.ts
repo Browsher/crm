@@ -57,7 +57,7 @@ test('gestor consulta o arquivo e o histórico; vendedor conserva URLs antigas s
     await page.screenshot({ path: resolve(capturas,`arquivo-${width}.png`), fullPage: true })
   }
   await listasArquivadas.getByRole('link', { name: 'Ver lista', exact: true }).click()
-  await expect(page).toHaveURL('/empresas/grupos/'+grupoId)
+  await expect(page).toHaveURL(url => url.pathname === '/empresas/grupos/' + grupoId)
   await expect(page.getByRole('main')).toContainText('Arquivo histórico, somente consulta.')
   await expect(page.getByRole('button', { name: /Reativar|Renomear|Salvar contexto/ })).toHaveCount(0)
   await page.goto('/empresas/'+empresaId)

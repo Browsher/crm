@@ -2,8 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test, vi } from 'vitest'
 import { CaminhoCrm } from './caminho'
 
-const rota = vi.hoisted(() => ({ atual: '/whatsapp' }))
-vi.mock('next/navigation', () => ({ usePathname: () => rota.atual }))
+const rota = vi.hoisted(() => ({ atual: '/whatsapp', query: new URLSearchParams() }))
+vi.mock('next/navigation', () => ({ usePathname: () => rota.atual, useSearchParams: () => rota.query }))
 
 test.each([
   ['/whatsapp/configuracao', 'whatsapp', 'WhatsApp', 'Configurar vendedores', '/whatsapp'],
@@ -23,4 +23,18 @@ test.each([
   expect(html).toContain(`aria-current="page">${atual}</span>`)
   expect(html).not.toContain('id-privado')
   expect(html).not.toContain('href="/usuarios/vendedores"')
+})
+
+test('breadcrumb da lista arquivada volta ao recorte do arquivo', () => {
+  rota.atual = '/empresas/grupos/11111111-1111-4111-8111-111111111111'
+  rota.query = new URLSearchParams({ retorno: '{"tipo":"arquivo","q":"Luz","pagina":2,"gruposPagina":3}' })
+  try {
+    const html = renderToStaticMarkup(<CaminhoCrm area="empresas" titulo="Empresas" />)
+    expect(html).toContain('href="/empresas/arquivadas?q=Luz&amp;pagina=2&amp;gruposPagina=3">Arquivo</a>')
+    expect(html).not.toContain('href="/empresas/grupos"')
+    expect(html).not.toContain('href="/empresas"')
+    expect(html).toContain('aria-current="page">Lista arquivada</span>')
+  } finally {
+    rota.query = new URLSearchParams()
+  }
 })

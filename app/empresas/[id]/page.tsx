@@ -1,4 +1,5 @@
 import { rotuloSituacao } from '@/src/lib/empresa-visual'
+import { lerRetornoGestor, serializarRetornoGestor, urlColetaGestor, urlRetornoGestor, type OrigemFichaGestor } from '@/src/lib/retorno-gestor'
 import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
 import { lerDadosCadastrais } from '@/src/server/cnpj-biz/dados'
 import Link from 'next/link'
@@ -34,17 +35,31 @@ export default async function PaginaPerfil({ params, searchParams }: {
   if (!empresa) notFound()
   const query = await searchParams ?? {}
   const filtros = lerFiltrosEmpresas(query)
-  const voltar = empresa.situacao === 'arquivada' ? '/empresas/arquivadas' : filtros.ok ? enderecoEmpresas(aplicarFiltrosEmpresas(lerConsulta(query), filtros.filtros)) : '/empresas'
+  const retorno = lerRetornoGestor(query.retorno)
+  const origem = retorno?.tipo === 'empresas' || retorno?.tipo === 'arquivo' || retorno?.tipo === 'grupo' || retorno?.tipo === 'coleta' ? retorno : undefined
+  const consulta = lerConsulta(query)
+  const arquivada = empresa.situacao === 'arquivada'
+  const destinoPadrao = arquivada ? '/empresas/arquivadas' : filtros.ok ? enderecoEmpresas(aplicarFiltrosEmpresas(consulta, filtros.filtros)) : '/empresas'
+  const voltar = origem ? urlRetornoGestor(origem) : destinoPadrao
+  const rotuloVolta = origem?.tipo === 'grupo' ? 'Voltar para a lista' : origem?.tipo === 'coleta' ? 'Voltar para a coleta'
+    : origem?.tipo === 'arquivo' || (!origem && arquivada) ? 'Voltar ao arquivo' : 'Voltar para empresas'
+  const origemPadrao: OrigemFichaGestor | undefined = arquivada ? { tipo: 'arquivo', q: '', pagina: 1, gruposPagina: 1 }
+    : filtros.ok ? {
+      tipo: 'empresas', q: consulta.termo, pagina: consulta.pagina, cnae: filtros.filtros.cnae ?? undefined,
+      uf: filtros.filtros.uf ?? undefined, cidade: filtros.filtros.cidade ?? undefined, bairro: filtros.filtros.bairro ?? undefined,
+    } : undefined
+  const origemHistorico = origem ?? (origemPadrao && serializarRetornoGestor(origemPadrao) ? origemPadrao : undefined)
+  const enderecoColeta = (pedidoId: string) => urlColetaGestor(pedidoId, 1, { tipo: 'ficha', id, aba: 'historico', origem: origemHistorico })
   const [historico, cadastrais, coletas] = await Promise.all([lerHistorico(eu.usuarioId, id), lerDadosCadastrais(eu.usuarioId, id), repositorioGoogle(eu.usuarioId).historicoEmpresa(id)])
   const endereco = empresa.cidade ? [empresa.logradouro, empresa.bairro, `${empresa.cidade}/${empresa.uf}`].filter(Boolean).join(', ')
     : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
   return <main className={styles.pagina}>
-    <Button asChild variant="outline"><Link href={voltar} className={styles.voltar}>Voltar para empresas</Link></Button>
+    <Button asChild variant="outline"><Link href={voltar} className={styles.voltar}>{rotuloVolta}</Link></Button>
     <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{empresa.nome}</h1>
       {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
       <Badge variant="outline">{rotuloSituacao(empresa.situacao)}</Badge></header>
     {empresa.situacao === 'arquivada' && <Alert role="note">Arquivo histórico, somente consulta. Retornos cancelados na agenda ativa. Os dados e as datas originais permanecem no histórico.</Alert>}
-    <div className={styles.colunas}><AbasFicha dados={<div className={styles.detalhes}>
+    <div className={styles.colunas}><AbasFicha abaInicial={query.aba === 'historico' ? 'historico' : 'dados'} dados={<div className={styles.detalhes}>
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent>
         <dl className={styles.dados}>
           <dt>CNPJ</dt><dd>{formatarCnpj(empresa.cnpj)}</dd>
@@ -67,7 +82,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
       <Card><CardHeader><CardTitle>Grupos de origem</CardTitle></CardHeader><CardContent>
         {empresa.grupos.length ? <ul className={styles.grupos}>{empresa.grupos.map(g => <li key={g.id}><span>{g.nome}</span><Badge variant={g.ativo ? 'success' : 'outline'}>{g.ativo ? 'Ativo' : 'Desativado'}</Badge></li>)}</ul> : <p>Nenhum grupo vinculado.</p>}
       </CardContent></Card>
-    </div>} historico={<><HistoricoGoogleEmpresa coletas={coletas} />{empresa.arquivo && <Card><CardHeader><CardTitle>Arquivamento e negociações</CardTitle></CardHeader><CardContent><p>Arquivada em {horario.format(new Date(empresa.arquivo.arquivadaEm))}.</p><ul>{empresa.arquivo.negociacoes.map(n => <li key={n.id}>{rotuloSituacao(n.etapa as 'primeiro_contato' | 'em_negociacao' | 'proposta_enviada')} · {n.vendedor ?? 'Autor preservado'} · {n.encerramento === 'arquivamento_legado' ? 'Encerrada por arquivamento da base antiga' : n.encerramento}{n.encerradaEm ? ` em ${horario.format(new Date(n.encerradaEm))}` : ''}</li>)}</ul></CardContent></Card>}<Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
+    </div>} historico={<><HistoricoGoogleEmpresa coletas={coletas} enderecoColeta={enderecoColeta} />{empresa.arquivo && <Card><CardHeader><CardTitle>Arquivamento e negociações</CardTitle></CardHeader><CardContent><p>Arquivada em {horario.format(new Date(empresa.arquivo.arquivadaEm))}.</p><ul>{empresa.arquivo.negociacoes.map(n => <li key={n.id}>{rotuloSituacao(n.etapa as 'primeiro_contato' | 'em_negociacao' | 'proposta_enviada')} · {n.vendedor ?? 'Autor preservado'} · {n.encerramento === 'arquivamento_legado' ? 'Encerrada por arquivamento da base antiga' : n.encerramento}{n.encerradaEm ? ` em ${horario.format(new Date(n.encerradaEm))}` : ''}</li>)}</ul></CardContent></Card>}<Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
       {!historico.ok ? <Alert variant="danger">Não foi possível carregar o histórico. Atualize a página para tentar novamente.</Alert> : !historico.contatos.length ? <p>Nenhum atendimento registrado.</p> :
         <ol className={styles.historico}>{historico.contatos.map(c => <li key={c.id}>
           <div><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</strong><time dateTime={c.criadoEm.toISOString()}>{horario.format(c.criadoEm)}</time></div>

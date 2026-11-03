@@ -3,7 +3,7 @@ import { expect, test, vi } from 'vitest'
 import { ShellCrm } from './shell'
 
 const rota = vi.hoisted(() => ({ atual: null as string | null }))
-vi.mock('next/navigation', () => ({ usePathname: () => rota.atual }))
+vi.mock('next/navigation', () => ({ usePathname: () => rota.atual, useSearchParams: () => new URLSearchParams() }))
 
 test('grupos tem somente um item ativo na navegação do gestor', () => {
   rota.atual = '/empresas/grupos/grupo'
