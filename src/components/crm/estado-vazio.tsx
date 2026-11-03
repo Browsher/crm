@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Inbox, type LucideIcon } from 'lucide-react'
 import { Button } from '@/src/components/ui/button'
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/src/components/ui/card'
+import { Card, CardDescription, CardTitle } from '@/src/components/ui/card'
 import styles from './composicoes.module.css'
 
 type VarianteAcao = { variante?: 'default' | 'outline' }
@@ -22,14 +22,14 @@ type Props = {
 export function EstadoVazio({ titulo, descricao, acao, icone: Icone = Inbox, nivelTitulo = 2 }: Props) {
   const Titulo = nivelTitulo === 3 ? 'h3' : 'h2'
   return <Card className={styles.vazio}>
-    <CardHeader className={styles.vazioCabecalho}>
-      <span className={styles.vazioIcone}><Icone size={22} aria-hidden="true" /></span>
-      <div>
+    <div className={styles.vazioCabecalho}>
+      <span className={styles.vazioIcone}><Icone size={18} aria-hidden="true" /></span>
+      <div className={styles.vazioTexto}>
         <CardTitle className={styles.vazioTitulo}><Titulo>{titulo}</Titulo></CardTitle>
         <CardDescription className={styles.vazioDescricao}>{descricao}</CardDescription>
       </div>
-    </CardHeader>
-    {acao ? <CardFooter className={styles.vazioRodape}>
+    </div>
+    {acao ? <div className={styles.vazioAcao}>
       {acao.tipo === 'submit' ? <Button type="submit" name={acao.name} value={acao.value} variant={acao.variante} disabled={acao.desabilitada}>
         {acao.rotulo}
       </Button> : acao.href !== undefined ? <Button asChild variant={acao.variante}>
@@ -37,6 +37,6 @@ export function EstadoVazio({ titulo, descricao, acao, icone: Icone = Inbox, niv
       </Button> : <Button type="button" variant={acao.variante} onClick={acao.aoAcionar} disabled={acao.desabilitada}>
         {acao.rotulo}
       </Button>}
-    </CardFooter> : null}
+    </div> : null}
   </Card>
 }

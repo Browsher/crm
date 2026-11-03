@@ -55,11 +55,11 @@ test('layout não renderiza conteúdo se guarda recusa acesso', async () => {
 })
 
 
-test('falha de consulta usa alerta e zero empresas usa Card com ação no rodapé', async () => {
+test('falha de consulta usa alerta e zero empresas usa faixa com ação de recuperação', async () => {
   const vazio = renderToStaticMarkup(await PaginaEmpresas({ searchParams: Promise.resolve({}) }))
   expect(vazio).toContain('Nenhuma empresa encontrada')
   expect(vazio).not.toContain('/empresas/importar')
-  expect(vazio).toMatch(/data-slot="card-footer"[\s\S]*href="\/empresas"/)
+  expect(vazio).toMatch(/data-slot="card"[\s\S]*href="\/empresas"/)
   vi.mocked(listarEmpresas).mockResolvedValue({ ok: false, motivo: 'sem_permissao' })
   const falha = renderToStaticMarkup(await PaginaEmpresas({ searchParams: Promise.resolve({}) }))
   expect(falha).toContain('data-slot="alert"')

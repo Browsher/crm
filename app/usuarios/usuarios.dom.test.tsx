@@ -64,14 +64,14 @@ test('pendência bloqueia botões e Escape; nova senha aguarda confirmação e f
   await clicar('Copiar senha');expect(document.querySelector('[role=status]')?.textContent).toContain('manualmente');expect(document.querySelector('code')?.textContent).toBe('Nova-secreta')
 })
 
-test('resultado vazio oferece recuperação no rodapé e filtros possuem região nomeada', async () => {
+test('resultado vazio oferece recuperação na faixa e filtros possuem região nomeada', async () => {
   await montar()
   expect(document.querySelector('section[aria-label="Filtros de usuários"]')).not.toBeNull()
   await preencher('busca', 'sem resultado')
   const titulo = [...document.querySelectorAll('h2')].find(h => h.textContent === 'Nenhum usuário encontrado')!
   const card = titulo.closest('[data-slot=card]')!
   expect(card).not.toBeNull()
-  await clicar('Limpar filtros', card.querySelector('[data-slot=card-footer]')!)
+  await clicar('Limpar filtros', card)
   expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
 })
 

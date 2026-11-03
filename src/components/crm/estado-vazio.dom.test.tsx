@@ -22,7 +22,7 @@ test('estado vazio usa card e ação semântica sem elementos interativos aninha
   await act(async () => root.render(<EstadoVazio titulo="Sua carteira está vazia" descricao="Assuma uma empresa da fila para começar." acao={{ rotulo: 'Puxar a próxima empresa', href: '/fila' }} />))
   const link = host.querySelector('a[href="/fila"]')
   expect(link?.getAttribute('data-slot')).toBe('button')
-  expect(link?.closest('[data-slot="card-footer"]')).not.toBeNull()
+  expect(host.querySelector('[data-slot="card-footer"]')).toBeNull()
   expect(link?.closest('[data-slot="card"]')).not.toBeNull()
   expect(link?.textContent).toBe('Puxar a próxima empresa')
   expect(host.querySelector('a button, button a')).toBeNull()
@@ -56,7 +56,7 @@ test('sem ação conserva texto longo completo e dispensa rodapé vazio', async 
 })
 
 
-test('ação submit preserva submitter nativo, campos e bloqueio no rodapé', async () => {
+test('ação submit preserva submitter nativo, campos e bloqueio na faixa', async () => {
   let envio: FormData | null = null
   let origem: HTMLElement | null = null
   const renderizar = (desabilitada = false) => <form onSubmit={evento => {
@@ -72,7 +72,7 @@ test('ação submit preserva submitter nativo, campos e bloqueio no rodapé', as
   await act(async () => root.render(renderizar()))
   const botao = host.querySelector('button')!
   expect(botao.type).toBe('submit')
-  expect(botao.closest('[data-slot="card-footer"]')).not.toBeNull()
+  expect(botao.closest('[data-slot="card"]')).not.toBeNull()
   expect(host.querySelectorAll('form')).toHaveLength(1)
   await act(async () => botao.click())
   expect(origem).toBe(botao)
