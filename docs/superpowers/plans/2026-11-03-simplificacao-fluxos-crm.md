@@ -99,12 +99,13 @@
 
 **Files:** app/fila/google/{page,planejamento,criterios,espelhar,entregas,[id]/page}.tsx; guarda compartilhada mínima em lib/componentes se necessária; testes existentes e E2E google-planejamento.
 **Interfaces:** histórico com aba=entregas e mesma semana; baseline de edição capturado na abertura; controller recebe dirty/pending dos filhos.
-- [ ] Red: caminho visível Empresas recebidas e histórico; ida/volta/paginação mantêm semana.
-- [ ] Red: fechar intocado não pergunta; editar/Cancelar/Escape/fora/Voltar exige decisão; continuar mantém campos; descartar não grava; pending bloqueia fechamento.
-- [ ] Proteger links internos e histórico do navegador seguindo a guarda existente da ficha, sem guarda global indiscriminada.
-- [ ] Aplicar critérios atualiza apenas rascunho semanal; erro conserva seleções; espelhamento enviado não é anunciado como cancelado.
-- [ ] Green: DOM e E2E com mocks de Sheets/Google, sem integração externa.
-- [ ] Revisão separada e commit.
+- [x] Red: caminho visível Empresas recebidas e histórico; ida/volta/paginação mantêm semana.
+- [x] Red: fechar intocado não pergunta; editar/Cancelar/Escape/fora/Voltar exige decisão; continuar mantém campos; descartar não grava; pending bloqueia fechamento.
+- [x] Proteger links internos e histórico do navegador seguindo a guarda existente da ficha, sem guarda global indiscriminada.
+- [x] Aplicar critérios atualiza apenas rascunho semanal; erro conserva seleções; espelhamento enviado não é anunciado como cancelado.
+- [x] Green: DOM e E2E com mocks de Sheets/Google, sem integração externa.
+- [x] Revisão separada e commit.
+- [x] Reutilizar marca de proteção id+URL após reload/Forward sem empilhar; Chromium comprova retorno à semana anterior após descartar novo rascunho.
 
 ## Task 6: Arquivo gerencial, grupos e retorno contextual
 
