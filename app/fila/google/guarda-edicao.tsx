@@ -10,6 +10,13 @@ export type Edicao = { alterado: boolean; pendente: boolean; fechar: () => void 
 export type InformarEdicao = (edicao: Edicao | null) => void
 type Destino = 'semana' | 'dialogo' | 'voltar' | { href: string }
 
+function marcaDaEntrada(estado: unknown, href: string) {
+  if (!estado || typeof estado !== 'object' || !('__edicaoGoogle' in estado)) return null
+  const marca = estado.__edicaoGoogle
+  if (!marca || typeof marca !== 'object' || !('id' in marca) || !('href' in marca)) return null
+  return typeof marca.id === 'string' && marca.href === href ? marca.id : null
+}
+
 export function useGuardaEdicao(semana: Edicao | null, dialogo: Edicao | null) {
   const router = useRouter()
   const [destino, setDestino] = useState<Destino | null>(null)
@@ -25,9 +32,16 @@ export function useGuardaEdicao(semana: Edicao | null, dialogo: Edicao | null) {
   const frame = useRef<number | null>(null)
 
   function armar() {
-    const marca = sentinela.current ?? crypto.randomUUID()
-    sentinela.current = marca
-    history.pushState({ ...history.state, __edicaoGoogle: marca }, '', location.href)
+    const href = location.href
+    const restaurada = marcaDaEntrada(history.state, href)
+    if (restaurada) {
+      // Reload e Avançar podem restaurar a entrada depois de perdermos a ref.
+      sentinela.current = restaurada
+      return
+    }
+    const id = sentinela.current ?? crypto.randomUUID()
+    sentinela.current = id
+    history.pushState({ ...history.state, __edicaoGoogle: { id, href } }, '', href)
   }
 
   function retirar() {
@@ -82,7 +96,7 @@ export function useGuardaEdicao(semana: Edicao | null, dialogo: Edicao | null) {
         }
         return
       }
-      if (!sentinela.current || evento.state?.__edicaoGoogle === sentinela.current) return
+      if (!sentinela.current || marcaDaEntrada(evento.state, location.href) === sentinela.current) return
       armar()
       pedir('voltar')
     }

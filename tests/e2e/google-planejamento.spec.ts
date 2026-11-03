@@ -435,3 +435,49 @@ test('espelhamento conserva seleções no erro e bloqueia fechar e voltar durant
   expect(await banco.sql('SELECT nicho,bairro,cidade,uf FROM google_planejamento WHERE vendedor_id=$1 AND dia=$2', [usuario.id, semana]))
     .toEqual([{ nicho: 'Papelarias da origem', bairro: 'Centro', cidade: 'Campinas', uf: 'SP' }])
 })
+
+for (const restauracao of ['recarregar', 'avançar'] as const) {
+  test(`Back descarta e volta à semana anterior após ${restauracao} em uma entrada protegida`, async ({ page }) => {
+    const data = new Date(hojeEmSaoPaulo() + 'T12:00:00Z')
+    data.setUTCDate(data.getUTCDate() + 35)
+    const anterior = '/fila/google?semana=' + semanaDe(data.toISOString().slice(0, 10))![0]
+    await entrar(page, 'redesigne2e')
+    await page.goto(anterior)
+    const proxima = page.getByRole('link', { name: 'Próxima semana', exact: true })
+    const planejamento = (await proxima.getAttribute('href'))!
+    await proxima.click()
+    await expect(page).toHaveURL(planejamento)
+
+    const editar = page.getByRole('button', { name: 'Editar planejamento', exact: true })
+    const nicho = page.getByRole('textbox', { name: /^Nicho de segunda-feira/ })
+    const confirmacao = page.getByRole('dialog', { name: 'Descartar alterações?' })
+    const descartar = confirmacao.getByRole('button', { name: 'Descartar alterações', exact: true })
+    await editar.click()
+    await nicho.fill('Rascunho antes da restauração')
+    if (restauracao === 'recarregar') {
+      const aviso = page.waitForEvent('dialog')
+      const recarga = page.reload()
+      const dialogo = await aviso
+      await dialogo.accept()
+      expect(dialogo.type()).toBe('beforeunload')
+      await recarga
+    } else {
+      await page.goBack()
+      await descartar.click()
+      await expect(page).toHaveURL(anterior)
+      await page.goForward()
+      await expect(page).toHaveURL(planejamento)
+      await page.goForward()
+    }
+
+    await expect(page).toHaveURL(planejamento)
+    await editar.click()
+    await expect(nicho).toHaveValue('')
+    await nicho.fill('Rascunho depois da restauração')
+    await page.goBack()
+    await expect(confirmacao).toBeVisible()
+    await descartar.click()
+    await expect(page).toHaveURL(anterior)
+    await expect(nicho).toHaveCount(0)
+  })
+}
