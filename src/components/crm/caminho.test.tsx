@@ -81,3 +81,17 @@ test.each([['retorno duplicado', [arquivo, arquivo]], ['retorno inválido', ['ht
     }
   },
 )
+
+test.each([
+  ['/fila/sem-interesse', '', 'Sem interesse', undefined],
+  ['/fila/localizar', 'disponibilidade=sem_interesse', 'Sem interesse', '/fila/localizar'],
+  ['/fila/atendimento/id-privado', 'disponibilidade=sem_interesse&pagina=2', 'Atendimento', '/fila/localizar?disponibilidade=sem_interesse&amp;pagina=2&amp;pesquisado=1'],
+] as const)('mostra a trilha da consulta e do atendimento em %s', (atual, query, rotulo, retorno) => {
+  rota.atual = atual
+  rota.query = new URLSearchParams(query)
+  try {
+    const html = renderToStaticMarkup(<CaminhoCrm area="fila" titulo="Prospecção" />)
+    expect(html).toContain(`aria-current="page">${rotulo}</span>`)
+    if (retorno) expect(html).toContain(`href="${retorno}"`)
+  } finally { rota.query = new URLSearchParams() }
+})

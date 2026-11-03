@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { lerRetornoGestor, urlRetornoGestor } from '@/src/lib/retorno-gestor'
+import { CAMPOS_PESSOAIS, lerFiltrosPessoais, urlPessoal } from '@/src/lib/prospeccao-pessoal'
+import { lerRecorteUsuarios, urlUsuarios } from '@/src/lib/recorte-usuarios'
 import styles from './shell.module.css'
 
 type Nivel = { nome: string; href?: string }
@@ -24,7 +26,6 @@ const subpaginas: { rota: RegExp; niveis: Nivel[] }[] = [
   { rota: fichaEmpresa, niveis: [nivelFicha] },
   { rota: /^\/usuarios\/vendedores\/[^/]+$/, niveis: [{ nome: 'Perfil do vendedor' }] },
   { rota: /^\/carteira\/[^/]+$/, niveis: [{ nome: 'Ficha da empresa' }] },
-  { rota: /^\/fila\/localizar$/, niveis: [{ nome: 'Localizar empresas' }] },
   { rota: /^\/fila\/localizar\/[^/]+$/, niveis: [{ nome: 'Localizar empresa', href: '/fila/localizar' }, { nome: 'Perfil da empresa' }] },
 ]
 
@@ -32,11 +33,40 @@ export function CaminhoCrm({ area, titulo }: { area: string; titulo: string }) {
   const pathname = usePathname()
   const rota = pathname?.replace(/\/$/, '') ?? `/${area}`
   const subpagina = rota.startsWith(`/${area}/`) ? subpaginas.find(item => item.rota.test(rota)) : undefined
+  if (area === 'fila' && (rota === '/fila/localizar' || rota === '/fila/sem-interesse' || /^\/fila\/atendimento\/[^/]+$/.test(rota))) {
+    return <CaminhoProspeccao rota={rota} titulo={titulo} />
+  }
   const extras = subpagina?.niveis ?? []
   const niveis = [{ nome: 'CRM', href: '/' }, { nome: titulo, href: extras.length ? `/${area}` : undefined }, ...extras]
   if (subpagina?.rota === detalheGrupo || subpagina?.rota === fichaEmpresa) {
     return <CaminhoArquivo niveis={niveis} ficha={subpagina.rota === fichaEmpresa} />
   }
+  if (area === 'usuarios' && extras.length) return <CaminhoPerfil niveis={niveis} />
+  return <Trilha niveis={niveis} />
+}
+
+function CaminhoPerfil({ niveis }: { niveis: Nivel[] }) {
+  const query = new URLSearchParams(useSearchParams())
+  return <Trilha niveis={[niveis[0], { ...niveis[1], href: urlUsuarios(lerRecorteUsuarios(query, true)) }, ...niveis.slice(2)]} />
+}
+
+function CaminhoProspeccao({ rota, titulo }: { rota: string; titulo: string }) {
+  const query = useSearchParams()
+  const consulta = Object.fromEntries(CAMPOS_PESSOAIS.flatMap(campo => {
+    const valores = query.getAll(campo)
+    return valores.length ? [[campo, valores.length === 1 ? valores[0] : valores]] : []
+  }))
+  const lidos = lerFiltrosPessoais(consulta)
+  const filtros = lidos.ok ? lidos.filtros : {}
+  const semInteresse = rota === '/fila/sem-interesse' || filtros.disponibilidade === 'sem_interesse'
+  const atendimento = rota.startsWith('/fila/atendimento/')
+  const niveis: Nivel[] = [{ nome: 'CRM', href: '/' }, { nome: titulo, href: '/fila' }]
+  if (semInteresse) niveis.push({ nome: 'Localizar empresas', href: '/fila/localizar' })
+  niveis.push({
+    nome: semInteresse ? 'Sem interesse' : 'Localizar empresas',
+    href: atendimento ? urlPessoal(filtros, Number(filtros.pagina || 1), true) : undefined,
+  })
+  if (atendimento) niveis.push({ nome: 'Atendimento' })
   return <Trilha niveis={niveis} />
 }
 

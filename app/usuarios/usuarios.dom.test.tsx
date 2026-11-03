@@ -16,7 +16,13 @@ vi.mock('./acoes', () => ({criarUsuarioAcao:vi.fn(),agirNaLinhaAcao:vi.fn()}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
-afterEach(async () => { if(root) await act(async () => root.unmount()); host?.remove(); vi.resetAllMocks() })
+afterEach(async () => {
+  if (root) await act(async () => root.unmount())
+  host?.remove()
+  await new Promise(resolve => setTimeout(resolve, 25))
+  history.replaceState(null, '', '/')
+  vi.resetAllMocks()
+})
 async function montar() { host=document.createElement('div');document.body.append(host);root=createRoot(host);const page=await PaginaUsuarios();await act(async () => root.render(page)) }
 function botao(nome:string, base:ParentNode=document) { const b=[...base.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent===nome);expect(b,`botão ${nome}`).toBeTruthy();return b! }
 async function clicar(nome:string,base:ParentNode=document) { await act(async()=>botao(nome,base).click());await act(async()=>{await new Promise(r=>setTimeout(r,0))}) }
@@ -39,8 +45,11 @@ test('lista combina busca e filtros, limpa resultado vazio e não oferece açõe
 test('criação preserva campos no erro, mostra senha, copia e descarta ao fechar',async()=>{
   await montar();await clicar('Novo usuário');await preencher('nome','Daniel');await preencher('email','daniel@teste.local')
   expect(document.querySelector<HTMLInputElement>('input[value=vendedor]')?.checked).toBe(true)
+  const gestor = document.querySelector<HTMLInputElement>('input[value=gestor]')!
+  await act(async () => gestor.click())
   vi.mocked(criarUsuarioAcao).mockResolvedValueOnce({erro:'E-mail em uso.',criado:null}).mockResolvedValueOnce({erro:null,criado:{nome:'Daniel',senhaProvisoria:'Segredo-temporario'}})
   await enviar();expect(document.querySelector('[role=alert]')?.textContent).toContain('E-mail em uso');expect(document.querySelector<HTMLInputElement>('input[name=nome]')?.value).toBe('Daniel')
+  expect(gestor.checked).toBe(true)
   const copiar=vi.fn().mockResolvedValue(undefined);Object.defineProperty(navigator,'clipboard',{value:{writeText:copiar},configurable:true})
   await enviar();expect(document.querySelector('[role=dialog] code')?.textContent).toBe('Segredo-temporario')
   await clicar('Copiar senha');expect(copiar).toHaveBeenCalledWith('Segredo-temporario');expect(document.querySelector('[role=status]')?.textContent).toContain('copiada')
@@ -84,4 +93,40 @@ test('papel continua radio nativo acessível e segue no formulário enviado', as
   expect(gestor.checked).toBe(true)
   expect(new FormData(document.querySelector('[role=dialog] form') as HTMLFormElement).get('papel')).toBe('gestor')
   await clicar('Cancelar')
+})
+
+test('aplica a URL da lista e transporta somente os três filtros e a página ao perfil', async () => {
+  host = document.createElement('div')
+  document.body.append(host)
+  root = createRoot(host)
+  history.replaceState(null, '', '/usuarios?busca=Bruno&papel=vendedor&situacao=ativos&pagina=1')
+  const pagina = await PaginaUsuarios({ searchParams: Promise.resolve({
+    busca: 'Bruno', papel: 'vendedor', situacao: 'ativos', pagina: '1', senha: 'fora-do-recorte', acao: 'nova_senha',
+  }) })
+  await act(async () => root.render(pagina))
+  expect(document.querySelectorAll('tbody tr')).toHaveLength(1)
+  const perfil = new URL(linha('Bruno').querySelector('a')!.href)
+  expect(Object.fromEntries(perfil.searchParams)).toEqual({ busca: 'Bruno', papel: 'vendedor', situacao: 'ativos' })
+  await selecionar('situacao', 'inativos')
+  expect(new URLSearchParams(location.search).get('situacao')).toBe('inativos')
+  expect(document.querySelectorAll('tbody tr')).toHaveLength(0)
+  history.replaceState(null, '', '/')
+})
+
+test.each(['Cancelar', 'Fechar', 'Escape'])('criação alterada pede confirmação ao usar %s', async (modo) => {
+  await montar()
+  await clicar('Novo usuário')
+  await preencher('nome', 'Alteração local')
+  if (modo === 'Escape') {
+    await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  } else if (modo === 'Fechar') {
+    const fechar = document.querySelector<HTMLButtonElement>('[role=dialog] button[aria-label=Fechar]')!
+    await act(async () => fechar.click())
+  } else await clicar(modo)
+  expect(document.body.textContent).toContain('Descartar alterações?')
+  await clicar('Continuar editando')
+  expect(document.querySelector<HTMLInputElement>('input[name=nome]')?.value).toBe('Alteração local')
+  await preencher('nome', '')
+  await clicar('Cancelar')
+  expect(document.querySelector('[role=dialog]')).toBeNull()
 })

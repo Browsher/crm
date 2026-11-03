@@ -15,7 +15,7 @@ test('gestor administra usuário em diálogos, combina filtros e mantém foco ap
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/gestao')
-  await page.goto('/usuarios')
+  await page.goto('/usuarios?busca=gestore2e')
   const minhaConta = page.getByRole('row').filter({ has: page.getByText('gestore2e@teste.local', { exact: true }) })
   const contaSemelhante = page.getByRole('row').filter({ has: page.getByText('visualgestore2e@teste.local', { exact: true }) })
   await expect(contaSemelhante).toHaveCount(1)
@@ -115,7 +115,7 @@ test('perfil do vendedor usa cards e hierarquia de seção do design system', as
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/gestao')
-  await page.goto('/usuarios')
+  await page.goto('/usuarios?busca=redesigne2e')
   const linha = page.locator('tbody tr').filter({ hasText: 'redesigne2e@teste.local' })
   await linha.getByRole('link', { name: /Ver perfil/ }).click()
   await expect(page.getByRole('heading', { name: 'Empresas do vendedor', exact: true })).toHaveCSS('font-size', '18px')
@@ -172,6 +172,9 @@ test('controles e radios conservam alvos de toque em tela larga', async ({ brows
       await expect(dialogo.getByRole('radio', { name: 'Gestor', exact: true })).toBeFocused()
       await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-8-captures/toque-1280-${tema}.png`, animations: 'disabled' })
       await page.keyboard.press('Escape')
+      const descarte = page.getByRole('dialog', { name: 'Descartar alterações?' })
+      await expect(descarte).toBeVisible()
+      await descarte.getByRole('button', { name: 'Descartar alterações', exact: true }).click()
       await expect(page.getByRole('button', { name: 'Novo usuário', exact: true })).toBeFocused()
     }
   } finally { await contexto.close() }

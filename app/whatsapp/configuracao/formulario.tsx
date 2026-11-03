@@ -1,6 +1,7 @@
 'use client'
 
-import { startTransition, useActionState } from 'react'
+import { startTransition, useActionState, useState } from 'react'
+import { useDescarteEdicao } from '@/src/components/crm/descarte-edicao'
 import { Alert } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -15,26 +16,39 @@ function Retorno({ estado }: { estado: EstadoVinculo }) {
 }
 
 export function FormularioVinculo({ vendedores }: { vendedores: { id: string; nome: string }[] }) {
-  const [estado, acao, pendente] = useActionState(salvarVinculoAcao, inicial)
+  const [salvo, setSalvo] = useState({ vendedorId: '', instancia: '' })
+  const [valores, setValores] = useState(salvo)
+  const [estado, acao, pendente] = useActionState(async (anterior: EstadoVinculo, dados: FormData) => {
+    const resultado = await salvarVinculoAcao(anterior, dados)
+    if (resultado.sucesso) setSalvo(valores)
+    return resultado
+  }, inicial)
   const desabilitado = pendente || vendedores.length === 0
-  return <form action={acao} className={styles.formulario} onSubmit={e => {
+  const alterado = salvo.vendedorId !== valores.vendedorId || salvo.instancia !== valores.instancia
+  const { pedir, confirmacao } = useDescarteEdicao(alterado, pendente)
+  const cancelar = () => pedir(() => setValores(salvo))
+  return <><form action={acao} className={styles.formulario} onKeyDown={e => {
+    if (alterado && e.key === 'Escape') { e.preventDefault(); cancelar() }
+  }} onSubmit={e => {
     // O reset automático das actions apagaria os campos mesmo em uma falha recuperável.
     e.preventDefault()
     const dados = new FormData(e.currentTarget)
     startTransition(() => acao(dados))
   }}>
     <label htmlFor="vinculo-vendedor">Vendedor ativo</label>
-    <NativeSelect id="vinculo-vendedor" name="vendedorId" required disabled={desabilitado} defaultValue="">
+    <NativeSelect id="vinculo-vendedor" name="vendedorId" required disabled={desabilitado} value={valores.vendedorId} onChange={e => setValores({ ...valores, vendedorId: e.target.value })}>
       <option value="">Selecione um vendedor</option>
       {vendedores.map(vendedor => <option key={vendedor.id} value={vendedor.id}>{vendedor.nome}</option>)}
     </NativeSelect>
     {vendedores.length === 0 && <p>Nenhum vendedor ativo. Cadastre ou reative um vendedor em Usuários.</p>}
     <label htmlFor="vinculo-instancia">Nome exato da instância existente</label>
-    <Input id="vinculo-instancia" name="instancia" required maxLength={100} disabled={desabilitado} autoComplete="off" aria-describedby="vinculo-ajuda" />
+    <Input id="vinculo-instancia" name="instancia" required maxLength={100} disabled={desabilitado} autoComplete="off" aria-describedby="vinculo-ajuda"
+      value={valores.instancia} onChange={e => setValores({ ...valores, instancia: e.target.value })} />
     <p id="vinculo-ajuda">Se o vendedor já tiver uma instância, salvar substitui o vínculo anterior. Uma instância só pode pertencer a um vendedor.</p>
     <Retorno estado={estado} />
+    {alterado && <Button type="button" variant="outline" disabled={pendente} onClick={cancelar}>Cancelar</Button>}
     <Button type="submit" disabled={desabilitado}>{pendente ? 'Validando e salvando…' : 'Salvar ou substituir vínculo'}</Button>
-  </form>
+  </form>{confirmacao}</>
 }
 
 export function FormularioRemover({ id, nome }: { id: string; nome: string }) {

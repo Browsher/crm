@@ -1,5 +1,7 @@
 'use client'
 import { useActionState, useEffect } from 'react'
+import { RESULTADO_INCERTO } from '@/src/lib/edicao-administrativa'
+import { useDescarteEdicao } from '@/src/components/crm/descarte-edicao'
 import type { Acao, Usuario } from '@/src/features/usuarios/regras'
 import { Button } from '@/src/components/ui/button'
 import { Alert } from '@/src/components/ui/alert'
@@ -24,11 +26,14 @@ export function ConfirmarAcao({ usuario, tipo, fechar, informarPendencia, devolv
     try {
       const resultado = await agirNaLinhaAcao(anterior, form)
       return { ...resultado, concluido: !resultado.erro && !resultado.senhaProvisoria }
+    } catch {
+      return { ...inicial, erro: RESULTADO_INCERTO, incerto: true }
     } finally { informarPendencia(false) }
   }, inicial)
   // A resposta e a lista revalidada precisam ser aplicadas antes de restaurar
   // o foco: o acionador pode desaparecer quando a ação muda um filtro ativo.
-  useEffect(() => { if (estado.concluido) fechar() }, [estado.concluido, fechar])
+  useEffect(() => { if (estado.concluido && !estado.aviso) fechar() }, [estado.concluido, estado.aviso, fechar])
+  useDescarteEdicao(false, pendente)
   const descricao: Record<Acao, string> = {
     nova_senha: 'A senha anterior e as sessões desta pessoa serão invalidadas. Entregue a nova senha após confirmar.',
     mudar_papel: usuario.papel === 'gestor' ? 'Esta pessoa perderá o acesso à administração.' : 'Esta pessoa poderá administrar usuários e empresas.',
@@ -38,12 +43,13 @@ export function ConfirmarAcao({ usuario, tipo, fechar, informarPendencia, devolv
     onCloseAutoFocus={e => { e.preventDefault(); devolverFoco() }}
     onEscapeKeyDown={e => { if (pendente) e.preventDefault() }} onPointerDownOutside={e => { if (pendente) e.preventDefault() }}>
     <DialogHeader><DialogTitle>{ROTULO[tipo](usuario)}: {usuario.nome}</DialogTitle><DialogDescription>{descricao[tipo]}</DialogDescription></DialogHeader>
+    {estado.aviso && <Alert role="status">{estado.aviso}</Alert>}
     {estado.senhaProvisoria ? <SenhaProvisoria nome={usuario.nome} senha={estado.senhaProvisoria} concluir={fechar} /> :
-      <form action={acao} className={styles.formulario}>
+      estado.concluido ? <DialogFooter><Button type="button" onClick={fechar}>Concluir</Button></DialogFooter> : <form action={acao} className={styles.formulario}>
         <input type="hidden" name="id" value={usuario.id} /><input type="hidden" name="acao" value={tipo} />
         {tipo === 'mudar_papel' && <input type="hidden" name="papel" value={usuario.papel === 'gestor' ? 'vendedor' : 'gestor'} />}
         {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
-        <DialogFooter><Button type="button" variant="outline" disabled={pendente} onClick={fechar}>Cancelar</Button><Button type="submit" disabled={pendente}>{pendente ? 'Confirmando…' : 'Confirmar'}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="outline" disabled={pendente} onClick={fechar}>Cancelar</Button><Button type="submit" disabled={pendente || estado.incerto}>{pendente ? 'Confirmando…' : 'Confirmar'}</Button></DialogFooter>
       </form>}
   </DialogContent>
 }
