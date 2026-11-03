@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { acoesDe, gestorUnico, type Usuario, type Acao } from '@/src/features/usuarios/regras'
 import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
@@ -19,15 +20,21 @@ import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@
 import { lerRecorteUsuarios, urlPerfilUsuario, urlUsuarios, USUARIOS_POR_PAGINA, type RecorteUsuarios } from '@/src/lib/recorte-usuarios'
 
 export function TabelaUsuarios({ lista, euId, inicial }: { lista: Usuario[]; euId: string; inicial: RecorteUsuarios }) {
+  const consulta = useSearchParams().toString()
   const [recorte, setRecorte] = useState(inicial)
   const { busca, papel, situacao } = recorte
   useEffect(() => {
-    const restaurar = () => {
-      if (location.pathname === '/usuarios') setRecorte(lerRecorteUsuarios(new URLSearchParams(location.search)))
-    }
-    window.addEventListener('popstate', restaurar)
-    return () => window.removeEventListener('popstate', restaurar)
-  }, [])
+    // O Next também observa os updates locais do histórico. Só aplique a
+    // consulta depois de ela coincidir com o endereço confirmado no navegador.
+    const quadro = requestAnimationFrame(() => {
+      const atual = new URLSearchParams(location.search)
+      if (location.pathname !== '/usuarios' || atual.toString() !== consulta) return
+      const novo = lerRecorteUsuarios(atual)
+      // O recorte pode ter espaços de uma edição que ainda está em curso.
+      setRecorte(anterior => urlUsuarios(anterior) === urlUsuarios(novo) ? anterior : novo)
+    })
+    return () => cancelAnimationFrame(quadro)
+  }, [consulta])
   const [selecao, setSelecao] = useState<{ usuario: Usuario; tipo: Acao } | null>(null)
   const [pendente, setPendente] = useState(false)
   const acionador = useRef<HTMLButtonElement | null>(null)

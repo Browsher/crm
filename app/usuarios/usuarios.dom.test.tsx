@@ -13,6 +13,7 @@ const lista: Usuario[] = [
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: vi.fn(async () => ({usuarioId:'ana',nome:'Ana',papel:'gestor'})) }))
 vi.mock('@/src/features/usuarios/repositorio', () => ({ repositorioPostgres: () => ({listar:async () => lista}) }))
 vi.mock('./acoes', () => ({criarUsuarioAcao:vi.fn(),agirNaLinhaAcao:vi.fn()}))
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(location.search) }))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
