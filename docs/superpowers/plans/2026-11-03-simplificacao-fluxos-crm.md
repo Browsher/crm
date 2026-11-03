@@ -135,14 +135,15 @@
 ## Task 8: Usuários, autenticação e controles comuns
 
 **Files:** app/usuarios/{page,tabela,vendedores/[id]/page}.tsx; src/components/crm/{shell,caminho}.tsx; app/trocar-senha/{page,formulario}.tsx; logout se reprodução exigir; administrativos de grupos/limites somente conforme reproduções.
-- [ ] Red: filtros de usuários entram na URL e voltam do perfil/paginação/reload; não transportar senha provisória nem seleção administrativa.
-- [ ] Implementar breadcrumbs de atendimento/consulta Sem interesse e contexto gerencial da Task6.
-- [ ] Como melhoria de UX autorizada pelo pedido atual, oferecer Trocar senha no shell; Sair POST na troca obrigatória; Voltar ao CRM somente na voluntária. Preservar guardas/sucesso em /.
-- [ ] Reproduzir C04/G09/G10 isoladamente (lento, falha antes da escrita e resposta perdida). Corrigir se reproduzido, sem anunciar hipótese como bug nem incentivar repetição de mutação desconhecida.
-- [ ] Proteger alterações não salvas também nos editores administrativos relevantes (usuários, metadados de grupos, limite, vínculo WhatsApp), preservando bloqueio pending existente. Guardar só intenção/estado em memória para senha; nunca persistir segredos.
-- [ ] Auditar C05/C06 pelos consumidores; não mudar tipo padrão de todos os Button ou travas sem evidência de falha.
-- [ ] Green: DOM shell/caminho/usuários/auth/admin, integrações de autorização e jornadas em contas fictícias.
-- [ ] Revisão separada e commit.
+- [x] Red: filtros de usuários entram na URL e voltam do perfil/paginação/reload; não transportar senha provisória nem seleção administrativa.
+- [x] Implementar breadcrumbs de atendimento/consulta Sem interesse e contexto gerencial da Task6.
+- [x] Como melhoria de UX autorizada pelo pedido atual, oferecer Trocar senha no shell; Sair POST na troca obrigatória; Voltar ao CRM somente na voluntária. Preservar guardas/sucesso em /.
+- [x] Reproduzir C04/G09/G10 isoladamente (lento, falha antes da escrita e resposta perdida). Corrigir se reproduzido, sem anunciar hipótese como bug nem incentivar repetição de mutação desconhecida.
+- [x] Proteger alterações não salvas também nos editores administrativos relevantes (usuários, metadados de grupos, limite, vínculo WhatsApp), preservando bloqueio pending existente. Guardar só intenção/estado em memória para senha; nunca persistir segredos.
+- [x] Auditar C05/C06 pelos consumidores; não mudar tipo padrão de todos os Button ou travas sem evidência de falha.
+- [x] Green: DOM shell/caminho/usuários/auth/admin, integrações de autorização e jornadas em contas fictícias.
+- [x] Revisão separada e commit.
+- [x] Classificar C04/G09/G10 por reprodução isolada; C05/C06 sem submissão/duplicação indevida demonstrada, preservar padrão global.
 
 ## Task 9: Validação integrada e entrega
 
