@@ -1,6 +1,7 @@
 # Simplificação dos avisos e dos destinos das ações do CRM
 
-Data: 03/11/2026. Estado: proposta para aprovação, sem implementação.
+Data: 03/11/2026. Estado: escopo corrigido pelo usuário; mockups em avaliação,
+sem implementação do produto. Revisão dos botões ampliada a todo o CRM.
 
 ## Pedido e intenção
 
@@ -46,10 +47,24 @@ continua pendente; não se afirma que todos os botões foram testados.
 
 ## 1. Sem interesse dentro de Localizar empresas
 
-Proposta: usar uma única consulta, com o filtro Disponibilidade visível junto
-aos filtros principais de Localizar empresas. Manter as opções existentes
-Todas, A contatar, Em atendimento e Sem interesse. Nome, CNPJ, nicho, bairro,
-origem e paginação continuam combináveis com esse filtro.
+Decisão explícita do usuário após a primeira proposta: o acesso deve estar
+no seletor **Origem das empresas**, dentro do bloco **Localizar empresas** na
+central `/fila`. As opções são Google e banco de empresas, Buscas no Google,
+Banco de empresas e **Sem interesse**. Não promover Disponibilidade a um novo
+filtro principal como sugerido anteriormente.
+
+Selecionar Sem interesse e clicar Localizar empresas abre a consulta das
+empresas sem interesse do vendedor, independentemente de terem vindo do
+Google ou do banco. Nome, CNPJ, nicho, bairro e paginação continuam disponíveis.
+Na consulta, mostrar qual seleção está ativa e preservá-la ao filtrar,
+paginar e voltar do atendimento.
+
+Sem interesse é uma situação comercial, não uma origem de dados. A nova opção
+do seletor é apresentação: converter a seleção em
+`disponibilidade=sem_interesse`, sem restringir origem, na fronteira da rota.
+Não inserir `sem_interesse` como origem de empresa no domínio ou no banco.
+O plano pode escolher a codificação do valor de apresentação e a normalização
+da URL; deve reaproveitar a validação e a consulta já existentes.
 
 Retirar o bloco Sem interesse da central de Prospecção e o card/alvo de
 arraste permanente do topo do Funil. O Funil preserva suas três etapas e o
@@ -73,18 +88,28 @@ O código de arquivamento do Funil conserva a persistência do comando pendente,
 o botão Confirmar envio anterior e os avisos de resultado. Remover o alvo de
 arraste não autoriza remover a proteção contra duplicação ou a recuperação.
 
-## 2. Estados vazios compactos
+## 2. Estados vazios compactos e alternativas visuais
 
-Proposta: mudar o componente compartilhado EstadoVazio para uma mensagem
-compacta com título, uma linha de orientação quando necessária e ação próxima
-ao texto. Sem altura mínima, rodapé separado ou ícone em caixa por padrão.
+O usuário pediu mockups antes da escolha visual. Há três alternativas para
+comparar nas abas Funil, Meu dia e Carteira: **Linha discreta**, com mensagem
+e link sem caixa; **Faixa compacta**, com ícone discreto e ação próxima; e
+**No próprio conteúdo**, com a orientação dentro da primeira coluna do Funil
+ou da região vazia da lista. Linha discreta é a recomendação do autor.
+Nenhuma das três foi escolhida pelo usuário ainda.
+
+Proposta sujeita à escolha: mudar o componente compartilhado EstadoVazio para
+uma mensagem compacta com título, uma linha de orientação quando necessária
+e ação próxima ao texto. Sem altura mínima, rodapé separado ou ícone em caixa
+por padrão.
 O espaço ocupado acompanha o conteúdo. Em celular, a ação pode passar para
 a linha seguinte. Temas claro/escuro usam os tokens existentes.
 
-No Funil vazio, mostrar somente uma orientação curta acima das colunas:
-"Nenhuma negociação aberta. Registre interesse ou combine um retorno para
-começar." e o link Ir para Prospecção. Não desenhar outro painel grande.
-Manter os títulos, contagens e mensagens locais das três etapas.
+No Funil vazio, a posição segue a alternativa escolhida: Linha discreta e
+Faixa compacta ficam acima das colunas; No próprio conteúdo fica dentro da
+primeira coluna, sem orientação global duplicada. Usar "Nenhuma negociação
+aberta. Registre interesse ou combine um retorno para começar." e a ação Ir
+para Prospecção. Não desenhar outro painel grande. Manter títulos e contagens
+das três etapas, com as mensagens locais que não dupliquem a orientação.
 
 Aplicar a composição compacta aos consumidores existentes de EstadoVazio,
 incluindo Carteira, Meu dia, Localizar, históricos e consultas do gestor.
@@ -136,6 +161,11 @@ Não introduzir navegação global obrigatória no componente compartilhado.
 
 ## 4. Verificação dos botões e critérios de aceite
 
+Pedido atualizado: revisar **todos os botões do CRM**, sem limitar a auditoria
+ao vendedor ou aos componentes visualmente alterados. Incluir links de ação,
+ícones acionáveis, selects, abas, filtros, paginação e voltar/cancelar/fechar.
+Inventariar por tela e ação distinta, sem repetir instâncias de um card.
+
 Além dos testes de regressão do que mudar, verificar as jornadas do vendedor:
 
 | Ação | Resultado que deve ser comprovado |
@@ -151,10 +181,22 @@ Além dos testes de regressão do que mudar, verificar as jornadas do vendedor:
 | Registrar atendimento ou nova venda na Carteira | Atualiza a ficha sem perder o contexto |
 | Cancelar, fechar e Voltar durante edição | Preservam ou pedem confirmação sobre os dados não salvos |
 
-Os botões de administração afetados pelo componente compartilhado também
-devem manter seus links e submits. A auditoria funcional profunda desta fatia
-é do fluxo comercial do vendedor; integrações externas não são disparadas
-apenas para testar um botão.
+Revisar também Gestão, Empresas ativas/arquivadas, grupos/listas, buscas e
+planejamento Google do gestor, Usuários, WhatsApp e sua configuração, login,
+troca de senha, sair, menu lateral/mobile, tema, breadcrumbs e diálogos comuns.
+Conferir para cada ação seu rótulo, efeito/destino, feedback, erro, trava de
+envio, preservação de contexto e necessidade de confirmação sobre alterações.
+
+Distinguir falha funcional confirmada no código, melhoria de UX proposta e
+comportamento que depende de execução. A revisão por leitura não comprova
+funcionamento no navegador. Não disparar integração paga nem alterar conta,
+usuário ou dado real só para testar um botão. Usar fixtures e ambiente isolado
+para os caminhos que escrevem.
+
+Os mapas de referência ficam em `docs/auditorias/2026-11-03-botoes-vendedor.md`,
+`docs/auditorias/2026-11-03-botoes-gestor.md` e
+`docs/auditorias/2026-11-03-botoes-comuns.md`. A consolidação deve indicar
+prioridade, evidência, cobertura e pendências para o chat que implementar.
 
 TDD: teste falhando primeiro para cada comportamento novo. Cobrir navegação
 após registro, ausência de navegação no erro, replay com situação alterada,
@@ -182,10 +224,13 @@ merge ou publicar sem a autorização correspondente.
 
 ## Decisões do autor para revisão do usuário
 
-- Filtro Disponibilidade visível, reunindo Sem interesse em Localizar.
+- Sem interesse dentro de Origem das empresas na central, conforme correção
+  explícita do usuário; a consulta usa a situação comercial internamente.
 - Manter a ação individual de arquivar; remover seus blocos permanentes.
-- Mensagens vazias compactas em todos os consumidores do componente comum.
+- Três alternativas de mensagens vazias em avaliação, com Linha discreta
+  recomendada, aplicáveis aos consumidores do componente comum.
 - Navegação automática no registro que cria negociação, mantendo editores
   embutidos e resultados sem negociação no contexto apropriado.
 
-Até a aprovação desta descrição, somente investigação e documentação.
+Até a aprovação visual, somente investigação, documentação e mockups
+descartáveis. Não confundir a correção de escopo com produto já implementado.
