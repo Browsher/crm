@@ -84,14 +84,16 @@
 
 **Files:** novo src/lib/venda-envio.ts e testes; servidor de pós-venda em server; app/funil/{modal,quadro,acoes}.tsx/ts; app/carteira/{registrar-venda,venda-acao,[id]/ficha,[id]/page}.tsx/ts e testes.
 **Interfaces:** ComandoVenda inclui usuarioId,empresaId,chave,entrada{valor,data,observacao} e primeira{negociacaoId}|recompra. Persistir antes de transmitir, recuperar por ator, limpar somente chave confirmada. Resultado confirmado não inventa repetida ausente na RPC.
-- [ ] Red: resposta perdida, desmontagem/reload e confirmação usam mesmos dados/chave; armazenamento indisponível impede transmissão; payload desconhecido não pode ser corrigido.
-- [ ] Red: Funil vazio ainda oferece confirmar venda anterior mesmo sem detalheAcao; não usar lerNegociacao aberta como pré-condição de replay.
-- [ ] Red: confirmação de primeira venda abre ficha autorizada; recompra mantém ficha/filtros; leitura posterior falha não anuncia gravação falha.
-- [ ] Implementar recuperação fora do modal/card, segregada por usuário; congelar dados durante desconhecido; descarte apenas de rascunho não enviado ou recusa conclusiva explícita.
-- [ ] Resolver empresa pelo vínculo/venda autorizados no servidor, não por empresaId de storage; preservar precedência das RPCs existentes e nenhuma mutação extra.
-- [ ] Reproduzir/corrigir Minor de Task2: reverter, pedir Voltar ao resumo durante retirada da sentinela e editar antes do popstate deve rearmar proteção no próximo Voltar.
-- [ ] Green: DOM/modal/ficha/envio, integração funil-comandos/vendas-carteira e jornada de resposta perdida+reload verificando contagem no banco.
-- [ ] Revisão separada e commit.
+- [x] Red: resposta perdida, desmontagem/reload e confirmação usam mesmos dados/chave; armazenamento indisponível impede transmissão; payload desconhecido não pode ser corrigido.
+- [x] Red: Funil vazio ainda oferece confirmar venda anterior mesmo sem detalheAcao; não usar lerNegociacao aberta como pré-condição de replay.
+- [x] Red: confirmação de primeira venda abre ficha autorizada; recompra mantém ficha/filtros; leitura posterior falha não anuncia gravação falha.
+- [x] Implementar recuperação fora do modal/card, segregada por usuário; congelar dados durante desconhecido; descarte apenas de rascunho não enviado ou recusa conclusiva explícita.
+- [x] Resolver empresa pelo vínculo/venda autorizados no servidor, não por empresaId de storage; preservar precedência das RPCs existentes e nenhuma mutação extra.
+- [x] Reproduzir/corrigir Minor de Task2: reverter, pedir Voltar ao resumo durante retirada da sentinela e editar antes do popstate deve rearmar proteção no próximo Voltar.
+- [x] Green: DOM/modal/ficha/envio, integração funil-comandos/vendas-carteira e jornada de resposta perdida+reload verificando contagem no banco.
+- [x] Revisão separada e commit.
+- [x] Trava compartilhada por ator/aba mantém emissor único durante remontagem; confirmação obsoleta não reenvia. Adaptador seleciona ação pelo alvo congelado, inclusive recompra recuperada no modal do Funil.
+- [x] Permitir correção após validação explícita da primeira transmissão sem incerteza, com prova local não serializada. Preservar comando em recusas inconclusivas e replay desconhecido.
 
 ## Task 5: Google acessível e proteção de edições
 
