@@ -127,6 +127,8 @@ test('retorno do WhatsApp restaura a conversa da página 2 pelo vínculo correto
         && rotaAnterior(new URL(resposta.url())))
       liberarHistorico.resolve()
       await respostaAntiga
+      // A conversa está na página 2. Sua presença prova que o POST antigo já foi aplicado.
+      await expect(alvo).toBeVisible()
       await expect(pendente).toHaveCount(0)
       await expect(page.getByLabel('Mensagens da conversa', { exact: true })).toHaveCount(0)
     } finally {

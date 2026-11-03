@@ -173,3 +173,72 @@ test('recompra perdida na Carteira é recuperada no modal do Funil sem mudar o c
  expect(await page.evaluate(id=>sessionStorage.getItem('crm:venda:v1:'+id),ator)).toBeNull()
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[salvo.chave])).rows[0].n).toBe(1)
 })
+
+test('outra aba confirma a primeira venda e a aba original repete o mesmo comando sem duplicar', async ({ page, context }, testInfo) => {
+  const { empresa, negociacao, ator, email } = cenario
+  const armazenamento = 'crm:venda:v1:' + ator
+  const destino = '/carteira/' + empresa + '?venda=registrada'
+  const entrada = { valor: '64,32', data: '2026-01-03', observacao: 'Confirmação em duas abas' }
+  const envios: string[] = []
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Senha', { exact: true }).fill(senha)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/meu-dia')
+  await page.goto('/funil?negociacao=' + negociacao)
+  await page.getByRole('button', { name: 'Registrar venda', exact: true }).click()
+  await page.getByLabel('Valor em reais').fill(entrada.valor)
+  await page.getByLabel('Data da venda').fill(entrada.data)
+  await page.getByLabel('Observação (opcional)').fill(entrada.observacao)
+  await page.getByRole('button', { name: 'Conferir venda', exact: true }).click()
+  await context.route('**/funil*', async rota => {
+    const corpo = rota.request().postData()
+    if (rota.request().method() !== 'POST' || !corpo?.includes(entrada.valor)) return rota.continue()
+    envios.push(corpo)
+    if (envios.length > 1) return rota.continue()
+    const resposta = await rota.fetch()
+    expect(resposta.ok()).toBe(true)
+    await rota.abort('failed')
+  })
+  await page.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('Não foi possível confirmar o resultado')
+  const pendente = await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)
+  expect(pendente).not.toBeNull()
+  const comando = JSON.parse(pendente!)
+  expect(comando).toMatchObject({ usuarioId: ator, empresaId: empresa, entrada, alvo: { tipo: 'primeira', negociacaoId: negociacao } })
+  const conferirVenda = async () => {
+    expect((await sql(`SELECT chave,negociacao_id,autor_id,data::text,valor_centavos::int,observacao
+      FROM venda WHERE empresa_id=$1`, [empresa])).rows).toEqual([{
+      chave: comando.chave, negociacao_id: negociacao, autor_id: ator, data: entrada.data,
+      valor_centavos: 6432, observacao: entrada.observacao,
+    }])
+  }
+  await conferirVenda()
+  await page.goto('/funil')
+  const abriuOutra = page.waitForEvent('popup')
+  await page.evaluate(() => { window.open('/funil', '_blank') })
+  const outra = await abriuOutra
+  const confirmar = { name: 'Confirmar venda anterior', exact: true }
+  await expect(outra.getByRole('button', confirmar)).toBeVisible()
+  expect(await outra.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBe(pendente)
+  expect(envios).toHaveLength(1)
+
+  await outra.getByRole('button', confirmar).click()
+  await expect(outra).toHaveURL(destino)
+  await expect(outra.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
+  expect(await outra.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBeNull()
+  expect(await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBe(pendente)
+  expect(envios).toHaveLength(2)
+  await conferirVenda()
+  await outra.screenshot({ path: testInfo.outputPath('venda-confirmada-outra-aba.png'), fullPage: true })
+
+  await page.getByRole('button', confirmar).click()
+  await expect(page).toHaveURL(destino)
+  await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
+  expect(await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBeNull()
+  expect(envios).toHaveLength(3)
+  for (const corpo of envios) {
+    for (const valor of [comando.chave, negociacao, ...Object.values(entrada)]) expect(corpo).toContain(valor)
+  }
+  await conferirVenda()
+})
