@@ -69,13 +69,16 @@
 
 **Files:** app/fila/central.tsx; app/fila/localizar/{page,pessoal,navegacao}.ts[x]; src/lib/prospeccao-pessoal.ts; app/fila/sem-interesse/{page,lista}.tsx; novo componente de recuperação legada no Localizar; app/funil/{quadro,page,card-sem-interesse}.tsx e testes.
 **Interfaces:** normalizar origem visual sem_interesse para disponibilidade=sem_interesse antes do parser; domínio mantém enum de aquisição atual. Localizar recebe usuarioId autenticado para recuperar crm:retomar-arquivo:v1:<usuarioId>.
-- [ ] Red: quarta opção da central; URL canônica; seleção visível; limpar conserva situação; nome/CNPJ/nicho/endereço/página sobrevivem à ida/volta.
-- [ ] Red: rota antiga autentica antes de redirect; conserva parâmetros válidos, erro visível nos inválidos.
-- [ ] Red: recuperação legada fora da grade, sem empresa visível e após reload, sem replay automático; bloqueia novas retomadas enquanto comando desconhecido; payload/chave idênticos e segregação de usuário.
-- [ ] Implementar painel compatível conservando chave antiga até resposta terminal; usar contrato de destino da Task2 após confirmação.
-- [ ] Retirar card separado/área de descarte/hover/instrução antiga do Funil. Conservar ação individual, persistência/Confirmar envio anterior e gate de leitura total.ok enquanto o contrato de consulta não mudar.
-- [ ] Green: DOM central/localizar/quadro/compatibilidade e E2E sem-interesse.
-- [ ] Revisão separada e commit.
+- [x] Red: quarta opção da central; URL canônica; seleção visível; limpar conserva situação; nome/CNPJ/nicho/endereço/página sobrevivem à ida/volta.
+- [x] Red: rota antiga autentica antes de redirect; conserva parâmetros válidos, erro visível nos inválidos.
+- [x] Red: recuperação legada fora da grade, sem empresa visível e após reload, sem replay automático; bloqueia novas retomadas enquanto comando desconhecido; payload/chave idênticos e segregação de usuário.
+- [x] Implementar painel compatível conservando chave antiga até resposta terminal; usar contrato de destino da Task2 após confirmação.
+- [x] Retirar card separado/área de descarte/hover/instrução antiga do Funil. Conservar ação individual, persistência/Confirmar envio anterior e gate de leitura total.ok enquanto o contrato de consulta não mudar.
+- [x] Green: DOM central/localizar/quadro/compatibilidade e E2E sem-interesse.
+- [x] Revisão separada e commit.
+
+ - [x] Recuperar novos Retomar de Localizar no namespace existente com metadado de usuário, fora da grade, com controle por comando persistido antes da ação visual; fora do Provider só link local. Fallback antigo e iniciar anterior preservados.
+ - [x] Validar disponibilidade fornecida antes de impor o recorte; inválida/repetida conserva erro e painel sem redirect. Projeção autorizada a_contatar abre atendimento sem RPC extra.
 
 ## Task 4: Venda recuperável e primeira venda na Carteira
 
