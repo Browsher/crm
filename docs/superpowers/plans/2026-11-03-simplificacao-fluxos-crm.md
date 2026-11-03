@@ -43,18 +43,18 @@
 
 ## Task 1: Faixa compacta compartilhada
 
-**Files:** src/components/crm/estado-vazio.tsx, composicoes.module.css, estado-vazio.dom.test.tsx; novo tests/e2e/avisos-compactos.spec.ts.
+**Files:** src/components/crm/estado-vazio.tsx, composicoes.module.css, estado-vazio.dom.test.tsx; novo tests/e2e/avisos-compactos.spec.ts; expectativas de footer em app/carteira/lista.test.tsx, app/usuarios/usuarios.dom.test.tsx, app/empresas/page.test.tsx.
 **Interfaces:** conservar Props/AcaoEstadoVazio, nivelTitulo e variantes link/local/submit; só modificar composição e CSS.
-- [ ] Red: teste visual da Carteira vazia com altura natural inferior ao antigo286px; ação/título/descrição presentes; texto longo completo e sem overflow em390/820/1280.
-- [ ] Preservar testes DOM de semântica, submitter/name/value, disabled e ausência de interativos aninhados; atualizar somente expectativas de rodapé obsoletas.
-- [ ] Implementar faixa baixa, ícone pequeno, texto e ação alinhados, ação podendo quebrar linha no celular; remover mínimo e margin-top:auto.
-- [ ] Green: testes DOM focados e E2E visual em ambiente isolado, claro/escuro e teclado.
-- [ ] Revisão de spec/qualidade separada, corrigir e commitar.
+- [x] Red: teste visual da Carteira vazia com altura natural inferior ao antigo286px; ação/título/descrição presentes; texto longo completo e sem overflow em390/820/1280.
+- [x] Preservar testes DOM de semântica, submitter/name/value, disabled e ausência de interativos aninhados; atualizar somente expectativas de rodapé obsoletas.
+- [x] Implementar faixa baixa, ícone pequeno, texto e ação alinhados, ação podendo quebrar linha no celular; remover mínimo e margin-top:auto.
+- [x] Green: testes DOM focados e E2E visual em ambiente isolado, claro/escuro e teclado.
+- [x] Revisão de spec/qualidade separada, corrigir e commitar.
 
 ## Task 2: Pós-registro autenticado e rascunho correto
 
 **Files:** novo src/lib/pos-registro.ts; novo src/server/atendimento/pos-registro.ts; src/features/contato/{acao,formulario,rascunho}.ts[x]; app/fila/{formulario,cartao}.tsx; app/fila/atendimento/acoes.ts; consumidores embutidos e testes correspondentes.
-**Interfaces:** DestinoContato = permanecer | funil com negociacaoId | sem_interesse; LeituraDestino<T> = ok/destino ou falha de leitura/indisponibilidade. Sucesso confirmado inclui destino separado. onSaved recebe empresaId e confirmação; callbacks antigos podem ignorar segundo argumento. rascunhoAlterado(atual,inicial=rascunhoInicial(false)).
+**Interfaces:** DestinoContato = permanecer | funil com negociacaoId | sem_interesse. DestinoEmpresaAtual é separado: atendimento com empresaId | funil com negociacaoId | carteira com empresaId | sem_interesse | indisponivel. LeituraDestino<T> separa destino de falha posterior. Server expõe lerDestinoContato(usuarioId,empresaId,resultadoValidado) e lerDestinoEmpresaAtual(usuarioId,empresaId), compartilhando leitura autenticada depois da RPC. Para contato, interesse/retorno com negociação ativa atual abre Funil; cliente ou demais resultados permanecem, e situação atual Sem interesse abre o recorte. Iniciar/retomar usa o segundo contrato, pois pode precisar de atendimento ou Carteira. Sucesso confirmado inclui a leitura separada. onSaved recebe empresaId e confirmação; callbacks embutidos podem ignorar segundo argumento. rascunhoAlterado(atual,inicial=rascunhoInicial(false)).
 - [ ] Red: interessado/retorno usa replace para negociação autorizada; cliente/sem negociação permanece; erro não navega; modal/ficha permanecem no contexto.
 - [ ] Red: RPC ocorre antes da leitura atual; replay vendido/arquivado/retomado usa estado atual; leitura posterior lançando devolve sucesso com aviso; limpar A não apaga B.
 - [ ] Red: acompanhamento intocado está limpo; editar/reverter e comando pendente respeitam baseline de abertura.
