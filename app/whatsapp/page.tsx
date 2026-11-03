@@ -20,7 +20,7 @@ export default async function PaginaWhatsApp({ searchParams }: { searchParams?: 
   return <main className={styles.pagina}>
     {semPainel && <CabecalhoWhatsApp piloto={piloto} retorno={retorno ?? { tipo: 'whatsapp', vendedor: filtro, busca: '', categoria: 'todas', painel: 'lista' }} />}
     {semPainel && retorno?.conversa && <p role="status">Conversa anterior indisponível neste filtro.</p>}
-    {(!resultado.configurado || resultado.fontes.length === 0) && <VisaoGeralWhatsApp opcoes={resultado.opcoes.map(f => ({ id: f.id, nome: f.nome }))} filtro={filtro} />}
+    {(!resultado.configurado || resultado.fontes.length === 0) && <VisaoGeralWhatsApp retorno={retorno} opcoes={resultado.opcoes.map(f => ({ id: f.id, nome: f.nome }))} filtro={filtro} />}
     {resultado.fontes.length === 0 ? <section className={styles.estado} role="status"><h2>Nenhuma instância disponível neste filtro</h2><p>Escolha outro vendedor ou configure um vínculo.</p></section> : !resultado.configurado ? <section className={styles.estado} role="status">
       <h2>Integração ainda não configurada</h2>
       <p>Configure a conexão do WhatsApp no servidor do CRM.</p>

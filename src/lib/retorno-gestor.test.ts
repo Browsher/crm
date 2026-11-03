@@ -94,13 +94,17 @@ test('configuração pode voltar ao filtro sem uma seleção de conversa', () =>
   expect(lerRetornoGestor(serializarRetornoGestor(recorte))).toEqual(recorte)
 })
 
+test('recusa fonte diferente do vendedor no filtro específico', () => {
+  expect(lerRetornoGestor(JSON.stringify({ ...conversa, vendedor: 'piloto' }))).toBeNull()
+})
+
 test.each([
-  { vendedor: '//externo.test' }, { vendedor: 'piloto' },
+  { vendedor: '//externo.test' },
   { categoria: 'vendida' }, { painel: 'invisivel' }, { conversa: undefined },
-  { busca: 'x'.repeat(101) }, { conversa: { fonteId: 'piloto' } },
-  { conversa: { fonteId: 'piloto', id: '' } }, { conversa: { fonteId: 'piloto', id: 'a\u0000@lid' } },
-  { conversa: { fonteId: 'piloto', id: 'a'.repeat(257) } },
-  { conversa: { fonteId: 'piloto', id: 'x@lid', mensagem: 'conteúdo privado' } },
+  { busca: 'x'.repeat(101) }, { conversa: { fonteId: vendedor } },
+  { conversa: { fonteId: vendedor, id: '' } }, { conversa: { fonteId: vendedor, id: 'a\u0000@lid' } },
+  { conversa: { fonteId: vendedor, id: 'a'.repeat(257) } },
+  { conversa: { fonteId: vendedor, id: 'x@lid', mensagem: 'conteúdo privado' } },
 ])('recusa contexto de conversa que excede o contrato %#', campos => {
   expect(lerRetornoGestor(JSON.stringify({ ...conversa, ...campos }))).toBeNull()
 })

@@ -46,7 +46,7 @@ test('arquivo indisponível mantém consulta e histórico, sem retomada nova', a
   await entrar(page); await page.goto('/fila/sem-interesse?nome=Revis%C3%A3o+arquivo+indispon%C3%ADvel')
   await expect(card(page, 'Revisão arquivo indisponível')).toContainText('Indisponível')
   await expect(card(page, 'Revisão arquivo indisponível').getByRole('button', { name: 'Retomar atendimento', exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Consulta rápida: Revisão arquivo indisponível' }).click()
+  await page.getByRole('button', { name: 'Ver empresa: Revisão arquivo indisponível' }).click()
   await expect(page.getByRole('dialog')).toContainText('Revisão arquivo indisponível')
   expect((await sql('SELECT nota FROM contato WHERE empresa_id=$1', [c.empresa])).rows).toEqual([{ nota: 'História própria revisão' }])
 })

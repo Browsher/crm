@@ -75,6 +75,9 @@ test('retorno do WhatsApp restaura a conversa da página 2 pelo vínculo correto
 
     await page.getByRole('link', { name: 'Vendedor do histórico', exact: true }).click()
     await expect(page.getByRole('link', { name: 'Vendedor do histórico', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(busca).toHaveValue('Aurora')
+    await expect(categoria).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByLabel('Mensagens da conversa', { exact: true })).toHaveCount(0)
     await busca.fill('Aurora')
     await categoria.click()
     await page.getByRole('link', { name: 'Configurar vendedores', exact: true }).click()
@@ -84,6 +87,56 @@ test('retorno do WhatsApp restaura a conversa da página 2 pelo vínculo correto
     await expect(page.getByRole('link', { name: 'Vendedor do histórico', exact: true })).toHaveAttribute('aria-current', 'page')
     await expect(busca).toHaveValue('Aurora')
     await expect(categoria).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByLabel('Mensagens da conversa', { exact: true })).toHaveCount(0)
+
+    const historicoIniciado = Promise.withResolvers<void>()
+    const liberarHistorico = Promise.withResolvers<void>()
+    const liberarNavegacao = Promise.withResolvers<void>()
+    const rotaAnterior = (url: URL) => url.pathname === '/whatsapp' && url.searchParams.get('retorno') === endereco.searchParams.get('retorno')
+    const rotaNovoFiltro = (url: URL) => {
+      const token = url.searchParams.get('retorno')
+      return url.pathname === '/whatsapp' && token !== null && JSON.parse(token).vendedor === fonteOutra
+    }
+    await page.route(rotaAnterior, async rota => {
+      if (rota.request().method() === 'POST') {
+        historicoIniciado.resolve()
+        await liberarHistorico.promise
+      }
+      await rota.continue()
+    })
+    await page.route(rotaNovoFiltro, async rota => {
+      await liberarNavegacao.promise
+      await rota.continue()
+    })
+    try {
+      await page.goto(endereco.href)
+      const pendente = page.getByText('Localizando a conversa anterior no histórico…', { exact: true })
+      await expect(pendente).toBeVisible()
+      await historicoIniciado.promise
+      const novoFiltro = page.getByRole('link', { name: 'Vendedor da outra fonte', exact: true })
+      await novoFiltro.evaluate(link => {
+        // Cancela a abertura da aba no document, depois do handler do Link na raiz do React.
+        document.addEventListener('click', evento => evento.preventDefault(), { once: true })
+        link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }))
+      })
+      await expect(pendente).toBeVisible()
+
+      await novoFiltro.dispatchEvent('click')
+      await expect(page).toHaveURL(endereco.href)
+      const respostaAntiga = page.waitForResponse(resposta => resposta.request().method() === 'POST'
+        && rotaAnterior(new URL(resposta.url())))
+      liberarHistorico.resolve()
+      await respostaAntiga
+      await expect(pendente).toHaveCount(0)
+      await expect(page.getByLabel('Mensagens da conversa', { exact: true })).toHaveCount(0)
+    } finally {
+      liberarHistorico.resolve()
+      liberarNavegacao.resolve()
+      await page.unroute(rotaAnterior)
+      await page.unroute(rotaNovoFiltro)
+    }
+    await expect(page.getByRole('link', { name: 'Vendedor da outra fonte', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByLabel('Mensagens da conversa', { exact: true })).toHaveCount(0)
 
     await comBancoGrupos(async c => {
       await c.query(identidadeGestor)

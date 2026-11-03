@@ -1,5 +1,6 @@
 import styles from './whatsapp.module.css'
 import Link from 'next/link'
+import { urlRetornoGestor, type RetornoWhatsApp } from '@/src/lib/retorno-gestor'
 import type { IndicadoresWhatsApp } from '@/src/lib/whatsapp-indicadores'
 
 const indicadores = [
@@ -9,9 +10,16 @@ const indicadores = [
   { titulo: 'Tempo médio de resposta', desenho: 'M4 20V14h3v6 M11 20V9h3v11 M18 20V3h3v17' },
 ]
 
-export function VisaoGeralWhatsApp({ opcoes = [], filtro = 'todos', valores, estado = 'Ainda não configurado' }: {
-  opcoes?: { id: string; nome: string }[]; filtro?: string; valores?: IndicadoresWhatsApp; estado?: string
+export function VisaoGeralWhatsApp({ opcoes = [], filtro = 'todos', retorno, aoMudarVendedor, valores, estado = 'Ainda não configurado' }: {
+  opcoes?: { id: string; nome: string }[]; filtro?: string; retorno?: RetornoWhatsApp; aoMudarVendedor?: () => void; valores?: IndicadoresWhatsApp; estado?: string
 }) {
+  function enderecoVendedor(vendedor: string) {
+    if (retorno) return urlRetornoGestor(vendedor === filtro
+      ? retorno
+      : { ...retorno, vendedor, painel: 'lista', conversa: undefined })
+    return vendedor === 'todos' ? '/whatsapp' : '/whatsapp?' + new URLSearchParams({ vendedor })
+  }
+
   const numeros = valores ? [String(valores.conversasHoje), String(valores.semResposta), valores.vendedores ? `${valores.ativosHoje} de ${valores.vendedores}` : '—', valores.mediaMinutos === null ? '—' : valores.mediaMinutos > 0 && valores.mediaMinutos < 1 ? '< 1 min' : `${Math.round(valores.mediaMinutos)} min`] : []
   const ajudas = valores ? ['Atividade hoje, horário de Brasília', 'Última mensagem recebida do cliente', valores.vendedores ? 'Enviaram mensagens hoje' : 'Nenhum vendedor neste filtro', valores.mediaMinutos === null ? 'Sem respostas hoje' : 'Respostas de hoje · Seg a sex · 9h às 18h · Brasília'] : []
   return <>
@@ -24,8 +32,8 @@ export function VisaoGeralWhatsApp({ opcoes = [], filtro = 'todos', valores, est
     <section className={styles.filtroVendedores} aria-labelledby="titulo-vendedores">
       <div className={styles.tituloVendedores}><h2 id="titulo-vendedores">Filtrar por vendedor</h2>{!opcoes.some(f => f.id !== 'piloto') && <p>Nenhum vendedor vinculado. Configure os vendedores para começar.</p>}</div>
       <div className={styles.opcoesVendedores}>
-        <Link href="/whatsapp" className={filtro === 'todos' ? styles.todosSelecionado : styles.pilotoVendedor} aria-current={filtro === 'todos' ? 'page' : undefined}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d={indicadores[2].desenho} /></svg>Todos</Link>
-        {opcoes.map(f => <Link key={f.id} href={`/whatsapp?vendedor=${encodeURIComponent(f.id)}`} className={filtro === f.id ? styles.todosSelecionado : styles.pilotoVendedor} aria-current={filtro === f.id ? 'page' : undefined}><span className={styles.avatarPiloto} aria-hidden="true">{f.id === 'piloto' ? 'T' : f.nome.slice(0, 1).toUpperCase()}</span><span>{f.nome}{f.id === 'piloto' && <small>Piloto</small>}</span></Link>)}
+        <Link href={enderecoVendedor('todos')} onNavigate={filtro === 'todos' ? undefined : aoMudarVendedor} className={filtro === 'todos' ? styles.todosSelecionado : styles.pilotoVendedor} aria-current={filtro === 'todos' ? 'page' : undefined}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d={indicadores[2].desenho} /></svg>Todos</Link>
+        {opcoes.map(f => <Link key={f.id} href={enderecoVendedor(f.id)} onNavigate={filtro === f.id ? undefined : aoMudarVendedor} className={filtro === f.id ? styles.todosSelecionado : styles.pilotoVendedor} aria-current={filtro === f.id ? 'page' : undefined}><span className={styles.avatarPiloto} aria-hidden="true">{f.id === 'piloto' ? 'T' : f.nome.slice(0, 1).toUpperCase()}</span><span>{f.nome}{f.id === 'piloto' && <small>Piloto</small>}</span></Link>)}
       </div>
     </section>
   </>

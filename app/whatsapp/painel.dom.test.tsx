@@ -526,3 +526,61 @@ test('escolha manual tem precedência sobre a resposta atrasada e atualiza o ret
   expect(ficha).not.toBeNull()
   expect(JSON.parse(new URL(ficha.href).searchParams.get('retorno')!).conversa.fonteId).toBe('piloto')
 })
+
+
+function lerRetornoDoLink(href: string) {
+  return JSON.parse(new URL(href).searchParams.get('retorno')!)
+}
+
+test.each(['categoria', 'busca'])('mudar %s cancela seleção pendente mesmo quando o alvo chega depois', async campo => {
+  const anterior = { ...retornoWhatsApp, categoria: 'todas' } as const
+  const enviada = { ...primeiraFonte, direcao: 'enviada' } as const
+  let concluir!: (resultado: Awaited<ReturnType<typeof historicoMensagensAcao>>) => void
+  vi.mocked(historicoMensagensAcao).mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[enviada]} fontesAtivas={fontesRetorno}
+    retorno={anterior} piloto={false} {...historico} />))
+  await act(async () => vi.advanceTimersByTimeAsync(500))
+  if (campo === 'categoria') {
+    const semResposta = [...host.querySelectorAll('button')].find(botao => botao.textContent === 'Sem resposta')!
+    await act(async () => semResposta.click())
+  } else {
+    await buscar('Aurora')
+  }
+  await act(async () => concluir({ ok: true, mensagens: [fonteAlvo], temMais: false }))
+
+  const configuracao = host.querySelector<HTMLAnchorElement>('a[href^="/whatsapp/configuracao"]')!
+  const esperado = {
+    tipo: 'whatsapp', vendedor: 'todos', busca: campo === 'busca' ? 'Aurora' : 'Cliente Aurora',
+    categoria: campo === 'categoria' ? 'pendentes' : 'todas', painel: 'lista',
+  }
+  expect(lerRetornoDoLink(location.href)).toEqual(esperado)
+  expect(lerRetornoDoLink(configuracao.href)).toEqual(esperado)
+  expect(host.querySelector('ol')).toBeNull()
+  expect(host.querySelector('button[aria-current]')).toBeNull()
+
+  const opcao = [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Lista de conversas"] button')]
+    .find(botao => botao.textContent?.includes('Fonte solicitada'))!
+  await act(async () => opcao.click())
+  expect(host.querySelector('ol')?.textContent).toContain('Mensagem da fonte solicitada')
+  expect(lerRetornoDoLink(configuracao.href).conversa).toEqual(retornoWhatsApp.conversa)
+})
+
+test('retorno da configuração sem seleção deixa disponíveis as conversas sem abrir uma delas', async () => {
+  const recorte = { tipo: 'whatsapp', vendedor: 'todos', busca: 'Aurora', categoria: 'todas', painel: 'lista' } as const
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[primeiraFonte]} retorno={recorte} piloto={false} />))
+  expect(host.querySelector('[aria-label="Lista de conversas"] button')).not.toBeNull()
+  expect(host.querySelector('ol')).toBeNull()
+  const configurar = host.querySelector<HTMLAnchorElement>('a[href^="/whatsapp/configuracao"]')!
+  expect(lerRetornoDoLink(configurar.href)).toEqual(recorte)
+})
+
+test('mudar o vendedor durante um retorno transporta os filtros sem a conversa anterior', async () => {
+  const opcoes = [{ id: 'piloto', nome: 'Primeira fonte' }, { id: fonteAlvo.fonteId, nome: 'Fonte solicitada' }]
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[primeiraFonte]} fontesAtivas={fontesRetorno}
+    opcoes={opcoes} retorno={retornoWhatsApp} {...historico} />))
+  const filtros = host.querySelector('[aria-labelledby="titulo-vendedores"]')!
+  const filtroVendedor = [...filtros.querySelectorAll('a')].find(link => link.textContent?.includes('Primeira fonte'))!
+  expect(lerRetornoDoLink(filtroVendedor.href)).toEqual({
+    tipo: 'whatsapp', vendedor: 'piloto', busca: 'Cliente Aurora', categoria: 'pendentes', painel: 'lista',
+  })
+})
