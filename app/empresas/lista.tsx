@@ -23,8 +23,8 @@ export function Lista({ linhas, consulta, retorno, vazio }: {
 
   return <section aria-label="Empresas cadastradas">
     <ul className={styles.cartoes}>{linhas.map(empresa => <li key={empresa.id}>
-      <CardEmpresa empresa={empresa} responsavel={empresa.responsavel} aoVer={setReferencia}
-        acoesAdicionais={<Button asChild variant="ghost"><Link href={`/empresas/${empresa.id}${query ? `?${query}` : ''}`}>Ficha administrativa</Link></Button>} />
+      <CardEmpresa empresa={empresa} responsavel={empresa.responsavel} aoVer={setReferencia} rotuloVer="Consulta rápida"
+        acoesAdicionais={<Button asChild variant="ghost"><Link href={`/empresas/${empresa.id}${query ? `?${query}` : ''}`}>Ficha completa</Link></Button>} />
     </li>)}</ul>
     {referencia && <EmpresaDialogo referencia={referencia} aoFechar={() => setReferencia(null)} />}
   </section>

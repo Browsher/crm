@@ -21,21 +21,37 @@ const google = z.strictObject({
   vendedor: id.optional(),
   estado: z.custom<EstadoGoogle>(estado => typeof estado === 'string' && Object.hasOwn(ESTADOS_GOOGLE, estado)).optional(),
 })
+export const MAX_BUSCA_WHATSAPP = 100
+const fonteWhatsApp = z.union([id, z.literal('piloto')])
+const whatsapp = z.strictObject({
+  tipo: z.literal('whatsapp'),
+  vendedor: z.union([fonteWhatsApp, z.literal('todos')]),
+  busca: texto(MAX_BUSCA_WHATSAPP),
+  categoria: z.enum(['todas', 'pendentes', 'ausentes']),
+  painel: z.enum(['lista', 'conversa']),
+  conversa: z.strictObject({
+    fonteId: fonteWhatsApp,
+    id: texto(256).refine(valor => valor.trim().length > 0),
+  }).optional(),
+}).refine(({ painel, conversa, vendedor }) =>
+  conversa ? vendedor === 'todos' || vendedor === conversa.fonteId : painel === 'lista',
+)
 const camposColeta = { tipo: z.literal('coleta'), id, pagina: pagina.max(100) }
 const camposFicha = { tipo: z.literal('ficha'), id, aba: z.literal('historico') }
 const coletaDePlanejamento = z.strictObject({ ...camposColeta, origem: google.optional() })
-const origensEmpresas = [empresas, arquivo, grupo] as const
+const origensFicha = [empresas, arquivo, grupo, whatsapp] as const
 const fichaHistoricoBase = z.strictObject({
-  ...camposFicha, origem: z.discriminatedUnion('tipo', [...origensEmpresas, coletaDePlanejamento]).optional(),
+  ...camposFicha, origem: z.discriminatedUnion('tipo', [...origensFicha, coletaDePlanejamento]).optional(),
 })
 const coleta = z.strictObject({
   ...camposColeta, origem: z.discriminatedUnion('tipo', [google, fichaHistoricoBase]).optional(),
 })
-const origemFicha = z.discriminatedUnion('tipo', [...origensEmpresas, coleta])
+const origemFicha = z.discriminatedUnion('tipo', [...origensFicha, coleta])
 const ficha = z.strictObject({ ...camposFicha, origem: origemFicha.optional() })
-const contexto = z.discriminatedUnion('tipo', [empresas, arquivo, grupo, google, coleta, ficha])
+const contexto = z.discriminatedUnion('tipo', [...origensFicha, google, coleta, ficha])
 
 export type ContextoRetornoGestor = z.infer<typeof contexto>
+export type RetornoWhatsApp = z.infer<typeof whatsapp>
 export type OrigemFichaGestor = z.infer<typeof origemFicha>
 export type OrigemDetalheGoogleGestor = z.infer<typeof google> | z.infer<typeof ficha>
 
@@ -94,6 +110,12 @@ export function retornoColetaGestor(id: string, pagina: number, origem?: OrigemD
   return { tipo: 'coleta', id, pagina, origem }
 }
 
+export function urlConfiguracaoWhatsApp(retorno?: RetornoWhatsApp): string {
+  const params = new URLSearchParams()
+  adicionarRetornoGestor(params, retorno)
+  return '/whatsapp/configuracao' + (params.size ? '?' + params : '')
+}
+
 export function urlRetornoGestor(retorno: ContextoRetornoGestor): string {
   const params = new URLSearchParams()
   let caminho: string
@@ -124,6 +146,10 @@ export function urlRetornoGestor(retorno: ContextoRetornoGestor): string {
       params.set('semana', retorno.semana)
       if (retorno.vendedor) params.set('vendedor', retorno.vendedor)
       if (retorno.estado) params.set('estado', retorno.estado)
+      break
+    case 'whatsapp':
+      caminho = '/whatsapp'
+      adicionarRetornoGestor(params, retorno)
       break
     case 'coleta':
       return urlColetaGestor(retorno.id, retorno.pagina, retorno.origem)

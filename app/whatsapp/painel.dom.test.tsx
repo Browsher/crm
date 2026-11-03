@@ -147,6 +147,7 @@ test('erro de transporte não expõe detalhes e permite nova tentativa', async (
 afterEach(async () => {
   await act(async () => raiz.unmount())
   host.remove()
+  window.history.replaceState(null, '', '/')
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   vi.useRealTimers()
@@ -397,7 +398,7 @@ test('filtros combinam busca, pendência e ausência confirmada; empresa única 
   expect(lista()).toHaveLength(1)
   expect(lista()[0].textContent).toContain('Ana')
   await act(async () => (lista()[0] as HTMLButtonElement).click())
-  expect(host.querySelector('a[href="/empresas/empresa-1"]')?.textContent).toBe('Ver empresa')
+  expect(host.querySelector('a[href="/empresas/empresa-1"]')?.textContent).toBe('Abrir ficha da empresa')
   await buscar('')
   await filtrar('Todas')
   expect(lista()).toHaveLength(5)
@@ -470,4 +471,58 @@ test('busca sem resultado mantém vazio em card sem criar ação de envio', asyn
   expect(estado.querySelector('h2')?.textContent).toBe('Nenhuma conversa encontrada')
   expect(estado.textContent).toContain('Tente outro filtro, nome ou telefone.')
   expect(estado.querySelector('button, a, textarea')).toBeNull()
+})
+const retornoWhatsApp = {
+  tipo: 'whatsapp', vendedor: 'todos', busca: 'Cliente Aurora', categoria: 'pendentes', painel: 'conversa',
+  conversa: { fonteId: '22222222-2222-4222-8222-222222222222', id: '5511988889991@s.whatsapp.net' },
+} as const
+const primeiraFonte = {
+  ...mensagens[0], conversa: retornoWhatsApp.conversa.id, fonteId: 'piloto', vendedor: 'Primeira fonte',
+  cadastro: { telefone: '+5511988889991', estado: 'encontrada', empresa: { id: 'empresa-1', nome: 'Cliente Aurora' } },
+} satisfies Mensagem
+const fonteAlvo = { ...primeiraFonte, fonteId: retornoWhatsApp.conversa.fonteId, vendedor: 'Fonte solicitada', texto: 'Mensagem da fonte solicitada' }
+const fontesRetorno = ['piloto', fonteAlvo.fonteId]
+
+test('restaura recorte e espera a conversa exata em outra página sem selecionar a primeira fonte', async () => {
+  vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: true, mensagens: [fonteAlvo], temMais: false })
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[primeiraFonte]} fontesAtivas={fontesRetorno} retorno={retornoWhatsApp} {...historico} />))
+  expect(host.querySelector('input')?.value).toBe('Cliente Aurora')
+  expect(host.querySelector('button[aria-pressed="true"]')?.textContent).toBe('Sem resposta')
+  expect(host.querySelector('[aria-label="Conversas carregadas"]')?.getAttribute('data-painel-movel')).toBe('conversa')
+  expect(host.textContent).toContain('Localizando a conversa anterior')
+  expect(host.querySelector('ol')).toBeNull()
+  expect(host.querySelector('button[aria-current]')).toBeNull()
+  await act(async () => vi.advanceTimersByTimeAsync(500))
+  expect(host.querySelector('ol')?.textContent).toContain('Mensagem da fonte solicitada')
+  expect(host.querySelector('button[aria-current]')?.textContent).toContain('Fonte solicitada')
+  const links = [...host.querySelectorAll<HTMLAnchorElement>('a[href^="/empresas/empresa-1?"]')]
+  expect(links).toHaveLength(2)
+  for (const link of links) {
+    expect(link.textContent).toBe('Abrir ficha da empresa')
+    expect(JSON.parse(new URL(link.href).searchParams.get('retorno')!)).toEqual(retornoWhatsApp)
+  }
+})
+
+test.each(['sem histórico', 'fonte removida', 'erro de consulta'])('sinaliza retorno indisponível ou com erro sem abrir outra conversa (%s)', async caso => {
+  const removida = caso === 'fonte removida'
+  const erro = caso === 'erro de consulta'
+  vi.mocked(historicoMensagensAcao).mockResolvedValueOnce({ ok: false, motivo: 'indisponivel' })
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[primeiraFonte]} fontesAtivas={removida ? ['piloto'] : fontesRetorno}
+    retorno={retornoWhatsApp} {...historico} temMais={removida || erro} />))
+  if (erro) await act(async () => vi.advanceTimersByTimeAsync(500))
+  expect(host.textContent).toContain(erro ? 'Não foi possível restaurar a conversa anterior' : 'Conversa anterior indisponível')
+  expect(host.querySelector('ol')).toBeNull()
+})
+
+test('escolha manual tem precedência sobre a resposta atrasada e atualiza o retorno', async () => {
+  let concluir!: (resultado: Awaited<ReturnType<typeof historicoMensagensAcao>>) => void
+  vi.mocked(historicoMensagensAcao).mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
+  await act(async () => raiz.render(<PainelWhatsApp mensagens={[primeiraFonte]} fontesAtivas={fontesRetorno} retorno={retornoWhatsApp} {...historico} />))
+  await act(async () => vi.advanceTimersByTimeAsync(500))
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Lista de conversas"] button')!.click())
+  await act(async () => concluir({ ok: true, mensagens: [fonteAlvo], temMais: false }))
+  expect(host.querySelector('ol')?.textContent).toContain('Mensagem A')
+  const ficha = host.querySelector<HTMLAnchorElement>('a[href^="/empresas/empresa-1?"]')!
+  expect(ficha).not.toBeNull()
+  expect(JSON.parse(new URL(ficha.href).searchParams.get('retorno')!).conversa.fonteId).toBe('piloto')
 })

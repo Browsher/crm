@@ -38,3 +38,17 @@ test('estado vazio informa falta de vendedores e impede envio', async () => {
   expect(html).toContain('Nenhum vínculo cadastrado')
   expect(html).toMatch(/type="submit" disabled=""/)
 })
+
+test('volta da configuração restaura o vendedor e o recorte da consulta', async () => {
+  const retorno = JSON.stringify({ tipo: 'whatsapp', vendedor: 'piloto', busca: 'Ana', categoria: 'pendentes', painel: 'lista' })
+  const html = renderToStaticMarkup(await PaginaConfiguracao({ searchParams: Promise.resolve({ retorno }) }))
+  expect(html).toContain('href="/whatsapp?' + new URLSearchParams({ retorno }) + '"')
+})
+
+test('ignora contextos de outras áreas e parâmetros duplicados na configuração', async () => {
+  const arquivo = JSON.stringify({ tipo: 'arquivo', q: '', pagina: 1, gruposPagina: 1 })
+  for (const retorno of [arquivo, [arquivo, arquivo]]) {
+    const html = renderToStaticMarkup(await PaginaConfiguracao({ searchParams: Promise.resolve({ retorno }) }))
+    expect(html).toContain('href="/whatsapp"')
+  }
+})

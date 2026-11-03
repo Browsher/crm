@@ -100,7 +100,7 @@ test('filtros mostram estado vazio e restauram os exemplos', async ({ page }) =>
   await expect(page.getByTestId('company-list').getByText('Aurora Papelaria Ltda.', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Nome da empresa', { exact: true })).toBeEmpty()
   const card = page.locator('[data-slot="card"]').filter({ hasText: 'Café Cedro Comércio Ltda.' })
-  await card.getByRole('button', { name: 'Ver empresa: Café Cedro Comércio Ltda.', exact: true }).click()
+  await card.getByRole('button', { name: 'Consulta rápida: Café Cedro Comércio Ltda.', exact: true }).click()
   await expect(page.getByRole('dialog')).toContainText('Café Cedro Comércio Ltda.')
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Contatos', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')

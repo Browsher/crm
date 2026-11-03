@@ -104,7 +104,7 @@ test('gestor consulta cards com filtros e navegação sem importação manual', 
   expect(rolagem.conteudo).toBeLessThanOrEqual(rolagem.visivel)
   expect(rolagem.pagina).toBeLessThanOrEqual(rolagem.viewport)
   await page.getByLabel('Buscar empresas', { exact: true }).focus()
-  await tabAte(page, regiaoTabela.getByRole('button',{name:/Ver empresa:/}).first())
+  await tabAte(page, regiaoTabela.getByRole('button',{name:/Consulta rápida:/}).first())
   await capturarEmTamanhos(page, 'lista')
 
   await expect(page.getByRole('link', { name: /Importar/ })).toHaveCount(0)

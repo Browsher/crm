@@ -95,7 +95,7 @@ test('arquivo preserva duas paginações, volta à ficha e lista arquivada e rec
   await expect(empresas.getByRole('heading', { name: filtro + ' 51' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 
-  await empresas.getByRole('link', { name: 'Ficha administrativa' }).click()
+  await empresas.getByRole('link', { name: 'Ficha completa' }).click()
   const voltarArquivo = page.getByRole('link', { name: 'Voltar ao arquivo', exact: true })
   const caminho = page.getByRole('navigation', { name: 'Localização atual' })
   const crumbArquivo = caminho.getByRole('link', { name: 'Arquivo', exact: true })
@@ -143,7 +143,7 @@ test('arquivo preserva duas paginações, volta à ficha e lista arquivada e rec
   await expect(page.getByText('0 empresas arquivadas', { exact: true })).toHaveCount(0)
   await page.getByRole('link', { name: 'Voltar à primeira página', exact: true }).click()
   await conferirRecorte(page, arquivo, { q: filtro, pagina: null, gruposPagina: '2' })
-  await expect(empresas.getByRole('link', { name: 'Ficha administrativa' })).toHaveCount(50)
+  await expect(empresas.getByRole('link', { name: 'Ficha completa' })).toHaveCount(50)
 })
 
 test('Google conserva os filtros nos dois acessos, a página da coleta e a aba Histórico', async ({ page }) => {

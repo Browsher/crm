@@ -36,13 +36,14 @@ export default async function PaginaPerfil({ params, searchParams }: {
   const query = await searchParams ?? {}
   const filtros = lerFiltrosEmpresas(query)
   const retorno = lerRetornoGestor(query.retorno)
-  const origem = retorno?.tipo === 'empresas' || retorno?.tipo === 'arquivo' || retorno?.tipo === 'grupo' || retorno?.tipo === 'coleta' ? retorno : undefined
+  const origem = retorno?.tipo === 'empresas' || retorno?.tipo === 'arquivo' || retorno?.tipo === 'grupo' || retorno?.tipo === 'coleta' || retorno?.tipo === 'whatsapp' ? retorno : undefined
   const consulta = lerConsulta(query)
   const arquivada = empresa.situacao === 'arquivada'
   const destinoPadrao = arquivada ? '/empresas/arquivadas' : filtros.ok ? enderecoEmpresas(aplicarFiltrosEmpresas(consulta, filtros.filtros)) : '/empresas'
   const voltar = origem ? urlRetornoGestor(origem) : destinoPadrao
   const rotuloVolta = origem?.tipo === 'grupo' ? 'Voltar para a lista' : origem?.tipo === 'coleta' ? 'Voltar para a coleta'
-    : origem?.tipo === 'arquivo' || (!origem && arquivada) ? 'Voltar ao arquivo' : 'Voltar para empresas'
+    : origem?.tipo === 'whatsapp' ? 'Voltar ao WhatsApp'
+      : origem?.tipo === 'arquivo' || (!origem && arquivada) ? 'Voltar ao arquivo' : 'Voltar para empresas'
   const origemPadrao: OrigemFichaGestor | undefined = arquivada ? { tipo: 'arquivo', q: '', pagina: 1, gruposPagina: 1 }
     : filtros.ok ? {
       tipo: 'empresas', q: consulta.termo, pagina: consulta.pagina, cnae: filtros.filtros.cnae ?? undefined,
@@ -54,7 +55,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
   const endereco = empresa.cidade ? [empresa.logradouro, empresa.bairro, `${empresa.cidade}/${empresa.uf}`].filter(Boolean).join(', ')
     : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
   return <main className={styles.pagina}>
-    <Button asChild variant="outline"><Link href={voltar} className={styles.voltar}>{rotuloVolta}</Link></Button>
+    <Button asChild variant="outline"><Link href={voltar} prefetch={origem?.tipo === 'whatsapp' ? false : undefined} className={styles.voltar}>{rotuloVolta}</Link></Button>
     <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{empresa.nome}</h1>
       {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
       <Badge variant="outline">{rotuloSituacao(empresa.situacao)}</Badge></header>

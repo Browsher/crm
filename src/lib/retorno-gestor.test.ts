@@ -74,3 +74,33 @@ test.each([
 ])('recusa transporte ambíguo, fora dos limites ou de outra origem %#', entrada => {
   expect(lerRetornoGestor(entrada)).toBeNull()
 })
+
+const conversa = {
+  tipo: 'whatsapp', vendedor, busca: 'Luz & Cia', categoria: 'pendentes', painel: 'conversa',
+  conversa: { fonteId: vendedor, id: '98765:10@lid' },
+} as const
+
+test('WhatsApp recompõe somente destino local e sobrevive à composição do Histórico', () => {
+  const ficha = { tipo: 'ficha', id, aba: 'historico', origem: conversa } as const
+  const coleta = retornoColetaGestor(id, 2, ficha)
+  expect(lerRetornoGestor(serializarRetornoGestor(coleta))).toEqual(coleta)
+  const url = new URL(urlRetornoGestor(conversa), 'https://crm.test')
+  expect(url.pathname).toBe('/whatsapp')
+  expect(lerRetornoGestor(url.searchParams.get('retorno') ?? undefined)).toEqual(conversa)
+})
+
+test('configuração pode voltar ao filtro sem uma seleção de conversa', () => {
+  const recorte = { tipo: 'whatsapp', vendedor: 'piloto', busca: '', categoria: 'ausentes', painel: 'lista' } as const
+  expect(lerRetornoGestor(serializarRetornoGestor(recorte))).toEqual(recorte)
+})
+
+test.each([
+  { vendedor: '//externo.test' }, { vendedor: 'piloto' },
+  { categoria: 'vendida' }, { painel: 'invisivel' }, { conversa: undefined },
+  { busca: 'x'.repeat(101) }, { conversa: { fonteId: 'piloto' } },
+  { conversa: { fonteId: 'piloto', id: '' } }, { conversa: { fonteId: 'piloto', id: 'a\u0000@lid' } },
+  { conversa: { fonteId: 'piloto', id: 'a'.repeat(257) } },
+  { conversa: { fonteId: 'piloto', id: 'x@lid', mensagem: 'conteúdo privado' } },
+])('recusa contexto de conversa que excede o contrato %#', campos => {
+  expect(lerRetornoGestor(JSON.stringify({ ...conversa, ...campos }))).toBeNull()
+})
