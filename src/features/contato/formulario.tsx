@@ -52,6 +52,13 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
   const sessao = decodificarSessao(snapshot)
   const sessaoConfirmada = Boolean(sessao.envio && sessao.envio.chave === confirmado)
   const envio = sessaoConfirmada ? null : sessao.envio ?? null
+  const [confirmacaoAnterior, setConfirmacaoAnterior] = useState(somenteConfirmacao)
+  // A versão só é recapturada ao abrir edição após Iniciar/Retomar.
+  // Revalidações de um editor já aberto e comandos desconhecidos mantêm o snapshot.
+  if (confirmacaoAnterior !== somenteConfirmacao) {
+    setConfirmacaoAnterior(somenteConfirmacao)
+    if (confirmacaoAnterior && !somenteConfirmacao && !envio && versao && fase) setPreparado({ versao, fase })
+  }
   const carregado = snapshot !== null && !sessao.erro
   const [erroPreparacao, setErroPreparacao] = useState('')
   const atual = (sessaoConfirmada ? undefined : sessao.valor) ?? rascunho ?? interno

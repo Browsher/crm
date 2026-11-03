@@ -91,3 +91,56 @@ test('Google, Banco e recentes abrem o mesmo diálogo sem iniciar nem incluir sn
   expect((await sql('SELECT iniciada_em FROM empresa_vinculo WHERE empresa_id=$1',[FONTE])).rows[0].iniciada_em).toBeNull()
   expect((await sql("SELECT id FROM empresa WHERE cnpj='00000000009755'")).rowCount).toBe(0)
 })
+
+for (const [tipo,empresaId,nome,rotulo] of [
+  ['interessado',FONTE,'Direto Fontes','Falei, tem interesse'],
+  ['retornar_depois',B,'Direto Brisa','Falei, pediu para ligar em outro momento'],
+] as const) {
+  test(tipo+' abre negociação autorizada e contato no modal mantém contexto', async ({page}) => {
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
+    await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026')
+    await page.getByRole('button',{name:'Entrar',exact:true}).click()
+    await expect(page).toHaveURL('/meu-dia')
+    await page.goto('/fila/atendimento/'+empresaId+'?nome='+encodeURIComponent(nome)+'&pagina=3')
+    const iniciar=page.getByRole('button',{name:'Iniciar atendimento',exact:true})
+    if (await iniciar.count()) await iniciar.click()
+    await page.getByLabel(rotulo,{exact:true}).check()
+    await page.getByLabel('Nota',{exact:true}).fill('Smoke '+tipo)
+    if (tipo==='retornar_depois') {
+      await page.getByLabel('Próximo passo',{exact:true}).fill('Ligar novamente')
+      await page.getByLabel('Data do próximo passo',{exact:true}).fill('2030-01-01')
+    }
+    await page.getByRole('button',{name:'Registrar',exact:true}).click()
+    await expect(page).toHaveURL(url=>url.pathname==='/funil'&&url.searchParams.has('negociacao'))
+    const negociacoes=await sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[empresaId])
+    expect(negociacoes.rowCount).toBe(1)
+    await expect(page).toHaveURL('/funil?negociacao='+negociacoes.rows[0].id)
+    const modal=page.getByRole('dialog')
+    await expect(modal.getByRole('heading',{name:nome,exact:true})).toBeVisible()
+    const contatos=await sql('SELECT tipo,nota FROM contato WHERE empresa_id=$1',[empresaId])
+    expect(contatos.rows).toEqual([{tipo,nota:'Smoke '+tipo}])
+    await expect(page.getByLabel('Nota',{exact:true})).toHaveCount(0)
+    expect(await page.evaluate(id=>sessionStorage.getItem('crm:contato:v1:'+id),empresaId)).toBeNull()
+    await modal.getByRole('button',{name:'Registrar atendimento',exact:true}).click()
+    await modal.getByLabel('Nota',{exact:true}).fill('Contato embutido '+tipo)
+    await modal.getByLabel('Próximo passo',{exact:true}).fill('Enviar proposta')
+    await modal.getByLabel('Data do próximo passo',{exact:true}).fill('2030-01-02')
+    await modal.getByRole('button',{name:'Registrar',exact:true}).click()
+    await expect(modal).toHaveCount(0)
+    await expect(page).toHaveURL(url=>url.pathname==='/funil')
+    await expect(page.getByRole('status')).toContainText('Atendimento registrado.')
+    expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(2)
+    expect((await sql("SELECT id FROM contato WHERE empresa_id=$1 AND tipo='acompanhamento' AND nota=$2",[empresaId,'Contato embutido '+tipo])).rowCount).toBe(1)
+    expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[empresaId])).rows).toEqual(negociacoes.rows)
+    await page.screenshot({path:'test-results/atendimento-pos-registro-'+tipo+'.png',fullPage:true})
+    const aposFechar=page.url()
+    await page.reload()
+    const selecionadaNaUrl=new URL(aposFechar).searchParams.has('negociacao')
+    await expect(page.getByRole('dialog')).toHaveCount(selecionadaNaUrl?1:0)
+    await test.info().attach('contexto-apos-fechar-'+tipo,{
+      body:JSON.stringify({aposFechar,queryPermaneceu:selecionadaNaUrl,reloadReabreModal:selecionadaNaUrl}),
+      contentType:'application/json',
+    })
+  })
+}

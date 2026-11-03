@@ -155,3 +155,26 @@ test('confirmação somente de replay conserva mensagem e aviso mesmo quando o d
  expect(host.textContent).toContain('Não foi possível abrir o destino.')
  expect(host.querySelector('form')).toBeNull()
 })
+
+test('iniciar na própria rota prepara edição com versão nova ao sair de somente confirmação',async()=>{
+ await act(async()=>root.render(<FormularioContato empresaId="A" versao={1} fase="inicial" somenteConfirmacao/>))
+ expect(host.querySelector('form')).toBeNull()
+ await act(async()=>root.render(<FormularioContato empresaId="A" versao={2} fase="inicial"/>))
+ gravar.mockResolvedValueOnce({ok:true,erro:null,repetida:false,leituraDestino:{ok:true,destino:{tipo:'permanecer'}}})
+ await enviar()
+ expect(gravar.mock.calls[0][1].get('versao')).toBe('2')
+})
+
+test.each([true,false])('nova versão de props preserva snapshot anterior quando envio pendente ou editor já aberto (%s)',async(pendente)=>{
+ const valor={...rascunhoInicial(false),nota:'Original'}
+ if(pendente)sessionStorage.setItem('crm:contato:v1:A',JSON.stringify({valor,envio:{chave:'original',versao:1,valor}}))
+ await act(async()=>root.render(<FormularioContato empresaId="A" versao={1} fase="inicial" somenteConfirmacao={pendente}/>))
+ await act(async()=>root.render(<FormularioContato empresaId="A" versao={2} fase="inicial"/>))
+ gravar.mockResolvedValueOnce({ok:true,erro:null,repetida:pendente,leituraDestino:{ok:true,destino:{tipo:'permanecer'}}})
+ await enviar()
+ expect(gravar.mock.calls[0][1].get('versao')).toBe('1')
+ if(pendente){
+  expect(gravar.mock.calls[0][1].get('chave')).toBe('original')
+  expect(gravar.mock.calls[0][1].get('nota')).toBe('Original')
+ }
+})
