@@ -31,3 +31,9 @@ test('histórico com falha usa aviso e resultados sem empresas orientam a voltar
   expect(html).toContain('Nenhuma empresa liberada nesta entrega')
   expect(html).toContain('>Ver planejamento</a>')
 })
+test('página pessoal seguinte carrega a semana de origem até em um detalhe vazio', () => {
+  const html = renderToStaticMarkup(<DetalheEntrega plano={plano} recibo={null} resultados={[]} pagina={2} temProxima semana="2026-10-26" />)
+  expect(html).toContain('href="/fila/google/p?semana=2026-10-26&amp;pagina=1"')
+  expect(html).toContain('href="/fila/google/p?semana=2026-10-26&amp;pagina=3"')
+  expect(html).toContain('href="/fila/google?semana=2026-10-26"')
+})

@@ -7,16 +7,18 @@ import { Card } from '@/src/components/ui/card'
 import { ESTADOS_GOOGLE, type PlanoGoogle } from '@/src/features/google/tipos'
 import styles from './google.module.css'
 
-export function ListaEntregas({ planos, gestor = false }: { planos: PlanoGoogle[]; gestor?: boolean }) {
+export function ListaEntregas({ planos, gestor = false, semana }: { planos: PlanoGoogle[]; gestor?: boolean; semana?: string }) {
+  const caminho = gestor ? '/empresas/google' : '/fila/google'
+  const consulta = !gestor && semana ? '?semana=' + semana : ''
   const entregas = planos.filter(p => p.estado !== 'planejado')
-  if (!entregas.length) return <EstadoVazio titulo="Nenhuma entrega nesta semana" descricao="Os pedidos salvos entram na rotina diária do agente. Acompanhe aqui a coleta, as verificações e as empresas recebidas." acao={{ rotulo: 'Ver planejamento', href: gestor ? '/empresas/google' : '/fila/google', variante: 'outline' }} />
+  if (!entregas.length) return <EstadoVazio titulo="Nenhuma entrega nesta semana" descricao="Os pedidos salvos entram na rotina diária do agente. Acompanhe aqui a coleta, as verificações e as empresas recebidas." acao={{ rotulo: 'Ver planejamento', href: caminho + consulta, variante: 'outline' }} />
   return <div className={styles.entregas}>{entregas.map(p => <Card key={p.id} className={styles.entrega}>
     <div><Badge variant={p.estado === 'concluido' ? 'success' : p.estado === 'falhou' ? 'danger' : 'default'}>{ESTADOS_GOOGLE[p.estado]}</Badge><h2>{p.nicho}</h2>
       <p>{[p.bairro || 'Cidade inteira', p.cidade, p.uf].join(', ')}</p><p className={styles.ajuda}><time dateTime={p.dia}>{p.dia.split('-').reverse().join('/')}</time>{gestor ? ` · ${p.vendedor}` : ''}</p></div>
     <div className={styles.indicadores}><strong>{p.entregues} entregues</strong><span>{p.trabalhadas} com atendimento</span><span>{Math.max(0, p.entregues - p.trabalhadas)} sem atendimento</span>
       {gestor && <span>{p.encontradas} encontradas · {p.pendentes} pendentes · {p.indisponiveis} repetidas ou indisponíveis</span>}</div>
     {p.motivo && <Alert role={p.estado === 'falhou' ? 'alert' : 'note'} variant={p.estado === 'falhou' ? 'danger' : 'default'} className={styles.motivoEntrega}>{p.motivo}</Alert>}
-    <Button asChild variant="outline"><Link href={`${gestor ? '/empresas' : '/fila'}/google/${p.id}`}>Ver empresas e histórico</Link></Button>
+    <Button asChild variant="outline"><Link href={`${caminho}/${p.id}${consulta}`}>Ver empresas e histórico</Link></Button>
   </Card>)}</div>
 }
 export function NavegacaoSemana({ inicio, fim, caminho, parametros = {}, proximos = false }: { inicio: string; fim: string; caminho: string; parametros?: Record<string, string>; proximos?: boolean }) {

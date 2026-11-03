@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { PlanejamentoSemanal } from './planejamento'
 import type { PlanoGoogle } from '@/src/features/google/tipos'
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('./acoes', () => ({ salvarSemanaAcao: async () => ({ erro: null, salvo: true }), copiarPlanoAcao: async () => ({ erro: null, salvo: true }), sincronizarPlanoAcao: async () => ({ erro: null }) }))
 const elemento = document.createElement('div')
 document.body.append(elemento)
@@ -54,7 +55,8 @@ test('critérios abrem em diálogo e cancelar não altera rascunho da semana', a
   expect(dialogo.textContent).toContain('Contatos e presença digital')
   expect(dialogo.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(5)
   await act(async () => dialogo.querySelector<HTMLInputElement>('input[value="fixo"]')!.click())
-  await act(async () => Array.from(dialogo.querySelectorAll('button')).find(b => b.textContent === 'Cancelar')!.click())
+  await clicar('Cancelar', dialogo)
+  await clicar('Descartar alterações')
   await act(async () => botao.click())
   expect(document.querySelector<HTMLInputElement>('[role="dialog"] input[value="fixo"]')?.checked).toBe(false)
 })
@@ -75,4 +77,91 @@ test('critérios usam controles compartilhados e aplicar preserva payload sem li
   expect(payload[0]).toMatchObject({ dia: '2026-10-23', criterios: { telefone: ['fixo'], nota: null, termos: '' } })
   await act(async () => abrir())
   expect(document.querySelector<HTMLInputElement>('[role="dialog"] input[value="fixo"]')!.checked).toBe(true)
+})
+function clicar(rotulo: string, onde: ParentNode = document) {
+  return act(async () => {
+    Array.from(onde.querySelectorAll('button')).find(b => b.textContent === rotulo)!.click()
+  })
+}
+function alterarNicho(valor: string) {
+  return act(async () => {
+    const campo = elemento.querySelector<HTMLInputElement>('input[name^="nicho-"]')!
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(campo, valor)
+    campo.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+function temProtecaoDeUnload() {
+  return !window.dispatchEvent(new Event('beforeunload', { cancelable: true }))
+}
+async function abrirSemana(historico: PlanoGoogle[] = []) {
+  raiz = createRoot(elemento)
+  await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-23']} planos={[]} hoje="2026-10-22" historico={historico} />))
+}
+
+test('semana intocada ou revertida fecha sem confirmação nem proteção de unload', async () => {
+  await abrirSemana()
+  await clicar('Editar planejamento')
+  expect(temProtecaoDeUnload()).toBe(false)
+  await clicar('Cancelar')
+  expect(elemento.querySelector('input[name^="nicho-"]')).toBeNull()
+  await clicar('Editar planejamento')
+  await alterarNicho('Lojas')
+  expect(temProtecaoDeUnload()).toBe(true)
+  await alterarNicho('')
+  expect(temProtecaoDeUnload()).toBe(false)
+  await clicar('Cancelar')
+  expect(elemento.querySelector('input[name^="nicho-"]')).toBeNull()
+})
+
+test('cancelar edição real pede decisão e continuar mantém o nicho digitado', async () => {
+  await abrirSemana()
+  await clicar('Editar planejamento')
+  await alterarNicho('Lojas')
+  await clicar('Cancelar')
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Descartar alterações?')
+  await clicar('Continuar editando')
+  expect(elemento.querySelector<HTMLInputElement>('input[name^="nicho-"]')?.value).toBe('Lojas')
+  await clicar('Cancelar')
+  await clicar('Descartar alterações')
+  expect(elemento.querySelector('input[name^="nicho-"]')).toBeNull()
+  expect(elemento.querySelector('tbody')?.textContent).not.toContain('Lojas')
+})
+
+test('espelhar com seleções pede descarte e pode retomar sem desmarcar', async () => {
+  const origem = { id: 'pedido', dia: '2026-10-22', nicho: 'Papelarias', revisao: 1 } as PlanoGoogle
+  await abrirSemana([origem])
+  await clicar('Espelhar um dia')
+  const editor = document.querySelector('[role="dialog"]')!
+  await act(async () => editor.querySelector<HTMLInputElement>('input[value="criterios"]')!.click())
+  await clicar('Cancelar', editor)
+  expect(document.body.textContent).toContain('Descartar alterações?')
+  await clicar('Continuar editando')
+  expect(editor.querySelector<HTMLInputElement>('input[value="criterios"]')?.checked).toBe(true)
+  await clicar('Cancelar', editor)
+  await clicar('Descartar alterações')
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+})
+
+
+test('Back autorizado com semana e critérios alterados não rearma a guarda ao desmontar os dois editores', async () => {
+  const armar = vi.spyOn(history, 'pushState').mockImplementation(() => {})
+  const voltar = vi.spyOn(history, 'go').mockImplementation(() => {})
+  const tamanho = vi.spyOn(history, 'length', 'get').mockReturnValue(3)
+  try {
+    await abrirSemana()
+    await clicar('Editar planejamento')
+    await alterarNicho('Lojas')
+    await clicar('Critérios de busca')
+    const editor = document.querySelector('[role="dialog"]')!
+    await act(async () => editor.querySelector<HTMLInputElement>('input[value="fixo"]')!.click())
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(armar).toHaveBeenCalledTimes(2)
+    await clicar('Descartar alterações')
+    expect(voltar).toHaveBeenCalledWith(-2)
+    expect(armar).toHaveBeenCalledTimes(2)
+  } finally {
+    armar.mockRestore()
+    voltar.mockRestore()
+    tamanho.mockRestore()
+  }
 })

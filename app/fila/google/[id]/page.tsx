@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
+import { semanaDe } from '@/src/features/google/regras'
 import { repositorioGoogle } from '@/src/features/google/repositorio'
 import { lerResumosEmpresas } from '@/src/server/atendimento/consulta'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
@@ -15,8 +16,10 @@ export default async function PaginaEntrega({ params, searchParams }: { params: 
   const pagina = Number.isInteger(numero) && numero >= 1 && numero <= 100 ? numero : 1
   const entrega = await repositorioGoogle(eu.usuarioId).detalhe(id, pagina)
   if (!entrega) notFound()
+  const origem = typeof query.semana === 'string' ? semanaDe(query.semana)?.[0] : undefined
+  const semana = origem ?? semanaDe(entrega.plano.dia)?.[0] ?? entrega.plano.dia
   const resumos = await lerResumosEmpresas(eu.usuarioId, entrega.resultados.flatMap(r => r.empresa_id ? [r.empresa_id] : []))
-  return <main className={styles.pagina}><CabecalhoPagina titulo={entrega.execucao?.snapshot?.nicho ?? entrega.plano.snapshot?.nicho ?? entrega.plano.nicho} descricao="Empresas recebidas pelas buscas no Google." acoes={<Button asChild variant="outline"><Link href={`/fila/google?semana=${entrega.plano.dia}&aba=entregas`}>Voltar para empresas recebidas</Link></Button>} />
-    <DetalheEntrega {...entrega} empresas={resumos.ok ? resumos.empresas : []} />
+  return <main className={styles.pagina}><CabecalhoPagina titulo={entrega.execucao?.snapshot?.nicho ?? entrega.plano.snapshot?.nicho ?? entrega.plano.nicho} descricao="Empresas recebidas pelas buscas no Google." acoes={<Button asChild variant="outline"><Link href={`/fila/google?semana=${semana}&aba=entregas`}>Voltar para empresas recebidas</Link></Button>} />
+    <DetalheEntrega {...entrega} semana={semana} empresas={resumos.ok ? resumos.empresas : []} />
   </main>
 }

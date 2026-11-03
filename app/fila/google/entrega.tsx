@@ -10,7 +10,10 @@ import { ProspectarGoogle } from './prospectar'
 import type { ResumoEmpresa } from '@/src/lib/empresa-visual'
 import styles from './google.module.css'
 
-export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lotes = [], gestor = false, empresas = [], pagina = 1, temProxima = false }: { plano: PlanoGoogle; resultados: ResultadoGoogle[]; recibo: Record<string, unknown> | null; execucao?: ExecucaoGoogle | null; lotes?: LoteGoogle[]; gestor?: boolean; contexto?: string | null; empresas?: ResumoEmpresa[]; pagina?: number; temProxima?: boolean }) {
+export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lotes = [], gestor = false, empresas = [], pagina = 1, temProxima = false, semana }: { plano: PlanoGoogle; resultados: ResultadoGoogle[]; recibo: Record<string, unknown> | null; execucao?: ExecucaoGoogle | null; lotes?: LoteGoogle[]; gestor?: boolean; contexto?: string | null; empresas?: ResumoEmpresa[]; pagina?: number; temProxima?: boolean; semana?: string }) {
+  const caminho = gestor ? '/empresas/google' : '/fila/google'
+  const semanaExibida = !gestor && semana ? semana : plano.dia
+  const parametrosPagina = (n: number) => new URLSearchParams(!gestor && semana ? { semana, pagina: String(n) } : { pagina: String(n) })
   const texto = (v: unknown) => typeof v === 'string' ? v : ''
   const estados = { entregue: 'Entregue', repetida: 'Já entregue', indisponivel: 'Com outro responsável', pendente: 'A conferir', conflito: 'Identidade em conflito' }
   const usado = execucao?.snapshot ?? plano.snapshot ?? plano
@@ -34,7 +37,7 @@ export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lot
     </Card>
     {gestor && lotes.length > 0 && <Card className={styles.painel}><h2>Rodadas e comprovantes</h2>{lotes.map(l => <div key={l.id}><h3>Rodada {l.ordinal}</h3><p>{l.analisadas} candidatas, {l.resposta?.entregues ?? 0} empresas entregues. {l.concluido_em ? 'Concluída.' : 'Aguardando confirmação.'}</p>{l.recibo && <><div className={styles.acoes}>{['arquivo_original_id','arquivo_resultado_id'].map((k,i) => typeof l.recibo?.[k] === 'string' && <Button key={k} asChild variant="outline"><a href={'https://drive.google.com/file/d/'+encodeURIComponent(String(l.recibo[k]))+'/view'} target="_blank" rel="noreferrer">{i===0?'Arquivo original':'Resultado da rodada'}</a></Button>)}</div><details><summary className={styles.botaoResumo}>Conferir critérios e evidências</summary><pre className={styles.dadosBrutos}>{JSON.stringify({criterios:usado.criterios,evidencias:l.recibo.evidencias},null,2)}</pre></details></>}</div>)}</Card>}
     <section aria-label="Empresas da coleta" className={styles.entregas}>
-      {!resultados.length && <EstadoVazio titulo="Nenhuma empresa liberada nesta entrega" descricao="Acompanhe o estado da coleta. Resultados pendentes ou já destinados ficam disponíveis ao gestor." acao={{ rotulo: 'Ver planejamento', href: `${gestor ? '/empresas' : '/fila'}/google?semana=${plano.dia}`, variante: 'outline' }} />}
+      {!resultados.length && <EstadoVazio titulo="Nenhuma empresa liberada nesta entrega" descricao="Acompanhe o estado da coleta. Resultados pendentes ou já destinados ficam disponíveis ao gestor." acao={{ rotulo: 'Ver planejamento', href: `${caminho}?semana=${semanaExibida}`, variante: 'outline' }} />}
       {resultados.map(r => !gestor && empresas.find(e => e.id === r.empresa_id) ? <ProspectarGoogle key={r.id} empresa={empresas.find(e => e.id === r.empresa_id)!} /> : <Card className={styles.empresa} key={r.id}>
         <div><Badge variant={r.situacao === 'entregue' ? 'success' : r.situacao === 'conflito' ? 'warning' : 'default'}>{estados[r.situacao]}</Badge><h2>{texto(r.dados.nome_fantasia) || texto(r.dados.razao_social) || 'Empresa sem nome confirmado'}</h2>
           <p>{texto(r.dados.endereco) || 'Endereço não informado pela origem'}</p></div>
@@ -47,9 +50,9 @@ export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lot
       </Card>)}
     </section>
     {(pagina > 1 || temProxima) && <nav className={styles.acoes} aria-label="Páginas das empresas da coleta">
-      {pagina > 1 && <Button asChild variant="outline"><Link href={`${gestor ? '/empresas' : '/fila'}/google/${plano.id}?pagina=${pagina - 1}`}>Página anterior</Link></Button>}
+      {pagina > 1 && <Button asChild variant="outline"><Link href={`${caminho}/${plano.id}?${parametrosPagina(pagina - 1)}`}>Página anterior</Link></Button>}
       <span>Página {pagina}</span>
-      {temProxima && <Button asChild variant="outline"><Link href={`${gestor ? '/empresas' : '/fila'}/google/${plano.id}?pagina=${pagina + 1}`}>Próxima página</Link></Button>}
+      {temProxima && <Button asChild variant="outline"><Link href={`${caminho}/${plano.id}?${parametrosPagina(pagina + 1)}`}>Próxima página</Link></Button>}
     </nav>}
   </>
 }

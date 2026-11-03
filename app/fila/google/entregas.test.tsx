@@ -26,3 +26,7 @@ test('entregas usam etiqueta padronizada e diferenciam erro, cancelamento e sema
   expect(vazio).toContain('Nenhuma entrega nesta semana')
   expect(vazio).toContain('>Ver planejamento</a>')
 })
+test('histórico pessoal transporta a semana exibida ao abrir uma entrega', () => {
+  const html = renderToStaticMarkup(<ListaEntregas planos={[plano]} semana="2026-10-19" />)
+  expect(html).toContain('href="/fila/google/pedido?semana=2026-10-19"')
+})
