@@ -1,7 +1,8 @@
 # Simplificação dos avisos e dos destinos das ações do CRM
 
-Data: 03/11/2026. Estado: escopo corrigido pelo usuário; mockups em avaliação,
-sem implementação do produto. Revisão dos botões ampliada a todo o CRM.
+Data: 03/11/2026. Estado: escopo corrigido e padrão visual Faixa compacta
+escolhido pelo usuário, sem implementação do produto. Revisão dos botões
+ampliada a todo o CRM.
 
 ## Pedido e intenção
 
@@ -88,28 +89,21 @@ O código de arquivamento do Funil conserva a persistência do comando pendente,
 o botão Confirmar envio anterior e os avisos de resultado. Remover o alvo de
 arraste não autoriza remover a proteção contra duplicação ou a recuperação.
 
-## 2. Estados vazios compactos e alternativas visuais
+## 2. Estados vazios: Faixa compacta escolhida
 
-O usuário pediu mockups antes da escolha visual. Há três alternativas para
-comparar nas abas Funil, Meu dia e Carteira: **Linha discreta**, com mensagem
-e link sem caixa; **Faixa compacta**, com ícone discreto e ação próxima; e
-**No próprio conteúdo**, com a orientação dentro da primeira coluna do Funil
-ou da região vazia da lista. Linha discreta é a recomendação do autor.
-Nenhuma das três foi escolhida pelo usuário ainda.
+O usuário escolheu explicitamente **Faixa compacta** após comparar os
+mockups. Esse é o padrão visual a implementar nas abas do CRM.
 
-Proposta sujeita à escolha: mudar o componente compartilhado EstadoVazio para
-uma mensagem compacta com título, uma linha de orientação quando necessária
-e ação próxima ao texto. Sem altura mínima, rodapé separado ou ícone em caixa
-por padrão.
-O espaço ocupado acompanha o conteúdo. Em celular, a ação pode passar para
-a linha seguinte. Temas claro/escuro usam os tokens existentes.
+Mudar o componente compartilhado EstadoVazio para uma faixa baixa, com
+superfície e borda discretas, ícone pequeno, título, uma linha de orientação
+quando necessária e ação próxima ao texto. Sem altura mínima artificial ou
+rodapé separado. O espaço ocupado acompanha o conteúdo. Em celular, a ação
+pode passar para a linha seguinte. Temas claro/escuro usam os tokens existentes.
 
-No Funil vazio, a posição segue a alternativa escolhida: Linha discreta e
-Faixa compacta ficam acima das colunas; No próprio conteúdo fica dentro da
-primeira coluna, sem orientação global duplicada. Usar "Nenhuma negociação
-aberta. Registre interesse ou combine um retorno para começar." e a ação Ir
-para Prospecção. Não desenhar outro painel grande. Manter títulos e contagens
-das três etapas, com as mensagens locais que não dupliquem a orientação.
+No Funil vazio, a faixa fica acima das colunas, com "Nenhuma negociação
+aberta", orientação "Registre interesse ou combine um retorno para começar."
+e ação Ir para Prospecção. Manter os títulos, contagens e mensagens locais
+das três etapas.
 
 Aplicar a composição compacta aos consumidores existentes de EstadoVazio,
 incluindo Carteira, Meu dia, Localizar, históricos e consultas do gestor.
@@ -217,20 +211,21 @@ regra de agenda ou retenção de histórico. A autoridade continua no banco.
 `features/` não importa de outra feature; código comum sobe para `lib/` ou
 `server/`. Sem dependência nova prevista e sem migração de banco prevista.
 
-Depois da aprovação, produzir plano de implementação com Superpowers e
+Para implementar, produzir plano de implementação com Superpowers e
 executar em branch `codex/simplificar-crm-fluxos`, baseada na main conferida.
 Entregar PR contra main com verificações apropriadas e CI verde. Não fazer
 merge ou publicar sem a autorização correspondente.
 
-## Decisões do autor para revisão do usuário
+## Decisões registradas e encaminhamento
 
 - Sem interesse dentro de Origem das empresas na central, conforme correção
   explícita do usuário; a consulta usa a situação comercial internamente.
 - Manter a ação individual de arquivar; remover seus blocos permanentes.
-- Três alternativas de mensagens vazias em avaliação, com Linha discreta
-  recomendada, aplicáveis aos consumidores do componente comum.
+- Faixa compacta escolhida explicitamente pelo usuário, aplicável aos
+  consumidores do componente comum.
 - Navegação automática no registro que cria negociação, mantendo editores
   embutidos e resultados sem negociação no contexto apropriado.
 
-Até a aprovação visual, somente investigação, documentação e mockups
-descartáveis. Não confundir a correção de escopo com produto já implementado.
+A escolha visual está concluída. O material está preparado para a continuidade
+em outro chat, conforme solicitado; produto e testes funcionais seguem
+pendentes. Não confundir a escolha do padrão com produto já implementado.

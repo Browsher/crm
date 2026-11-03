@@ -40,14 +40,12 @@ Preservar seleção, busca e paginação ao abrir/voltar do atendimento. A rota
 antiga deve continuar encaminhando corretamente, inclusive para confirmar
 uma retomada cujo comando ficou pendente no armazenamento da sessão.
 
-## Escolha visual ainda pendente
+## Padrão visual escolhido: Faixa compacta
 
-O usuário pediu ver mockups antes de escolher. Alternativas:
-
-- **Linha discreta**, recomendada: mensagem curta e link, sem card em volta.
-- **Faixa compacta**: superfície baixa, ícone pequeno e ação junto ao texto.
-- **No próprio conteúdo**: orientação na primeira coluna do Funil ou na
-  região vazia de uma lista, sem aviso global adicional.
+O usuário escolheu explicitamente **Faixa compacta** após ver os mockups:
+superfície baixa com borda discreta, ícone pequeno, título, orientação curta
+e ação junto ao texto. No desktop, a ação fica à direita; no celular pode
+passar para a linha seguinte. No Funil, a faixa fica acima das três colunas.
 
 Aplicação prevista: Funil, Meu dia, Carteira, Localizar, históricos e outras
 telas que usam EstadoVazio. O componente atual impõe mínimo de 286 px. Remover
@@ -151,4 +149,5 @@ leitura, melhorias de UX e hipóteses que precisam de reprodução.
 Produto e banco mantêm a autoridade atual de permissões, RLS, idempotência e
 transições. A spec detalhada está em
 [simplificação dos fluxos](../superpowers/specs/2026-11-03-simplificacao-fluxos-crm-design.md).
-Concluir a escolha visual antes de aplicar o padrão em todas as abas.
+A escolha visual está concluída: implementar Faixa compacta em todas as abas
+abrangidas, preservando a mensagem e a ação úteis em cada contexto.
