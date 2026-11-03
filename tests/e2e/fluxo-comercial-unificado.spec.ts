@@ -4,24 +4,22 @@ import { bancoGruposDoHarness, comBancoGrupos } from './dados-grupos'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
 import { vincularEmpresaTeste } from '../integracao/atendimento-fixtures'
 
-const empresa = '00000000-0000-4000-8000-000000009950'
 const sql = (texto: string, valores: unknown[] = []) => comBancoGrupos(c => c.query(texto, valores))
-async function entrar(page: Page, apelido = 'fluxounificadoe2e') {
+async function entrar(page: Page, apelido: string) {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill(apelido + '@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/meu-dia')
 }
-test.beforeAll(async () => {
+test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga não vende cliente arquivado', async ({ page, context }) => {
   const banco = bancoGruposDoHarness()
-  const eu = await criarUsuarioComSenha(banco, 'vendedor', 'fluxounificadoe2e', 'Senha-e2e-2026', { pendente: false })
+  const empresa = randomUUID()
+  const apelido = 'fluxounificado-' + empresa.slice(0, 8)
+  const eu = await criarUsuarioComSenha(banco, 'vendedor', apelido, 'Senha-e2e-2026')
   await banco.sql("INSERT INTO empresa(id,razao_social,telefone) VALUES($1,'Fluxo Integrado','11988889950')", [empresa])
   await vincularEmpresaTeste(banco, empresa, eu.id, 'legado')
-})
-
-test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga não vende cliente arquivado', async ({ page, context }) => {
-  await entrar(page)
+  await entrar(page, apelido)
   await page.goto('/fila/localizar')
   await page.getByRole('button', { name: 'Ver empresa: Fluxo Integrado' }).click()
   await expect(page.getByRole('dialog')).toContainText('Fluxo Integrado')
@@ -34,8 +32,17 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   await page.getByLabel('Próximo passo', { exact: true }).fill('Retorno da jornada integrada')
   await page.getByLabel('Data do próximo passo', { exact: true }).fill(hoje)
   await page.getByRole('button', { name: 'Registrar', exact: true }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Atendimento registrado.' })).toBeVisible()
-  await page.goto('/funil')
+  const modal = page.getByRole('dialog', { name: 'Fluxo Integrado', exact: true })
+  const abriuNegociacao = (url: URL) => url.pathname === '/funil' && url.searchParams.has('negociacao')
+  await expect(page).toHaveURL(abriuNegociacao)
+  await expect(modal).toContainText('Retorno da jornada integrada')
+  const contatos = await banco.sql(`SELECT tipo,proximo_passo,proximo_passo_data::text
+    FROM contato WHERE empresa_id=$1`, [empresa])
+  expect(contatos).toEqual([{ tipo: 'retornar_depois', proximo_passo: 'Retorno da jornada integrada', proximo_passo_data: hoje }])
+  const [negociacaoRetorno] = await banco.sql<{ id: string }>(
+    'SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresa],
+  )
+  await expect(page).toHaveURL('/funil?negociacao=' + negociacaoRetorno.id)
   await page.goto('/meu-dia')
   await expect(page.getByRole('main')).toContainText('Retorno da jornada integrada')
   await page.goto('/funil')
@@ -44,21 +51,29 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   const historia = (await sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).rows
   await page.goto('/fila/sem-interesse')
   await page.getByRole('button', { name: 'Retomar atendimento', exact: true }).click()
-  await expect(page.getByRole('status')).toContainText('Atendimento retomado')
-  expect((await sql('SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1', [empresa])).rows[0].agenda_contato_id).toBeNull()
+  await expect(page).toHaveURL(url => url.pathname === '/fila/atendimento/' + empresa)
+  expect(await banco.sql('SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id=$1', [empresa]))
+    .toEqual([{ agenda_contato_id: null, arquivada_em: null }])
   expect((await sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).rows).toEqual(historia)
-  await page.goto('/fila/atendimento/' + empresa)
   await page.getByLabel('Falei, tem interesse', { exact: true }).check()
   await page.getByRole('button', { name: 'Registrar', exact: true }).click()
-  await expect(page.getByRole('status').filter({ hasText: 'Atendimento registrado.' })).toBeVisible()
-  await page.goto('/funil')
-  await page.getByRole('button', { name: 'Abrir no funil', exact: true }).click()
-  await page.getByRole('button', { name: 'Registrar venda', exact: true }).click()
+  await expect(page).toHaveURL(abriuNegociacao)
+  await expect(modal).toBeVisible()
+  const [negociacaoInteresse] = await banco.sql<{ id: string }>(
+    'SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresa],
+  )
+  expect(negociacaoInteresse.id).not.toBe(negociacaoRetorno.id)
+  await expect(page).toHaveURL('/funil?negociacao=' + negociacaoInteresse.id)
+  expect(await banco.sql("SELECT id FROM contato WHERE empresa_id=$1 AND tipo='interessado'", [empresa])).toHaveLength(1)
+  await modal.getByRole('button', { name: 'Registrar venda', exact: true }).click()
   await page.getByLabel('Valor em reais').fill('100,00')
   await page.getByLabel('Data da venda').fill(hoje)
   await page.getByRole('button', { name: 'Conferir venda' }).click()
   await page.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).toHaveURL('/carteira/' + empresa + '?venda=registrada')
+  await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
+  expect(await banco.sql('SELECT negociacao_id,valor_centavos::int FROM venda WHERE empresa_id=$1', [empresa]))
+    .toEqual([{ negociacao_id: negociacaoInteresse.id, valor_centavos: 10000 }])
   const antiga = await context.newPage()
   await antiga.goto('/carteira/' + empresa)
   await antiga.getByRole('button', { name: 'Registrar venda', exact: true }).click()
@@ -77,7 +92,8 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   await expect(antiga.getByLabel('Observação (opcional)')).toHaveValue('Compra posterior preservada')
   expect((await sql('SELECT id FROM venda WHERE empresa_id=$1', [empresa])).rowCount).toBe(1)
   await page.getByRole('button', { name: 'Retomar atendimento', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp('/fila/atendimento/' + empresa))
+  await expect(page).toHaveURL('/carteira/' + empresa)
+  await expect(page.getByRole('button', { name: 'Registrar venda', exact: true })).toBeEnabled()
   await antiga.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
   await expect(antiga.getByRole('dialog')).toHaveCount(0)
   expect((await sql('SELECT id FROM venda WHERE empresa_id=$1', [empresa])).rowCount).toBe(2)
