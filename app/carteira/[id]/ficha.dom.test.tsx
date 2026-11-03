@@ -32,7 +32,7 @@ async function montar(empresa = EMPRESA) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await act(async () => raiz?.render(<Ficha empresa={empresa} contatos={[]} voltarPara="/carteira?nome=Aurora" />))
+  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} contatos={[]} voltarPara="/carteira?nome=Aurora" />))
   return host
 }
 

@@ -1,15 +1,17 @@
+import { vendaCarteiraAcao } from '../carteira/venda-acao'
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { Quadro } from './quadro'
-import { etapaAcao, semInteresseAcao } from './acoes'
+import { etapaAcao, semInteresseAcao, vendaAcao } from './acoes'
 import { ETAPAS_FUNIL } from '@/src/lib/comercial'
 import type { NegociacaoResumo } from '@/src/features/funil/consulta'
 const replace=vi.hoisted(()=>vi.fn())
 const refresh=vi.hoisted(()=>vi.fn())
 vi.mock('next/navigation',()=>({useRouter:()=>({refresh,replace})}))
-vi.mock('./acoes',()=>({etapaAcao:vi.fn(),semInteresseAcao:vi.fn()}))
+vi.mock('../carteira/venda-acao',()=>({vendaCarteiraAcao:vi.fn()}))
+vi.mock('./acoes',()=>({etapaAcao:vi.fn(),semInteresseAcao:vi.fn(),vendaAcao:vi.fn()}))
 vi.mock('./modal',()=>({ModalFunil:({fechar}:{fechar:(aviso?:string)=>void})=> <><p>Negociação operacional</p><button onClick={()=>fechar('Atendimento registrado.')}>Fechar modal de teste</button></>}))
 vi.mock('@/src/components/crm/empresa-dialogo',()=>({EmpresaDialogo:()=> <p>Dados da empresa</p>}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
@@ -138,4 +140,31 @@ test('abertura manual sem deep-link conserva refresh após contato e não faz re
  expect(refresh).toHaveBeenCalledTimes(1);expect(replace).not.toHaveBeenCalled()
  expect(host.textContent).toContain('Atendimento registrado.')
  expect(host.textContent).not.toContain('Negociação operacional')
+})
+
+test('Funil vazio recupera venda sem consultar negociação e abre a ficha autorizada',async()=>{
+ const comando={usuarioId:'teste',empresaId:'forjada',chave:'original',alvo:{tipo:'primeira',negociacaoId:'encerrada'},entrada:{valor:'123,45',data:'2026-01-01',observacao:'Original'}}
+ sessionStorage.setItem('crm:venda:v1:teste',JSON.stringify(comando))
+ vi.mocked(vendaAcao).mockResolvedValue({ok:true,leituraDestino:{ok:true,destino:{tipo:'carteira',empresaId:'real'}}})
+ await montar([])
+ expect(vendaAcao).not.toHaveBeenCalled();expect(host.textContent).toContain('Confirmar venda anterior')
+ await clicar('Confirmar venda anterior')
+ const f=vi.mocked(vendaAcao).mock.calls[0][0]
+ expect(f.get('id')).toBe('encerrada');expect(f.get('chave')).toBe('original');expect(f.get('valor')).toBe('123,45')
+ expect(replace).toHaveBeenCalledWith('/carteira/real?venda=registrada')
+ expect(sessionStorage.getItem('crm:venda:v1:teste')).toBeNull()
+})
+test('leitura do destino ou router falha depois de confirmar mantém recibo sem incentivo a nova venda',async()=>{
+ sessionStorage.setItem('crm:venda:v1:teste',JSON.stringify({usuarioId:'teste',empresaId:'forjada',chave:'original',alvo:{tipo:'primeira',negociacaoId:'encerrada'},entrada:{valor:'123,45',data:'2026-01-01',observacao:'Original'}}))
+ vi.mocked(vendaAcao).mockResolvedValue({ok:true,leituraDestino:{ok:false,motivo:'leitura_indisponivel'}})
+ await montar([]);await clicar('Confirmar venda anterior')
+ expect(host.textContent).toContain('Venda registrada. Não foi possível abrir a ficha');expect(host.textContent).not.toContain('Confirmar venda anterior')
+ expect(replace).not.toHaveBeenCalled()
+})
+test('replay de recompra no Funil preserva contexto e mostra recibo',async()=>{
+ sessionStorage.setItem('crm:venda:v1:teste',JSON.stringify({usuarioId:'teste',empresaId:'empresa',chave:'original',alvo:{tipo:'recompra'},entrada:{valor:'123,45',data:'2026-01-01',observacao:'Original'}}))
+ vi.mocked(vendaCarteiraAcao).mockResolvedValue({ok:true,leituraDestino:{ok:true,destino:{tipo:'carteira',empresaId:'real'}}})
+ await montar([]);await clicar('Confirmar venda anterior')
+ expect(replace).not.toHaveBeenCalled();expect(refresh).toHaveBeenCalledOnce()
+ expect(host.textContent).toContain('Venda registrada.')
 })

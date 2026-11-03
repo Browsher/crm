@@ -1,4 +1,5 @@
 'use client'
+
 import { useEffect, useRef, useState, startTransition, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { ETAPAS_FUNIL, proximaEtapa, type EtapaFunil } from '@/src/lib/comercial'
@@ -10,9 +11,11 @@ import { EmpresaDialogo } from '@/src/components/crm/empresa-dialogo'
 import { Button } from '@/src/components/ui/button'
 import { ModalFunil } from './modal'
 import { ROTULOS_ETAPA } from './rotulos'
-import { etapaAcao, semInteresseAcao, type EstadoFunil } from './acoes'
+import type { EstadoVenda } from '@/src/lib/venda-envio'
+import { useEnvioVenda } from '@/src/lib/use-envio-venda'
+import { vendaCarteiraAcao } from '../carteira/venda-acao'
+import { etapaAcao, semInteresseAcao, vendaAcao, type EstadoFunil } from './acoes'
 import styles from './funil.module.css'
-
 const STORAGE='crm:funil:arquivo:v1'
 type Envio={linha:NegociacaoResumo;chave:string}
 function disponivel(l:NegociacaoResumo){return l.empresa.situacao!=='indisponivel'&&l.empresa.negociacaoId===l.id&&l.empresa.versao===l.versao}
@@ -24,6 +27,8 @@ function enviar(acao:(form:FormData)=>Promise<EstadoFunil>,form:FormData):Promis
 type PropsQuadro={linhas:NegociacaoResumo[];negociacaoInicial?:string|null;usuarioId:string}
 export function Quadro(props:PropsQuadro) {return <QuadroUsuario key={props.usuarioId} {...props}/>}
 function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
+  const venda=useEnvioVenda(usuarioId,(f,c)=>c.alvo.tipo==='primeira'?vendaAcao(f):vendaCarteiraAcao(f))
+  const vendaBloqueada=venda.bloqueada||venda.pendente
   const storage=STORAGE+':'+usuarioId
   const [selecionada,setSelecionada]=useState<string|null>(negociacaoInicial)
   const [referencia,setReferencia]=useState<ReferenciaEmpresa|null>(null)
@@ -50,12 +55,12 @@ function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
   useEffect(()=>{vivo.current=true;return()=>{vivo.current=false}},[])
   function focar(){requestAnimationFrame(()=>mensagem.current?.focus())}
   function iniciar(e:DragEvent<HTMLElement>,linha:NegociacaoResumo){
-    if(!desktop||bloqueado.current||envioRef.current||!disponivel(linha)){e.preventDefault();return}
+    if(!desktop||bloqueado.current||vendaBloqueada||envioRef.current||!disponivel(linha)){e.preventDefault();return}
     arraste.current=linha;origem.current=e.currentTarget;setDestino(proximaEtapa(linha.etapa))
     e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',linha.id)
   }
   async function arquivar(linha:NegociacaoResumo):Promise<EstadoFunil>{
-    if(bloqueado.current)return {ok:false}
+    if(bloqueado.current||vendaBloqueada)return {ok:false}
     const anterior=envioRef.current
     if(anterior&&anterior.linha.id!==linha.id)return {ok:false,erro:'Confirme o envio anterior.'}
     if(!anterior&&!disponivel(linha))return {ok:false,erro:'Esta empresa está indisponível.'}
@@ -88,7 +93,7 @@ function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
     e.preventDefault()
     const linha=arraste.current
     arraste.current=null;setDestino(null)
-    if(!desktop||bloqueado.current||envioRef.current||!linha||!disponivel(linha)||proximaEtapa(linha.etapa)!==etapa)return
+    if(!desktop||bloqueado.current||vendaBloqueada||envioRef.current||!linha||!disponivel(linha)||proximaEtapa(linha.etapa)!==etapa)return
     if(!visiveis.some(l=>l.id===linha.id&&l.etapa===linha.etapa))return
     bloqueado.current=true;setPendente(true);setAviso('Salvando etapa...')
     setMovimento({base:linhas,id:linha.id,etapa})
@@ -101,8 +106,22 @@ function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
     }catch{if(vivo.current){setMovimento(null);setAviso('Não foi possível confirmar o avanço. Atualize o quadro antes de tentar novamente.')}}
     finally{bloqueado.current=false;if(vivo.current){setPendente(false);focar()}}
   }
-  function fechar(texto?:string){
+  function abrirFicha(r:Extract<EstadoVenda,{ok:true}>){
+    const leitura=r.leituraDestino
+    if(!leitura?.ok){setAviso('Venda registrada. Não foi possível abrir a ficha. Atualize a página ou abra a Carteira.');focar();return}
+    setAviso(r.aviso??'Venda registrada.')
+    try{router.replace('/carteira/'+leitura.destino.empresaId+'?venda=registrada')}catch{setAviso('Venda registrada. Não foi possível abrir a ficha. Abra a Carteira.');focar()}
+  }
+  async function confirmarVenda(){
+    const primeira=venda.comando?.alvo.tipo==='primeira'
+    const r=await venda.enviar()
+    if(!vivo.current||!r?.ok)return
+    if(primeira)abrirFicha(r)
+    else {setAviso(r.aviso??'Venda registrada.');try{router.refresh()}catch{setAviso('Venda registrada. Atualize a página para conferir o histórico.')}focar()}
+  }
+  function fechar(texto?:string,confirmacao?:Extract<EstadoVenda,{ok:true}>){
     setSelecionada(null)
+    if(confirmacao){abrirFicha(confirmacao);return}
     const url=new URL(location.href)
     const limparSelecao=url.pathname==='/funil'&&url.searchParams.has('negociacao')
     if(limparSelecao){
@@ -115,6 +134,8 @@ function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
   }
   return <>
     <p role="status" tabIndex={-1} ref={mensagem} className={styles.aviso}>{aviso}</p>
+    {venda.erro&&<p role="alert">{venda.erro}</p>}
+    {venda.comando&&<section aria-label="Venda pendente"><p>Venda de R$ {venda.comando.entrada.valor} em {venda.comando.entrada.data.split('-').reverse().join('/')}. Confirme o envio anterior antes de registrar outra venda.</p><Button disabled={venda.pendente} variant="outline" onClick={()=>void confirmarVenda()}>{venda.pendente?'Confirmando venda...':'Confirmar venda anterior'}</Button></section>}
     {envio&&!pendente&&<Button variant="outline" onClick={()=>void arquivar(envio.linha)}>Confirmar envio anterior</Button>}
     {desktop&&!!linhas.length&&<p className={styles.muted}>Arraste para a próxima etapa. As ações do card também funcionam por teclado e toque.</p>}
     {!linhas.length&&!envio&&<EstadoVazio titulo="Nenhuma negociação aberta" descricao="Registre interesse ou combine um retorno no atendimento para começar." acao={{rotulo:'Ir para Prospecção',href:'/fila'}}/>}
@@ -122,15 +143,15 @@ function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
       const cards=visiveis.filter(l=>l.etapa===etapa)
       return <section data-etapa={etapa} key={etapa} className={styles.coluna+' '+(destino===etapa?styles.destino:'')} aria-label={ROTULOS_ETAPA[etapa]} aria-busy={pendente} onDragOver={e=>{if(desktop&&!bloqueado.current&&arraste.current&&proximaEtapa(arraste.current.etapa)===etapa)e.preventDefault()}} onDrop={e=>void soltar(e,etapa)}>
         <header><h2>{ROTULOS_ETAPA[etapa]}</h2><span aria-label={cards.length+' negociações'}>{cards.length}</span></header>
-        <div className={styles.cards}>{cards.map(l=><div key={l.id} className={styles.arrastavel} tabIndex={-1} draggable={desktop&&!pendente&&!envio&&disponivel(l)} onDragStart={e=>iniciar(e,l)} onDragEnd={()=>{arraste.current=null;setDestino(null);}}>
+        <div className={styles.cards}>{cards.map(l=><div key={l.id} className={styles.arrastavel} tabIndex={-1} draggable={desktop&&!pendente&&!envio&&!vendaBloqueada&&disponivel(l)} onDragStart={e=>iniciar(e,l)} onDragEnd={()=>{arraste.current=null;setDestino(null);}}>
           <div className={styles.conteudoCard}>
-            <CardEmpresa empresa={l.empresa} aoVer={setReferencia} aoAcionar={pendente||envio?undefined:acao=>{if(!bloqueado.current&&!envioRef.current){origem.current=document.activeElement as HTMLElement;if(acao.tipo==='funil')setSelecionada(l.id);else if('href' in acao)router.push(acao.href)}}}/>
-            {disponivel(l)&&<Button variant="ghost" disabled={pendente||!!envio} onClick={()=>void arquivar(l)}>Marcar como Sem interesse</Button>}
+            <CardEmpresa empresa={l.empresa} aoVer={setReferencia} aoAcionar={pendente||envio||vendaBloqueada?undefined:acao=>{if(!bloqueado.current&&!envioRef.current){origem.current=document.activeElement as HTMLElement;if(acao.tipo==='funil')setSelecionada(l.id);else if('href' in acao)router.push(acao.href)}}}/>
+            {disponivel(l)&&<Button variant="ghost" disabled={pendente||!!envio||vendaBloqueada} onClick={()=>void arquivar(l)}>Marcar como Sem interesse</Button>}
           </div>
         </div>)}{!cards.length&&<p className={styles.semCards}>Sem negociações nesta etapa.</p>}</div>
       </section>
     })}</div>
     {referencia&&<EmpresaDialogo referencia={referencia} aoFechar={()=>setReferencia(null)}/>}
-    {selecionada&&<ModalFunil key={selecionada} id={selecionada} fechar={fechar} bloqueada={!!envio&&!pendente} aoArquivar={()=>{const linha=visiveis.find(l=>l.id===selecionada);return linha?arquivar(linha):Promise.resolve({ok:false,erro:'Atualize o Funil antes de arquivar.'})}}/>}
+    {selecionada&&<ModalFunil key={selecionada} id={selecionada} usuarioId={usuarioId} fechar={fechar} bloqueada={!!envio&&!pendente} aoArquivar={()=>{const linha=visiveis.find(l=>l.id===selecionada);return linha?arquivar(linha):Promise.resolve({ok:false,erro:'Atualize o Funil antes de arquivar.'})}}/>}
   </>
 }
