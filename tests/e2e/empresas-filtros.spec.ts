@@ -49,7 +49,7 @@ async function medirContraste(controle: Locator) {
   })
 }
 
-test('Empresas conserva filtros e reflow com dados longos', async ({ page, browser }) => {
+test('Empresas conserva filtros e reflow com dados longos', async ({ page, browser, baseURL }) => {
   test.setTimeout(60_000)
   const url = process.env.DATABASE_URL_ADMIN
   if (!url) throw new Error('Use o harness E2E')
@@ -204,7 +204,7 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
   await expect(page.getByLabel('Buscar empresas', { exact: true })).toHaveValue('')
   await expect(cnae).toHaveValue('')
   const contextoToque = await browser.newContext({
-    baseURL: 'http://localhost:3100', hasTouch: true, viewport: { width: 1280, height: 900 },
+    baseURL, hasTouch: true, viewport: { width: 1280, height: 900 },
     storageState: await page.context().storageState(),
   })
   try {

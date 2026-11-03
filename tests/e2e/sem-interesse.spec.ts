@@ -126,8 +126,8 @@ test('visual claro/escuro desktop/móvel, dados separados e movimento reduzido',
  await expect(page.getByRole('status')).toBeFocused()
 })
 
-test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({browser})=>{
- const contexto=await browser.newContext({baseURL:'http://localhost:3100',hasTouch:true,isMobile:true,viewport:{width:390,height:844}})
+test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({browser,baseURL})=>{
+ const contexto=await browser.newContext({baseURL,hasTouch:true,isMobile:true,viewport:{width:390,height:844}})
  try{
   const page=await contexto.newPage();await entrar(page)
   await page.goto('/fila/sem-interesse?nome=Arquivo+08')

@@ -52,7 +52,7 @@ async function montarVariantes(page: Page) {
   }, html)
 }
 
-test('controles mantêm tema e medidas em desktop e toque', async ({ page, browser }) => {
+test('controles mantêm tema e medidas em desktop e toque', async ({ page, browser, baseURL }) => {
   test.setTimeout(90_000)
   await page.setViewportSize({ width: 1920, height: 1080 })
   await entrar(page, 'gestore2e')
@@ -109,7 +109,7 @@ test('controles mantêm tema e medidas em desktop e toque', async ({ page, brows
   await expect(card).toHaveCSS('box-shadow', 'none')
   await expect(page.getByText('Card do contrato', { exact: true })).toHaveCSS('line-height', '24px')
 
-  const toque = await browser.newContext({ baseURL: 'http://localhost:3100', hasTouch: true, viewport: { width: 1280, height: 900 } })
+  const toque = await browser.newContext({ baseURL, hasTouch: true, viewport: { width: 1280, height: 900 } })
   try {
     const tela = await toque.newPage()
     await entrar(tela, 'gestore2e')
@@ -315,7 +315,7 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
   }
 })
 
-test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browser }) => {
+test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browser, baseURL }) => {
   test.setTimeout(120_000)
   const pasta = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-10-captures')
   await mkdir(pasta, { recursive: true })
@@ -324,7 +324,7 @@ test('smoke visual320 das áreas reais nos dois perfis e temas', async ({ browse
     { conta: 'designsystemvazioe2e', caminhos: ['/meu-dia', '/fila', '/fila/buscar', '/fila/localizar', '/fila/google', '/funil', '/carteira'] },
   ] as const
   for (const { conta, caminhos } of perfis) {
-    const contexto = await browser.newContext({ baseURL: 'http://localhost:3100', viewport: { width: 320, height: 900 } })
+    const contexto = await browser.newContext({ baseURL, viewport: { width: 320, height: 900 } })
     try {
       const page = await contexto.newPage()
       await entrar(page, conta)

@@ -188,14 +188,14 @@ test('API do agente publica um lote validado e reutiliza o retorno sem nova entr
   await expect(page.getByText('Papelaria validada API (fictícia)', { exact: true }).first()).toBeVisible()
 })
 
-test('critérios Google mantêm payload e medidas no toque amplo', async ({ browser, request }) => {
+test('critérios Google mantêm payload e medidas no toque amplo', async ({ browser, request, baseURL }) => {
   test.setTimeout(150000)
   const banco = bancoGruposDoHarness()
   const usuario = await criarUsuarioComSenha(banco, 'vendedor', 'googletoquee2e', 'Senha-e2e-2026')
   const data = new Date(hojeEmSaoPaulo() + 'T12:00:00Z')
   data.setUTCDate(data.getUTCDate() + 21)
   const dias = semanaDe(data.toISOString().slice(0, 10))!
-  const contexto = await browser.newContext({ baseURL: 'http://localhost:3100', hasTouch: true, viewport: { width: 1280, height: 900 } })
+  const contexto = await browser.newContext({ baseURL, hasTouch: true, viewport: { width: 1280, height: 900 } })
   try {
     const page = await contexto.newPage()
     await entrar(page, 'googletoquee2e')
