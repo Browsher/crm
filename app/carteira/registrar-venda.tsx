@@ -7,8 +7,7 @@ import { Textarea } from '@/src/components/ui/textarea'
 import { Alert } from '@/src/components/ui/alert'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/src/components/ui/dialog'
 import { useTemaCrm } from '@/src/components/crm/tema'
-import { vendaCarteiraAcao } from './venda-acao'
-import { vendaAcao } from '../funil/acoes'
+import { transmitirVenda } from '../venda-envio'
 import { criarComandoVenda, type EstadoVenda } from '@/src/lib/venda-envio'
 import { useEnvioVenda } from '@/src/lib/use-envio-venda'
 
@@ -16,7 +15,7 @@ type PropsVenda = {usuarioId:string;empresaId:string;nome:string;disabled?:boole
 export function RegistrarVenda(props:PropsVenda) {return <VendaUsuario key={props.usuarioId+':'+props.empresaId} {...props}/>}
 function VendaUsuario({usuarioId,empresaId,nome,disabled=false}:PropsVenda) {
   const [aberto,setAberto]=useState(false),[mensagem,setMensagem]=useState('')
-  const venda=useEnvioVenda(usuarioId,(f,c)=>c.alvo.tipo==='primeira'?vendaAcao(f):vendaCarteiraAcao(f))
+  const venda=useEnvioVenda(usuarioId,transmitirVenda)
   const router=useRouter(),vivo=useRef(true)
   useEffect(()=>{vivo.current=true;return()=>{vivo.current=false}},[])
   function confirmar(r:Extract<EstadoVenda,{ok:true}>,primeira=false){
@@ -91,7 +90,7 @@ function FormularioVenda({usuarioId,empresaId,nome,venda,fechar,aoConfirmar}:{us
   async function salvar(){
     if(bloqueado.current||finalizando.current||venda.resultado?.ok||!confirmado)return
     bloqueado.current=true;setPendente(true)
-    const comando=venda.comando??criarComandoVenda(usuarioId,empresaId,{tipo:'recompra'},{valor,data,observacao:nota})
+    const comando=venda.comando?undefined:criarComandoVenda(usuarioId,empresaId,{tipo:'recompra'},{valor,data,observacao:nota})
     const r=await venda.enviar(comando)
     if(vivo.current){
       if(r?.ok)concluir(()=>aoConfirmar(r))

@@ -4,7 +4,10 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import { ModalFunil } from './modal'
 import { detalheAcao, vendaAcao, telefoneAcao, etapaAcao } from './acoes'
+import { vendaCarteiraAcao } from '../carteira/venda-acao'
+import { criarComandoVenda, persistirComandoVenda } from '@/src/lib/venda-envio'
 import { detalhesSnapshot } from '@/src/lib/empresa-visual'
+vi.mock('../carteira/venda-acao',()=>({vendaCarteiraAcao:vi.fn()}))
 vi.mock('./acoes',()=>({detalheAcao:vi.fn(),telefoneAcao:vi.fn(),etapaAcao:vi.fn(),vendaAcao:vi.fn(),devolverAcao:vi.fn()}))
 vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({onDraftChange,onSaved}:{onDraftChange:(r:unknown)=>void;onSaved:(id:string,r:unknown)=>void})=><><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''})}>Reverter rascunho de teste</button><button onClick={()=>onSaved('e',{ok:true,leituraDestino:{ok:true,destino:{tipo:'funil',negociacaoId:'atual'}}})}>Confirmar contato de teste</button></>}))
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
@@ -299,4 +302,35 @@ test('edição refeita continua guardada se próximo Back chega antes do frame d
  const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste');await clicar('Voltar ao resumo');await clicar('Editar rascunho de teste')
  await act(async()=>{window.dispatchEvent(new PopStateEvent('popstate'));window.dispatchEvent(new PopStateEvent('popstate'))})
  expect(document.body.textContent).toContain('Descartar alterações?');expect(fechar).not.toHaveBeenCalled()
+})
+test('modal aberto por negociação recupera recompra pelo alvo salvo e permanece no Funil',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(null)
+ vi.mocked(vendaAcao).mockReset().mockResolvedValue({ok:false,erro:'Ação de primeira venda indevida'})
+ vi.mocked(vendaCarteiraAcao).mockReset().mockResolvedValue({ok:true})
+ const comando=criarComandoVenda('teste','cliente',{tipo:'recompra'},{valor:'21,00',data:'2026-01-01',observacao:'Nota congelada'})
+ persistirComandoVenda(comando)
+ const fechar=await montar('negociacao-do-deep-link')
+ await clicar('Confirmar venda anterior')
+ expect(vendaAcao).not.toHaveBeenCalled()
+ expect(vendaCarteiraAcao).toHaveBeenCalledOnce()
+ const form=vi.mocked(vendaCarteiraAcao).mock.calls[0][0]
+ expect(Object.fromEntries(form)).toEqual({id:'cliente',chave:comando.chave,confirmado:'sim',...comando.entrada})
+ expect(fechar).not.toHaveBeenCalled()
+ expect(document.body.textContent).toContain('Venda registrada.')
+ expect(sessionStorage.getItem('crm:venda:v1:teste')).toBeNull()
+})
+
+test('confirmar recompra não fecha nem desarma a guarda de um rascunho de atendimento',async()=>{
+ vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+ vi.mocked(vendaAcao).mockReset().mockResolvedValue({ok:true})
+ vi.mocked(vendaCarteiraAcao).mockReset().mockResolvedValue({ok:true})
+ const fechar=await montar()
+ await clicar('Registrar atendimento');await clicar('Editar rascunho de teste')
+ const comando=criarComandoVenda('teste','cliente',{tipo:'recompra'},{valor:'22,00',data:'2026-01-01',observacao:'Outra venda'})
+ await act(async()=>{persistirComandoVenda(comando);window.dispatchEvent(new Event('crm-venda'))})
+ await clicar('Confirmar venda anterior')
+ expect(fechar).not.toHaveBeenCalled()
+ expect(document.body.textContent).toContain('Venda registrada.')
+ await popstate()
+ expect(document.body.textContent).toContain('Descartar alterações?')
 })

@@ -2,7 +2,7 @@
 import { act, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
-import { type EstadoVenda, criarComandoVenda, lerComandoVenda } from './venda-envio'
+import { type EstadoVenda, criarComandoVenda, lerComandoVenda, persistirComandoVenda } from './venda-envio'
 import { useEnvioVenda } from './use-envio-venda'
 const c=criarComandoVenda('ator','empresa',{tipo:'primeira',negociacaoId:'ciclo'},{valor:'23,40',data:'2026-01-01',observacao:'Original'})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
@@ -53,6 +53,12 @@ test('confirmação é conhecida por outro consumidor do mesmo ator mesmo se lim
  vi.spyOn(Storage.prototype,'removeItem').mockImplementation(()=>{throw Error('quota')})
  await clicar(0)
  expect(outro!.comando).toBeNull();expect(outro!.resultado).toBeNull()
+ expect(lerComandoVenda('ator')).toEqual(c)
+ await act(async()=>root.unmount());host.remove()
+ const replay=vi.fn().mockResolvedValue({ok:false,erro:'Recusa posterior'})
+ await montar(replay);await clicar(1)
+ expect(replay).not.toHaveBeenCalled()
+ expect(estado.comando).toBeNull();expect(estado.erro).toBe('')
 })
 test('nova intenção nunca confirma silenciosamente alvo antigo e clique duplo usa uma chamada',async()=>{
  let liberar!:(r:EstadoVenda)=>void
@@ -95,4 +101,58 @@ test('primeira recusa de campos tardia após desmontagem não libera um comando 
  await act(async()=>root.unmount());host.remove();await montar(vi.fn())
  await act(async()=>liberar({ok:false,erro:'Data futura',erroDeCampos:true}))
  expect(lerComandoVenda('ator')).toEqual(c);expect(estado.comando).toEqual(c);expect(estado.resultado).toBeNull()
+})
+test('dois consumidores do ator compartilham envio e não rebaixam confirmação por segunda resposta',async()=>{
+ let liberar!:(r:EstadoVenda)=>void,rejeitar:((erro:Error)=>void)|undefined
+ const original=vi.fn(()=>new Promise<EstadoVenda>(r=>liberar=r))
+ const duplicada=vi.fn(()=>new Promise<EstadoVenda>((_,r)=>rejeitar=r))
+ let recuperacao:ReturnType<typeof useEnvioVenda>
+ function DuasTelas(){
+  const atual=useEnvioVenda('ator',duplicada)
+  useEffect(()=>{recuperacao=atual})
+  return <Tela acao={original}/>
+ }
+ host=document.createElement('div');document.body.append(host);root=createRoot(host)
+ await act(async()=>root.render(<DuasTelas/>))
+ await clicar(0)
+ const pendenteNoOutroConsumidor=recuperacao!.pendente
+ const replayAntigo=recuperacao!.enviar
+ await act(async()=>{void replayAntigo()})
+ await act(async()=>liberar({ok:true}))
+ await act(async()=>rejeitar?.(Error('rede da duplicata')))
+ await act(async()=>{await replayAntigo()})
+ expect(original).toHaveBeenCalledOnce()
+ expect(duplicada).not.toHaveBeenCalled()
+ expect(pendenteNoOutroConsumidor).toBe(true)
+ expect(recuperacao!.pendente).toBe(false)
+ expect(recuperacao!.erro).toBe('')
+ expect(estado.resultado?.ok).toBe(true)
+ expect(lerComandoVenda('ator')).toBeNull()
+ const posterior=criarComandoVenda('ator','posterior',{tipo:'recompra'},c.entrada)
+ persistirComandoVenda(posterior)
+ await act(async()=>{await replayAntigo()})
+ expect(duplicada).not.toHaveBeenCalled()
+ expect(recuperacao!.comando).toEqual(posterior)
+})
+
+test('remontagem respeita envio em voo do mesmo ator e não trava outro ator',async()=>{
+ let liberar!:(r:EstadoVenda)=>void
+ await montar(()=>new Promise(r=>liberar=r));await clicar(0)
+ await act(async()=>root.unmount());host.remove()
+ const outraAcao=vi.fn().mockResolvedValue({ok:true})
+ await montar(outraAcao,'outro')
+ const outroComando=criarComandoVenda('outro','outra',{tipo:'recompra'},c.entrada)
+ await act(async()=>{await estado.enviar(outroComando)})
+ expect(outraAcao).toHaveBeenCalledOnce()
+ await act(async()=>root.unmount());host.remove()
+ const replay=vi.fn().mockResolvedValue({ok:false,erro:'Segunda recusa'})
+ await montar(replay)
+ const pendenteAposRemontar=estado.pendente
+ await clicar(1)
+ await act(async()=>liberar({ok:true}))
+ expect(replay).not.toHaveBeenCalled()
+ expect(pendenteAposRemontar).toBe(true)
+ expect(estado.pendente).toBe(false)
+ expect(estado.erro).toBe('')
+ expect(lerComandoVenda('ator')).toBeNull()
 })

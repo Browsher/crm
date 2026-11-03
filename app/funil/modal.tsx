@@ -13,19 +13,21 @@ import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoIn
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
 import { ROTULOS_ETAPA } from './rotulos'
-import { detalheAcao, telefoneAcao, etapaAcao, vendaAcao, type EstadoFunil } from './acoes'
+import { detalheAcao, telefoneAcao, etapaAcao, type EstadoFunil } from './acoes'
 import styles from './funil.module.css'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { AbasFicha } from '@/src/components/crm/abas-ficha'
 import { criarComandoVenda, type EstadoVenda } from '@/src/lib/venda-envio'
 import { useEnvioVenda } from '@/src/lib/use-envio-venda'
+import { transmitirVenda } from '../venda-envio'
 type Modo='resumo'|'venda'|'arquivar'|'atendimento'
 export function ModalFunil({id,usuarioId,fechar,aoArquivar,bloqueada=false}:{id:string;usuarioId:string;fechar:(aviso?:string,venda?:Extract<EstadoVenda,{ok:true}>)=>void;aoArquivar?:()=>Promise<EstadoFunil>;bloqueada?:boolean}) {
   const tema=useTemaCrm()
-  const venda=useEnvioVenda(usuarioId,vendaAcao)
+  const venda=useEnvioVenda(usuarioId,transmitirVenda)
   const [detalhe,setDetalhe]=useState<NegociacaoDetalhe|null>(null)
   const [carregando,setCarregando]=useState(true),[erro,setErro]=useState('')
   const [modo,setModo]=useState<Modo>('resumo')
+  const [fechandoVenda,setFechandoVenda]=useState(false)
   const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState('')
   const [confirmado,setConfirmado]=useState(false),[descarte,setDescarte]=useState<'fechar'|'resumo'|'voltar'|null>(null)
   const [pendente,setPendente]=useState(false),[telefone,setTelefone]=useState<string|null>(null),[buscandoTelefone,setBuscandoTelefone]=useState(false)
@@ -41,7 +43,7 @@ export function ModalFunil({id,usuarioId,fechar,aoArquivar,bloqueada=false}:{id:
     history.back()
   },[])
   const [baseline]=useState(()=>rascunhoInicial(true))
-  const dirty=!venda.resultado?.ok&&!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||(modo==='atendimento'&&detalhe&&contatoPendente(detalhe.empresaId)))
+  const dirty=!fechandoVenda&&!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||(modo==='atendimento'&&detalhe&&contatoPendente(detalhe.empresaId)))
   const dirtyRef=useRef(dirty)
   useEffect(()=>{dirtyRef.current=dirty},[dirty])
   useEffect(()=>{
@@ -128,14 +130,24 @@ export function ModalFunil({id,usuarioId,fechar,aoArquivar,bloqueada=false}:{id:
     finally {if(vivo.current)informarPendente(false)}
   }
   async function salvarVenda(){
-    if(bloqueado.current||finalizando.current||venda.resultado?.ok||!detalhe&&!venda.comando)return
-    informarPendente(true);setErro('')
-    const comando=venda.comando??criarComandoVenda(usuarioId,detalhe!.empresaId,{tipo:'primeira',negociacaoId:id},{valor,data,observacao:nota})
-    const r=await venda.enviar(comando)
-    if(vivo.current){
-      if(r?.ok)concluir('Venda registrada.',r)
-      else if(r?.indisponivel)setIndisponivel(true)
-      informarPendente(false)
+    const anterior = venda.comando
+    if (bloqueado.current || finalizando.current || fechandoVenda || venda.pendente || !detalhe && !anterior) return
+    const alvo = anterior?.alvo ?? { tipo: 'primeira' as const, negociacaoId: id }
+    const vendaDesteFormulario = alvo.tipo === 'primeira' && alvo.negociacaoId === id && modo === 'venda'
+    const novo = anterior ? undefined : criarComandoVenda(usuarioId, detalhe!.empresaId, alvo, { valor, data, observacao: nota })
+    informarPendente(true)
+    setErro('')
+    try {
+      const r = await venda.enviar(novo)
+      if (!vivo.current || !r) return
+      if (r.ok && alvo.tipo === 'primeira' && (vendaDesteFormulario || !dirty)) {
+        setFechandoVenda(true)
+        concluir('Venda registrada.', r)
+      } else if (!r.ok && r.indisponivel && vendaDesteFormulario) {
+        setIndisponivel(true)
+      }
+    } finally {
+      if (vivo.current) informarPendente(false)
     }
   }
   async function atender(){
@@ -157,12 +169,12 @@ export function ModalFunil({id,usuarioId,fechar,aoArquivar,bloqueada=false}:{id:
     <DialogHeader><DialogTitle>{indisponivel?'Negociação indisponível':detalhe?.nome??'Negociação'}</DialogTitle><DialogDescription>{!indisponivel&&detalhe?`${detalhe.cidade??'Cidade não cadastrada'}${detalhe.uf?' / '+detalhe.uf:''}`:'Dados da sua negociação'}</DialogDescription></DialogHeader>
     {carregando?<p role="status">Carregando negociação...</p>:null}
     {(erro||venda.erro)&&<Alert variant="danger" role="alert">{erro||venda.erro}</Alert>}
-    {venda.comando&&!pendente&&<><p>Venda pendente de confirmação. Os dados do envio anterior foram preservados.</p><Button variant="outline" onClick={()=>void salvarVenda()}>Confirmar venda anterior</Button><Button variant="outline" onClick={()=>concluir()}>Fechar mantendo envio</Button></>}
-    {venda.resultado?.ok&&<div><p role="status">{venda.resultado.aviso??'Venda registrada.'}</p><Link href="/carteira">Abrir Carteira</Link></div>}
+    {venda.comando&&!pendente&&<><p>Venda pendente de confirmação. Os dados do envio anterior foram preservados.</p><Button variant="outline" disabled={venda.pendente} onClick={()=>void salvarVenda()}>{venda.pendente?'Confirmando venda...':'Confirmar venda anterior'}</Button><Button variant="outline" onClick={()=>concluir()}>Fechar mantendo envio</Button></>}
+    {venda.resultado?.ok&&<div><p role="status">{venda.resultado.aviso??'Venda registrada.'}</p>{!dirty&&<Link href="/carteira">Abrir Carteira</Link>}</div>}
     {bloqueada&&<Alert role="alert">Confirme o envio anterior no Funil antes de iniciar outra operação. Feche esta janela para continuar a confirmação.</Alert>}
     {descarte?<div className={styles.confirmacao} role="alert"><h3>Descartar alterações?</h3><p>As informações não salvas serão perdidas.</p><div className={styles.acoes}><Button onClick={()=>setDescarte(null)}>Continuar editando</Button>{modo==='atendimento' && <Button variant="outline" onClick={()=>descartar(true)}>Fechar mantendo rascunho</Button>}<Button variant="outline" onClick={()=>descartar()}>Descartar</Button></div></div>:null}
     {indisponivel&&!descarte&&<section className={styles.formulario}><h3>Rascunho preservado</h3><p>Não é possível gravar nesta negociação. Copie o que digitou antes de fechar.</p><Textarea aria-label="Rascunho preservado" readOnly rows={6} value={[valor&&`Valor: ${valor}`,data&&`Data: ${data}`,nota,rascunho.nota,rascunho.proximoPasso,rascunho.proximoPassoData].filter(Boolean).join('\n')} /><Button variant="outline" onClick={()=>pedir('fechar')}>Fechar rascunho</Button></section>}
-    {detalhe&&!descarte&&!indisponivel&&<fieldset disabled={bloqueada||!!venda.comando||venda.resultado?.ok===true} className={styles.corpo}>
+    {detalhe&&!descarte&&!indisponivel&&<fieldset disabled={bloqueada||!!venda.comando||fechandoVenda} className={styles.corpo}>
       {modo==='resumo'?<>
         <div className={styles.formulario}>
           <p>Etapa atual: <strong>{ROTULOS_ETAPA[detalhe.etapa]}</strong></p>
@@ -171,7 +183,7 @@ export function ModalFunil({id,usuarioId,fechar,aoArquivar,bloqueada=false}:{id:
           </Button>}
         </div>
         <AbasFicha dados={<dl className={styles.dados}><div><dt>CNPJ</dt><dd>{detalhe.cnpj ?? 'Não informado'}</dd></div><div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso??'Sem próximo passo combinado'}{detalhe.retorno&&<p>{detalhe.retorno.split('-').reverse().join('/')}</p>}</dd></div></dl>} historico={<section><h3 className={styles.tituloSecao}>Seus atendimentos</h3>{!detalhe.historico.length?<EstadoVazio nivelTitulo={3} titulo="Nenhum atendimento seu registrado." descricao="Seus atendimentos registrados nesta negociação aparecerão aqui." />:<ol className={styles.historico}>{detalhe.historico.map(c=><li key={c.id}><time>{new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}).format(new Date(c.em))}</time><p>{c.nota??'Sem anotação'}</p>{c.proximoPasso&&<p>Próximo passo: {c.proximoPasso}</p>}</li>)}</ol>}</section>} />
-        <div className={styles.acoes}><Button disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>setModo('venda')}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>setModo('arquivar')}>Marcar como Sem interesse</Button></div>
+        <div className={styles.acoes}><Button disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>void atender()}>Registrar atendimento</Button><Button variant="outline" disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>{if(venda.iniciarNovo())setModo('venda')}}>Registrar venda</Button><Button variant="ghost" disabled={pendente||dirty||detalhe.empresa?.situacao==='indisponivel'} onClick={()=>setModo('arquivar')}>Marcar como Sem interesse</Button></div>
       </>:<>
         <Button variant="ghost" disabled={pendente} onClick={()=>pedir('resumo')}>Voltar ao resumo</Button>
         {modo==='atendimento'?<><h3>Registrar atendimento</h3>{buscandoTelefone?<p role="status">Carregando telefone...</p>:telefone!==null?<><p>Telefone: <strong>{telefone||'Não cadastrado'}</strong></p><FormularioContato empresaId={detalhe.empresaId} posse visual="fila" rascunho={rascunho} onDraftChange={setRascunho} onPendingChange={informarPendente} onSaved={()=>concluir('Atendimento registrado.')} /></>:null}</>:null}

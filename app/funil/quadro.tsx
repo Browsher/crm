@@ -13,8 +13,8 @@ import { ModalFunil } from './modal'
 import { ROTULOS_ETAPA } from './rotulos'
 import type { EstadoVenda } from '@/src/lib/venda-envio'
 import { useEnvioVenda } from '@/src/lib/use-envio-venda'
-import { vendaCarteiraAcao } from '../carteira/venda-acao'
-import { etapaAcao, semInteresseAcao, vendaAcao, type EstadoFunil } from './acoes'
+import { transmitirVenda } from '../venda-envio'
+import { etapaAcao, semInteresseAcao, type EstadoFunil } from './acoes'
 import styles from './funil.module.css'
 const STORAGE='crm:funil:arquivo:v1'
 type Envio={linha:NegociacaoResumo;chave:string}
@@ -27,7 +27,7 @@ function enviar(acao:(form:FormData)=>Promise<EstadoFunil>,form:FormData):Promis
 type PropsQuadro={linhas:NegociacaoResumo[];negociacaoInicial?:string|null;usuarioId:string}
 export function Quadro(props:PropsQuadro) {return <QuadroUsuario key={props.usuarioId} {...props}/>}
 function QuadroUsuario({linhas,negociacaoInicial=null,usuarioId}:PropsQuadro) {
-  const venda=useEnvioVenda(usuarioId,(f,c)=>c.alvo.tipo==='primeira'?vendaAcao(f):vendaCarteiraAcao(f))
+  const venda=useEnvioVenda(usuarioId,transmitirVenda)
   const vendaBloqueada=venda.bloqueada||venda.pendente
   const storage=STORAGE+':'+usuarioId
   const [selecionada,setSelecionada]=useState<string|null>(negociacaoInicial)
