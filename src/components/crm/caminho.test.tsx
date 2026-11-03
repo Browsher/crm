@@ -2,6 +2,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test, vi } from 'vitest'
 import { CaminhoCrm } from './caminho'
 
+const grupoId = '11111111-1111-4111-8111-111111111111'
+const arquivo = '{"tipo":"arquivo","q":"Luz","pagina":2,"gruposPagina":3}'
+const grupo = '{"tipo":"grupo","id":"' + grupoId + '","pagina":2,"gruposPagina":1,"arquivo":' + arquivo + '}'
+const hrefArquivo = '/empresas/arquivadas?q=Luz&amp;pagina=2&amp;gruposPagina=3'
+
 const rota = vi.hoisted(() => ({ atual: '/whatsapp', query: new URLSearchParams() }))
 vi.mock('next/navigation', () => ({ usePathname: () => rota.atual, useSearchParams: () => rota.query }))
 
@@ -26,8 +31,8 @@ test.each([
 })
 
 test('breadcrumb da lista arquivada volta ao recorte do arquivo', () => {
-  rota.atual = '/empresas/grupos/11111111-1111-4111-8111-111111111111'
-  rota.query = new URLSearchParams({ retorno: '{"tipo":"arquivo","q":"Luz","pagina":2,"gruposPagina":3}' })
+  rota.atual = '/empresas/grupos/' + grupoId
+  rota.query = new URLSearchParams({ retorno: arquivo })
   try {
     const html = renderToStaticMarkup(<CaminhoCrm area="empresas" titulo="Empresas" />)
     expect(html).toContain('href="/empresas/arquivadas?q=Luz&amp;pagina=2&amp;gruposPagina=3">Arquivo</a>')
@@ -38,3 +43,41 @@ test('breadcrumb da lista arquivada volta ao recorte do arquivo', () => {
     rota.query = new URLSearchParams()
   }
 })
+
+test.each([
+  ['arquivo', [arquivo], false],
+  ['lista arquivada', [grupo], true],
+] as const)('breadcrumb da ficha aberta de %s mantém a origem', (_origem, retornos, temGrupo) => {
+  rota.atual = '/empresas/22222222-2222-4222-8222-222222222222'
+  rota.query = new URLSearchParams(retornos.map(retorno => ['retorno', retorno]))
+  try {
+    const html = renderToStaticMarkup(<CaminhoCrm area="empresas" titulo="Empresas" />)
+    expect(html).toContain(`href="${hrefArquivo}">Arquivo</a>`)
+    expect(html).not.toContain('href="/empresas"')
+    expect(html).not.toContain('href="/empresas/grupos"')
+    expect(html).toContain('aria-current="page">Ficha da empresa</span>')
+    if (temGrupo) {
+      const lista = '/empresas/grupos/' + grupoId + '?pagina=2&amp;' + new URLSearchParams({ retorno: arquivo })
+      expect(html).toContain(`href="${lista}">Lista arquivada</a>`)
+    } else {
+      expect(html).not.toContain('Lista arquivada')
+    }
+  } finally {
+    rota.query = new URLSearchParams()
+  }
+})
+
+test.each([['retorno duplicado', [arquivo, arquivo]], ['retorno inválido', ['https://externo.test']]] as const)(
+  'breadcrumb da ficha conserva Empresas com %s',
+  (_origem, retornos) => {
+    rota.atual = '/empresas/22222222-2222-4222-8222-222222222222'
+    rota.query = new URLSearchParams(retornos.map(retorno => ['retorno', retorno]))
+    try {
+      const html = renderToStaticMarkup(<CaminhoCrm area="empresas" titulo="Empresas" />)
+      expect(html).toContain('href="/empresas">Empresas</a>')
+      expect(html).not.toContain('Arquivo</a>')
+    } finally {
+      rota.query = new URLSearchParams()
+    }
+  },
+)
