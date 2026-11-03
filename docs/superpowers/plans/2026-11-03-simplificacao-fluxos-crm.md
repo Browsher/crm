@@ -34,12 +34,12 @@
 
 ## Preparação e estado inicial
 
-- [ ] Instalar npm ci do lockfile e confirmar suíte unitária base.
-- [ ] Usar PostgreSQL18 local dedicado, em diretório e porta exclusivos; criar bancos descartáveis pelo harness.
-- [ ] Ler guias locais Next de server-actions/use-router/forms antes de alterar esses contratos.
-- [ ] Registrar progresso/decisões no ledger próprio desta execução; não usar artefatos de outros planos.
-- [ ] Verificar branch imediatamente antes de cada commit. Git e escrita neste workspace exigem execução aprovada fora do sandbox deste chat; não mudar configuração global ou assumir propriedade do chat original.
-- [ ] Não escrever produto antes de concluir este plano.
+- [x] Instalar npm ci do lockfile e confirmar suíte unitária base.
+- [x] Usar PostgreSQL18 local dedicado, em diretório e porta exclusivos; criar bancos descartáveis pelo harness.
+- [x] Ler guias locais Next de server-actions/use-router/forms antes de alterar esses contratos.
+- [x] Registrar progresso/decisões no ledger próprio desta execução; não usar artefatos de outros planos.
+- [x] Verificar branch imediatamente antes de cada commit. Git e escrita neste workspace exigem execução aprovada fora do sandbox deste chat; não mudar configuração global ou assumir propriedade do chat original.
+- [x] Não escrever produto antes de concluir este plano.
 
 ## Task 1: Faixa compacta compartilhada
 
@@ -55,13 +55,15 @@
 
 **Files:** novo src/lib/pos-registro.ts; novo src/server/atendimento/pos-registro.ts; src/features/contato/{acao,formulario,rascunho}.ts[x]; app/fila/{formulario,cartao}.tsx; app/fila/atendimento/acoes.ts; consumidores embutidos e testes correspondentes.
 **Interfaces:** DestinoContato = permanecer | funil com negociacaoId | sem_interesse. DestinoEmpresaAtual é separado: atendimento com empresaId | funil com negociacaoId | carteira com empresaId | sem_interesse | indisponivel. LeituraDestino<T> separa destino de falha posterior. Server expõe lerDestinoContato(usuarioId,empresaId,resultadoValidado) e lerDestinoEmpresaAtual(usuarioId,empresaId), compartilhando leitura autenticada depois da RPC. Para contato, interesse/retorno com negociação ativa atual abre Funil; cliente ou demais resultados permanecem, e situação atual Sem interesse abre o recorte. Iniciar/retomar usa o segundo contrato, pois pode precisar de atendimento ou Carteira. Sucesso confirmado inclui a leitura separada. onSaved recebe empresaId e confirmação; callbacks embutidos podem ignorar segundo argumento. rascunhoAlterado(atual,inicial=rascunhoInicial(false)).
-- [ ] Red: interessado/retorno usa replace para negociação autorizada; cliente/sem negociação permanece; erro não navega; modal/ficha permanecem no contexto.
-- [ ] Red: RPC ocorre antes da leitura atual; replay vendido/arquivado/retomado usa estado atual; leitura posterior lançando devolve sucesso com aviso; limpar A não apaga B.
-- [ ] Red: acompanhamento intocado está limpo; editar/reverter e comando pendente respeitam baseline de abertura.
-- [ ] Implementar confirmação/consulta em blocos distintos. Não deixar falha de callback/limpeza virar envio desconhecido. URL local construída pelo consumidor de rota, com filtros preservados.
-- [ ] Iniciar/retomar em card mantém comando por ator/alvo; em replay, destino vem de leitura atual autenticada, sem leitura prévia bloqueando RPC.
-- [ ] Green: unidade/DOM focados e integração contato-replay-editor/atendimento-autoridade.
-- [ ] Revisão separada e commit.
+- [x] Red: interessado/retorno usa replace para negociação autorizada; cliente/sem negociação permanece; erro não navega; modal/ficha permanecem no contexto.
+- [x] Red: RPC ocorre antes da leitura atual; replay vendido/arquivado/retomado usa estado atual; leitura posterior lançando devolve sucesso com aviso; limpar A não apaga B.
+- [x] Red: acompanhamento intocado está limpo; editar/reverter e comando pendente respeitam baseline de abertura.
+- [x] Implementar confirmação/consulta em blocos distintos. Não deixar falha de callback/limpeza virar envio desconhecido. URL local construída pelo consumidor de rota, com filtros preservados.
+- [x] Iniciar/retomar em card conserva o contrato de persistência existente (crm:acao-empresa:v1:<empresa>); em replay, destino vem de leitura atual autenticada, sem leitura prévia bloqueando RPC.
+- [x] Green: unidade/DOM focados e integração contato-replay-editor/atendimento-autoridade.
+- [x] Revisão separada e commit.
+
+- [x] Corrigir fechamento do deep-link: aguardar popstate, uma navegação, URL sem negociacao, filtros/hash preservados e reload sem reabrir; abertura manual atualiza dados. Minor de rearmar guarda ao voltar ao resumo fica explicitamente na Task4.
 
 ## Task 3: Sem interesse unificado com compatibilidade
 
@@ -84,6 +86,7 @@
 - [ ] Red: confirmação de primeira venda abre ficha autorizada; recompra mantém ficha/filtros; leitura posterior falha não anuncia gravação falha.
 - [ ] Implementar recuperação fora do modal/card, segregada por usuário; congelar dados durante desconhecido; descarte apenas de rascunho não enviado ou recusa conclusiva explícita.
 - [ ] Resolver empresa pelo vínculo/venda autorizados no servidor, não por empresaId de storage; preservar precedência das RPCs existentes e nenhuma mutação extra.
+- [ ] Reproduzir/corrigir Minor de Task2: reverter, pedir Voltar ao resumo durante retirada da sentinela e editar antes do popstate deve rearmar proteção no próximo Voltar.
 - [ ] Green: DOM/modal/ficha/envio, integração funil-comandos/vendas-carteira e jornada de resposta perdida+reload verificando contagem no banco.
 - [ ] Revisão separada e commit.
 
@@ -143,3 +146,9 @@
 - [ ] Atualizar ledger e matriz separando confirmado, melhoria, hipótese reproduzida/não reproduzida.
 - [ ] Conferir branch/working tree, commits, push somente da branch autorizada e criar PR contra main com descrição verificável.
 - [ ] Acompanhar CI até verde; não mergear nem publicar.
+
+### Complementos obrigatórios da verificação final
+
+- [ ] Antes de push, vercel.json deve desabilitar deployment automático somente desta branch codex/simplificar-crm-fluxos, preservando main:false e demais configurações. Nenhuma publicação manual.
+- [ ] Exercitar hipótese de busca Banco com resposta perdida e reload no mock: conferir recuperação/histórico e cota, sem presumir duplicação.
+- [ ] Reexecutar suíte global do HEAD final com carga local limitada; registrar timeout histórico e warning Vite preexistente separadamente de regressões.
