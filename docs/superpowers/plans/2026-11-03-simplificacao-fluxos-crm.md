@@ -124,12 +124,13 @@
 
 **Files:** app/whatsapp/{page,visao-geral,painel,configuracao/page}.tsx; retorno-gestor da Task6 e testes.
 **Interfaces:** contexto WhatsApp validado preserva vendedor,busca,categoria,fonteId+conversa,painel móvel; não persistir mensagens/segredos/seleção de mutação.
-- [ ] Red: fontes distintas com mesmo telefone/conversa não se confundem; abrir ficha e voltar/reload conserva recorte e seleção.
-- [ ] Red: alvo em página posterior aguarda carga existente; fonte removida/conversa ausente não cai silenciosamente na primeira conversa.
-- [ ] Implementar retorno contextual e de configuração, com limites de parâmetros; sem integração nova nem promessa de rolagem exata.
-- [ ] Conferir duplicação de acessos G08 no celular/desktop; manter ação principal e rótulos consistentes sem retirar acesso necessário.
-- [ ] Green: painel DOM e E2E com Evolution de teste.
-- [ ] Revisão separada e commit.
+- [x] Red: fontes distintas com mesmo telefone/conversa não se confundem; abrir ficha e voltar/reload conserva recorte e seleção.
+- [x] Red: alvo em página posterior aguarda carga existente; fonte removida/conversa ausente não cai silenciosamente na primeira conversa.
+- [x] Implementar retorno contextual e de configuração, com limites de parâmetros; sem integração nova nem promessa de rolagem exata.
+- [x] Conferir duplicação de acessos G08 no celular/desktop; manter ação principal e rótulos consistentes sem retirar acesso necessário.
+- [x] Green: painel DOM e E2E com Evolution de teste.
+- [x] Revisão separada e commit.
+- [x] Cancelar restauração na troca de filtros/navegação real antes da resposta antiga; preservar clique modificado e contexto sem seleção. Rótulos de Empresas não alteram defaults alheios.
 
 ## Task 8: Usuários, autenticação e controles comuns
 
