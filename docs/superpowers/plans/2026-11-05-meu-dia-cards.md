@@ -126,11 +126,12 @@
 - [x] Perder resposta após commit de venda, reload e recuperação da mesma chave, validar uma venda no banco. Repetir para arquivamento, garantindo cancelamento de agenda sem efeitos duplicados. Não simular sucesso só no navegador sem conferir dados.
 - [x] Validar histórico expandido por teclado, filtros/expandir todos, vazio, erro/retry e leitura lenta. Cobrir desktop 1440px e celular 390px, temas claro/escuro, textos longos e rodapés lado a lado sem rolagem horizontal.
 - [x] Usar somente harness local `scripts/e2e/run.mts`, que exige host local, app_teste e banco teste_<id>; manter mocks/segredos de produção desabilitados. O esquema e os dados reais não entram nos testes.
-- [ ] Executar `npm run typecheck`, `npm run lint`, `npm run db:checar`, `npm run test:unit`, `npm run test:integracao`, `npm run build:e2e`, `node --import tsx scripts/e2e/run.mts --sem-build`. A rodada de baseline por tarefa é focada; esta é a verificação completa antes da PR. Cada comando deve terminar com código 0. Unidade, integração, tipagem, lint, checagem de migrações e build segura passaram; E2E global final pendente neste checkpoint.
+- [x] Executar `npm run typecheck`, `npm run lint`, `npm run db:checar`, `npm run test:unit`, `npm run test:integracao`, `npm run build:e2e`, `node --import tsx scripts/e2e/run.mts --sem-build`. A rodada de baseline por tarefa é focada; esta é a verificação completa antes da PR. Cada comando deve terminar com código 0. Gates locais finais passaram: unidade 2561 aprovados e 1 ignorado por plataforma; integração 829/829; E2E 172/172 no checkpoint congelado `8366a5f`; tipagem, lint, checagem de migrações, build segura e documentação com código 0. Rodadas RED e revalidações estão separadas no relatório.
 - [x] Conferir manualmente no navegador o fluxo completo contra o servidor isolado, documentando versão, dados, viewport, tema e os cenários realmente executados, com capturas das telas principais.
 - [x] Preparar diff completo e relatórios para revisão independente da branch; resolver achados importantes e repetir apenas os checks afetados pelas correções, além dos exigidos pelo CI.
-- [ ] Fechar o E2E global com código 0 e atualizar documentação/relatório final. O checkpoint de código/testes/evidências permite revisão somente leitura enquanto essa rodada executa.
-- [ ] Commit documental final, push e PR contra main pelo controlador, após revisão independente e todos os gates locais concluídos. Aguardar os checks obrigatórios verdes. Não fazer merge nem publicar.
+- [x] Fechar o E2E global com código 0 e atualizar documentação/relatório final. O checkpoint `8366a5f` recebeu revisão da Tarefa 6 sem achados Critical ou Important. O cenário adicional local de sucesso de arquivo após desmontagem passou 1/1 com estado exato do banco, sem alterar fonte ou suíte congelada.
+- [x] Fechar documentação e evidências locais após os gates; preservar fontes do checkpoint revisado.
+- [ ] Revisão geral da branch, push e PR contra main pelo controlador. Aguardar os checks obrigatórios verdes. Não fazer merge nem publicar.
 
 ## Resultado esperado e limites
 
@@ -143,5 +144,5 @@ Uma PR entrega os cards de Meu dia, agenda futura, editor por abas e o mesmo his
 - Builder check do desenho ampliado: nothing important left.
 - Auto-revisão: cobertura dos requisitos, interfaces, casos de falha e fronteiras de autorização conferidos. A implementação foi organizada em commits revisáveis por tarefa, com revisão independente das Tarefas 1 a 5.
 - Verificação documental: executar src/docs.test.ts antes do commit; não representa validação do produto.
-- Implementação das Tarefas 1 a 5 concluída e aprovada; Tarefa 6 em validação integrada local. Ver [evidências e estado dos checks](../../auditorias/2026-11-05-meu-dia-validacao.md).
-- Desenho e execução por agentes separados autorizados pelo usuário em 05/11/2026. Revisão final da branch, conferência manual independente e PR/CI ficam com o controlador, sem merge ou publicação.
+- Implementação e validação local das Tarefas 1 a 6 concluídas; revisão própria da Tarefa 6 aprovada e revisão geral da branch/PR/CI pendentes pelo controlador. Ver [evidências e estado dos checks](../../auditorias/2026-11-05-meu-dia-validacao.md).
+- Desenho e execução por agentes separados autorizados pelo usuário em 05/11/2026. Conferência manual independente concluída e registrada. Revisão geral da branch e PR/CI ficam com o controlador, sem merge ou publicação.

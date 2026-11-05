@@ -35,9 +35,13 @@ O [levantamento de fontes dos históricos](2026-11-05-historicos-crm.md) delimit
 
 ## Ponto adiado da Tarefa 3
 
-O hook de arquivo limpa a intenção persistida e emite a atualização do store mesmo se a instância emissora já desmontou; nesse caso, retorna `null` ao chamador antigo, impedindo que ele atualize estado desmontado. Não foi alterada essa semântica.
+O hook de arquivo limpa a intenção persistida e emite a atualização do store mesmo se a instância emissora já desmontou; nesse caso, retorna `null` ao chamador antigo. Essa semântica não foi alterada.
 
-A conclusão é delimitada: a jornada suportada de navegação/remontagem foi exercitada com ações e invalidação reais de `/funil` e `/meu-dia`, inclusive com cache de navegação preenchido antes do arquivo. O consumidor remontado mostra o estado confirmado e não restaura a agenda. A navegação voluntária durante envio pendente é protegida pelas guardas. Isso não afirma entrega de aviso de sucesso a um emissor artificialmente desmontado por código externo; a triagem final desse caso continua com o revisor da branch.
+Além da jornada versionada de navegação após sucesso, um cenário local adicional e ignorado foi executado pelo mesmo harness seguro, depois do E2E global. Primeiro, foram visitados Meu dia e Funil para preencher o cache de navegação. O arquivamento foi iniciado pela lixeira do Funil; a resposta HTTP real foi retida somente depois de o backend confirmar o commit. Ainda com a resposta retida, um link real levou ao Meu dia e o elemento `main` anterior ficou desconectado do DOM (`isConnected=false`). O comando continuou armazenado e o botão de recuperação do novo consumidor permaneceu desabilitado durante o envio.
+
+Após liberar a resposta original, o store ficou limpo. A empresa arquivada permaneceu ausente e a empresa B continuou visível no Meu dia, no Funil previamente visitado e ao remontar Meu dia. O teste observou um envio HTTP. O banco confirmou uma operação de arquivo, uma negociação encerrada, um contato e zero vendas. A versão passou de 4 para 6 no commit e permaneceu em 6 após a resposta e a navegação; o instante de arquivo permaneceu idêntico e `agenda_contato_id` continuou nulo. O cenário passou 1/1 em 4,9 s, com código 0, na mesma build `PI6S2uhg0ekyEg60qfwyg`; o banco `teste_90d90414d32a` foi removido.
+
+Essa evidência sustenta a ausência de regressão funcional nesse caminho real de sucesso após desmontagem do emissor. O Quadro não tem uma guarda própria que proíba toda navegação durante esse arquivamento; não se afirma essa proteção. As guardas de rascunho e replay externo estão limitadas aos cenários de formulário e consumidores efetivamente testados. Também não se promete entregar um aviso ao chamador já desmontado. O cenário adicional permanece fora da suíte versionada e não amplia consultas ou permissões.
 
 ## Verificações
 
@@ -50,16 +54,16 @@ A conclusão é delimitada: a jornada suportada de navegação/remontagem foi ex
 | Unidade completa | Código 0 na rodada sequencial: 244 arquivos, 2561 testes passaram e 1 ignorado, 476,47 s |
 | Integração completa | Código 0: 91 arquivos e 829 testes passaram, 371,62 s, incluindo versão PostgreSQL 18 |
 | `npm run build:e2e` | Código 0 |
-| E2E completo | Primeira global: 170 passaram e 2 falhas de seletor; correção validada com 4/4 no arquivo afetado. Global final pendente no checkpoint |
-| Documentação `src/docs.test.ts` | Código 0: 243 verificações no checkpoint; repetir após atualização documental final |
+| E2E completo | Código 0: 172/172 passaram em 13,2 min no checkpoint congelado `8366a5f`; banco removido |
+| Documentação `src/docs.test.ts` | Código 0: 243 verificações; repetido após o fechamento documental |
 
-A unidade completa teve uma rodada anterior concorrente com 2557 testes aprovados, 3 timeouts e 1 ignorado. Os três arquivos afetados passaram isolados (22 testes, 240,72 s); a rodada completa seguinte passou com um worker e sem checks pesados concorrentes. Os limites de tempo e assertions foram mantidos. O teste ignorado é específico de Linux (`src/e2e-processos.test.ts:49`), em uma execução Windows. Permanece o aviso do Vite sobre import dinâmico sem extensão estática em `src/server/diretivas.test.ts`; esse arquivo não foi alterado nesta tarefa.
+A unidade completa teve uma rodada anterior concorrente com 2557 testes aprovados, 3 timeouts e 1 ignorado. Os três arquivos afetados passaram isolados (22 testes, 240,72 s); a rodada completa seguinte passou com um worker e sem checks pesados concorrentes. Os limites de tempo e assertions foram mantidos. O teste ignorado é específico de Linux (`src/e2e-processos.test.ts:49`), em uma execução Windows. Permanece o aviso do Vite sobre import dinâmico sem extensão estática em `src/server/diretivas.test.ts`; esse arquivo não foi alterado nesta tarefa. No E2E, o Node também avisou que `NO_COLOR` foi ignorado porque `FORCE_COLOR` estava definido. Os dois avisos foram preservados, sem alterar produto ou configuração para suprimi-los.
 
 A integração completa revelou uma expectativa antiga que excluía futuros em `vendas-carteira.test.ts`. Após autorização do controlador, somente o nome do cenário e a expectativa de agenda foram atualizados, preservando vínculo, negociação e autorização. O primeiro focal teve um timeout de hook inalterado durante longa indisponibilidade observada do processo; a repetição idêntica passou 8/8 em 5,65 s. A rodada global final passou 829/829. O teste de versão, antes ignorado porque `PG_VERSAO_ESPERADA` estava ausente, foi habilitado com `18` somente no processo filho da rodada final. Nenhum limite de tempo foi aumentado.
 
 A primeira rodada de `--sem-build` encontrou um artefato anterior às mudanças de produto. Seus 7 testes passaram, mas essa execução foi descartada como evidência do código atual. A build segura foi refeita antes de registrar o red das jornadas antigas.
 
-A rodada focada ampliada depois dos ajustes de produto executou 41 testes: 36 passaram e 5 falharam. Os novos cenários de histórico, guardas, venda, replay de arquivo/venda e remontagem passaram; as falhas remanescentes foram tratadas. A primeira rodada E2E global executou 172 cenários: 170 passaram e dois falharam porque o seletor Próximo passo também identificava o novo tabpanel. O teste passou a buscar o textbox real; o arquivo inteiro passou 4/4 em 31,2 s. A rodada global final ainda está pendente neste checkpoint. Nenhum timeout ou assertion de produto foi afrouxado.
+A rodada focada ampliada depois dos ajustes de produto executou 41 testes: 36 passaram e 5 falharam. Os novos cenários de histórico, guardas, venda, replay de arquivo/venda e remontagem passaram; as falhas remanescentes foram tratadas. A primeira rodada E2E global executou 172 cenários: 170 passaram e dois falharam porque o seletor Próximo passo também identificava o novo tabpanel. O teste passou a buscar o textbox real; o arquivo inteiro passou 4/4 em 31,2 s. A rodada global final passou os 172 cenários no checkpoint congelado `8366a5f`, com código 0; o banco `teste_2129d3fe3bed` foi removido. Nenhum timeout ou assertion de produto foi afrouxado.
 
 ## Capturas
 
@@ -71,6 +75,7 @@ Capturas locais geradas pelo Playwright, com dados sintéticos, em [pasta de evi
 - `negociacao-{light,dark}-{1440,390}.png`: editor comum e rodapé lado a lado.
 - `historico-{light,dark}-{1440,390}.png`: nota longa e atividade autorizada.
 - `replay-venda-empresa-b.png`: confirmação de venda anterior sem trocar a negociação atual.
+- `arquivo-apos-desmontagem.png`: agenda coerente após resposta de arquivo entregue com o emissor anterior já desmontado.
 
 ## Conferência independente do controlador
 
@@ -88,4 +93,4 @@ O controlador abriu e mediu a página em Chrome dedicado. A ferramenta de captur
 
 As mutações e perdas de resposta foram verificadas pelos E2E do implementador, não repetidas nesse roteiro independente. As imagens inspecionadas foram copiadas para a pasta de evidências: `manual-meu-dia-desktop-escuro.png`, `manual-meu-dia-celular-claro.png`, `manual-funil-desktop-escuro.png` e `manual-gestor-historico-claro.png`.
 
-Este documento acompanha um checkpoint de código/testes/evidências com E2E global final ainda pendente. Revisão final da branch e checks de PR seguem sob responsabilidade do controlador. Este documento não declara push, PR, merge ou publicação.
+O checkpoint `8366a5f` recebeu revisão própria da Tarefa 6 com resultado Approved, sem achados Critical ou Important. Todos os gates locais finais passaram; a atualização seguinte altera somente documentação e capturas regeneradas pelo E2E. Revisão geral da branch e checks de PR seguem sob responsabilidade do controlador. Este documento não declara push, PR, merge ou publicação.
