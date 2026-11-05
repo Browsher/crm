@@ -29,7 +29,7 @@ async function capturar(page: Page, nome: string) {
 test('galeria compartilha shell e tema sem perder rascunho no atendimento: jornada do vendedor', async ({ page }) => {
   test.setTimeout(90_000)
   await entrar(page, 'redesigne2e', '/meu-dia')
-  await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN }).click()
+  await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
   for (const largura of [1440, 1280, 820, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light', 'dark']) {
@@ -37,11 +37,11 @@ test('galeria compartilha shell e tema sem perder rascunho no atendimento: jorna
       await capturar(page, `agenda-${largura}-${tema}`)
     }
   }
-  await page.getByRole('button', { name: 'Voltar para retornos' }).click()
-  const selecionada = page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN })
+  await page.getByRole('button', { name: 'Fechar', exact: true }).click()
+  const selecionada = page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true })
   await expect(selecionada).toBeFocused()
   await selecionada.click()
-  await page.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
+  await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
   await expect(page.getByLabel('Tema da Carteira')).toHaveValue('dark')
   await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
   await page.getByLabel('Nota', { exact: true }).fill('Rascunho preservado entre abas')
@@ -166,8 +166,11 @@ for (const [rota, tema] of [['/carteira', 'Tema da Carteira'], ['/meu-dia', 'Tem
     await page.goto(rota)
     await page.getByLabel(tema).selectOption('dark')
     await page.getByLabel('Nome', { exact: true }).fill('Redesign')
-    await page.getByLabel('Retorno', { exact: true }).selectOption('hoje')
-    await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
+    if (rota === '/meu-dia') await page.getByRole('group', { name: 'Filtrar retornos' }).getByRole('button', { name: 'Hoje', exact: true }).click()
+    else {
+      await page.getByLabel('Retorno', { exact: true }).selectOption('hoje')
+      await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
+    }
     await expect(page).toHaveURL(/nome=Redesign/)
     await expect(page.getByLabel(tema)).toHaveValue('dark')
     const filtros = page.locator('form').filter({ has: page.getByRole('searchbox', { name: 'Nome', exact: true }) })
@@ -175,11 +178,13 @@ for (const [rota, tema] of [['/carteira', 'Tema da Carteira'], ['/meu-dia', 'Tem
     await filtros.getByRole('link', { name: 'Limpar filtros', exact: true }).click()
     await expect(page).toHaveURL(rota)
     await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('')
-    await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('')
+    if (rota === '/meu-dia') await expect(page.getByRole('group', { name: 'Filtrar retornos' }).getByRole('button', { name: 'Todos', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    else await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('')
     await page.goBack()
     await expect(page).toHaveURL(/nome=Redesign/)
     await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Redesign')
-    await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('hoje')
+    if (rota === '/meu-dia') await expect(page.getByRole('group', { name: 'Filtrar retornos' }).getByRole('button', { name: 'Hoje', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    else await expect(page.getByLabel('Retorno', { exact: true })).toHaveValue('hoje')
     await expect(page.getByLabel(tema)).toHaveValue('dark')
     await page.goForward()
     await expect(page).toHaveURL(rota)
@@ -187,14 +192,17 @@ for (const [rota, tema] of [['/carteira', 'Tema da Carteira'], ['/meu-dia', 'Tem
   })
 }
 
-test('filtrar Meu dia seleciona uma empresa dos novos resultados', async ({ page }) => {
+test('filtrar Meu dia fecha a seleção e exige abrir explicitamente o novo retorno', async ({ page }) => {
   await entrar(page, 'redesigne2e', '/meu-dia')
-  await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: 'Redesign Negociação' }).click()
+  await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: 'Redesign Negociação' }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
   await page.getByLabel('Nome', { exact: true }).fill('Redesign Cliente')
   await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
   await expect(page).toHaveURL(/nome=Redesign\+Cliente/)
-  await expect(page.getByRole('article').getByRole('heading', { name: NOME_REDESIGN, exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Abrir atendimento', exact: true })).toBeVisible()
+  await expect(page.locator('[data-painel-lateral]')).toHaveCount(0)
+  await expect(page.getByText('Nenhum retorno selecionado', { exact: true })).toBeVisible()
+  await page.getByTestId('lista-meu-dia').getByRole('button', { name: 'Abrir retorno', exact: true }).click()
+  await expect(page.locator('[data-painel-lateral]').getByRole('heading', { name: NOME_REDESIGN, exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Atendimento', exact: true })).toBeVisible()
 })
 
 test('filtros móveis têm alvos de toque de 44px', async ({ page }) => {
@@ -248,11 +256,11 @@ test('tarefa 9: atendimento conserva rascunho, campos e geometria nos dois temas
   test.setTimeout(120_000)
   await entrar(page, 'redesigne2e', '/meu-dia')
   await expect(page.getByLabel('Nome', { exact: true }).locator('xpath=ancestor::form')).toContainText('Filtrar')
-  const filtros = page.getByLabel('Nome', { exact: true }).locator('xpath=ancestor::*[@data-slot="card"]')
-  await expect(filtros).toHaveCSS('border-radius', '10px')
-  await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN }).click()
-  await expect(page.getByRole('article')).toHaveCSS('border-radius', '10px')
-  await page.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
+  const filtros = page.getByRole('group', { name: 'Filtrar retornos' })
+  await expect(filtros).toHaveCSS('border-radius', '8px')
+  await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
+  await expect(page.locator('[data-painel-lateral]')).toHaveCount(1)
+  await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
   await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
   const nota = page.getByLabel('Nota', { exact: true })
   const longa = 'Rascunho que deve sobreviver ' + 'anotação longa sem perda '.repeat(45)
@@ -304,8 +312,8 @@ test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ b
   try {
     await entrar(page, 'redesigne2e', '/meu-dia')
     await expect(page.getByLabel('Nome', { exact: true })).toHaveCSS('font-size', '16px')
-    await page.getByTestId('lista-meu-dia').getByRole('button').filter({ hasText: NOME_REDESIGN }).click()
-    await page.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
+    await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
+    await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
     const voltar = page.getByRole('navigation', { name: 'Navegação da ficha' }).getByRole('link')
     const caixaVoltar = (await voltar.boundingBox())!
     expect(caixaVoltar.height).toBeGreaterThanOrEqual(44)

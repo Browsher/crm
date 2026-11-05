@@ -177,8 +177,18 @@ function PainelDoUsuario({ usuarioId, linhas, agenda, filtros }: Props) {
           {painel.tipo === 'negociacao' && <PainelNegociacao key={painel.negociacaoId} id={painel.negociacaoId} usuarioId={usuarioId} fecharRef={fecharNegociacao}
             rotuloFechar="Voltar" bloqueada={!!arquivo.comando || arquivo.pendente || venda.pendente || !!confirmacao}
             fechar={(texto, resultadoVenda) => {
-              if (texto) { setAviso(texto); fechar(); router.refresh() }
-              else if (resultadoVenda) { fechar(); router.refresh() }
+              if (resultadoVenda) {
+                fechar()
+                if (resultadoVenda.leituraDestino?.ok) {
+                  setAviso(resultadoVenda.aviso ?? 'Venda registrada.')
+                  try { router.replace('/carteira/' + resultadoVenda.leituraDestino.destino.empresaId + '?venda=registrada') }
+                  catch { setAviso('Venda registrada. Não foi possível abrir a ficha. Abra a Carteira.') }
+                } else {
+                  setAviso('Venda registrada. Não foi possível abrir a ficha. Atualize a página ou abra a Carteira.')
+                  router.refresh()
+                }
+              }
+              else if (texto) { setAviso(texto); fechar(); router.refresh() }
               else voltar(painel.anterior)
             }}
             aoPedirArquivar={detalhe => {

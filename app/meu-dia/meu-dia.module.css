@@ -46,7 +46,6 @@
 .periodo { display:flex; align-items:center; gap:12px; flex-basis:100%; font-size:12px; }
 .periodo select { width:auto; }
 @media(min-width:1121px) {
-  .corpo[data-painel-aberto='true'] { margin-right:calc(var(--crm-painel-lateral-largura, clamp(320px,26vw,420px)) + 12px); }
   .corpo[data-painel-aberto='true'] .colunaLista { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media(max-width:1120px) {

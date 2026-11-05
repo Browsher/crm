@@ -11,7 +11,7 @@ import { historicoDaAgendaAcao } from './historico-acao'
 import { prepararContatoAcao, registrarContatoAcao } from '@/src/features/contato/acao'
 import { detalheAcao, semInteresseAcao, telefoneAcao } from '../funil/acoes'
 import { transmitirVenda } from '../venda-envio'
-const navegar = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }))
+const navegar = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }))
 vi.mock('next/navigation', () => ({ useRouter: () => navegar }))
 vi.mock('./historico-acao', () => ({ historicoDaAgendaAcao: vi.fn() }))
 vi.mock('../funil/acoes', () => ({ detalheAcao: vi.fn(), telefoneAcao: vi.fn(), etapaAcao: vi.fn(), semInteresseAcao: vi.fn() }))
@@ -517,4 +517,14 @@ test('guarda de recuperação não bloqueia o fechamento interno após confirma�
   expect(host.querySelector('[data-testid=lista-meu-dia]')?.textContent).not.toContain('Aurora')
   expect(host.textContent).toContain('Boreal')
   expect(historicoDaAgendaAcao).toHaveBeenCalledTimes(1)
+})
+
+test('primeira venda da negociação abre somente o destino autenticado, mesmo junto do texto de sucesso', async () => {
+  persistirComandoVenda({ usuarioId: 'u', empresaId: 'a', chave: 'primeira-destino', alvo: { tipo: 'primeira', negociacaoId: 'n-a' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
+  vi.mocked(transmitirVenda).mockResolvedValue({ ok: true, leituraDestino: { ok: true, destino: { tipo: 'carteira', empresaId: 'destino-autorizado' } } })
+  await montar(); await abrir('Aurora'); await clicar('Negociação')
+  await clicar('Confirmar venda anterior', host.querySelector('aside')!)
+  await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  expect(navegar.replace).toHaveBeenCalledWith('/carteira/destino-autorizado?venda=registrada')
+  expect(host.querySelector('aside')).toBeNull()
 })

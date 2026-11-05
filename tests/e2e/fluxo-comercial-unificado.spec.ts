@@ -47,7 +47,7 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   await expect(page.getByRole('main')).toContainText('Retorno da jornada integrada')
   await page.goto('/funil')
   await page.locator('article[draggable]').getByRole('button', { name: 'Negociação', exact: true }).click()
-  await modal.getByRole('button', { name: 'Marcar como Sem interesse', exact: true }).click()
+  await modal.getByRole('button', { name: 'Sem interesse', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
   await expect(page.getByRole('status').filter({hasText:'Empresa marcada como Sem interesse'})).toBeVisible()
   const historia = (await sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).rows
@@ -101,7 +101,8 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   expect((await sql('SELECT id FROM venda WHERE empresa_id=$1', [empresa])).rowCount).toBe(2)
   expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresa])).rowCount).toBe(0)
   await antiga.getByRole('tab', { name: 'Histórico', exact: true }).click()
-  await expect(antiga.getByText('Venda registrada', { exact: true })).toHaveCount(2)
+  await antiga.getByRole('button', { name: 'Expandir todos', exact: true }).click()
+  await expect(antiga.locator('summary').filter({ hasText: 'Venda registrada' })).toHaveCount(2)
   await expect(antiga.getByText('Compra posterior preservada', { exact: true })).toBeVisible()
   await antiga.screenshot({ path: '.superpowers/sdd/2026-10-29-fluxo-comercial-unificado/task-9-captures/carteira-historico-integrado.png', fullPage: true })
   await antiga.close()

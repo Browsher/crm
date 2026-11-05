@@ -63,7 +63,8 @@ test('gestor consulta o arquivo e o histórico; vendedor conserva URLs antigas s
   await page.goto('/empresas/'+empresaId)
   await expect(page.getByRole('main')).toContainText('Arquivada')
   await page.getByRole('tab', { name: 'Histórico' }).click()
-  await expect(page.getByRole('main')).toContainText('Contato sintético preservado')
+  await page.getByRole('button', { name: 'Expandir todos', exact: true }).click()
+  await expect(page.getByText('Contato sintético preservado', { exact: true })).toBeVisible()
   await expect(page.getByRole('main')).toContainText('Encerrada por arquivamento da base antiga')
   const contexto = await browser.newContext()
   try {

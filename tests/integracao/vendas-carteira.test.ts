@@ -80,13 +80,13 @@ test('gestor lê vendas; vendedor desativado e novo responsável não registram 
   const privado=await lerHistorico(eu,empresa);expect(privado.ok&&privado.contatos.filter(c=>c.venda)).toEqual([])
 })
 
-test('retorno futuro fica no Funil, mas fora da agenda de hoje',async()=>{
+test('retorno futuro fica no Funil e também entra na agenda do Meu dia',async()=>{
   await banco.sql('DELETE FROM negociacao; DELETE FROM empresa_fila')
   const [{data}]=await banco.sql<{data:string}>("SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date+1,'YYYY-MM-DD') AS data")
   expect(await contatoDireto('retornar_depois','Ligar',data)).toMatchObject({ok:true})
   const agenda=await lerMinhasEmpresas(eu)
   expect(agenda.ok&&agenda.carteira[0].situacaoRetorno).toBe('futuro')
-  expect(agenda.ok&&agendaDoDia(agenda.carteira)).toEqual([])
+  expect(agenda.ok&&agendaDoDia(agenda.carteira)).toEqual([expect.objectContaining({id:empresa,situacaoRetorno:'futuro'})])
   expect(await banco.sql('SELECT vendedor_id FROM negociacao WHERE encerrada_em IS NULL')).toEqual([{vendedor_id:eu}])
 })
 
