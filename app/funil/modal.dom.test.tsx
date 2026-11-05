@@ -660,3 +660,45 @@ test('confirmar venda de outra negociação mantém editor aberto e utilizável'
   await clicar('Continuar editando')
   expect(host.querySelector('input')?.value).toBe('30,00')
 })
+
+
+test('empresa indisponível desde a abertura bloqueia novas operações por clique e teclado e conserva Histórico', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, empresa: { ...detalhe.empresa, situacao: 'indisponivel' } })
+  vi.mocked(telefoneAcao).mockClear()
+  vi.mocked(vendaAcao).mockClear()
+  vi.mocked(etapaAcao).mockClear()
+  prepararContato.mockClear()
+  const arquivar = vi.fn()
+  await montar('a', { aoPedirArquivar: arquivar })
+  for (const nome of ['Registrar venda', 'Sem interesse', 'Avançar para Em negociação']) {
+    const botao = [...host.querySelectorAll('button')].find(b => b.textContent === nome)!
+    expect(botao.matches(':disabled'), nome).toBe(true)
+    await clicar(nome)
+  }
+  const atendimento = host.querySelector<HTMLButtonElement>('[role=tab][id$="-atendimento"]')!
+  expect(atendimento.matches(':disabled')).toBe(true)
+  await clicar('Atendimento')
+  const passo = host.querySelector<HTMLButtonElement>('[role=tab][aria-selected=true]')!
+  await act(async () => passo.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })))
+  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Histórico')
+  expect(document.activeElement?.textContent).toBe('Histórico')
+  expect(host.querySelector('[aria-label="Histórico comercial"]')).not.toBeNull()
+  expect(host.querySelector('form')).toBeNull()
+  expect(telefoneAcao).not.toHaveBeenCalled()
+  expect(prepararContato).not.toHaveBeenCalled()
+  expect(vendaAcao).not.toHaveBeenCalled()
+  expect(etapaAcao).not.toHaveBeenCalled()
+  expect(arquivar).not.toHaveBeenCalled()
+})
+
+test('empresa indisponível mantém replay da venda anterior com identidade e entrada originais', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, empresa: { ...detalhe.empresa, situacao: 'indisponivel' } })
+  vi.mocked(vendaAcao).mockReset().mockResolvedValue({ ok: false, erro: 'Ainda sem confirmação' })
+  const comando = criarComandoVenda('teste', 'e', { tipo: 'primeira', negociacaoId: 'a' }, { valor: '43,20', data: '2026-11-05', observacao: 'Entrada original' })
+  persistirComandoVenda(comando)
+  await montar()
+  await clicar('Confirmar venda anterior')
+  expect(vendaAcao).toHaveBeenCalledOnce()
+  expect(Object.fromEntries(vi.mocked(vendaAcao).mock.calls[0][0])).toEqual({ id: 'a', chave: comando.chave, confirmado: 'sim', ...comando.entrada })
+  expect(JSON.parse(sessionStorage.getItem('crm:venda:v1:teste')!)).toEqual(comando)
+})

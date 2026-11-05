@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { Client } from 'pg'
 import { FUNIL_EMPRESA } from './dados-funil'
+import { comBancoGrupos } from './dados-grupos'
 const cartaoAurora=(page:Page)=>page.locator('[draggable]').filter({has:page.getByRole('heading',{name:'Funil Aurora',exact:true})})
 test('Funil protege notas, conserva rascunho e registra primeira venda sem perder retorno',async({page})=>{
   test.setTimeout(60_000)
@@ -101,4 +102,45 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await page.screenshot({path:'.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/carteira-historico-vendas.png',fullPage:true,animations:'disabled'})
   await page.goto('/meu-dia');await expect(page.getByRole('main')).toContainText('Funil Aurora')
   const c=new Client({connectionString:process.env.DATABASE_URL_ADMIN});await c.connect();try{expect((await c.query('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[FUNIL_EMPRESA])).rows[0].n).toBe(2)}finally{await c.end()}
+})
+
+
+test('negociação de origem indisponível conserva Histórico e bloqueia novas operações por clique e teclado', async ({ page }) => {
+  const id = '00000000-0000-4000-8000-000000000808'
+  const grupos = await comBancoGrupos(async c => (await c.query<{ id: string }>('UPDATE grupo_importacao SET ativo=false WHERE id IN (SELECT grupo_id FROM grupo_importacao_empresa WHERE empresa_id=$1) AND ativo RETURNING id', [id])).rows.map(r => r.id))
+  try {
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill('funile2e@teste.local')
+    await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+    await expect(page).toHaveURL('/meu-dia')
+    await page.goto('/funil')
+    const card = page.locator('[draggable]').filter({ has: page.getByRole('heading', { name: 'Negociação 8', exact: true }) })
+    await card.getByRole('button', { name: 'Negociação', exact: true }).click()
+    const painel = page.locator('[data-painel-lateral]')
+    for (const tema of ['light', 'dark']) {
+      await page.getByRole('combobox', { name: 'Tema do Funil' }).selectOption(tema)
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 })
+        for (const nome of ['Registrar venda', 'Sem interesse', 'Avançar para Proposta enviada']) await expect(painel.getByRole('button', { name: nome, exact: true })).toBeDisabled()
+        await expect(painel.getByRole('tab', { name: 'Atendimento', exact: true })).toBeDisabled()
+        await painel.getByRole('tab', { name: 'Próximo passo', exact: true }).press('ArrowRight')
+        await expect(painel.getByRole('tab', { name: 'Histórico', exact: true })).toBeFocused()
+        await expect(painel.getByRole('region', { name: 'Histórico comercial', exact: true })).toBeVisible()
+        await painel.getByRole('button', { name: 'Expandir todos', exact: true }).click()
+        await expect(painel.locator('details[open]')).toHaveCount(1)
+        await expect(painel).not.toContainText('11977778888')
+        await expect(painel.locator('form')).toHaveCount(0)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+        await page.screenshot({ path: `docs/design/2026-11-05-meu-dia/indisponivel-${tema}-${width}.png`, animations: 'disabled' })
+        await painel.getByRole('button', { name: 'Voltar', exact: true }).click()
+      }
+    }
+    await painel.getByRole('button', { name: 'Fechar', exact: true }).click()
+    await expect(card.getByRole('button', { name: 'Negociação', exact: true })).toBeFocused()
+    const vendas = await comBancoGrupos(async c => (await c.query<{ n: number }>('SELECT count(*)::int n FROM venda WHERE empresa_id=$1', [id])).rows[0].n)
+    expect(vendas).toBe(0)
+  } finally {
+    await comBancoGrupos(c => c.query('UPDATE grupo_importacao SET ativo=true WHERE id=ANY($1::uuid[])', [grupos]))
+  }
 })

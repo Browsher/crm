@@ -198,6 +198,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
 
   function pedir(destino: 'fechar' | 'passo' | 'arquivo' | 'venda', depois?: () => void) {
     if (bloqueado.current || venda.pendente || finalizando.current || descarte || confirmacaoVendaAberta) return
+    if ((destino === 'venda' || destino === 'arquivo') && detalhe?.empresa?.situacao === 'indisponivel') return
     if (venda.comando) {
       setErro('Confirme a venda anterior ou feche mantendo o envio. Os dados não podem ser descartados.')
       return
@@ -282,6 +283,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   }
   async function salvarVenda(){
     const anterior = venda.comando
+    if (!anterior && detalhe?.empresa?.situacao === 'indisponivel') return
     if (bloqueado.current || finalizando.current || fechandoVenda || venda.pendente || !detalhe && !anterior) return
     const alvo = anterior?.alvo ?? { tipo: 'primeira' as const, negociacaoId: id }
     const vendaDesteFormulario = alvo.tipo === 'primeira' && alvo.negociacaoId === id && modo === 'venda'
@@ -303,6 +305,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     }
   }
   async function atender(){
+    if (detalhe?.empresa?.situacao === 'indisponivel') return
     const pedido=++pedidoTelefone.current
     setModo('atendimento')
     if (telefone !== null) return
@@ -313,7 +316,9 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   }
 
   const etapaSeguinte = detalhe && proximaEtapa(detalhe.etapa)
-  const acoesBloqueadas = pendente || venda.pendente || dirty || detalhe?.empresa?.situacao === 'indisponivel'
+  const empresaIndisponivel = detalhe?.empresa?.situacao === 'indisponivel'
+  const novasOperacoesBloqueadas = pendente || venda.pendente || empresaIndisponivel
+  const acoesBloqueadas = novasOperacoesBloqueadas || dirty
   const alerta = (erro || venda.erro) && <Alert variant="danger" role="alert">{erro || venda.erro}</Alert>
   return <>
     <PainelLateralCrm
@@ -351,16 +356,17 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
           if (pendente || bloqueada || venda.bloqueada || fechandoVenda) return
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return
           evento.preventDefault()
-          const indice = abas.findIndex(aba => aba.valor === modo)
-          const proximo = evento.key === 'Home' ? 0 : evento.key === 'End' ? abas.length - 1 : (indice + (evento.key === 'ArrowRight' ? 1 : -1) + abas.length) % abas.length
-          const aba = abas[proximo]
+          const disponiveis = abas.filter(aba => aba.valor !== 'atendimento' || !empresaIndisponivel)
+          const indice = disponiveis.findIndex(aba => aba.valor === modo)
+          const proximo = evento.key === 'Home' ? 0 : evento.key === 'End' ? disponiveis.length - 1 : (indice + (evento.key === 'ArrowRight' ? 1 : -1) + disponiveis.length) % disponiveis.length
+          const aba = disponiveis[proximo]
           if (aba.valor === 'atendimento') void atender()
           else setModo(aba.valor)
           document.getElementById(abasId + '-' + aba.valor)?.focus()
         }}>
           {abas.map(aba => <Button key={aba.valor} ref={aba.valor === 'atendimento' ? registrarAtendimento : aba.valor === 'historico' ? abaHistorico : undefined} type="button" role="tab"
             id={abasId + '-' + aba.valor} aria-controls={abasId + '-painel-' + aba.valor} aria-selected={modo === aba.valor} tabIndex={modo === aba.valor ? 0 : -1}
-            variant="ghost" disabled={pendente} onClick={() => { if (aba.valor === 'atendimento') void atender(); else setModo(aba.valor) }}>{aba.rotulo}</Button>)}
+            variant="ghost" disabled={pendente || aba.valor === 'atendimento' && empresaIndisponivel} onClick={() => { if (aba.valor === 'atendimento') void atender(); else setModo(aba.valor) }}>{aba.rotulo}</Button>)}
         </div>}
         <section role="tabpanel" id={abasId + '-painel-passo'} aria-labelledby={abasId + '-passo'} hidden={modo !== 'passo'} className={styles.secao}>
           <dl className={styles.dados}>
@@ -387,13 +393,13 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
         {(modo === 'passo' || modo === 'historico') && <footer className={styles.rodape}>
           <span>Ações da negociação</span>
           <div className={styles.parAcoes}>
-            <Button ref={registrarVenda} disabled={pendente || venda.pendente} onClick={() => pedir('venda')}>Registrar venda</Button>
-            <Button variant="outline" disabled={!aoPedirArquivar || pendente || venda.pendente} onClick={() => pedir('arquivo', () => aoPedirArquivar?.(detalhe))}>Sem interesse</Button>
+            <Button ref={registrarVenda} disabled={novasOperacoesBloqueadas} onClick={() => pedir('venda')}>Registrar venda</Button>
+            <Button variant="outline" disabled={!aoPedirArquivar || novasOperacoesBloqueadas} onClick={() => pedir('arquivo', () => aoPedirArquivar?.(detalhe))}>Sem interesse</Button>
           </div>
         </footer>}
           {modo === 'venda' && <form className={styles.secao} onSubmit={evento => {
             evento.preventDefault()
-            if (pendente || fechandoVenda || confirmado || venda.bloqueada) return
+            if (pendente || fechandoVenda || confirmado || venda.bloqueada || empresaIndisponivel) return
             focoVenda.current = document.activeElement as HTMLElement | null
             setConfirmado(true)
           }}>

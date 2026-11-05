@@ -224,7 +224,8 @@ test('arquivo perde resposta após commit, recarrega e confirma a mesma chave no
   await expect(painel(page)).toHaveCount(0)
 })
 
-test('venda perdida confirma a mesma chave após reload; replay externo protege Back e beforeunload sem trocar a empresa B', async ({ page }) => {
+for (const contexto of ['negociacao-b', 'dados-cliente'] as const) {
+test(`venda perdida confirma a mesma chave após reload; replay externo protege Back, links e beforeunload em ${contexto}`, async ({ page }) => {
   const { empresas: [a, b], usuario, email } = await cenario()
   await entrar(page, email)
   await abrirNegociacao(page, a.nome)
@@ -257,13 +258,23 @@ test('venda perdida confirma a mesma chave após reload; replay externo protege 
   page.once('dialog', dialogo => dialogo.accept())
   await page.reload()
   expect(await page.evaluate(chave => sessionStorage.getItem(chave), storage)).toBe(salvo)
-  await abrirNegociacao(page, b.nome)
+  if (contexto === 'negociacao-b') await abrirNegociacao(page, b.nome)
+  else await card(page, a.nome).getByRole('button', { name: 'Dados da empresa', exact: true }).click()
+  const titulo = contexto === 'negociacao-b' ? b.nome : 'Dados da empresa'
   await page.getByRole('region', { name: 'Envios anteriores', exact: true }).getByRole('button', { name: 'Confirmar venda anterior', exact: true }).click()
   await recebido
   try {
+    if (contexto === 'dados-cliente') {
+      const atendimento = painel(page).locator('footer').getByRole('link', { name: 'Atendimento', exact: true })
+      await atendimento.click()
+      await expect(page).toHaveURL('/meu-dia')
+      await atendimento.press('Enter')
+      await expect(page).toHaveURL('/meu-dia')
+      await expect(painel(page).getByRole('heading', { name: titulo, exact: true })).toBeVisible()
+    }
     await page.evaluate(() => history.back())
     await expect(page).toHaveURL('/meu-dia')
-    await expect(painel(page).getByRole('heading', { name: b.nome, exact: true })).toBeVisible()
+    await expect(painel(page).getByRole('heading', { name: titulo, exact: true })).toBeVisible()
     let tipo = ''
     page.once('dialog', async dialogo => { tipo = dialogo.type(); await dialogo.dismiss() })
     await page.close({ runBeforeUnload: true })
@@ -271,12 +282,17 @@ test('venda perdida confirma a mesma chave após reload; replay externo protege 
     expect(await page.evaluate(chave => sessionStorage.getItem(chave), storage)).toBe(salvo)
   } finally { liberar() }
   await expect(page.getByRole('region', { name: 'Envios anteriores', exact: true }).getByRole('button', { name: 'Confirmar venda anterior', exact: true })).toHaveCount(0)
-  await expect(painel(page).getByRole('heading', { name: b.nome, exact: true })).toBeVisible()
+  if (contexto === 'negociacao-b') await expect(painel(page).getByRole('heading', { name: titulo, exact: true })).toBeVisible()
+  else {
+    await expect(painel(page)).toHaveCount(0)
+    await expect(page.getByText('Nenhum retorno selecionado', { exact: true })).toBeVisible()
+  }
   expect(envios).toHaveLength(2)
   for (const corpo of envios) expect(corpo).toContain(comando.chave)
   expect(await banco().sql('SELECT chave,valor_centavos::int valor FROM venda WHERE empresa_id=$1', [a.id])).toEqual([{ chave: comando.chave, valor: 9731 }])
-  await page.screenshot({ path: `${pasta}/replay-venda-empresa-b.png`, fullPage: true })
+  await page.screenshot({ path: `${pasta}/${contexto === 'negociacao-b' ? 'replay-venda-empresa-b' : 'replay-venda-dados-cliente'}.png`, fullPage: true })
 })
+}
 
 test('sucesso de arquivo revalida as duas rotas e navegação com remontagem conserva a agenda cancelada', async ({ page }) => {
   const { empresas: [a], usuario, email } = await cenario()

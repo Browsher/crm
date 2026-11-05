@@ -94,3 +94,41 @@ O controlador abriu e mediu a página em Chrome dedicado. A ferramenta de captur
 As mutações e perdas de resposta foram verificadas pelos E2E do implementador, não repetidas nesse roteiro independente. As imagens inspecionadas foram copiadas para a pasta de evidências: `manual-meu-dia-desktop-escuro.png`, `manual-meu-dia-celular-claro.png`, `manual-funil-desktop-escuro.png` e `manual-gestor-historico-claro.png`.
 
 O checkpoint `8366a5f` recebeu revisão própria da Tarefa 6 com resultado Approved, sem achados Critical ou Important. Todos os gates locais finais passaram; a atualização seguinte altera somente documentação e capturas regeneradas pelo E2E. Revisão geral da branch e checks de PR seguem sob responsabilidade do controlador. Este documento não declara push, PR, merge ou publicação.
+
+
+## Rodada final dos dois achados da revisão geral
+
+Correção com base em `a90837a38d7bebdd07fe300615d4dd735c4c402e`, na mesma branch `codex/meu-dia-cards`:
+
+- Dados da empresa agora recebe um rodapé comercial opcional apenas nesta composição. Negociação existente abre o editor comum na mesma lateral e Voltar restaura Dados e seu gatilho; clientes e tentativas agendadas sem negociação seguem o Atendimento autorizado da Carteira, com `nome`, `retorno` e `periodo` preservados. Dados aberto pelo card usa Voltar para fechar com foco no card; Dados aberto pelo Histórico restaura essa aba. Outros consumidores cadastrais conservam a composição anterior.
+- Empresas conhecidas como indisponíveis voltaram a bloquear novas vendas, Atendimento, avanço e Sem interesse, conforme os controles anteriores à reorganização. O Histórico continua acessível por clique e teclado; a confirmação da venda anterior preserva alvo, chave e entrada. O bloqueio não reutiliza indiscriminadamente `dirty`, mantendo os diálogos de descarte.
+
+A rodada TDD começou com seis falhas pertinentes e um replay aprovado; após a correção e a cobertura adicional de guardas, os três DOM afetados passaram 97/97. Outros quatro arquivos adjacentes passaram 53/53. Tipos, lint e 243 verificações documentais passaram. A build segura `npm run build:e2e` terminou com código 0 e gerou `OZHH6iwu2bkYUVuBaH0ET`; a primeira candidata permaneceu congelada durante essas verificações. O ajuste de alcance descrito abaixo exige outro artefato.
+
+O harness `scripts/e2e/run.mts --sem-build` executou os três arquivos afetados (Meu dia, Funil e Histórico comercial): 19/19 passaram em 1,4 min, código 0, um worker Chromium, banco temporário `teste_8450d3794d2d` removido. A execução usou o PostgreSQL18 local fornecido pelo controlador, contas fictícias e mocks. Cobriu 1440/390, claro/escuro, foco e teclado, Dados → Negociação → Dados → Histórico, Dados direto com rascunho/descarte, os dois destinos de Atendimento com filtros, indisponibilidade conhecida desde a abertura e Histórico expansível sem telefone/formulário/escritas novas. O replay após perda de resposta manteve a mesma chave e uma única venda no banco; em Dados de cliente, clique e Enter no link Atendimento ficaram bloqueados durante o envio. Depois da confirmação da própria empresa, conserva-se o comportamento anterior de fechar o painel sem selecionar vizinho.
+
+As evidências globais de 2561 unidades, 829 integrações e 172 E2E registradas acima pertencem ao checkpoint anterior. Esta rodada executou apenas verificações afetadas; CI completo e revisão focada final seguem sob responsabilidade do controlador. Nenhum push, PR, merge ou deploy foi realizado nesta rodada.
+
+Novas capturas pertinentes nesta build: `indisponivel-{light,dark}-{1440,390}.png` e `replay-venda-dados-cliente.png`, na pasta de evidências já vinculada. Recapturas automáticas de históricos e retornos sem mudança de comportamento foram descartadas para manter suas evidências anteriores.
+
+
+Após conferir a captura de replay em Dados de cliente, a expectativa final do teste foi tornada mais precisa: aguardar o fechamento já existente após confirmação da própria empresa e a ausência de seleção automática. Sem alterar fonte ou build, esse único cenário foi repetido pelo harness: 1/1 passou em 5,6 s, código 0, banco `teste_cd3aa29c84fe` removido. A documentação atualizada passou novamente nas 243 verificações.
+
+
+A conferência independente dessa candidata encontrou o rodapé de Dados fora da viewport, após o cadastro longo. Antes do commit, quatro regressões reais de geometria falharam com a build `OZHH6iwu2bkYUVuBaH0ET`: claro/escuro × 1440/390, extremidade inferior da ação em 2096/2056 px para viewport de 1000 px, medida antes de qualquer rolagem ou clique. Harness com código 1; banco `teste_e7f202f621c0` removido. Não se declara aprovação ou captura manual válida dessa tentativa.
+
+O próprio achado de Dados foi completado com layout opcional de corpo cadastral rolável e rodapé persistente, sem alterar consumidores sem rodapé. A regressão exige posição dentro da viewport antes de qualquer rolagem, mantém essa posição depois de rolar o cadastro, confere Origem alcançável e ativa a negociação por Enter. O novo artefato e a prova final de navegador são registrados a seguir; os 19+1 E2E da primeira candidata não são reclassificados como prova desse ajuste de layout.
+
+
+Na fonte final, tipos, lint e os 97 DOM afetados passaram novamente. A nova build segura `UPJ5Jr1xkRI7IedLrTmOx` terminou com código 0 e substituiu a candidata anterior. A rodada final repetiu os três arquivos de navegador: **23/23 passaram em 1,3 min**, código 0, na mesma build e com a fonte congelada. O banco temporário `teste_29c109eb5b65` foi removido e os processos encerrados. As quatro regressões novas conferem o rodapé dentro da viewport antes de rolar ou clicar, cadastro com rolagem própria e posição do rodapé idêntica depois de rolar até Origem. Os outros 19 cenários também passaram nesse layout final, incluindo contexto, foco, rascunho/descarte, pendências e replay.
+
+As capturas `dados-{light,dark}-{1440,390}.png` foram atualizadas para esse layout e `dados-rodape-{light,dark}-{1440,390}.png` mostram o fim do cadastro com a ação comercial persistente. A inspeção efetiva das imagens de celular claro e desktop escuro confirmou o cabeçalho Voltar, o cadastro rolável e o botão Negociação no rodapé visível.
+
+
+### Conferência independente desta fonte final
+
+O controlador repetiu o roteiro `manual-final-fixes.mts` na build `UPJ5Jr1xkRI7IedLrTmOx`, sem modificar suas assertivas após a correção de geometria. Resultado PASS em 05/11/2026, porta local 3110, conta fictícia `meudiae2e`, banco descartável `teste_035dc629e121`. O processo manual 37260 terminou com código 0; banco removido e servidor/mocks encerrados.
+
+Foram observados desktop 1440 × 1000 escuro e celular 390 × 844 com touch/claro: Dados pelo card usando Enter, cabeçalho Voltar, cadastro carregado e ação Negociação habilitada no rodapé com caixa dentro da viewport antes de qualquer clique/rolagem. Enter abriu a negociação correta na mesma rota; Voltar restaurou Dados/foco na ação comercial e o Voltar seguinte fechou para a lista/foco no card. No desktop, Retorno/Histórico → Dados → Negociação → Dados → Histórico preservou contexto; Escape voltou ao Próximo passo e depois à lista/foco em Abrir retorno. Sem transbordamento horizontal.
+
+O controlador inspecionou efetivamente as duas capturas finais, copiadas como `final-manual-dados-desktop-escuro.png` e `final-manual-dados-celular-claro.png` na pasta de evidências. Confirmou conteúdo legível, rolagem própria do cadastro e rodapé persistente visível. Esse roteiro não repetiu indisponibilidade, escritas, perda de resposta ou replay; esses casos pertencem à prova do implementador descrita acima. A evidência global anterior não foi reclassificada como execução desta fonte.

@@ -193,11 +193,11 @@ test('filtros em botões e subperíodos preservam semântica no submit', async (
   expect(navegar.push).toHaveBeenCalledWith('/meu-dia?retorno=proximos')
 })
 
-test('Dados pelo grid não busca histórico e fechar retoma seu botão', async () => {
+test('Dados pelo grid não busca histórico e Voltar retoma seu botão', async () => {
   await montar()
   const gatilho = await abrir('Aurora', 'Dados da empresa')
   expect(historicoDaAgendaAcao).not.toHaveBeenCalled()
-  await clicar('Fechar')
+  await clicar('Voltar')
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(document.activeElement).toBe(gatilho)
 })
@@ -459,7 +459,7 @@ test.each([
   { tela: 'retorno', aba: 'passo', acao: 'teclado' },
   { tela: 'retorno', aba: 'historico', acao: 'Voltar' },
   { tela: 'retorno', aba: 'historico', acao: 'Escape' },
-  { tela: 'dados-grid', aba: 'passo', acao: 'Fechar' },
+  { tela: 'dados-grid', aba: 'passo', acao: 'Voltar' },
   { tela: 'dados-grid', aba: 'passo', acao: 'Escape' },
   { tela: 'dados-retorno', aba: 'historico', acao: 'Voltar' },
   { tela: 'dados-retorno', aba: 'historico', acao: 'Escape' },
@@ -493,7 +493,7 @@ test.each([
   expect(host.querySelector('aside h2')?.textContent).toBe(titulo)
   expect(JSON.parse(sessionStorage.getItem('crm:venda:v1:u')!).chave).toBe('guarda-interna')
   const cabecalho = host.querySelector('aside header')!
-  await clicar(tela === 'dados-grid' || tela === 'retorno' && aba === 'passo' ? 'Fechar' : 'Voltar', cabecalho)
+  await clicar(tela === 'retorno' && aba === 'passo' ? 'Fechar' : 'Voltar', cabecalho)
   if (tela === 'dados-grid' || tela === 'retorno' && aba === 'passo') expect(host.querySelector('aside')).toBeNull()
   else expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe(tela === 'dados-retorno' ? 'Histórico' : 'Próximo passo')
 })
@@ -527,4 +527,64 @@ test('primeira venda da negociação abre somente o destino autenticado, mesmo j
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(navegar.replace).toHaveBeenCalledWith('/carteira/destino-autorizado?venda=registrada')
   expect(host.querySelector('aside')).toBeNull()
+})
+
+
+test.each(['card', 'historico'])('Dados pelo %s mantém negociação na lateral e restaura Dados, contexto e foco', async origem => {
+  await montar()
+  const card = await abrir('Aurora', origem === 'card' ? 'Dados da empresa' : 'Abrir retorno')
+  if (origem === 'historico') {
+    await clicar('Histórico')
+    await clicar('Dados da empresa', host.querySelector('aside')!)
+  }
+  expect([...host.querySelectorAll('aside header button')].map(b => b.textContent)).toEqual(['Voltar'])
+  const comercial = await clicar('Negociação', host.querySelector('aside footer')!)
+  expect(host.querySelectorAll('aside')).toHaveLength(1)
+  expect(host.querySelector('aside')?.textContent).toContain('Registrar venda')
+  await clicar('Voltar')
+  await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  expect(host.querySelector('aside h2')?.textContent).toBe('Dados da empresa')
+  expect(document.activeElement?.id).toBe(comercial.id)
+  await clicar('Voltar')
+  await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  if (origem === 'card') {
+    expect(host.querySelector('aside')).toBeNull()
+    expect(document.activeElement).toBe(card)
+  } else {
+    expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Histórico')
+    expect(document.activeElement?.textContent).toBe('Dados da empresa')
+  }
+})
+
+test.each(['cliente', 'tentativa'])('Dados de %s usa Atendimento autorizado com todos os filtros', async tipo => {
+  const linha = { ...a, situacao: tipo === 'cliente' ? 'cliente' as const : a.situacao, empresa: { ...a.empresa!, negociacaoId: null } }
+  await montar([linha])
+  await renderizar([linha], { nome: 'Aurora', retorno: 'proximos', periodo: 'amanha' })
+  await abrir('Aurora', 'Dados da empresa')
+  const link = host.querySelector('aside footer a')
+  expect(link?.textContent).toBe('Atendimento')
+  expect(link?.getAttribute('href')).toBe('/carteira/a?de=meu-dia&nome=Aurora&retorno=proximos&periodo=amanha')
+  expect(host.querySelector('aside footer')?.textContent).not.toContain('Negociação')
+})
+
+
+test('Atendimento em Dados passa pela guarda de links durante replay pendente', async () => {
+  persistirComandoVenda({ usuarioId: 'u', empresaId: 'fora', chave: 'link-pendente', alvo: { tipo: 'recompra' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
+  let resolver!: (r: Awaited<ReturnType<typeof transmitirVenda>>) => void
+  vi.mocked(transmitirVenda).mockReturnValueOnce(new Promise(resolve => { resolver = resolve }))
+  await montar([{ ...a, situacao: 'cliente' }])
+  await abrir('Aurora', 'Dados da empresa')
+  const link = host.querySelector<HTMLAnchorElement>('aside footer a')!
+  await clicar('Confirmar venda anterior', host.querySelector('section[aria-label="Envios anteriores"]')!)
+  try {
+    for (const detalheClique of [1, 0]) {
+      const evento = new MouseEvent('click', { bubbles: true, cancelable: true, detail: detalheClique })
+      await act(async () => link.dispatchEvent(evento))
+      expect(evento.defaultPrevented).toBe(true)
+      expect(host.querySelector('aside h2')?.textContent).toBe('Dados da empresa')
+    }
+    expect(JSON.parse(sessionStorage.getItem('crm:venda:v1:u')!).chave).toBe('link-pendente')
+  } finally {
+    await act(async () => resolver({ ok: false, erro: 'Sem confirmação' }))
+  }
 })

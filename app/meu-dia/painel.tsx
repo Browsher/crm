@@ -15,15 +15,16 @@ import { transmitirVenda } from '../venda-envio'
 import { PainelNegociacao, type PedirFecharNegociacao } from '../funil/modal'
 import { ConfirmarArquivamento } from '../funil/arquivo-lateral'
 import { useEnvioArquivo } from '../funil/use-envio-arquivo'
-import { urlMeuDia, type FiltrosMeuDia } from './agenda'
+import { urlFichaDoMeuDia, urlMeuDia, type FiltrosMeuDia } from './agenda'
 import { RetornoPainel, type AbaRetorno } from './retorno-painel'
 import styles from './meu-dia.module.css'
 
 export type LinhaMeuDia = EmpresaComigo & { situacaoRetorno: 'atrasado' | 'hoje' | 'futuro' }
 type Retorno = { tipo: 'retorno'; empresaId: string; aba: AbaRetorno }
-type Contexto = { painel: Retorno | null; gatilho: HTMLElement }
+type Dados = { tipo: 'dados'; empresaId: string; anterior: Contexto }
+type Contexto = { painel: Retorno | Dados | null; gatilho: HTMLElement }
 type Painel = Retorno
-  | { tipo: 'dados'; empresaId: string; anterior: Contexto }
+  | Dados
   | { tipo: 'negociacao'; empresaId: string; negociacaoId: string; anterior: Contexto }
   | null
 type Props = { usuarioId: string; linhas: LinhaMeuDia[]; agenda: LinhaMeuDia[]; filtros: FiltrosMeuDia }
@@ -173,7 +174,10 @@ function PainelDoUsuario({ usuarioId, linhas, agenda, filtros }: Props) {
             aoFechar={() => pedirSaidaDaEdicao(fechar)} aoRemover={remover}
             aoDados={gatilho => trocar({ tipo: 'dados', empresaId: atual.id, anterior: { painel, gatilho } }, origem.current ?? gatilho)}
             aoNegociacao={gatilho => { if (atual.empresa?.negociacaoId) trocar({ tipo: 'negociacao', empresaId: atual.id, negociacaoId: atual.empresa.negociacaoId, anterior: { painel, gatilho } }, origem.current ?? gatilho) }} />}
-          {painel.tipo === 'dados' && <DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: atual.id }} rotuloFechar={painel.anterior.painel ? 'Voltar' : 'Fechar'} aoFechar={() => pedirSaidaDaEdicao(() => voltar(painel.anterior))} />}
+          {painel.tipo === 'dados' && <DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: atual.id }} rotuloFechar="Voltar" aoFechar={() => pedirSaidaDaEdicao(() => voltar(painel.anterior))}
+            rodapeComercial={atual.situacao !== 'cliente' && atual.empresa?.negociacaoId
+              ? <Button id={'meu-dia-dados-negociacao-' + atual.id} disabled={arquivo.pendente || venda.pendente} onClick={evento => trocar({ tipo: 'negociacao', empresaId: atual.id, negociacaoId: atual.empresa!.negociacaoId!, anterior: { painel, gatilho: evento.currentTarget } }, origem.current ?? evento.currentTarget)}>Negociação</Button>
+              : <Button asChild><Link href={urlFichaDoMeuDia(atual.id, filtros)}>Atendimento</Link></Button>} />}
           {painel.tipo === 'negociacao' && <PainelNegociacao key={painel.negociacaoId} id={painel.negociacaoId} usuarioId={usuarioId} fecharRef={fecharNegociacao}
             rotuloFechar="Voltar" bloqueada={!!arquivo.comando || arquivo.pendente || venda.pendente || !!confirmacao}
             fechar={(texto, resultadoVenda) => {

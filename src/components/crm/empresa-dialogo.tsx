@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { lerDetalhesEmpresaAcao } from '@/app/empresas/busca/detalhe-acao'
 import type { ReferenciaEmpresa } from '@/src/lib/empresa-visual'
 import { dataEmpresa, MOTIVOS_INDISPONIBILIDADE } from '@/src/lib/empresa-visual'
@@ -39,9 +39,10 @@ function ConteudoDialogo({ referencia, guardarFoco, devolverFoco }: { referencia
   </DialogContent>
 }
 
-export function DadosEmpresaPainel({ referencia, aoFechar, rotuloFechar }: Props) {
-  return <PainelLateralCrm key={chaveReferencia(referencia)} titulo="Dados da empresa" aoFechar={aoFechar} rotuloFechar={rotuloFechar} className={styles.lateral}>
+export function DadosEmpresaPainel({ referencia, aoFechar, rotuloFechar, rodapeComercial }: Props & { rodapeComercial?: ReactNode }) {
+  return <PainelLateralCrm key={chaveReferencia(referencia)} titulo="Dados da empresa" aoFechar={aoFechar} rotuloFechar={rotuloFechar} className={rodapeComercial ? styles.lateral + ' ' + styles.lateralComercial : styles.lateral}>
     <ConteudoEmpresa referencia={referencia} lateral />
+    {rodapeComercial && <footer className={styles.rodapeComercial}>{rodapeComercial}</footer>}
   </PainelLateralCrm>
 }
 

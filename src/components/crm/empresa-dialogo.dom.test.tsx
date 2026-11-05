@@ -72,4 +72,15 @@ test('dados laterais usam os mesmos grupos autorizados e descartam respostas de 
   for (const grupo of ['Contatos', 'Cadastro', 'Endereço', 'Atividades e tributação', 'Sócios e administradores', 'Origem']) expect(painel.textContent).toContain(grupo)
   expect(painel.textContent).toContain('Banco de empresas')
   expect(painel.textContent).toContain('05/11/2026')
+  expect(painel.querySelector('footer')).toBeNull()
+})
+
+
+test('rodapé comercial lateral é opt-in e não altera o diálogo cadastral', async () => {
+  m.ler.mockResolvedValue({ ok: true, dados: dados('Empresa') })
+  host = document.createElement('div'); document.body.append(host); root = createRoot(host)
+  await act(async () => root.render(<DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: 'A' }} aoFechar={() => {}} rodapeComercial={<button>Negociação</button>} />))
+  expect(host.querySelector('aside footer button')?.textContent).toBe('Negociação')
+  await act(async () => root.render(<EmpresaDialogo referencia={{ tipo: 'cadastro', empresaId: 'A' }} aoFechar={() => {}} />))
+  expect(document.querySelector('[role=dialog]')?.textContent).not.toContain('Negociação')
 })
