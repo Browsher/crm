@@ -55,19 +55,17 @@ test('Funil separa agenda vigente de outro autor do histórico próprio e não r
   const c = await preparar('Revisão agenda canônica', false)
   await sql('UPDATE empresa_vinculo SET agenda_contato_id=NULL WHERE empresa_id=$1', [c.empresa])
   await entrar(page); await page.goto('/funil')
-  await card(page, 'Revisão agenda canônica').getByRole('button', { name: 'Abrir no funil', exact: true }).click()
-  const dialogo = page.getByRole('dialog')
+  await card(page, 'Revisão agenda canônica').getByRole('button', { name: 'Negociação', exact: true }).click()
+  const dialogo = page.locator('[data-painel-lateral]')
   await expect(dialogo).toContainText('Sem próximo passo combinado')
-  await dialogo.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(dialogo).toContainText('Agenda antiga revisão'); await page.keyboard.press('Escape')
   await comAdmin(process.env.DATABASE_URL_ADMIN!, async db => {
     await db.query('BEGIN'); await db.query("SELECT set_config('app.usuario_id',$1,true)", [c.outro])
     const r = await db.query("INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data) VALUES($1,'acompanhamento','Nota alheia privada','Agenda vigente revisão','2026-01-02') RETURNING id", [c.empresa])
     await db.query('UPDATE empresa_vinculo SET agenda_contato_id=$2 WHERE empresa_id=$1', [c.empresa, r.rows[0].id]); await db.query('COMMIT')
   })
-  await page.reload(); await card(page, 'Revisão agenda canônica').getByRole('button', { name: 'Abrir no funil', exact: true }).click()
+  await page.reload(); await card(page, 'Revisão agenda canônica').getByRole('button', { name: 'Negociação', exact: true }).click()
   await expect(dialogo).toContainText('Agenda vigente revisão')
-  await dialogo.getByRole('tab', { name: 'Histórico', exact: true }).click()
   await expect(dialogo).toContainText('História própria revisão'); await expect(dialogo).not.toContainText('Nota alheia privada')
   await page.goto('/meu-dia'); await expect(page.getByRole('main')).toContainText('Revisão agenda canônica')
   await expect(page.getByRole('main')).toContainText('Agenda vigente revisão')
@@ -79,7 +77,7 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
   const rota = arquivar ? '/funil' : '/fila/localizar?disponibilidade=sem_interesse&nome=' + encodeURIComponent(nome)
   const confirmar = arquivar ? 'Confirmar envio anterior' : 'Confirmar retomada anterior'
   const storage = arquivar ? 'crm:funil:arquivo:v1:' + c.eu : 'crm:acao-empresa:v1:' + c.empresa
-  const status = arquivar ? page.getByRole('status') : page.getByRole('region', { name: 'Retomada anterior' }).getByRole('status')
+  const status = arquivar ? page.locator('[role=status]').first() : page.getByRole('region', { name: 'Retomada anterior' }).getByRole('status')
   await entrar(page); await page.goto(rota)
   const envios: string[] = []
   await page.route(arquivar ? '**/funil*' : '**/fila/localizar*', async route => {
@@ -92,7 +90,11 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
     await route.abort('failed')
   })
   const origem = tipo === 'arquivar' ? page.locator('[draggable]').filter({ has: page.getByRole('heading', { name: nome + ' A', exact: true }) }) : card(page, nome + ' A')
-  await origem.getByRole('button', { name: tipo === 'arquivar' ? 'Marcar como Sem interesse' : 'Retomar atendimento', exact: true }).click()
+  if (arquivar) {
+    await origem.getByRole('button', { name: 'Negociação', exact: true }).click()
+    await page.locator('[data-painel-lateral]').getByRole('button', { name: 'Marcar como Sem interesse', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
+  } else await origem.getByRole('button', { name: 'Retomar atendimento', exact: true }).click()
   await expect(status).toContainText('Não foi possível confirmar')
   const salvo = await page.evaluate(k => sessionStorage.getItem(k), storage)
   expect(salvo).toBeTruthy()
@@ -101,8 +103,14 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
   const retomarB = card(page, nome + ' B').getByRole('button', { name: 'Retomar atendimento', exact: true })
   if (arquivar) await expect(retomarB).toHaveCount(0)
   else await expect(retomarB).toBeDisabled()
-  await card(page, nome + ' B').getByRole('button', { name: 'Ver empresa: ' + nome + ' B' }).click()
-  await expect(page.getByRole('dialog')).toContainText(nome + ' B'); await page.keyboard.press('Escape')
+  if (arquivar) {
+    await card(page, nome + ' B').getByRole('button', { name: 'Dados da empresa', exact: true }).click()
+    await expect(page.locator('[data-painel-lateral]')).toContainText(nome + ' B')
+  } else {
+    await card(page, nome + ' B').getByRole('button', { name: 'Ver empresa: ' + nome + ' B' }).click()
+    await expect(page.getByRole('dialog')).toContainText(nome + ' B')
+  }
+  await page.keyboard.press('Escape')
   expect(envios).toHaveLength(1)
   // Simula a alteração de autorização por outra sessão depois do primeiro commit.
   await sql('UPDATE empresa_vinculo SET vendedor_id=$2 WHERE empresa_id=$1', [c.empresa, c.outro])

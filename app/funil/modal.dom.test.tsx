@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, createRef, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
-import { ModalFunil } from './modal'
+import { PainelNegociacao, type PedirFecharNegociacao } from './modal'
 import { detalheAcao, vendaAcao, telefoneAcao, etapaAcao } from './acoes'
 import { vendaCarteiraAcao } from '../carteira/venda-acao'
 import { criarComandoVenda, persistirComandoVenda } from '@/src/lib/venda-envio'
 import { detalhesSnapshot } from '@/src/lib/empresa-visual'
+import { pedirSaidaDaEdicao } from '@/src/components/crm/descarte-edicao'
 vi.mock('../carteira/venda-acao',()=>({vendaCarteiraAcao:vi.fn()}))
 vi.mock('./acoes',()=>({detalheAcao:vi.fn(),telefoneAcao:vi.fn(),etapaAcao:vi.fn(),vendaAcao:vi.fn(),devolverAcao:vi.fn()}))
 vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({onDraftChange,onSaved}:{onDraftChange:(r:unknown)=>void;onSaved:(id:string,r:unknown)=>void})=><><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''})}>Reverter rascunho de teste</button><button onClick={()=>onSaved('e',{ok:true,leituraDestino:{ok:true,destino:{tipo:'funil',negociacaoId:'atual'}}})}>Confirmar contato de teste</button></>}))
@@ -14,45 +15,187 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const detalhe={id:'a',empresaId:'e',nome:'Aurora',cidade:null,uf:null,cnpj:'123',etapa:'primeiro_contato' as const,versao:3,empresa:{...detalhesSnapshot({razao_social:'Aurora'},{tipo:'cadastro',empresaId:'e'}),id:'e',versao:3,situacao:'primeiro_contato' as const,negociacaoId:'a'},proximoPasso:null,retorno:null,historico:[]}
 afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();sessionStorage.clear();vi.restoreAllMocks()})
-async function montar(id='a'){host=document.createElement('div');document.body.append(host);root=createRoot(host);const fechar=vi.fn();await act(async()=>root.render(<ModalFunil usuarioId="teste" id={id} fechar={fechar}/>));return fechar}
+async function montar(id='a', props: Partial<ComponentProps<typeof PainelNegociacao>> = {}){host=document.createElement('div');document.body.append(host);root=createRoot(host);const fechar=vi.fn();await act(async()=>root.render(<PainelNegociacao usuarioId="teste" id={id} fechar={fechar} {...props}/>));return fechar}
 async function popstate(){await act(async()=>{window.dispatchEvent(new PopStateEvent('popstate'));await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))})}
-async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome||e.getAttribute('aria-label')===nome);expect(b, nome).toBeTruthy();await act(async()=>b!.click())}
+async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome||e.getAttribute('aria-label')===nome);expect(b, nome).toBeTruthy();await act(async()=>{b!.focus();b!.click()})}
+async function escapar(){await act(async()=>document.activeElement?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))}
 async function escrever(valor:string){const e=document.querySelector('input')!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(e,valor);e.dispatchEvent(new Event('input',{bubbles:true}))})}
 
-test('ação Sem interesse usa comando do quadro sem contato nem devolução; pendente não duplica',async()=>{
- vi.spyOn(history,'back').mockImplementation(()=>{})
- vi.mocked(detalheAcao).mockResolvedValue(detalhe)
- host=document.createElement('div');document.body.append(host);root=createRoot(host)
- let liberar!:(r:{ok:boolean;repetida:boolean})=>void
- const arquivar=vi.fn(()=>new Promise<{ok:boolean;repetida:boolean}>(r=>liberar=r)),fechar=vi.fn()
- await act(async()=>root.render(<ModalFunil usuarioId="teste" id="a" fechar={fechar} aoArquivar={arquivar}/>))
- await clicar('Marcar como Sem interesse');await clicar('Confirmar Sem interesse')
- expect(arquivar).toHaveBeenCalledTimes(1);expect(document.body.textContent).not.toContain('Devolver à prospecção')
- await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})))
- expect(arquivar).toHaveBeenCalledTimes(1);expect(fechar).not.toHaveBeenCalled()
- await act(async()=>liberar({ok:true,repetida:true}))
- await popstate()
- expect(fechar).toHaveBeenCalledWith('Envio anterior confirmado. Confira a situação atual.')
+
+test('negociação mantém dados cadastrais no painel da empresa e abre sem modal', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, cidade: 'Campinas', uf: 'SP', proximoPasso: 'Enviar amostra', retorno: '2026-11-12' })
+  await montar()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(host.textContent).toContain('Aurora')
+  expect(host.textContent).toContain('Primeiro contato')
+  expect(host.textContent).toContain('Enviar amostra')
+  expect(host.textContent).toContain('12/11/2026')
+  expect(host.textContent).not.toContain('Campinas')
+  expect(host.textContent).not.toContain('CNPJ')
+})
+
+test('ação Sem interesse solicita confirmação ao quadro sem sair do painel', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  const aoPedirArquivar = vi.fn()
+  const fechar = await montar('a', { aoPedirArquivar })
+  await clicar('Marcar como Sem interesse')
+  expect(aoPedirArquivar).toHaveBeenCalledOnce()
+  expect(fechar).not.toHaveBeenCalled()
+  expect(document.body.textContent).not.toContain('Confirmar Sem interesse')
+})
+
+test('troca de painel limpo usa apenas o destino fornecido pelo quadro', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  const fecharRef = createRef<PedirFecharNegociacao>()
+  const fechar = await montar('a', { fecharRef })
+  const depois = vi.fn()
+  await act(async () => fecharRef.current?.(depois))
+  expect(depois).toHaveBeenCalledOnce()
+  expect(fechar).not.toHaveBeenCalled()
+})
+
+test('troca de painel sujo só segue depois do descarte e restauração do histórico', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
+  const fecharRef = createRef<PedirFecharNegociacao>()
+  const fechar = await montar('a', { fecharRef })
+  await clicar('Registrar venda')
+  await escrever('25,00')
+  const cancelar = vi.fn()
+  await act(async () => fecharRef.current?.(cancelar))
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Descartar alterações?')
+  await clicar('Continuar editando')
+  expect(cancelar).not.toHaveBeenCalled()
+  expect(document.querySelector('input')?.value).toBe('25,00')
+  const depois = vi.fn()
+  await act(async () => fecharRef.current?.(depois))
+  await clicar('Descartar')
+  expect(depois).not.toHaveBeenCalled()
+  expect(voltar).toHaveBeenCalledOnce()
+  await popstate()
+  expect(depois).toHaveBeenCalledOnce()
+  expect(fechar).not.toHaveBeenCalled()
+})
+
+test('troca após manter rascunho preserva o envio desconhecido de atendimento', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  const salvo = JSON.stringify({ envio: { chave: 'original', versao: 2, valor: { nota: 'Preservar' } } })
+  sessionStorage.setItem('crm:contato:v1:e', salvo)
+  const fecharRef = createRef<PedirFecharNegociacao>()
+  const fechar = await montar('a', { fecharRef })
+  await clicar('Registrar atendimento')
+  const depois = vi.fn()
+  await act(async () => fecharRef.current?.(depois))
+  await clicar('Fechar mantendo rascunho')
+  await popstate()
+  expect(depois).toHaveBeenCalledOnce()
+  expect(fechar).not.toHaveBeenCalled()
+  expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
+})
+
+test('troca de painel durante confirmação de venda em voo fica sem destino', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  const fecharRef = createRef<PedirFecharNegociacao>()
+  const fechar = await montar('a', { fecharRef })
+  await clicar('Registrar venda')
+  await escrever('25,00')
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Confirmar venda de R$ 25,00')
+  let liberar!: (r: { ok: false; erro: string; erroDeCampos: true }) => void
+  vi.mocked(vendaAcao).mockReturnValueOnce(new Promise(r => liberar = r))
+  await clicar('Confirmar venda')
+  const depois = vi.fn()
+  const sair = vi.fn()
+  await act(async () => fecharRef.current?.(depois))
+  await act(async () => pedirSaidaDaEdicao(sair))
+  expect(depois).not.toHaveBeenCalled()
+  await act(async () => liberar({ ok: false, erro: 'Corrija os dados.', erroDeCampos: true }))
+  expect(sair).not.toHaveBeenCalled()
+  expect(depois).not.toHaveBeenCalled()
+  expect(fechar).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Corrija os dados.')
+  await clicar('Corrigir dados')
+  expect(document.querySelector('input')?.value).toBe('25,00')
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+})
+
+
+test('link interno do CRM protege rascunho do Funil com a confirmação existente', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  const armar = vi.spyOn(history, 'pushState')
+  await montar()
+  const link = document.createElement('a')
+  link.href = '/carteira'
+  link.textContent = 'Carteira'
+  host.append(link)
+  await clicar('Registrar venda')
+  await escrever('38,00')
+  const clicouComModificador = new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true })
+  let bloqueouModificador = true
+  link.addEventListener('click', evento => { bloqueouModificador = evento.defaultPrevented; evento.preventDefault() }, { once: true })
+  await act(async () => { link.dispatchEvent(clicouComModificador) })
+  expect(bloqueouModificador).toBe(false)
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  const clicou = new MouseEvent('click', { bubbles: true, cancelable: true })
+  let bloqueouLink = false
+  link.addEventListener('click', evento => { bloqueouLink = evento.defaultPrevented; evento.preventDefault() }, { once: true })
+  await act(async () => { link.focus(); link.dispatchEvent(clicou) })
+  expect(bloqueouLink).toBe(true)
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Descartar alterações?')
+  expect(armar).toHaveBeenCalledOnce()
+  await clicar('Continuar editando')
+  expect(document.querySelector('input')?.value).toBe('38,00')
+})
+
+test('saída do CRM aguarda o Back da guarda do Funil antes de continuar', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+  const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
+  const salvo = JSON.stringify({ envio: { chave: 'original', versao: 2, valor: { nota: 'Preservar' } } })
+  sessionStorage.setItem('crm:contato:v1:e', salvo)
+  await montar()
+  await clicar('Registrar atendimento')
+  const sair = vi.fn(() => {
+    const evento = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(evento)
+    expect(evento.defaultPrevented).toBe(false)
+  })
+  await act(async () => pedirSaidaDaEdicao(sair))
+  expect(sair).not.toHaveBeenCalled()
+  await clicar('Fechar mantendo rascunho')
+  expect(voltar).toHaveBeenCalledOnce()
+  expect(sair).not.toHaveBeenCalled()
+  await popstate()
+  expect(sair).toHaveBeenCalledOnce()
+  expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
+  const tentarNovamente = vi.fn()
+  await act(async () => pedirSaidaDaEdicao(tentarNovamente))
+  expect(tentarNovamente).toHaveBeenCalledOnce()
+})
+
+
+test('arraste fica bloqueado durante edição e volta a ser permitido no resumo', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+  const aoMudarBloqueioDeArraste = vi.fn()
+  await montar('a', { aoMudarBloqueioDeArraste })
+  expect(aoMudarBloqueioDeArraste).toHaveBeenLastCalledWith(false)
+  await clicar('Registrar atendimento')
+  expect(aoMudarBloqueioDeArraste).toHaveBeenLastCalledWith(true)
+  await clicar('Voltar ao resumo')
+  expect(aoMudarBloqueioDeArraste).toHaveBeenLastCalledWith(false)
 })
 
 test('envio desconhecido do quadro bloqueia nova operação no modal do deep-link',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
- await act(async()=>root.render(<ModalFunil usuarioId="teste" id="a" fechar={vi.fn()} bloqueada/>))
+ await act(async()=>root.render(<PainelNegociacao usuarioId="teste" id="a" fechar={vi.fn()} bloqueada/>))
  await clicar('Registrar venda')
  expect(document.querySelector('input')).toBeNull()
  expect(document.body.textContent).toContain('Confirme o envio anterior no Funil')
-})
-
-test('confirmação histórica cujo estado atual mudou não anuncia empresa arquivada',async()=>{
- vi.spyOn(history,'back').mockImplementation(()=>{})
- vi.mocked(detalheAcao).mockResolvedValue(detalhe)
- host=document.createElement('div');document.body.append(host);root=createRoot(host)
- const fechar=vi.fn()
- await act(async()=>root.render(<ModalFunil usuarioId="teste" id="a" fechar={fechar} aoArquivar={async()=>({ok:true,repetida:false,atual:false})}/>))
- await clicar('Marcar como Sem interesse');await clicar('Confirmar Sem interesse')
- await popstate()
- expect(fechar).toHaveBeenCalledWith('Operação confirmada. Confira a situação atual da empresa.')
 })
 
 test('descarte externo não perde envio desconhecido e permite fechar mantendo sessão',async()=>{
@@ -89,13 +232,17 @@ test('modal oferece apenas próximo avanço e última etapa não tem select nem 
   expect(document.body.textContent).toContain('Registrar venda')
 })
 
-test('abas mostram histórico autorizado e mantêm a alternativa de avanço por botão', async () => {
-  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, historico: [{ id: 'contato', em: '2026-10-21T12:00:00Z', tipo: 'acompanhamento', nota: 'Negociar prazo com Aurora', proximoPasso: null, retorno: null }] })
+
+test('painel mostra o último atendimento e permite expandir o histórico', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, historico: [
+    { id: 'recente', em: '2026-10-21T12:00:00Z', tipo: 'acompanhamento', nota: 'Negociar prazo com Aurora', proximoPasso: null, retorno: null },
+    { id: 'antigo', em: '2026-10-20T12:00:00Z', tipo: 'acompanhamento', nota: 'Primeiro retorno da Aurora', proximoPasso: null, retorno: null },
+  ] })
   await montar()
-  const historico = [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(b => b.textContent === 'Histórico')
-  expect(historico).toBeTruthy()
-  await act(async () => historico!.click())
-  expect(document.querySelector('[role=tabpanel]:not([hidden])')?.textContent).toContain('Negociar prazo com Aurora')
+  expect(document.body.textContent).toContain('Negociar prazo com Aurora')
+  expect(document.body.textContent).not.toContain('Primeiro retorno da Aurora')
+  await clicar('Ver todos')
+  expect(document.body.textContent).toContain('Primeiro retorno da Aurora')
   expect([...document.querySelectorAll('button')].some(b => b.textContent === 'Avançar para Em negociação')).toBe(true)
 })
 test('resposta tardia após desmontagem não apresenta dados em outra abertura',async()=>{
@@ -111,13 +258,13 @@ test('rascunho sobrevive ao Escape e erro de venda; envio bloqueia fechamento',a
   vi.mocked(detalheAcao).mockResolvedValue(detalhe)
   vi.spyOn(history,'back').mockImplementation(()=>{})
   const fechar=await montar();await clicar('Registrar venda');await escrever('25,00')
-  await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+  await escapar()
   expect(document.body.textContent).toContain('Descartar alterações?');await clicar('Continuar editando');expect(document.querySelector('input')?.value).toBe('25,00')
   await act(async()=>document.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})))
   let liberar!:(r:{ok:boolean;erro:string})=>void
   vi.mocked(vendaAcao).mockReturnValueOnce(new Promise(r=>liberar=r))
   await clicar('Confirmar venda')
-  await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+  await escapar()
   expect(fechar).not.toHaveBeenCalled()
   await act(async()=>liberar({ok:false,erro:'Falha simulada'}))
   expect(document.body.textContent).toContain('Falha simulada');expect(document.querySelector('input')?.value).toBe('25,00')
@@ -148,6 +295,7 @@ test('acompanhamento intocado do modal volta ao resumo sem descarte',async()=>{
  const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo')
  expect(document.body.textContent).not.toContain('Descartar alterações?')
  expect(document.body.textContent).toContain('Registrar venda')
+ expect(document.activeElement?.textContent).toBe('Registrar atendimento')
  expect(fechar).not.toHaveBeenCalled()
 })
 
@@ -176,7 +324,7 @@ test('Escape durante retirada por reversão aguarda a mesma navegação sem recu
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
  const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
- await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+ await escapar()
  expect(voltar).toHaveBeenCalledTimes(1);expect(fechar).not.toHaveBeenCalled()
  await popstate()
  expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).toHaveBeenCalledTimes(1)
@@ -185,7 +333,7 @@ test('Escape intocado fecha imediatamente sem recuo de histórico',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
  const fechar=await montar()
- await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+ await escapar()
  expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).not.toHaveBeenCalled()
 })
 
@@ -204,7 +352,7 @@ test.each(['Fechar','Escape'])('fechar com %s preserva comando desconhecido e ag
  const salvo=JSON.stringify({valor,envio:{chave:'anterior',versao:2,valor}})
  sessionStorage.setItem('crm:contato:v1:e',salvo)
  const fechar=await montar();await clicar('Registrar atendimento')
- if(como==='Escape')await act(async()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))
+ if(como==='Escape')await escapar()
  else await clicar('Fechar')
  await clicar('Fechar mantendo rascunho')
  expect(fechar).not.toHaveBeenCalled();expect(voltar).toHaveBeenCalledTimes(1)
@@ -251,6 +399,8 @@ test('venda desconhecida congela correção e descarte e oferece fechar mantendo
  expect(salvo).toContain('33,40')
  expect([...document.querySelectorAll('button')].some(b=>b.textContent==='Corrigir dados')).toBe(false)
  expect(document.body.textContent).toContain('Fechar mantendo envio')
+ await act(async()=>{await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))})
+ expect(document.activeElement?.textContent).toBe('Confirmar venda anterior')
  await clicar('Fechar mantendo envio');await popstate()
  expect(sessionStorage.getItem('crm:venda:v1:teste')).toBe(salvo)
 })
@@ -267,20 +417,20 @@ test('primeira venda confirmada entrega destino ao Quadro somente depois de reti
 test('callback de destino falha após venda confirmada sem oferecer nova gravação',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.spyOn(history,'back').mockImplementation(()=>{})
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
- await act(async()=>root.render(<ModalFunil usuarioId="teste" id="a" fechar={()=>{throw Error('callback')}}/>))
+ await act(async()=>root.render(<PainelNegociacao usuarioId="teste" id="a" fechar={()=>{throw Error('callback')}}/>))
  await clicar('Registrar venda');await escrever('81,50');await act(async()=>document.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})))
  vi.mocked(vendaAcao).mockResolvedValueOnce({ok:true,leituraDestino:{ok:false,motivo:'leitura_indisponivel'}});await clicar('Confirmar venda')
  await popstate()
  expect(document.body.textContent).toContain('Venda registrada.')
  expect(document.querySelector('a[href="/carteira"]')).not.toBeNull()
  expect(document.body.textContent).not.toContain('Não foi possível confirmar o resultado')
- expect([...document.querySelectorAll('button')].find(b=>b.textContent==='Confirmar venda')?.matches(':disabled')).toBe(true)
+ expect([...document.querySelectorAll('button')].find(b=>b.textContent==='Conferir venda')?.matches(':disabled')).toBe(true)
 })
 test('destino aguarda os demais listeners de popstate para não ser substituído pelo restore do App Router',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.spyOn(history,'back').mockImplementation(()=>{})
  const ordem:string[]=[]
  host=document.createElement('div');document.body.append(host);root=createRoot(host)
- await act(async()=>root.render(<ModalFunil usuarioId="teste" id="a" fechar={()=>ordem.push('destino')}/>))
+ await act(async()=>root.render(<PainelNegociacao usuarioId="teste" id="a" fechar={()=>ordem.push('destino')}/>))
  const restaurar=()=>ordem.push('restore');window.addEventListener('popstate',restaurar)
  await clicar('Registrar venda');await escrever('81,50');await act(async()=>document.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})))
  vi.mocked(vendaAcao).mockResolvedValueOnce({ok:true});await clicar('Confirmar venda')

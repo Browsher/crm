@@ -7,6 +7,13 @@ async function sql(texto:string,valores:unknown[]=[]){const url=process.env.DATA
 async function entrar(page:Page){await page.goto('/login');await page.getByLabel('E-mail').fill('seminteressee2e@teste.local');await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL('/meu-dia')}
 const card=(page:Page,nome:string)=>page.locator('[draggable]').filter({has:page.getByRole('heading',{name:nome,exact:true})})
 test.beforeEach(async({page})=>entrar(page))
+const lateral=(page:Page)=>page.locator('[data-painel-lateral]')
+const confirmacao=(page:Page)=>page.getByRole('dialog',{name:'Marcar como Sem interesse?',exact:true})
+async function pedirArquivo(page:Page,nome:string){
+ await card(page,nome).getByRole('button',{name:'Negociação',exact:true}).click()
+ await lateral(page).getByRole('button',{name:'Marcar como Sem interesse',exact:true}).click()
+}
+async function confirmarArquivo(page:Page){await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).click()}
 
 for(const [i,etapa]of ['Primeiro contato','Em negociação','Proposta enviada'].entries())test('arquiva '+etapa+' pela ação individual sem criar contato',async({page})=>{
  await page.setViewportSize({width:1280,height:900});await page.goto('/funil')
@@ -15,23 +22,23 @@ for(const [i,etapa]of ['Primeiro contato','Em negociação','Proposta enviada'].
  if(i<2){
   if(i===1)await page.getByRole('combobox',{name:/Tema/}).selectOption('dark')
   await page.route('**/funil*',async rota=>{
-   if(rota.request().method()!=='POST')return rota.continue()
+   if(rota.request().method()!=='POST'||!rota.request().postData()?.includes(IDS[i]))return rota.continue()
    const resposta=await rota.fetch()
-   await expect(page.getByRole('status')).toContainText('Confirmando arquivamento')
+   await expect(page.locator('[role=status]').filter({hasText:'Confirmando arquivamento'})).toBeAttached()
    await page.evaluate(()=>window.scrollTo(0,0))
    await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/descarte-desktop-pendente-'+(i===1?'dark':'light')+'.png',fullPage:true,animations:'disabled'})
    await rota.fulfill({response:resposta})
   })
  }
- await expect(page.locator('[data-etapa]')).toHaveCount(3);await expect(page.locator('[data-descarte]')).toHaveCount(0)
+ await expect(page.locator('[data-etapa]')).toHaveCount(3);await expect(page.locator('[data-descarte]')).toHaveCount(1)
  await expect(card(page,'Descarte '+(i+1))).toHaveAttribute('draggable','true')
- await card(page,'Descarte '+(i+1)).getByRole('button',{name:'Marcar como Sem interesse',exact:true}).click()
+ await pedirArquivo(page,'Descarte '+(i+1));await confirmarArquivo(page)
  await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
  await expect(card(page,'Descarte '+(i+1))).toHaveCount(0);await expect(page.getByRole('dialog')).toHaveCount(0)
  expect((await sql('SELECT * FROM contato WHERE empresa_id=$1 ORDER BY id',[IDS[i]])).rows).toEqual(antes)
  expect((await sql('SELECT vendedor_id,agenda_contato_id,arquivada_em IS NOT NULL AS arquivada FROM empresa_vinculo WHERE empresa_id=$1',[IDS[i]])).rows[0]).toEqual({...vinculo,agenda_contato_id:null,arquivada:true})
  expect((await sql('SELECT encerramento FROM negociacao WHERE empresa_id=$1',[IDS[i]])).rows[0].encerramento).toBe('sem_interesse')
- await page.reload();await expect(page.locator('[data-descarte]')).toHaveCount(0)
+ await page.reload();await expect(page.locator('[data-descarte]')).toHaveCount(1)
 })
 
 test('arquivo pagina e filtra; empresa nunca negociada é consultável e retoma sem agenda',async({page})=>{
@@ -58,8 +65,8 @@ test('arquivo pagina e filtra; empresa nunca negociada é consultável e retoma 
 test('resposta perdida preserva card/chave no refresh e replay após retomada não arquiva novamente',async({page})=>{
  await page.goto('/funil')
  let perder=true
- await page.route('**/funil',async rota=>{if(rota.request().method()!=='POST'||!perder)return rota.continue();perder=false;await rota.fetch();await rota.abort('failed')})
- await card(page,'Descarte 4').getByRole('button',{name:'Marcar como Sem interesse'}).click()
+ await page.route('**/funil',async rota=>{if(rota.request().method()!=='POST'||!rota.request().postData()?.includes(IDS[3])||!perder)return rota.continue();perder=false;await rota.fetch();await rota.abort('failed')})
+ await pedirArquivo(page,'Descarte 4');await confirmarArquivo(page)
  await expect(page.getByRole('status')).toContainText('Não foi possível confirmar')
  await expect(card(page,'Descarte 4')).toHaveCount(1)
  const salvo=await page.evaluate(()=>{const chave=Object.keys(sessionStorage).find(k=>k.startsWith('crm:funil:arquivo:v1:'));return chave?sessionStorage.getItem(chave):null})
@@ -77,7 +84,7 @@ test('resposta perdida preserva card/chave no refresh e replay após retomada n�
  await page.reload();await expect(card(page,'Descarte 4')).toHaveCount(1)
  await page.getByRole('button',{name:'Confirmar envio anterior',exact:true}).click()
  await expect(page.getByRole('status')).toContainText('Envio anterior confirmado')
- await expect(page.locator('[data-descarte]')).toHaveCount(0)
+ await expect(page.locator('[data-descarte]')).toHaveCount(1)
  expect((await sql('SELECT arquivada_em FROM empresa_vinculo WHERE empresa_id=$1',[IDS[3]])).rows[0].arquivada_em).toBeNull()
  expect((await sql('SELECT count(*)::int AS n FROM empresa_atendimento_operacao WHERE chave=$1',[comando.chave])).rows[0].n).toBe(1)
 })
@@ -93,7 +100,7 @@ test('visual claro/escuro desktop/móvel, dados separados e movimento reduzido',
   }
  }
  await page.goto('/funil');await page.emulateMedia({reducedMotion:'reduce'})
- await expect(page.locator('[data-descarte]')).toHaveCount(0)
+ await expect(page.locator('[data-descarte]')).toHaveCount(1)
  for(const tema of ['light','dark']){
   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)
   for(const width of [390,820,1280]){
@@ -102,28 +109,29 @@ test('visual claro/escuro desktop/móvel, dados separados e movimento reduzido',
   }
  }
  const visual=card(page,'Descarte visual')
- await visual.getByRole('button',{name:'Ver empresa: Descarte visual'}).click()
- await expect(page.getByRole('dialog').getByRole('button',{name:'Registrar venda',exact:true})).toHaveCount(0)
+ await visual.getByRole('button',{name:'Dados da empresa',exact:true}).click()
+ await expect(lateral(page).getByRole('button',{name:'Registrar venda',exact:true})).toHaveCount(0)
  await page.keyboard.press('Escape')
  const n=(await sql("SELECT id FROM negociacao WHERE empresa_id='00000000-0000-4000-8000-000000009826' AND encerrada_em IS NULL")).rows[0]
  await page.goto('/funil?negociacao='+n.id)
- await expect(page.getByRole('dialog').getByRole('button',{name:'Registrar venda',exact:true})).toBeVisible()
+ await expect(lateral(page).getByRole('button',{name:'Registrar venda',exact:true})).toBeVisible()
  await page.keyboard.press('Escape')
  await page.setViewportSize({width:390,height:900})
  await page.getByRole('combobox',{name:/Tema/}).selectOption('dark')
  await expect(page.locator('html')).toHaveAttribute('data-theme','dark')
  let liberar!:()=>void
  const espera=new Promise<void>(r=>liberar=r)
- await page.route('**/funil*',async rota=>{if(rota.request().method()!=='POST')return rota.continue();const resposta=await rota.fetch();await espera;await rota.fulfill({response:resposta})})
- await card(page,'Descarte visual').getByRole('button',{name:'Marcar como Sem interesse'}).focus()
- await page.keyboard.press('Enter')
+ await page.route('**/funil*',async rota=>{if(rota.request().method()!=='POST'||!rota.request().postData()?.includes('00000000-0000-4000-8000-000000009826'))return rota.continue();const resposta=await rota.fetch();await espera;await rota.fulfill({response:resposta})})
+ await pedirArquivo(page,'Descarte visual')
+ await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).press('Enter')
  await expect(page.getByRole('status')).toContainText('Confirmando arquivamento')
  await page.keyboard.press('Enter')
  await page.evaluate(()=>window.scrollTo(0,0))
  await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/descarte-mobile-pendente-dark.png',fullPage:true,animations:'disabled'})
  liberar()
- await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
- await expect(page.getByRole('status')).toBeFocused()
+ await expect(page.getByRole('status').filter({hasText:'Empresa marcada como Sem interesse'})).toBeVisible()
+ await expect(page.locator('[data-efeito-arquivo]')).toHaveCount(0)
+ await expect(page.getByRole('status').filter({hasText:'Empresa marcada como Sem interesse'})).toBeVisible()
 })
 
 test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({browser,baseURL})=>{
@@ -139,7 +147,9 @@ test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({b
   expect((await sql("SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id='00000000-0000-4000-8000-000000009812'")).rows[0]).toEqual({agenda_contato_id:null,arquivada_em:null})
   await page.goto('/funil')
   await expect(card(page,'Descarte toque')).toHaveAttribute('draggable','false')
-  await card(page,'Descarte toque').getByRole('button',{name:'Marcar como Sem interesse'}).tap()
+  await card(page,'Descarte toque').getByRole('button',{name:'Negociação',exact:true}).tap()
+  await lateral(page).getByRole('button',{name:'Marcar como Sem interesse',exact:true}).tap()
+  await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).tap()
   await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
   expect((await sql("SELECT count(*)::int AS n FROM contato WHERE empresa_id='00000000-0000-4000-8000-000000009827'")).rows[0].n).toBe(1)
   await page.screenshot({path:'.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-3-captures/toque-mobile-light.png',fullPage:true,animations:'disabled'})

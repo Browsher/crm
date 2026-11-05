@@ -35,3 +35,8 @@ export function arquivarSemInteresse(usuarioId: string, comando: ComandoEmpresa,
 export function retomarAtendimento(usuarioId: string, comando: ComandoEmpresa): Promise<ResultadoAtendimento> {
   return executar(usuarioId, comando, 'SELECT empresa_atendimento_retomar($1,$2,$3) AS resultado')
 }
+
+export function devolverAoFunil(usuarioId: string, comando: ComandoEmpresa, negociacaoId: string): Promise<ResultadoAtendimento> {
+  if (!UUID.test(negociacaoId)) return Promise.resolve({ ok: false, motivo: 'dados_invalidos' })
+  return executar(usuarioId, comando, 'SELECT funil_empresa_devolver($1,$2,$3,$4) AS resultado', [negociacaoId])
+}

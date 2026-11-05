@@ -21,7 +21,7 @@ test('retorno combinado na Prospecção entra no Funil e Meu dia de hoje, sem vi
      WHERE e.cnpj='00000000000901' AND n.encerrada_em IS NULL`,
   )
   await expect(page).toHaveURL('/funil?negociacao=' + negociacao.id)
-  const modal = page.getByRole('dialog', { name: 'Retorno Combinado', exact: true })
+  const modal = page.locator('[data-painel-lateral]')
   await expect(modal).toContainText('Ligar no horário combinado')
   await expect(modal.getByRole('textbox', { name: 'Nota', exact: true })).toHaveCount(0)
   expect(await banco.sql(`SELECT tipo,proximo_passo,proximo_passo_data::text

@@ -1,0 +1,72 @@
+.painel {
+  overflow-wrap: anywhere;
+}
+
+.corpo,
+.secao {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.corpo {
+  gap: 24px;
+}
+
+.corpo > button,
+.secao > button {
+  justify-self: start;
+}
+
+.secao > fieldset,
+.secao label {
+  width: 100%;
+}
+
+.secao label {
+  display: grid;
+  gap: 8px;
+}
+
+.secao h3 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dados {
+  display: grid;
+  gap: 12px;
+}
+
+.dados dt,
+.muted,
+.historico time {
+  color: var(--ui-muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.dados dd {
+  margin: 2px 0 0;
+}
+
+.historico {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+}
+
+.historico li {
+  border-inline-start: 2px solid var(--ui-border);
+  padding-inline-start: 12px;
+  white-space: pre-wrap;
+}

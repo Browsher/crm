@@ -14,3 +14,8 @@
 .corpo { min-width:0; overflow:auto; overscroll-behavior:contain; }
 .corpo > * + * { margin-top:var(--space-4); }
 @media(max-width:600px) { .grade { grid-template-columns:1fr; } .dialogo:global(.ui-dialog-content) { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); } }
+
+.lateral .grade { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.dadosLateral { display: grid; gap: var(--space-3); min-width: 0; }
+.dadosLateral h4 { font-size: 14px; font-weight: 600; }
+.dadosLateral .dados dd { margin: 0; overflow-wrap: anywhere; }

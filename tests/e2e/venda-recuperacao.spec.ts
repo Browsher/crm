@@ -57,7 +57,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  await page.goto('/funil')
  await page.getByRole('combobox',{name:'Tema do Funil',exact:true}).selectOption('dark')
  await page.goto(`/funil?negociacao=${negociacao}&origem=teste#colunas`)
- await expect(page.getByRole('dialog')).toContainText('Venda Recuperável')
+ await expect(page.locator('[data-painel-lateral]')).toContainText('Venda Recuperável')
  await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
  await page.getByLabel('Valor em reais').fill('123,45');await page.getByLabel('Data da venda').fill('2026-01-01');await page.getByLabel('Observação (opcional)').fill('Primeira venda preservada')
  await page.getByRole('button',{name:'Conferir venda'}).click()
@@ -81,7 +81,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toBeVisible()
  await expect.poll(async()=>(await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(1)
  liberar()
- await expect(page.getByRole('dialog')).toContainText('Não foi possível confirmar o resultado')
+ await expect(page.locator('[data-painel-lateral]')).toContainText('Não foi possível confirmar o resultado')
  await expect(page.getByRole('button',{name:'Corrigir dados'})).toHaveCount(0)
  const original=await page.evaluate(ator=>JSON.parse(sessionStorage.getItem('crm:venda:v1:'+ator)!),ator)
  expect(original.alvo).toEqual({tipo:'primeira',negociacaoId:negociacao})
@@ -136,7 +136,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(2)
  await expect(page.getByRole('link',{name:'Voltar para a carteira',exact:true})).toHaveAttribute('href','/carteira?nome=Aurora&retorno=hoje')
 })
-test('recompra perdida na Carteira é recuperada no modal do Funil sem mudar o contexto',async({page})=>{
+test('recompra perdida na Carteira é recuperada no painel do Funil sem mudar o contexto',async({page})=>{
  const {empresa,negociacao,ator,email}=cenario
  const primeira=await comoUsuario(ator,e=>e<{r:string}>("SELECT funil_venda_registrar($1,$2,'2026-01-01',1500,NULL) AS r",[negociacao,randomUUID()]))
  expect(primeira.linhas[0].r).toBe('ok')
@@ -165,7 +165,7 @@ test('recompra perdida na Carteira é recuperada no modal do Funil sem mudar o c
 
  const contexto='/funil?negociacao='+negociacao+'&origem=teste#colunas'
  await page.goto(contexto)
- const modal=page.getByRole('dialog')
+ const modal=page.locator('[data-painel-lateral]')
  await modal.getByRole('button',{name:'Confirmar venda anterior',exact:true}).click()
  await expect(modal.getByText('Venda registrada.',{exact:true})).toBeVisible()
  await expect(page).toHaveURL(contexto)
@@ -201,7 +201,7 @@ test('outra aba confirma a primeira venda e a aba original repete o mesmo comand
     await rota.abort('failed')
   })
   await page.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText('Não foi possível confirmar o resultado')
+  await expect(page.locator('[data-painel-lateral]')).toContainText('Não foi possível confirmar o resultado')
   const pendente = await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)
   expect(pendente).not.toBeNull()
   const comando = JSON.parse(pendente!)

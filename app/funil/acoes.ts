@@ -7,10 +7,13 @@ import { lerNegociacao, lerTelefoneNegociacao } from '@/src/features/funil/consu
 import { registrarVenda, mudarEtapa, type Resultado } from '@/src/features/funil/repositorio'
 import { validarVenda } from '@/src/features/funil/regras'
 import { proximaEtapa } from '@/src/lib/comercial'
-import { arquivarSemInteresse } from '@/src/server/atendimento/operacoes'
+import { arquivarSemInteresse, devolverAoFunil } from '@/src/server/atendimento/operacoes'
 import { lerAtendimento } from '@/src/server/atendimento/consulta'
 import { textoDoMotivo } from '@/src/features/contato/mensagens'
 import type { MotivoAtendimento } from '@/src/lib/atendimento'
+import type { EstadoAcaoDevolver } from '@/src/lib/funil-arquivo'
+
+export type { EstadoAcaoDevolver } from '@/src/lib/funil-arquivo'
 export type EstadoFunil = {ok:boolean;erro?:string;motivo?:MotivoAtendimento;indisponivel?:boolean;repetida?:boolean;atual?:boolean}
 function resultado(r:Resultado):EstadoFunil {
   if(r.ok) {
@@ -60,4 +63,22 @@ export async function semInteresseAcao(form:FormData):Promise<EstadoFunil> {
   const atual=await lerAtendimento(eu.usuarioId,empresaId)
   for(const rota of ['/funil','/fila/sem-interesse','/fila/localizar','/meu-dia','/carteira','/gestao'])revalidatePath(rota)
   return {ok:true,repetida:r.repetida,atual:atual.ok&&atual.empresa.situacao==='sem_interesse'&&atual.empresa.versao===r.versao}
+}
+
+export async function devolverFunilAcao(form: FormData): Promise<EstadoAcaoDevolver> {
+  const eu = await exigir('vendedor')
+  const resultado = await devolverAoFunil(eu.usuarioId, {
+    empresaId: String(form.get('empresaId') ?? ''),
+    versao: Number(form.get('versao')),
+    chave: String(form.get('chave') ?? ''),
+  }, String(form.get('negociacaoId') ?? ''))
+  if (!resultado.ok) return resultado
+
+  try {
+    for (const rota of ['/funil', '/fila/localizar', '/meu-dia', '/carteira', '/gestao']) revalidatePath(rota)
+    revalidatePath('/fila/atendimento', 'layout')
+  } catch {
+    return { ...resultado, aviso: 'Devolução confirmada. Atualize a página para conferir o Funil.' }
+  }
+  return resultado
 }
