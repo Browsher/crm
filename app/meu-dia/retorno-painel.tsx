@@ -18,6 +18,7 @@ type Props = {
   empresa: LinhaMeuDia
   filtros: FiltrosMeuDia
   aba: AbaRetorno
+  bloqueado?: boolean
   aoMudarAba: (aba: AbaRetorno) => void
   aoFechar: () => void
   aoDados: (gatilho: HTMLElement) => void
@@ -25,7 +26,7 @@ type Props = {
   aoRemover: (id: string) => void
 }
 
-export function RetornoPainel({ empresa, filtros, aba, aoMudarAba, aoFechar, aoDados, aoNegociacao, aoRemover }: Props) {
+export function RetornoPainel({ empresa, filtros, aba, bloqueado = false, aoMudarAba, aoFechar, aoDados, aoNegociacao, aoRemover }: Props) {
   const [historico, setHistorico] = useState<Historico>(null)
   const [tentativa, setTentativa] = useState(0)
   const abasId = useId()
@@ -43,16 +44,16 @@ export function RetornoPainel({ empresa, filtros, aba, aoMudarAba, aoFechar, aoD
   const negociacao = empresa.situacao !== 'cliente' && empresa.empresa?.negociacaoId
   return <PainelLateralCrm titulo={nomeEmpresa(empresa)} rotulo="Retorno" className={styles.painelRetorno}
     descricao={empresa.situacaoRetorno === 'atrasado' ? 'Retorno atrasado' : empresa.situacaoRetorno === 'hoje' ? 'Retorno de hoje' : 'Próximo retorno'}
-    rotuloFechar={aba === 'historico' ? 'Voltar' : 'Fechar'}
+    rotuloFechar={aba === 'historico' ? 'Voltar' : 'Fechar'} fecharBloqueado={bloqueado}
     aoFechar={() => aba === 'historico' ? aoMudarAba('passo') : aoFechar()}>
     <div role="tablist" aria-label="Retorno" className={styles.abas} onKeyDown={evento => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return
+      if (bloqueado || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return
       evento.preventDefault()
       const proxima = evento.key === 'Home' ? 'passo' : evento.key === 'End' ? 'historico' : aba === 'passo' ? 'historico' : 'passo'
       aoMudarAba(proxima)
       document.getElementById(abasId + '-' + proxima)?.focus()
     }}>
-      {abas.map(item => <Button key={item.id} variant="ghost" role="tab" id={abasId + '-' + item.id}
+      {abas.map(item => <Button key={item.id} variant="ghost" role="tab" disabled={bloqueado} id={abasId + '-' + item.id}
         aria-selected={aba === item.id} tabIndex={aba === item.id ? 0 : -1}
         aria-controls={abasId + '-painel-' + item.id} onClick={() => aoMudarAba(item.id)}>{item.nome}</Button>)}
     </div>
@@ -70,8 +71,8 @@ export function RetornoPainel({ empresa, filtros, aba, aoMudarAba, aoFechar, aoD
     <footer className={styles.rodapeRetorno}>
       <span>Ações do retorno</span>
       <div>
-        <Button id={'meu-dia-dados-' + empresa.id} variant="outline" onClick={evento => aoDados(evento.currentTarget)}>Dados da empresa</Button>
-        {negociacao ? <Button id={'meu-dia-negociacao-' + empresa.id} onClick={evento => aoNegociacao(evento.currentTarget)}>Negociação</Button>
+        <Button id={'meu-dia-dados-' + empresa.id} variant="outline" disabled={bloqueado} onClick={evento => aoDados(evento.currentTarget)}>Dados da empresa</Button>
+        {negociacao ? <Button id={'meu-dia-negociacao-' + empresa.id} disabled={bloqueado} onClick={evento => aoNegociacao(evento.currentTarget)}>Negociação</Button>
           : <Button asChild><Link href={urlFichaDoMeuDia(empresa.id, filtros)}>Atendimento</Link></Button>}
       </div>
     </footer>

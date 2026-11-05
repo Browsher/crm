@@ -111,6 +111,9 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   const [baseline]=useState(()=>rascunhoInicial(true))
   const dirty=!fechandoVenda&&!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||contatoAlterado(sessao))
   const dirtyRef=useRef(dirty)
+  // O replay pode nascer em outro consumidor do mesmo ator, sem pendência local.
+  const vendaPendenteRef = useRef(venda.pendente)
+  useLayoutEffect(() => { vendaPendenteRef.current = venda.pendente }, [venda.pendente])
   const arrasteBloqueado = modo === 'atendimento' || modo === 'venda' || dirty || pendente || venda.pendente
   useLayoutEffect(() => { aoMudarBloqueioDeArraste?.(arrasteBloqueado) }, [aoMudarBloqueioDeArraste, arrasteBloqueado])
   useLayoutEffect(() => () => aoMudarBloqueioDeArraste?.(false), [aoMudarBloqueioDeArraste])
@@ -131,13 +134,13 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   },[id])
   useEffect(()=>{vivo.current=true;return()=>{vivo.current=false}},[])
   useEffect(()=>{
-    const guardar=(e:BeforeUnloadEvent)=>{if(!finalizando.current&&(dirtyRef.current||bloqueado.current))e.preventDefault()}
+    const guardar=(e:BeforeUnloadEvent)=>{if(!finalizando.current&&(dirtyRef.current||bloqueado.current||vendaPendenteRef.current))e.preventDefault()}
     const voltar=(e:PopStateEvent)=>{
       if(removendoSentinela.current){
         removendoSentinela.current=false
         const continuar=depoisDeRemover.current;depoisDeRemover.current=null
         const rearmar=()=>{
-          if((dirtyRef.current||bloqueado.current)&&!finalizando.current&&!sentinela.current){
+          if((dirtyRef.current||bloqueado.current||vendaPendenteRef.current)&&!finalizando.current&&!sentinela.current){
             const nova=crypto.randomUUID();sentinela.current=nova
             history.pushState({...history.state,__funilRascunho:nova},'',location.href)
           }
@@ -156,7 +159,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       const s=sentinela.current
       if(!s||e.state?.__funilRascunho===s)return
       history.pushState({...history.state,__funilRascunho:s},'',location.href)
-      if (!bloqueado.current) {
+      if (!bloqueado.current && !vendaPendenteRef.current) {
         focoDescarte.current = document.activeElement as HTMLElement | null
         setDescarte(atual => atual ?? { destino: 'voltar' })
       }
@@ -165,11 +168,11 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     return()=>{window.removeEventListener('beforeunload',guardar);window.removeEventListener('popstate',voltar)}
   },[])
   useEffect(()=>{
-    if((dirty||pendente)&&!sentinela.current&&!removendoSentinela.current&&!finalizando.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
-  },[dirty,pendente])
+    if((dirty||pendente||venda.pendente)&&!sentinela.current&&!removendoSentinela.current&&!finalizando.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
+  },[dirty,pendente,venda.pendente])
   useEffect(()=>{
-    if(!dirty&&!pendente)removerSentinela()
-  },[dirty,pendente,removerSentinela])
+    if(!dirty&&!pendente&&!venda.pendente)removerSentinela()
+  },[dirty,pendente,venda.pendente,removerSentinela])
   function concluir(aviso?: string, confirmacao?: ConfirmacaoVenda, depois?: () => void){
     if(finalizando.current)return
     finalizando.current=true;pedidoTelefone.current++
@@ -288,7 +291,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     try {
       const r = await venda.enviar(novo)
       if (!vivo.current || !r) return
-      if (r.ok && alvo.tipo === 'primeira' && (vendaDesteFormulario || !dirty)) {
+      if (r.ok && alvo.tipo === 'primeira' && alvo.negociacaoId === id && (vendaDesteFormulario || !dirty)) {
         setFechandoVenda(true)
         setConfirmado(false)
         concluir('Venda registrada.', r)

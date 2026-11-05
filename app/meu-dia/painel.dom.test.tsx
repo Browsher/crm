@@ -398,3 +398,123 @@ test('replay de venda fecha o retorno correspondente sem escolher outro card', a
   expect(host.textContent).toContain('Nenhum retorno selecionado')
   expect(historicoDaAgendaAcao).toHaveBeenCalledTimes(1)
 })
+
+test('replay pelo editor de outra empresa preserva seleção e continua permitindo atendimento', async () => {
+  persistirComandoVenda({ usuarioId: 'u', empresaId: 'a', chave: 'venda-editor-a', alvo: { tipo: 'primeira', negociacaoId: 'n-a' }, entrada: { valor: '20', data: '2026-11-05', observacao: 'original' } })
+  vi.mocked(transmitirVenda).mockResolvedValue({ ok: true })
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, id: 'n-b', empresaId: 'b', nome: 'Boreal', empresa: b.empresa! })
+  vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+  vi.mocked(prepararContatoAcao).mockResolvedValue({ ok: true, fase: 'negociacao', empresa: b.empresa! })
+  await montar(); await abrir('Boreal'); await clicar('Negociação')
+  await clicar('Confirmar venda anterior', host.querySelector('aside')!)
+  await act(async () => {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  })
+  expect(host.querySelector('aside')?.textContent).toContain('Boreal')
+  expect(vi.mocked(transmitirVenda).mock.calls.at(-1)![1].empresaId).toBe('a')
+  await clicar('Atendimento')
+  expect(host.querySelector('aside textarea')).not.toBeNull()
+  await clicar('Voltar')
+  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Próximo passo')
+})
+
+test('replay compacto com editor limpo protege reload e Back pelas duas instâncias reais de venda', async () => {
+  const comando = { usuarioId: 'u', empresaId: 'a', chave: 'externo-original', alvo: { tipo: 'primeira' as const, negociacaoId: 'n-a' }, entrada: { valor: '20', data: '2026-11-05', observacao: 'A' } }
+  persistirComandoVenda(comando)
+  vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, id: 'n-b', empresaId: 'b', nome: 'Boreal', empresa: b.empresa! })
+  let resolver!: (r: Awaited<ReturnType<typeof transmitirVenda>>) => void
+  vi.mocked(transmitirVenda).mockReturnValueOnce(new Promise(resolve => { resolver = resolve }))
+  await montar(); await abrir('Boreal'); await clicar('Negociação')
+  const href = location.href
+  await clicar('Confirmar venda anterior', host.querySelector('section[aria-label="Envios anteriores"]')!)
+  try {
+    const reload = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(reload)
+    expect(reload.defaultPrevented).toBe(true)
+    const sentinela = history.state?.__funilRascunho
+    expect(typeof sentinela).toBe('string')
+    await act(async () => {
+      history.replaceState({}, '', href)
+      window.dispatchEvent(new PopStateEvent('popstate', { state: {} }))
+    })
+    expect(history.state?.__funilRascunho).toBe(sentinela)
+    expect(document.querySelector('[role=dialog]')).toBeNull()
+    expect(host.querySelector('aside')?.textContent).toContain('Boreal')
+    expect(location.href).toBe(href)
+    await act(async () => host.querySelector('form')!.requestSubmit())
+    expect(navegar.push).not.toHaveBeenCalled()
+  } finally {
+    await act(async () => resolver({ ok: false, erro: 'Resposta perdida' }))
+    await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  }
+  expect(JSON.parse(sessionStorage.getItem('crm:venda:v1:u')!)).toEqual(comando)
+  expect(host.querySelector('aside')?.textContent).toContain('Boreal')
+})
+
+test.each([
+  { tela: 'retorno', aba: 'passo', acao: 'Fechar' },
+  { tela: 'retorno', aba: 'passo', acao: 'Escape' },
+  { tela: 'retorno', aba: 'passo', acao: 'Histórico' },
+  { tela: 'retorno', aba: 'passo', acao: 'teclado' },
+  { tela: 'retorno', aba: 'historico', acao: 'Voltar' },
+  { tela: 'retorno', aba: 'historico', acao: 'Escape' },
+  { tela: 'dados-grid', aba: 'passo', acao: 'Fechar' },
+  { tela: 'dados-grid', aba: 'passo', acao: 'Escape' },
+  { tela: 'dados-retorno', aba: 'historico', acao: 'Voltar' },
+  { tela: 'dados-retorno', aba: 'historico', acao: 'Escape' },
+])('replay pendente protege $acao em $tela/$aba e libera a mesma seleção depois', async ({ tela, aba, acao }) => {
+  persistirComandoVenda({ usuarioId: 'u', empresaId: 'fora', chave: 'guarda-interna', alvo: { tipo: 'recompra' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
+  let resolver!: (r: Awaited<ReturnType<typeof transmitirVenda>>) => void
+  vi.mocked(transmitirVenda).mockReturnValueOnce(new Promise(resolve => { resolver = resolve }))
+  await montar()
+  if (tela === 'dados-grid') await abrir('Aurora', 'Dados da empresa')
+  else {
+    await abrir('Aurora')
+    if (aba === 'historico') await clicar('Histórico')
+    if (tela === 'dados-retorno') await clicar('Dados da empresa', host.querySelector('aside')!)
+  }
+  const titulo = host.querySelector('aside h2')?.textContent
+  await clicar('Confirmar venda anterior', host.querySelector('section[aria-label="Envios anteriores"]')!)
+  try {
+    if (acao === 'Escape') await act(async () => host.querySelector('aside')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+    else if (acao === 'teclado') {
+      const foco = document.activeElement
+      await act(async () => host.querySelector('[role=tab]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true })))
+      expect(document.activeElement).toBe(foco)
+    } else await clicar(acao, host.querySelector('aside')!)
+    expect(host.querySelector('aside h2')?.textContent).toBe(titulo)
+    if (tela === 'retorno') expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe(aba === 'passo' ? 'Próximo passo' : 'Histórico')
+    expect(document.querySelector('[role=dialog]')).toBeNull()
+  } finally {
+    await act(async () => resolver({ ok: false, erro: 'Ainda sem confirmação' }))
+    await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  }
+  expect(host.querySelector('aside h2')?.textContent).toBe(titulo)
+  expect(JSON.parse(sessionStorage.getItem('crm:venda:v1:u')!).chave).toBe('guarda-interna')
+  const cabecalho = host.querySelector('aside header')!
+  await clicar(tela === 'dados-grid' || tela === 'retorno' && aba === 'passo' ? 'Fechar' : 'Voltar', cabecalho)
+  if (tela === 'dados-grid' || tela === 'retorno' && aba === 'passo') expect(host.querySelector('aside')).toBeNull()
+  else expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe(tela === 'dados-retorno' ? 'Histórico' : 'Próximo passo')
+})
+
+test('guarda de recuperação não bloqueia o fechamento interno após confirmação de arquivo', async () => {
+  sessionStorage.setItem('crm:funil:arquivo:v1:u', JSON.stringify({ linha: detalhe, chave: 'arquivo-confirmado' }))
+  let resolver!: (r: Awaited<ReturnType<typeof semInteresseAcao>>) => void
+  vi.mocked(semInteresseAcao).mockReturnValueOnce(new Promise(resolve => { resolver = resolve }))
+  await montar(); await abrir('Aurora')
+  await clicar('Confirmar arquivamento anterior')
+  try {
+    await clicar('Fechar', host.querySelector('aside')!)
+    expect(host.querySelector('aside h2')?.textContent).toBe('Aurora')
+    await act(async () => host.querySelector('aside')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+    expect(host.querySelector('aside h2')?.textContent).toBe('Aurora')
+  } finally {
+    await act(async () => resolver({ ok: true, atual: true, repetida: true }))
+    await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  }
+  expect(host.querySelector('aside')).toBeNull()
+  expect(host.querySelector('[data-testid=lista-meu-dia]')?.textContent).not.toContain('Aurora')
+  expect(host.textContent).toContain('Boreal')
+  expect(historicoDaAgendaAcao).toHaveBeenCalledTimes(1)
+})

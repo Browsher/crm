@@ -169,11 +169,11 @@ function PainelDoUsuario({ usuarioId, linhas, agenda, filtros }: Props) {
           </li>)}
         </ul>
         {painel && atual && <div className={styles.colunaPerfil}>
-          {painel.tipo === 'retorno' && <RetornoPainel key={atual.id} empresa={atual} filtros={filtros} aba={painel.aba} aoMudarAba={aba => setPainel({ ...painel, aba })}
-            aoFechar={fechar} aoRemover={remover}
+          {painel.tipo === 'retorno' && <RetornoPainel key={atual.id} empresa={atual} filtros={filtros} aba={painel.aba} bloqueado={arquivo.pendente || venda.pendente} aoMudarAba={aba => pedirSaidaDaEdicao(() => setPainel({ ...painel, aba }))}
+            aoFechar={() => pedirSaidaDaEdicao(fechar)} aoRemover={remover}
             aoDados={gatilho => trocar({ tipo: 'dados', empresaId: atual.id, anterior: { painel, gatilho } }, origem.current ?? gatilho)}
             aoNegociacao={gatilho => { if (atual.empresa?.negociacaoId) trocar({ tipo: 'negociacao', empresaId: atual.id, negociacaoId: atual.empresa.negociacaoId, anterior: { painel, gatilho } }, origem.current ?? gatilho) }} />}
-          {painel.tipo === 'dados' && <DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: atual.id }} rotuloFechar={painel.anterior.painel ? 'Voltar' : 'Fechar'} aoFechar={() => voltar(painel.anterior)} />}
+          {painel.tipo === 'dados' && <DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: atual.id }} rotuloFechar={painel.anterior.painel ? 'Voltar' : 'Fechar'} aoFechar={() => pedirSaidaDaEdicao(() => voltar(painel.anterior))} />}
           {painel.tipo === 'negociacao' && <PainelNegociacao key={painel.negociacaoId} id={painel.negociacaoId} usuarioId={usuarioId} fecharRef={fecharNegociacao}
             rotuloFechar="Voltar" bloqueada={!!arquivo.comando || arquivo.pendente || venda.pendente || !!confirmacao}
             fechar={(texto, resultadoVenda) => {
