@@ -1,6 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { PainelMeuDia, type LinhaMeuDia } from './painel'
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+vi.mock('../funil/acoes', () => ({ semInteresseAcao: vi.fn() }))
+vi.mock('../venda-envio', () => ({ transmitirVenda: vi.fn() }))
+vi.mock('@/app/empresas/busca/detalhe-acao', () => ({ lerDetalhesEmpresaAcao: vi.fn() }))
+vi.mock('@/src/features/contato/acao', () => ({ prepararContatoAcao: vi.fn(), registrarContatoAcao: vi.fn() }))
 
 const aurora: LinhaMeuDia = {
   id: '11111111-1111-1111-1111-111111111111', cnpj: '11222333000181', razaoSocial: 'Aurora', nomeFantasia: null,
@@ -8,42 +13,25 @@ const aurora: LinhaMeuDia = {
   cep: null, endereco: null, situacao: 'atendimento', versao: 1, reservadoAte: null, posse: true, proximoPasso: 'Ligar', proximoPassoData: '2026-09-10',
   situacaoRetorno: 'atrasado', vencido: true,
 }
-const boreal: LinhaMeuDia = {
-  id: '22222222-2222-2222-2222-222222222222', cnpj: '22333444000162', razaoSocial: 'Boreal', nomeFantasia: null,
-  cnaePrincipal: null, ultimoContato: null, contatoNome: 'Beto', telefone: '11988888888', email: 'beto@boreal.com',
-  cep: null, endereco: null, situacao: 'atendimento', versao: 1, reservadoAte: null, posse: true, proximoPasso: 'Enviar proposta', proximoPassoData: '2026-09-11',
-  situacaoRetorno: 'hoje', vencido: false,
-}
-
+const filtros = { nome: '', retorno: '' as const, periodo: '' as const }
 test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
-  // Agenda vazia de verdade: "0 de 0" não ajuda ninguém, sem contagem.
-  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[]} filtros={{ nome: '', retorno: '', periodo: '' }} />)
-  expect(vazia).toContain('Nenhum retorno pendente para hoje')
+  const vazia = renderToStaticMarkup(<PainelMeuDia usuarioId="u" linhas={[]} agenda={[]} filtros={filtros} />)
+  expect(vazia).toContain('Nenhum retorno pendente')
   expect(vazia).toContain('href="/carteira"')
   expect(vazia).toContain('href="/fila"')
-  expect(vazia).toContain('Ir para Prospecção')
   expect(vazia).not.toContain('de 0 retorno')
-
-  // Busca sem resultado: a agenda tem itens, só o filtro não bateu com
-  // nenhum. A contagem continua acima do vazio, como sempre apareceu.
-  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[aurora, boreal]} filtros={{ nome: 'zzz', retorno: '', periodo: '' }} />)
-  expect(semResultado).toContain('Nenhuma empresa corresponde à busca')
-  expect(semResultado).toContain('href="/meu-dia"')
-  expect(semResultado).not.toContain('Nenhum retorno pendente para hoje')
-  expect(semResultado).toContain('0 de 2 retornos')
+  const busca = renderToStaticMarkup(<PainelMeuDia usuarioId="u" linhas={[]} agenda={[aurora]} filtros={{ ...filtros, nome: 'zzz' }} />)
+  expect(busca).toContain('Nenhuma empresa corresponde à busca')
+  expect(busca).toContain('0 de 1 retorno')
 })
-
-test('primeira empresa já aparece selecionada e o link leva a ficha com os filtros', () => {
-  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} agenda={[aurora, boreal]} filtros={{ nome: '', retorno: 'atrasado', periodo: '' }} />)
+test('HTML inicial entrega cards sem painel, dados de contato ou seleção automática', () => {
+  const html = renderToStaticMarkup(<PainelMeuDia usuarioId="u" linhas={[aurora]} agenda={[aurora]} filtros={filtros} />)
   expect(html).toContain('Aurora')
-  expect(html).toContain('Abrir atendimento')
-  expect(html).toContain(`href="/carteira/${aurora.id}?de=meu-dia&amp;retorno=atrasado"`)
-  expect(html).not.toContain('—')
-
-  // "Abrir atendimento" é a ação principal: usa o componente `Button` (como
-  // as telas irmãs, `<Button asChild><Link href=...>`), não um link nu.
-  // Confere que É a mesma tag que carrega o href da ficha, não outro botão.
-  const linkAbrir = html.match(/<a[^>]*href="\/carteira\/[^"]*"[^>]*>Abrir atendimento<\/a>/)?.[0] ?? ''
-  expect(linkAbrir).not.toBe('')
-  expect(linkAbrir).toContain('data-slot="button"')
+  expect(html).toContain('Dados da empresa')
+  expect(html).toContain('Abrir retorno')
+  expect(html).toContain('Nenhum retorno selecionado')
+  expect(html).not.toContain('<aside')
+  expect(html).not.toContain('11999999999')
+  expect(html).not.toContain('aria-current')
+  expect(html).not.toContain('Resumo')
 })

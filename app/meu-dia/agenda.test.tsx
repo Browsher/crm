@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { FiltrosForm } from './filtros-form'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import {
   agendaDoDia,
@@ -163,11 +164,11 @@ test('formulário oferece os quatro recortes e períodos preservando pesquisa', 
     const select = html.match(new RegExp(`<select[^>]*name="${nome}"[^>]*>(.*?)</select>`))?.[1] ?? ''
     return [...select.matchAll(/<option[^>]*value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(o => [o[1], o[2]])
   }
-  expect(opcoes('retorno')).toEqual([
-    ['', 'Todos'], ['atrasado', 'Atrasos'], ['hoje', 'Hoje'], ['proximos', 'Próximos'],
-  ])
+  const recortes = [...html.matchAll(/<button(?=[^>]*name="retorno")(?=[^>]*value="([^"]*)")[^>]*>(.*?)<\/button>/g)].map(b => [b[1], b[2]])
+  expect(recortes).toEqual([['', 'Todos'], ['atrasado', 'Atrasos'], ['hoje', 'Hoje'], ['proximos', 'Próximos']])
+  expect(opcoes('retorno')).toEqual([])
   expect(opcoes('periodo').map(o => o[0])).toEqual(['', 'amanha', 'semana_que_vem', 'mes_que_vem'])
-  expect(html).toContain('<option value="proximos" selected="">Próximos</option>')
+  expect(html).toMatch(/<button(?=[^>]*value="proximos")(?=[^>]*aria-pressed="true")[^>]*>/)
   expect(html).toContain('<option value="semana_que_vem" selected="">Semana que vem</option>')
   expect(html).toContain('value="Ação Norte"')
 })
