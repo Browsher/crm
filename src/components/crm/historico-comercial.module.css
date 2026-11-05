@@ -17,6 +17,7 @@
 .evento[open] > .cabecalho::after { transform: rotate(225deg); top: 26px; }
 .cabecalho:hover { background: var(--surface-muted); }
 .cabecalho:focus-visible, .controles button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.empresa { display: block; margin-bottom: var(--space-2); font-weight: 600; }
 .titulo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .titulo strong { font-weight: 600; }
 .tipo, .tipoVenda { padding: 2px var(--space-2); border-radius: var(--radius-control); font-size: 11px; color: var(--muted-foreground); background: var(--muted); }

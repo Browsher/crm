@@ -147,3 +147,21 @@ test('clique nativo no summary sincroniza expansão individual com o comando glo
   expect(registros()[0].open).toBe(false)
   expect([...host.querySelectorAll('button')].some(b => b.textContent === 'Expandir todos')).toBe(true)
 })
+
+
+test('empresa é identificação separada no cabeçalho somente no histórico multiempresa', async () => {
+  const uuid = '11111111-1111-4111-8111-111111111111'
+  await act(async () => root.render(<HistoricoComercial eventos={[{ ...eventos[1], empresa: uuid }]} />))
+  expect(registros()[0].querySelector('summary')?.textContent).not.toContain(uuid)
+  await act(async () => root.render(<HistoricoComercial mostrarEmpresa eventos={[{ ...eventos[1], empresa: 'Aurora Comercial' }]} />))
+  const registro = registros()[0]
+  const summary = registro.querySelector('summary')!
+  expect(registro.open).toBe(false)
+  expect(summary.textContent).toContain('Aurora Comercial')
+  expect(summary.querySelector('strong')?.textContent).toBe('Retorno combinado')
+  expect(summary.textContent).toContain('Autor não informado')
+  expect(summary.textContent).toContain('22:30')
+  await act(async () => root.render(<HistoricoComercial mostrarEmpresa eventos={[{ ...eventos[1], empresa: undefined }]} />))
+  expect(registros()[0].querySelector('summary')?.textContent).not.toContain('Aurora Comercial')
+  expect(registros()[0].querySelector('strong')?.textContent).toBe('Retorno combinado')
+})

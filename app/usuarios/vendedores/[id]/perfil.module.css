@@ -12,9 +12,5 @@
 .tabela td:nth-child(2) { white-space: nowrap; }
 .tabela td span { display: block; color: var(--muted-foreground); font-size: 12px; line-height: 18px; margin-top: 8px; white-space: nowrap; }
 .paginacao { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 16px; font-size: 12px; line-height: 18px; }
-.historico { list-style: none; display: grid; gap: 16px; margin-top: 16px; }
-.historico li { display: grid; gap: 8px; border-left: 2px solid var(--border); padding: 8px 0 16px 16px; overflow-wrap: anywhere; }
-.historico time { font-size: 12px; line-height: 18px; color: var(--muted-foreground); }
-.historico .nota { color: var(--foreground); white-space: pre-wrap; }
 @media (max-width: 1050px) { .colunas { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 640px) { .tabela { min-width: 480px; } }

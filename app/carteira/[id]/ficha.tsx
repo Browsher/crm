@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { FormularioContato } from '@/src/features/contato/formulario'
 import type { Contato } from '@/src/features/contato/historico'
 import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
-import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
+import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
@@ -19,7 +19,6 @@ import { Button } from '@/src/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
 import styles from './ficha.module.css'
-import { ResumoVenda } from '@/src/components/crm/resumo-venda'
 import { RegistrarVenda } from '../registrar-venda'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { AbasFicha } from '@/src/components/crm/abas-ficha'
@@ -36,13 +35,7 @@ function dataCivil(valor: string) {
 function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   if (erro) return <Alert variant="danger"><AlertTitle>Não foi possível carregar o histórico</AlertTitle><AlertDescription>Tente atualizar a página.</AlertDescription></Alert>
   if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma atividade registrada." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
-  return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
-    <div className={styles.historicoCabecalho}><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : c.tipo}</strong><time dateTime={c.criadoEm.toISOString()}>{new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' }).format(c.criadoEm)}</time></div>
-    {c.venda ? <ResumoVenda venda={c.venda} /> : null}
-    {c.nota ? <p>{c.nota}</p> : <p className={styles.ausente}>Sem anotação.</p>}
-    {c.proximoPasso ? <p><strong>Próximo passo registrado:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
-    <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>
-  </li>)}</ol>
+  return <LinhaDoTempo contatos={contatos} />
 }
 
 export function Ficha({ usuarioId, empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira', dadosCadastrais }: { usuarioId:string; empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {

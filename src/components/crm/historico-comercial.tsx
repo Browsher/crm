@@ -7,7 +7,13 @@ import { Button } from '@/src/components/ui/button'
 import { ResumoVenda } from './resumo-venda'
 import styles from './historico-comercial.module.css'
 
-type Props = { eventos: EventoHistoricoComercial[]; rotulo?: string }
+type Props = {
+  eventos: EventoHistoricoComercial[]
+  rotulo?: string
+  // Opt-in para listas multiempresa com nome autorizado. Outros adaptadores
+  // usam evento.empresa apenas como identidade e podem fornecer um UUID.
+  mostrarEmpresa?: boolean
+}
 type Filtro = 'todos' | 'atendimentos' | 'vendas'
 const filtros: { valor: Filtro; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todos' },
@@ -24,13 +30,13 @@ function identidade(evento: EventoHistoricoComercial) {
   return JSON.stringify([evento.empresa, evento.id])
 }
 
-export function HistoricoComercial({ eventos, rotulo = 'Histórico comercial' }: Props) {
+export function HistoricoComercial({ eventos, rotulo = 'Histórico comercial', mostrarEmpresa = false }: Props) {
   // A identidade reinicia também em A → B → A, sem reutilizar a expansão anterior.
   const chave = JSON.stringify([rotulo, eventos.map(evento => [evento.empresa, evento.id])])
-  return <ListaHistorico key={chave} eventos={eventos} rotulo={rotulo} />
+  return <ListaHistorico key={chave} eventos={eventos} rotulo={rotulo} mostrarEmpresa={mostrarEmpresa} />
 }
 
-function ListaHistorico({ eventos, rotulo }: Props) {
+function ListaHistorico({ eventos, rotulo, mostrarEmpresa }: Props) {
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set())
   const visiveis = eventos.filter(evento => pertenceAoFiltro(evento, filtro))
@@ -87,6 +93,7 @@ function ListaHistorico({ eventos, rotulo }: Props) {
               e.preventDefault()
               definirExpansao(chave, !expandidos.has(chave))
             }}>
+              {mostrarEmpresa && evento.empresa ? <span className={styles.empresa}>{evento.empresa}</span> : null}
               <span className={styles.titulo}><strong>{evento.titulo}</strong><span className={evento.natureza === 'venda' ? styles.tipoVenda : styles.tipo}>{tipo}</span></span>
               <span className={styles.metadados}>
                 <time dateTime={evento.criadoEm}>{dataRegistro.format(instante)}, {horaRegistro.format(instante)}</time>
