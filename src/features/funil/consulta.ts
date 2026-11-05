@@ -1,6 +1,7 @@
 import { comoUsuario } from '../../server/db/como-usuario'
 import { ehEtapaFunil, type EtapaFunil } from '../../lib/comercial'
 import type { ResumoEmpresa } from '../../lib/empresa-visual'
+import type { ArquivoFunilRecente } from '../../lib/funil-arquivo'
 import { lerResumosEmpresas } from '../../server/atendimento/consulta'
 
 export type NegociacaoResumo = {
@@ -11,6 +12,8 @@ export type NegociacaoResumo = {
   etapa: EtapaFunil
   versao: number
   empresa: ResumoEmpresa
+  proximoPasso?: string | null
+  retorno?: string | null
 }
 export type NegociacaoDetalhe = NegociacaoResumo & {
   cnpj: string | null
@@ -26,8 +29,9 @@ export type NegociacaoDetalhe = NegociacaoResumo & {
 const ORIGEM = `FROM negociacao n
   JOIN empresa_fila f ON f.empresa_id=n.empresa_id AND f.vendedor_id=$1
   JOIN empresa e ON e.id=n.empresa_id
-  LEFT JOIN cep endereco ON endereco.cep=e.cep
-  WHERE n.vendedor_id=$1 AND n.encerrada_em IS NULL AND pode_ler() AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
+  LEFT JOIN cep endereco ON endereco.cep=e.cep`
+
+const FILTRO_ATIVA = `WHERE n.vendedor_id=$1 AND n.encerrada_em IS NULL AND pode_ler() AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
     AND EXISTS (SELECT 1 FROM usuario u WHERE u.id=$1 AND u.papel='vendedor' AND u.ativo)`
 
 function conferirEtapa<T extends { etapa: string }>(dado: T): T & { etapa: EtapaFunil } {
@@ -35,11 +39,21 @@ function conferirEtapa<T extends { etapa: string }>(dado: T): T & { etapa: Etapa
   return { ...dado, etapa: dado.etapa }
 }
 
+function agendaDisponivel(empresa: ResumoEmpresa): boolean {
+  return empresa.situacao !== 'indisponivel' && empresa.situacao !== 'sem_interesse'
+}
+
 export async function lerFunil(usuarioId: string): Promise<NegociacaoResumo[]> {
   const linhas=await comoUsuario(usuarioId, async executar => {
-    const r = await executar<NegociacaoResumo>(`SELECT n.id, n.empresa_id AS "empresaId",
-      coalesce(e.razao_social,e.nome_fantasia) AS nome, endereco.localidade AS cidade, n.etapa
-      ${ORIGEM} ORDER BY n.iniciada_em, n.id`, [usuarioId])
+    const r = await executar<Pick<NegociacaoResumo, 'id' | 'empresaId' | 'nome' | 'cidade' | 'etapa'> & {
+      versao: number | null; proximoPasso: string | null; retorno: string | null
+    }>(`SELECT n.id, n.empresa_id AS "empresaId",
+      coalesce(e.razao_social,e.nome_fantasia) AS nome, endereco.localidade AS cidade, n.etapa,
+      v.versao, c.proximo_passo AS "proximoPasso", to_char(c.proximo_passo_data,'YYYY-MM-DD') AS retorno
+      ${ORIGEM}
+      LEFT JOIN empresa_vinculo v ON v.empresa_id=n.empresa_id AND v.vendedor_id=$1 AND v.arquivada_em IS NULL
+      LEFT JOIN contato c ON c.id=v.agenda_contato_id AND c.empresa_id=v.empresa_id
+      ${FILTRO_ATIVA} ORDER BY n.iniciada_em, n.id`, [usuarioId])
     return r.linhas.map(conferirEtapa)
   })
   const empresas:ResumoEmpresa[]=[]
@@ -49,7 +63,21 @@ export async function lerFunil(usuarioId: string): Promise<NegociacaoResumo[]> {
     empresas.push(...r.empresas)
   }
   const porId=new Map(empresas.map(e=>[e.id,e]))
-  return linhas.flatMap(l=>{const empresa=porId.get(l.empresaId);return empresa&&empresa.versao? [{...l,empresa,versao:empresa.versao}]:[]})
+  return linhas.flatMap(l => {
+    const empresa = porId.get(l.empresaId)
+    if (!empresa?.versao) return []
+    const mostrarAgenda = l.versao === empresa.versao && agendaDisponivel(empresa)
+    return [{ ...l, empresa, versao: empresa.versao, proximoPasso: mostrarAgenda ? l.proximoPasso : null, retorno: mostrarAgenda ? l.retorno : null }]
+  })
+}
+
+export async function listarSemInteresseFunil(usuarioId: string): Promise<ArquivoFunilRecente[]> {
+  return comoUsuario(usuarioId, async executar => {
+    const { linhas } = await executar<Omit<ArquivoFunilRecente, 'arquivadaEm'> & { arquivadaEm: Date }>(`SELECT
+      empresa_id AS "empresaId", negociacao_id AS "negociacaoId", nome, arquivada_em AS "arquivadaEm", versao
+      FROM funil_sem_interesse_recentes() ORDER BY arquivada_em DESC, empresa_id DESC`)
+    return linhas.map(linha => ({ ...linha, arquivadaEm: linha.arquivadaEm.toISOString() }))
+  })
 }
 
 export async function contarSemInteresse(usuarioId:string):Promise<{ok:true;total:number}|{ok:false;motivo:'sem_permissao'}> {
@@ -67,7 +95,7 @@ export async function lerNegociacao(usuarioId: string, id: string): Promise<Nego
   const detalhe=await comoUsuario(usuarioId, async executar => {
     const r = await executar<{ detalhe: NegociacaoDetalhe }>(`
       WITH alvo AS (SELECT n.id,n.empresa_id,coalesce(e.razao_social,e.nome_fantasia) AS nome,e.cnpj,
-        endereco.localidade AS cidade,endereco.uf,n.etapa ${ORIGEM} AND n.id=$2),
+        endereco.localidade AS cidade,endereco.uf,n.etapa ${ORIGEM} ${FILTRO_ATIVA} AND n.id=$2),
       contatos AS MATERIALIZED (
         SELECT c.id,c.tipo,c.nota,c.criado_em AS em,c.proximo_passo AS "proximoPasso",
           to_char(c.proximo_passo_data,'YYYY-MM-DD') AS retorno
@@ -91,15 +119,15 @@ export async function lerNegociacao(usuarioId: string, id: string): Promise<Nego
   const r=await lerResumosEmpresas(usuarioId,[detalhe.empresaId])
   const empresa=r.ok?r.empresas.find(e=>e.id===detalhe.empresaId):null
   if(!empresa?.versao)return null
-  const agendaDisponivel=empresa.situacao!=='indisponivel'&&empresa.situacao!=='sem_interesse'
+  const mostrarAgenda=agendaDisponivel(empresa)
   return {...detalhe,empresa,versao:empresa.versao,
-    proximoPasso:agendaDisponivel?detalhe.proximoPasso:null,retorno:agendaDisponivel?detalhe.retorno:null}
+    proximoPasso:mostrarAgenda?detalhe.proximoPasso:null,retorno:mostrarAgenda?detalhe.retorno:null}
 }
 
 export async function lerTelefoneNegociacao(usuarioId:string,id:string):Promise<string|null> {
   if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)) return null
   return comoUsuario(usuarioId,async executar=>{
-    const r=await executar<{telefone:string|null}>(`SELECT e.telefone ${ORIGEM} AND n.id=$2`,[usuarioId,id])
+    const r=await executar<{telefone:string|null}>(`SELECT e.telefone ${ORIGEM} ${FILTRO_ATIVA} AND n.id=$2`,[usuarioId,id])
     return r.linhas[0] ? r.linhas[0].telefone ?? '' : null
   })
 }

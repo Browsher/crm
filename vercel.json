@@ -6,7 +6,8 @@
   "git": {
     "deploymentEnabled": {
       "main": false,
-      "codex/simplificar-crm-fluxos": false
+      "codex/simplificar-crm-fluxos": false,
+      "codex/funil-painel-lateral": false
     }
   }
 }

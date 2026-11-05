@@ -6,7 +6,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useTemaCrm } from './tema'
 
 type Pedido = (continuar: () => void) => void
-const editores = new Map<symbol, { pendente: boolean; pedir: Pedido }>()
+type Editor = { pendente: boolean; pedir: Pedido }
+const editores = new Map<symbol, Editor>()
+const guardasDeNavegacao = new Map<symbol, Editor & { ativa: () => boolean }>()
+
+function atualizarGuardaDeLinks() {
+  if (editores.size || guardasDeNavegacao.size) document.addEventListener('click', guardarLink, true)
+  else document.removeEventListener('click', guardarLink, true)
+}
+
+function editoresAtivos() {
+  return [...editores.values(), ...[...guardasDeNavegacao.values()].filter(guarda => guarda.ativa())]
+}
+
 const MARCA = '__crmEdicaoAdministrativa'
 let sentinela: { id: string; href: string } | null = null
 let retirando = false
@@ -64,11 +76,11 @@ function aoVoltar() {
 function desligarGuarda() {
   window.removeEventListener('beforeunload', protegerSaida)
   window.removeEventListener('popstate', aoVoltar)
-  document.removeEventListener('click', guardarLink, true)
+  atualizarGuardaDeLinks()
 }
 
 export function pedirSaidaDaEdicao(continuar: () => void) {
-  const ativos = [...editores.values()]
+  const ativos = editoresAtivos()
   if (ativos.some(editor => editor.pendente)) return
   if (ativos.length) ativos[0].pedir(continuar)
   else continuar()
@@ -92,8 +104,28 @@ function guardarLink(evento: MouseEvent) {
   if (!(link instanceof HTMLAnchorElement) || (link.target && link.target !== '_self') || link.hasAttribute('download')) return
   const url = new URL(link.href, location.href)
   if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return
+  if (!retirando && !editoresAtivos().length) return
   evento.preventDefault()
   pedirSaidaDaEdicao(() => retirarVoltar(() => sairSemNovoAviso(() => location.assign(url.href))))
+}
+
+/** Participa da saída pelo CRM com o diálogo e o histórico do próprio editor. */
+export function useGuardaNavegacaoEdicao(ativa: () => boolean, pendente: boolean, pedir: Pedido) {
+  const atual = useRef({ ativa, pendente, pedir })
+  useLayoutEffect(() => { atual.current = { ativa, pendente, pedir } }, [ativa, pendente, pedir])
+  useLayoutEffect(() => {
+    const id = Symbol('guarda de navegação')
+    guardasDeNavegacao.set(id, {
+      ativa: () => atual.current.ativa(),
+      get pendente() { return atual.current.pendente },
+      pedir: continuar => atual.current.pedir(continuar),
+    })
+    atualizarGuardaDeLinks()
+    return () => {
+      guardasDeNavegacao.delete(id)
+      atualizarGuardaDeLinks()
+    }
+  }, [])
 }
 
 export function useDescarteEdicao(alterado: boolean, pendente: boolean) {
@@ -122,7 +154,7 @@ export function useDescarteEdicao(alterado: boolean, pendente: boolean) {
     } })
     window.addEventListener('beforeunload', protegerSaida)
     window.addEventListener('popstate', aoVoltar)
-    document.addEventListener('click', guardarLink, true)
+    atualizarGuardaDeLinks()
     armarVoltar()
     return () => {
       editores.delete(id)

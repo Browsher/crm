@@ -1,0 +1,37 @@
+.painel {
+  min-width: 0;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  scroll-margin-top: 72px;
+}
+.cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px;
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+}
+.cabecalho > div { min-width: 0; }
+.cabecalho h2 { font-size: 19px; line-height: 1.35; font-weight: 650; overflow-wrap: anywhere; scroll-margin-top: 76px; }
+.cabecalho h2:focus { outline: none; }
+.cabecalho > button { flex: none; }
+.descricao { color: var(--muted-foreground); font-size: 13px; margin-top: 4px; }
+.corpo { min-width: 0; padding: 16px 20px 24px; }
+@media (min-width: 1121px) {
+  .painel {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 20;
+    width: var(--crm-painel-lateral-largura, clamp(320px, 26vw, 420px));
+    border-width: 0 0 0 1px;
+    border-radius: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+  .cabecalho { position: sticky; top: 0; z-index: 1; }
+}

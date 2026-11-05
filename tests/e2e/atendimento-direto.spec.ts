@@ -96,7 +96,7 @@ for (const [tipo,empresaId,nome,rotulo] of [
   ['interessado',FONTE,'Direto Fontes','Falei, tem interesse'],
   ['retornar_depois',B,'Direto Brisa','Falei, pediu para ligar em outro momento'],
 ] as const) {
-  test(tipo+' abre negociação autorizada e contato no modal mantém contexto', async ({page}) => {
+  test(tipo+' abre negociação autorizada e contato no painel lateral mantém contexto', async ({page}) => {
     await page.goto('/login')
     await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
     await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026')
@@ -116,7 +116,7 @@ for (const [tipo,empresaId,nome,rotulo] of [
     const negociacoes=await sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[empresaId])
     expect(negociacoes.rowCount).toBe(1)
     await expect(page).toHaveURL('/funil?negociacao='+negociacoes.rows[0].id)
-    const modal=page.getByRole('dialog')
+    const modal=page.locator('[data-painel-lateral]')
     await expect(modal.getByRole('heading',{name:nome,exact:true})).toBeVisible()
     const contatos=await sql('SELECT tipo,nota FROM contato WHERE empresa_id=$1',[empresaId])
     expect(contatos.rows).toEqual([{tipo,nota:'Smoke '+tipo}])
@@ -143,14 +143,14 @@ for (const [tipo,empresaId,nome,rotulo] of [
     const aposFechar=page.url()
     await page.reload()
     const selecionadaNaUrl=new URL(aposFechar).searchParams.has('negociacao')
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(modal).toHaveCount(0)
     expect(selecionadaNaUrl).toBe(false)
     await test.info().attach('contexto-apos-fechar-'+tipo,{
-      body:JSON.stringify({aposFechar,queryPermaneceu:selecionadaNaUrl,reloadReabreModal:false}),
+      body:JSON.stringify({aposFechar,queryPermaneceu:selecionadaNaUrl,reloadReabrePainel:false}),
       contentType:'application/json',
     })
     const card=page.locator('[data-slot=card]').filter({has:page.getByRole('heading',{name:nome,exact:true})})
-    await card.getByRole('button',{name:'Abrir no funil',exact:true}).click()
+    await card.getByRole('button',{name:'Negociação',exact:true}).click()
     await expect(modal).toBeVisible()
     await expect(page).toHaveURL('/funil')
     await modal.getByRole('button',{name:'Registrar atendimento',exact:true}).click()
@@ -161,8 +161,8 @@ for (const [tipo,empresaId,nome,rotulo] of [
     await expect(modal).toHaveCount(0)
     await expect(page).toHaveURL('/funil')
     expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[empresaId])).rowCount).toBe(3)
-    await card.getByRole('button',{name:'Abrir no funil',exact:true}).click()
-    await modal.getByRole('tab',{name:'Histórico',exact:true}).click()
+    await card.getByRole('button',{name:'Negociação',exact:true}).click()
+    await modal.getByRole('button',{name:'Ver todos',exact:true}).click()
     await expect(modal).toContainText('Contato manual '+tipo)
     await modal.getByRole('button',{name:'Fechar',exact:true}).click()
     await expect(modal).toHaveCount(0)

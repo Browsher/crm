@@ -49,7 +49,7 @@ test('cadastro parcial histórico permanece interno; vínculo explícito autoriz
     'SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresas[21]],
   )
   await expect(vendedor).toHaveURL('/funil?negociacao=' + negociacao.id)
-  await expect(vendedor.getByRole('dialog', { name: nomeEmpresa + ' 21', exact: true })).toBeVisible()
+  await expect(vendedor.locator('[data-painel-lateral]').getByRole('heading', { name: nomeEmpresa + ' 21', exact: true })).toBeVisible()
   expect(await banco.sql('SELECT tipo,nota FROM contato WHERE empresa_id=$1', [empresas[21]]))
     .toEqual([{ tipo: 'interessado', nota: 'Atendimento de cadastro parcial' }])
   await criarListaHistorica('Outra origem da jornada', empresas, autor)

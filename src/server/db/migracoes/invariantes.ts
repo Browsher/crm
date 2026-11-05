@@ -62,6 +62,8 @@ export const FUNCOES_CONCEDIDAS_A_APP_USUARIO = [
   'public.contato_registrar_direto',
   'public.empresa_sem_interesse_definir',
   'public.empresa_atendimento_retomar',
+  'public.funil_sem_interesse_recentes',
+  'public.funil_empresa_devolver',
   'public.empresa_detalhes_ler',
   'public.empresas_resumos_ler',
   'public.empresas_disponibilidade_ler',

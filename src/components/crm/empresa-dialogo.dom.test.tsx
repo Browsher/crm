@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 const m = vi.hoisted(() => ({ ler: vi.fn() }))
 vi.mock('@/app/empresas/busca/detalhe-acao', () => ({ lerDetalhesEmpresaAcao: m.ler }))
-import { EmpresaDialogo } from './empresa-dialogo'
+import { DadosEmpresaPainel, EmpresaDialogo } from './empresa-dialogo'
 import type { DetalhesEmpresa, ReferenciaEmpresa } from '@/src/lib/empresa-visual'
 let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
@@ -52,4 +52,24 @@ test('indisponibilidade salva distingue pendência e origem inativa sem ação c
   await act(async()=>root.render(<EmpresaDialogo referencia={{tipo:'cadastro',empresaId:'inativa'}} aoFechar={()=>{}} />))
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Origem inativa')
   expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain('Iniciar atendimento')
+})
+
+test('dados laterais usam os mesmos grupos autorizados e descartam respostas de outra empresa', async () => {
+  let concluir!: (r: { ok: true; dados: DetalhesEmpresa }) => void
+  m.ler.mockImplementationOnce(() => new Promise(r => { concluir = r }))
+    .mockResolvedValueOnce({ ok: true, dados: { ...dados('Empresa B'), telefone: '1133334444', origens: ['banco'], recebidaEm: '2026-11-05T13:00:00Z' } })
+  host = document.createElement('div')
+  document.body.append(host)
+  root = createRoot(host)
+  const fechar = vi.fn()
+  await act(async () => root.render(<DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: 'A' }} aoFechar={fechar} />))
+  await act(async () => root.render(<DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: 'B' }} aoFechar={fechar} />))
+  await act(async () => concluir({ ok: true, dados: dados('Empresa A') }))
+  const painel = host.querySelector('aside[data-painel-lateral]')!
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(painel.textContent).toContain('Empresa B')
+  expect(painel.textContent).not.toContain('Empresa A')
+  for (const grupo of ['Contatos', 'Cadastro', 'Endereço', 'Atividades e tributação', 'Sócios e administradores', 'Origem']) expect(painel.textContent).toContain(grupo)
+  expect(painel.textContent).toContain('Banco de empresas')
+  expect(painel.textContent).toContain('05/11/2026')
 })
