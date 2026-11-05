@@ -34,7 +34,7 @@ export async function lerAtendimento(usuarioId: string, empresaId: string): Prom
 
 // A tarefa vigente vem exclusivamente do vínculo. O lateral só fornece histórico.
 // Resumos em lotes de até 100 no mesmo snapshot evitam misturar agenda antiga com arquivo recente.
-export async function lerEmpresasAtendimento(usuarioId: string, somenteClientes = false, somenteDevidas = false): Promise<{ ok: true; linhas: EmpresaComigo[] } | { ok: false; motivo: 'sem_permissao' }> {
+export async function lerEmpresasAtendimento(usuarioId: string, somenteClientes = false, somenteComAgenda = false, hoje?: string): Promise<{ ok: true; linhas: EmpresaComigo[] } | { ok: false; motivo: 'sem_permissao' }> {
   try {
     return await comoUsuario(usuarioId, async sql => {
       type Linha = {
@@ -49,15 +49,15 @@ export async function lerEmpresasAtendimento(usuarioId: string, somenteClientes 
           WHEN v.iniciada_em IS NULL THEN 'a_contatar' ELSE 'atendimento' END AS situacao,
         ultimo.id AS ultimo_id,ultimo.nota,ultimo.criado_em,agenda.proximo_passo,to_char(agenda.proximo_passo_data,'YYYY-MM-DD') AS data,v.versao,
         CASE WHEN agenda.proximo_passo_data IS NULL THEN 'sem_data'
-          WHEN agenda.proximo_passo_data<(now() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'atrasado'
-          WHEN agenda.proximo_passo_data=(now() AT TIME ZONE 'America/Sao_Paulo')::date THEN 'hoje' ELSE 'futuro' END AS situacao_retorno,
-        coalesce(agenda.proximo_passo_data<(now() AT TIME ZONE 'America/Sao_Paulo')::date,false) AS vencido
+          WHEN agenda.proximo_passo_data<coalesce($4::date,(now() AT TIME ZONE 'America/Sao_Paulo')::date) THEN 'atrasado'
+          WHEN agenda.proximo_passo_data=coalesce($4::date,(now() AT TIME ZONE 'America/Sao_Paulo')::date) THEN 'hoje' ELSE 'futuro' END AS situacao_retorno,
+        coalesce(agenda.proximo_passo_data<coalesce($4::date,(now() AT TIME ZONE 'America/Sao_Paulo')::date),false) AS vencido
         FROM empresa_vinculo v JOIN empresa e ON e.id=v.empresa_id
         LEFT JOIN contato agenda ON agenda.id=v.agenda_contato_id AND agenda.empresa_id=v.empresa_id AND v.arquivada_em IS NULL
         LEFT JOIN LATERAL (SELECT c.id,c.nota,c.criado_em FROM contato c WHERE c.empresa_id=e.id ORDER BY c.criado_em DESC,c.id DESC LIMIT 1) ultimo ON true
         WHERE v.vendedor_id=$1 AND pode_ler() AND NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
           AND (NOT $2::boolean OR EXISTS(SELECT 1 FROM minhas_empresas_clientes() clientes WHERE clientes.empresa_id=e.id))
-          AND (NOT $3::boolean OR (v.arquivada_em IS NULL AND agenda.proximo_passo_data<=(now() AT TIME ZONE 'America/Sao_Paulo')::date))
+          AND (NOT $3::boolean OR (v.arquivada_em IS NULL AND agenda.proximo_passo_data IS NOT NULL))
         ), numeradas AS (
           SELECT id,(row_number() OVER(ORDER BY id)-1)/100 AS lote FROM selecionadas
         ), lotes AS (
@@ -67,11 +67,11 @@ export async function lerEmpresasAtendimento(usuarioId: string, somenteClientes 
           CROSS JOIN LATERAL jsonb_array_elements(empresas_resumos_ler(ids)->'empresas') item
         )
         SELECT s.*,r.empresa FROM selecionadas s LEFT JOIN resumos r ON r.empresa->>'id'=s.id::text
-        ORDER BY s.data ASC NULLS LAST,coalesce(r.empresa->>'nome',s.razao_social,s.nome_fantasia),s.id`, [usuarioId, somenteClientes, somenteDevidas])
+        ORDER BY s.data ASC NULLS LAST,coalesce(r.empresa->>'nome',s.razao_social,s.nome_fantasia),s.id`, [usuarioId, somenteClientes, somenteComAgenda, hoje ?? null])
       const enderecos = await resolverCeps(sql, [...new Set(linhas.flatMap(l => l.cep ? [l.cep] : []))])
       return { ok: true, linhas: linhas.flatMap(l => {
         const empresa = l.empresa ?? undefined
-        if (somenteDevidas && (!empresa || empresa.situacao === 'indisponivel')) return []
+        if (somenteComAgenda && (!empresa || empresa.situacao === 'indisponivel')) return []
         return [{ id: l.id, cnpj: l.cnpj, razaoSocial: l.razao_social, nomeFantasia: l.nome_fantasia, cnaePrincipal: l.cnae_principal,
           ultimoContato: l.ultimo_id ? { nota: l.nota, criadoEm: l.criado_em! } : null,
           contatoNome: l.contato_nome, telefone: l.telefone, email: l.email, cep: l.cep, endereco: l.cep ? enderecos.get(l.cep) ?? null : null,
@@ -85,6 +85,6 @@ export async function lerEmpresasAtendimento(usuarioId: string, somenteClientes 
   }
 }
 
-export function lerAgendaAtendimento(usuarioId: string): Promise<{ ok: true; linhas: EmpresaComigo[] } | { ok: false; motivo: 'sem_permissao' }> {
-  return lerEmpresasAtendimento(usuarioId, false, true)
+export function lerAgendaAtendimento(usuarioId: string, hoje?: string): Promise<{ ok: true; linhas: EmpresaComigo[] } | { ok: false; motivo: 'sem_permissao' }> {
+  return lerEmpresasAtendimento(usuarioId, false, true, hoje)
 }

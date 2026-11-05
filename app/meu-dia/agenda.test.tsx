@@ -1,3 +1,5 @@
+import { renderToStaticMarkup } from 'react-dom/server'
+import { FiltrosForm } from './filtros-form'
 import { expect, test } from 'vitest'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import {
@@ -19,14 +21,14 @@ function linha(p: Partial<EmpresaComigo> & { id: string }): EmpresaComigo {
   }
 }
 
-test('agenda traz só atrasado e hoje, atrasados primeiro', () => {
+test('Todos inclui atrasado, hoje e futuro, sem entradas sem data', () => {
   const linhas = [
     linha({ id: 'b', situacaoRetorno: 'hoje', proximoPassoData: '2026-09-11' }),
     linha({ id: 'c', situacaoRetorno: 'futuro', proximoPassoData: '2026-09-20' }),
     linha({ id: 'd', situacaoRetorno: 'sem_data' }),
     linha({ id: 'a', situacaoRetorno: 'atrasado', proximoPassoData: '2026-09-09' }),
   ]
-  expect(agendaDoDia(linhas).map(l => l.id)).toEqual(['a', 'b'])
+  expect(agendaDoDia(linhas).map(l => l.id)).toEqual(['a', 'b', 'c'])
 })
 
 test('dentro do mesmo estado ordena por data, nome e id', () => {
@@ -44,8 +46,8 @@ test('busca por nome ignora acento e caixa, e o filtro de retorno recorta', () =
     linha({ id: 'b', razaoSocial: 'Outra', situacaoRetorno: 'hoje', proximoPassoData: '2026-09-11' }),
   ]
   const agenda = agendaDoDia(linhas)
-  expect(filtrarAgenda(agenda, { nome: 'acao', retorno: '' }).map(l => l.id)).toEqual(['a'])
-  expect(filtrarAgenda(agenda, { nome: '', retorno: 'hoje' }).map(l => l.id)).toEqual(['b'])
+  expect(filtrarAgenda(agenda, { nome: 'acao', retorno: '', periodo: '' }, '2026-09-11').map(l => l.id)).toEqual(['a'])
+  expect(filtrarAgenda(agenda, { nome: '', retorno: 'hoje', periodo: '' }, '2026-09-11').map(l => l.id)).toEqual(['b'])
 })
 
 test('filtro recusa valor fora da lista, repetido e nome longo', () => {
@@ -53,18 +55,18 @@ test('filtro recusa valor fora da lista, repetido e nome longo', () => {
   expect(lerFiltrosMeuDia({ retorno: 'sem_data' }).ok).toBe(false)
   expect(lerFiltrosMeuDia({ nome: ['a', 'b'] }).ok).toBe(false)
   expect(lerFiltrosMeuDia({ nome: 'x'.repeat(121) }).ok).toBe(false)
-  expect(lerFiltrosMeuDia({})).toEqual({ ok: true, filtros: { nome: '', retorno: '' } })
+  expect(lerFiltrosMeuDia({})).toEqual({ ok: true, filtros: { nome: '', retorno: '', periodo: '' } })
 })
 
 test('parâmetro desconhecido é ignorado, não invalida a agenda', () => {
-  expect(lerFiltrosMeuDia({ de: 'meu-dia', qualquer: 'x' })).toEqual({ ok: true, filtros: { nome: '', retorno: '' } })
+  expect(lerFiltrosMeuDia({ de: 'meu-dia', qualquer: 'x' })).toEqual({ ok: true, filtros: { nome: '', retorno: '', periodo: '' } })
 })
 
 test('urls só carregam o que foi preenchido e marcam a origem', () => {
-  expect(urlMeuDia({ nome: '', retorno: '' })).toBe('/meu-dia')
-  expect(urlMeuDia({ nome: 'Aurora', retorno: 'atrasado' })).toBe('/meu-dia?nome=Aurora&retorno=atrasado')
-  expect(urlFichaDoMeuDia('abc', { nome: '', retorno: '' })).toBe('/carteira/abc?de=meu-dia')
-  expect(urlFichaDoMeuDia('abc', { nome: 'A B', retorno: 'hoje' }))
+  expect(urlMeuDia({ nome: '', retorno: '', periodo: '' })).toBe('/meu-dia')
+  expect(urlMeuDia({ nome: 'Aurora', retorno: 'atrasado', periodo: '' })).toBe('/meu-dia?nome=Aurora&retorno=atrasado')
+  expect(urlFichaDoMeuDia('abc', { nome: '', retorno: '', periodo: '' })).toBe('/carteira/abc?de=meu-dia')
+  expect(urlFichaDoMeuDia('abc', { nome: 'A B', retorno: 'hoje', periodo: '' }))
     .toBe('/carteira/abc?de=meu-dia&nome=A+B&retorno=hoje')
 })
 
@@ -75,7 +77,7 @@ test('urls só carregam o que foi preenchido e marcam a origem', () => {
 // destino: é essa a invariante de segurança que este teste protege.
 test('filtros válidos do Meu dia viram a própria url da agenda', () => {
   expect(voltarDoMeuDia({})).toBe('/meu-dia')
-  expect(voltarDoMeuDia({ nome: 'Aurora', retorno: 'atrasado' })).toBe('/meu-dia?nome=Aurora&retorno=atrasado')
+  expect(voltarDoMeuDia({ nome: 'Aurora', retorno: 'atrasado', periodo: '' })).toBe('/meu-dia?nome=Aurora&retorno=atrasado')
 })
 
 test('filtro inválido cai no literal fixo /meu-dia', () => {
@@ -109,9 +111,63 @@ test('nenhuma tentativa de destino arbitrário na query vira o caminho de volta'
 
 test('cadastro parcial usa fantasia na busca e no desempate sem mudar precedência de data', () => {
   const parcial = linha({ id: 'parcial', cnpj: null, razaoSocial: null, nomeFantasia: 'Câmeras Aurora', situacaoRetorno: 'hoje', proximoPassoData: '2026-09-11' })
-  expect(filtrarAgenda([parcial], { nome: 'null', retorno: '' })).toEqual([])
+  expect(filtrarAgenda([parcial], { nome: 'null', retorno: '', periodo: '' }, '2026-09-11')).toEqual([])
   const anterior = linha({ id: 'anterior', razaoSocial: 'Zeta', situacaoRetorno: 'atrasado', proximoPassoData: '2026-09-10' })
   const depois = linha({ id: 'depois', razaoSocial: 'Zeta', situacaoRetorno: 'hoje', proximoPassoData: '2026-09-11' })
   expect(agendaDoDia([depois, parcial, anterior]).map(e => e.id)).toEqual(['anterior', 'parcial', 'depois'])
-  expect(filtrarAgenda([parcial], { nome: 'cameras', retorno: '' })).toEqual([parcial])
+  expect(filtrarAgenda([parcial], { nome: 'cameras', retorno: '', periodo: '' }, '2026-09-11')).toEqual([parcial])
+})
+
+
+test('parsing aceita próximos e só conserva período para próximos', () => {
+  expect(lerFiltrosMeuDia({ nome: ' Ação ', retorno: 'proximos', periodo: 'amanha' }))
+    .toEqual({ ok: true, filtros: { nome: 'Ação', retorno: 'proximos', periodo: 'amanha' } })
+  for (const retorno of ['', 'hoje', 'atrasado']) {
+    expect(lerFiltrosMeuDia({ retorno, periodo: 'semana_que_vem' }))
+      .toEqual({ ok: true, filtros: { nome: '', retorno, periodo: '' } })
+  }
+  for (const params of [
+    { retorno: ['hoje', 'proximos'] }, { periodo: ['amanha', 'amanha'] },
+    { retorno: 'proximos', periodo: 'hoje' }, { periodo: 'invalido' },
+  ]) expect(lerFiltrosMeuDia(params).ok).toBe(false)
+})
+
+test('próximos cruza busca sem acento e limites inclusivos dos períodos', () => {
+  const agenda = agendaDoDia([
+    linha({ id: 'hoje', razaoSocial: 'Ação', situacaoRetorno: 'hoje', proximoPassoData: '2026-11-05' }),
+    ...['2026-11-06', '2026-11-08', '2026-11-09', '2026-11-15', '2026-11-16', '2026-12-01', '2026-12-31', '2027-01-01'].map(data =>
+      linha({ id: data, razaoSocial: 'Ação', situacaoRetorno: 'futuro', proximoPassoData: data })),
+    linha({ id: 'outra', razaoSocial: 'Outra', situacaoRetorno: 'futuro', proximoPassoData: '2026-11-06' }),
+  ])
+  const filtrar = (periodo: '' | 'amanha' | 'semana_que_vem' | 'mes_que_vem') =>
+    filtrarAgenda(agenda, { nome: 'ACAO', retorno: 'proximos', periodo }, '2026-11-05').map(l => l.id)
+  expect(filtrar('amanha')).toEqual(['2026-11-06'])
+  expect(filtrar('semana_que_vem')).toEqual(['2026-11-09', '2026-11-15'])
+  expect(filtrar('mes_que_vem')).toEqual(['2026-12-01', '2026-12-31'])
+  expect(filtrar('')).toEqual(['2026-11-06', '2026-11-08', '2026-11-09', '2026-11-15', '2026-11-16', '2026-12-01', '2026-12-31', '2027-01-01'])
+})
+
+test('URLs da ficha e da volta preservam período normalizado', () => {
+  const filtros = { nome: 'Ação Norte', retorno: 'proximos', periodo: 'semana_que_vem' } as const
+  expect(urlMeuDia(filtros)).toBe('/meu-dia?nome=A%C3%A7%C3%A3o+Norte&retorno=proximos&periodo=semana_que_vem')
+  expect(urlFichaDoMeuDia('abc', filtros)).toBe('/carteira/abc?de=meu-dia&nome=A%C3%A7%C3%A3o+Norte&retorno=proximos&periodo=semana_que_vem')
+  expect(voltarDoMeuDia(filtros)).toBe(urlMeuDia(filtros))
+  expect(urlMeuDia({ ...filtros, retorno: 'hoje' })).toBe('/meu-dia?nome=A%C3%A7%C3%A3o+Norte&retorno=hoje')
+  expect(voltarDoMeuDia({ retorno: 'proximos', periodo: ['amanha', 'amanha'] })).toBe('/meu-dia')
+})
+
+
+test('formulário oferece os quatro recortes e períodos preservando pesquisa', () => {
+  const html = renderToStaticMarkup(<FiltrosForm filtros={{ nome: 'Ação Norte', retorno: 'proximos', periodo: 'semana_que_vem' }} />)
+  const opcoes = (nome: string) => {
+    const select = html.match(new RegExp(`<select[^>]*name="${nome}"[^>]*>(.*?)</select>`))?.[1] ?? ''
+    return [...select.matchAll(/<option[^>]*value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(o => [o[1], o[2]])
+  }
+  expect(opcoes('retorno')).toEqual([
+    ['', 'Todos'], ['atrasado', 'Atrasos'], ['hoje', 'Hoje'], ['proximos', 'Próximos'],
+  ])
+  expect(opcoes('periodo').map(o => o[0])).toEqual(['', 'amanha', 'semana_que_vem', 'mes_que_vem'])
+  expect(html).toContain('<option value="proximos" selected="">Próximos</option>')
+  expect(html).toContain('<option value="semana_que_vem" selected="">Semana que vem</option>')
+  expect(html).toContain('value="Ação Norte"')
 })

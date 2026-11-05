@@ -16,7 +16,11 @@ export function FiltrosForm({ filtros }: { filtros: FiltrosMeuDia }) {
     <div><Label htmlFor="meu-dia-nome">Nome</Label><Input id="meu-dia-nome" name="nome" type="search"
       maxLength={120} defaultValue={filtros.nome} placeholder="Razão social ou nome fantasia" /></div>
     <div><Label htmlFor="meu-dia-retorno">Retorno</Label><NativeSelect id="meu-dia-retorno" name="retorno" defaultValue={filtros.retorno}>
-      <option value="">Todos</option><option value="atrasado">Atrasados</option><option value="hoje">Hoje</option>
+      <option value="">Todos</option><option value="atrasado">Atrasos</option><option value="hoje">Hoje</option><option value="proximos">Próximos</option>
+    </NativeSelect></div>
+    <div><Label htmlFor="meu-dia-periodo">Período de próximos</Label><NativeSelect id="meu-dia-periodo" name="periodo" defaultValue={filtros.periodo}>
+      <option value="">Todos os próximos</option><option value="amanha">Amanhã</option>
+      <option value="semana_que_vem">Semana que vem</option><option value="mes_que_vem">Mês que vem</option>
     </NativeSelect></div>
     </PainelFiltros>
   </Form>

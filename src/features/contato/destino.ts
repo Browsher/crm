@@ -16,7 +16,7 @@
 // aos olhos do tipo, embora seja ela que faz o trabalho (R-012).
 const ROTAS: Record<string, readonly string[] | undefined> = {
   '/carteira': ['nome', 'uf', 'retorno'],
-  '/meu-dia': ['nome', 'retorno'],
+  '/meu-dia': ['nome', 'retorno', 'periodo'],
 }
 
 // Base descartável só para o parser resolver o caminho. `.invalido` é TLD
@@ -77,6 +77,14 @@ export function destinoDeVolta(bruto: string): string | null {
     if (valor.length > LIMITE_FILTRO) return SEGURO
     if (temControle(valor)) return SEGURO
     filtros.set(chave, valor)
+  }
+
+  if (url.pathname === '/meu-dia') {
+    const retorno = filtros.get('retorno') ?? ''
+    const periodo = filtros.get('periodo') ?? ''
+    if (!['', 'atrasado', 'hoje', 'proximos'].includes(retorno)) return SEGURO
+    if (!['', 'amanha', 'semana_que_vem', 'mes_que_vem'].includes(periodo)) return SEGURO
+    if (retorno !== 'proximos') filtros.delete('periodo')
   }
 
   const query = filtros.toString()

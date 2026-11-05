@@ -22,9 +22,9 @@ import { AbasFicha } from '@/src/components/crm/abas-ficha'
 // `agendaDoDia`/`filtrarAgenda` devolve `EmpresaComigo[]`, então o
 // estreitamento não atravessa a fronteira do módulo sem isto. A página
 // (`app/meu-dia/page.tsx`) reaplica o mesmo predicate antes de passar a prop.
-export type LinhaMeuDia = EmpresaComigo & { situacaoRetorno: 'atrasado' | 'hoje' }
+export type LinhaMeuDia = EmpresaComigo & { situacaoRetorno: 'atrasado' | 'hoje' | 'futuro' }
 
-const ROTULO_RETORNO: Record<'atrasado' | 'hoje', string> = { atrasado: 'Atrasado', hoje: 'Hoje' }
+const ROTULO_RETORNO: Record<'atrasado' | 'hoje' | 'futuro', string> = { atrasado: 'Atrasado', hoje: 'Hoje', futuro: 'Próximo' }
 
 function dataCivil(valor: string): string {
   const [ano, mes, dia] = valor.split('-')

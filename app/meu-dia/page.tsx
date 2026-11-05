@@ -1,3 +1,4 @@
+import { dataCivilSaoPaulo } from '@/src/lib/agenda-periodos'
 import Link from 'next/link'
 import { lerAgendaAtendimento } from '@/src/server/atendimento/consulta'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
@@ -13,11 +14,12 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function PaginaMeuDia({ searchParams }: Props) {
   const eu = await exigir('vendedor')
-  const [r, params] = await Promise.all([lerAgendaAtendimento(eu.usuarioId), searchParams])
+  const hoje = dataCivilSaoPaulo(new Date())
+  const [r, params] = await Promise.all([lerAgendaAtendimento(eu.usuarioId, hoje), searchParams])
   const leitura = lerFiltrosMeuDia(params)
   const agenda = r.ok ? agendaDoDia(r.linhas) : []
-  const filtradas = leitura.ok ? filtrarAgenda(agenda, leitura.filtros) : []
-  // `agendaDoDia`/`filtrarAgenda` só deixam passar `atrasado`/`hoje` (veja o
+  const filtradas = leitura.ok ? filtrarAgenda(agenda, leitura.filtros, hoje) : []
+  // `agendaDoDia`/`filtrarAgenda` só deixam passar `atrasado`/`hoje`/`futuro` (veja o
   // type predicate de `agendaDoDia` em `app/meu-dia/agenda.ts`), mas a
   // assinatura pública das duas devolve `EmpresaComigo[]`. Reaplicar o mesmo
   // predicate aqui estreita o tipo sem cast, para `PainelMeuDia` receber
@@ -25,12 +27,12 @@ export default async function PaginaMeuDia({ searchParams }: Props) {
   // antes do filtro de nome/retorno): o painel precisa da lista, não só do
   // tamanho, para a contagem reconciliar sozinha com prop nova depois de uma
   // remoção no cliente (posse negada).
-  const ehLinhaDoDia = (l: EmpresaComigo): l is LinhaMeuDia => l.situacaoRetorno === 'atrasado' || l.situacaoRetorno === 'hoje'
+  const ehLinhaDoDia = (l: EmpresaComigo): l is LinhaMeuDia => l.situacaoRetorno === 'atrasado' || l.situacaoRetorno === 'hoje' || l.situacaoRetorno === 'futuro'
   const linhasDoDia: LinhaMeuDia[] = filtradas.filter(ehLinhaDoDia)
   const agendaDoDiaEstreita: LinhaMeuDia[] = agenda.filter(ehLinhaDoDia)
 
   return <main className={styles.pagina}>
-    <CabecalhoPagina titulo="Meu dia" descricao="Retornos atrasados e de hoje." />
+    <CabecalhoPagina titulo="Meu dia" descricao="Retornos atrasados, de hoje e próximos." />
     {!r.ok ? <p role="alert">{textoDoMotivo(r.motivo)}</p> : !leitura.ok ? <div role="alert" className={styles.vazio}>
       <h2>Filtros inválidos</h2>
       <p>Os filtros informados não puderam ser aplicados.</p>

@@ -36,7 +36,7 @@ function preenchimento(indice: number): LinhaMeuDia {
     situacaoRetorno: 'hoje', vencido: false,
   }
 }
-const FILTROS = { nome: '', retorno: '' as const }
+const FILTROS = { nome: '', retorno: '' as const, periodo: '' as const }
 
 let raiz: ReturnType<typeof createRoot> | null = null
 let host: HTMLDivElement | null = null

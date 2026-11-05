@@ -17,7 +17,7 @@ const boreal: LinhaMeuDia = {
 
 test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
   // Agenda vazia de verdade: "0 de 0" não ajuda ninguém, sem contagem.
-  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[]} filtros={{ nome: '', retorno: '' }} />)
+  const vazia = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[]} filtros={{ nome: '', retorno: '', periodo: '' }} />)
   expect(vazia).toContain('Nenhum retorno pendente para hoje')
   expect(vazia).toContain('href="/carteira"')
   expect(vazia).toContain('href="/fila"')
@@ -26,7 +26,7 @@ test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
 
   // Busca sem resultado: a agenda tem itens, só o filtro não bateu com
   // nenhum. A contagem continua acima do vazio, como sempre apareceu.
-  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[aurora, boreal]} filtros={{ nome: 'zzz', retorno: '' }} />)
+  const semResultado = renderToStaticMarkup(<PainelMeuDia linhas={[]} agenda={[aurora, boreal]} filtros={{ nome: 'zzz', retorno: '', periodo: '' }} />)
   expect(semResultado).toContain('Nenhuma empresa corresponde à busca')
   expect(semResultado).toContain('href="/meu-dia"')
   expect(semResultado).not.toContain('Nenhum retorno pendente para hoje')
@@ -34,7 +34,7 @@ test('agenda vazia e busca sem resultado dizem coisas diferentes', () => {
 })
 
 test('primeira empresa já aparece selecionada e o link leva a ficha com os filtros', () => {
-  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} agenda={[aurora, boreal]} filtros={{ nome: '', retorno: 'atrasado' }} />)
+  const html = renderToStaticMarkup(<PainelMeuDia linhas={[aurora, boreal]} agenda={[aurora, boreal]} filtros={{ nome: '', retorno: 'atrasado', periodo: '' }} />)
   expect(html).toContain('Aurora')
   expect(html).toContain('Abrir atendimento')
   expect(html).toContain(`href="/carteira/${aurora.id}?de=meu-dia&amp;retorno=atrasado"`)
