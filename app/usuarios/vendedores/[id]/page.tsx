@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/src/components/ui/card'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
+import { HistoricoComercial } from '@/src/components/crm/historico-comercial'
+import type { EventoHistoricoComercial } from '@/src/lib/historico-comercial'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@/src/components/ui/table'
 import { notFound } from 'next/navigation'
@@ -14,7 +16,6 @@ import { lerRecorteUsuarios, urlPerfilUsuario, urlUsuarios } from '@/src/lib/rec
 import geral from '../../../gestao/gestao.module.css'
 import styles from './perfil.module.css'
 
-const horario = new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short', timeZone:'America/Sao_Paulo' })
 function dataCivil(data: string) { return data.split('-').reverse().join('/') }
 
 export default async function Perfil({ params, searchParams }: {
@@ -29,6 +30,20 @@ export default async function Perfil({ params, searchParams }: {
   const paginas = Math.max(1, Math.ceil(dados.totalEmpresas / EMPRESAS_POR_PAGINA))
   const recorte = lerRecorteUsuarios(query, true)
   const endereco = (pagina: number) => urlPerfilUsuario(dados.id, recorte, pagina)
+  const eventos: EventoHistoricoComercial[] = dados.atividade.map(contato => {
+    const resultado = ehTipo(contato.tipo) ? ROTULO[contato.tipo] : contato.tipo
+    return {
+      id: contato.id,
+      empresa: contato.empresa,
+      natureza: contato.natureza,
+      titulo: contato.natureza === 'atividade_sem_ligacao' ? 'Atividade sem ligação' : resultado,
+      criadoEm: contato.em,
+      autor: dados.nome,
+      nota: contato.nota,
+      resultado,
+      ...(contato.proximoPasso ? { proximoPasso: { descricao: contato.proximoPasso, data: contato.retorno } } : {}),
+    }
+  })
   return <main className={geral.pagina}>
     <div><Button asChild variant="outline"><Link href={urlUsuarios(recorte)}>Voltar para Usuários</Link></Button></div>
     <div><p className={styles.auxiliar}>Perfil do vendedor</p><CabecalhoPagina titulo={dados.nome} descricao={dados.email} acoes={<div className={styles.acoes}><Badge variant="success">Ativo</Badge><Button asChild variant="outline"><a href={endereco(dados.pagina)}>Atualizar</a></Button></div>} /></div>
@@ -59,12 +74,7 @@ export default async function Perfil({ params, searchParams }: {
       <Card role="region" aria-labelledby="titulo-historico" className={styles.secao}><CardContent>
         <h2 id="titulo-historico">Últimos atendimentos</h2><p>Até 20 registros, incluindo empresas atendidas anteriormente. Horário de Brasília.</p>
         {!dados.atividade.length ? <EstadoVazio nivelTitulo={3} titulo="Nenhum atendimento registrado" descricao="Os últimos atendimentos deste vendedor aparecem aqui." /> :
-          <ol className={styles.historico}>{dados.atividade.map(c => <li key={c.id}>
-            <strong>{c.empresa}</strong><time dateTime={c.em}>{horario.format(new Date(c.em))}</time>
-            <p>{ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</p>
-            <p className={styles.nota}>{c.nota ?? 'Sem anotação.'}</p>
-            {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.retorno ? ` em ${dataCivil(c.retorno)}` : ''}</p> : null}
-          </li>)}</ol>}
+          <HistoricoComercial eventos={eventos} mostrarEmpresa />}
       </CardContent></Card>
     </div>
   </main>

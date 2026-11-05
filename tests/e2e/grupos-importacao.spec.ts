@@ -122,6 +122,8 @@ test('listas históricas permitem corrigir contexto, renomear e desativar preser
     await vendedor.goto('/carteira')
     await expect(vendedor.getByRole('heading', { name: CARTEIRA, exact: true })).toBeVisible()
     await vendedor.getByRole('link', { name: 'Ver cliente', exact: true }).click()
+    await vendedor.getByRole('tab', { name: 'Histórico', exact: true }).click()
+    await vendedor.getByRole('button', { name: 'Expandir todos', exact: true }).click()
     await expect(vendedor.getByText('Histórico preservado da jornada', { exact: true })).toBeVisible()
     await vendedor.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(NOVA)}`)
     await expect(vendedor.getByRole('heading', { name: 'Nenhuma empresa com esses filtros', exact: true })).toBeVisible()

@@ -7,8 +7,7 @@ import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { lerPerfilEmpresa } from '@/src/features/empresas/perfil'
 import { lerHistorico } from '@/src/features/contato/historico'
-import { ResumoVenda } from '@/src/components/crm/resumo-venda'
-import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
+import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
 import { formatarCnpj, formatarTelefone } from '@/src/features/empresas/formato'
 import { aplicarFiltrosEmpresas, enderecoEmpresas, lerConsulta } from '@/src/features/empresas/consulta'
 import { lerFiltrosEmpresas } from '@/src/features/empresas/filtros'
@@ -85,13 +84,7 @@ export default async function PaginaPerfil({ params, searchParams }: {
       </CardContent></Card>
     </div>} historico={<><HistoricoGoogleEmpresa coletas={coletas} enderecoColeta={enderecoColeta} />{empresa.arquivo && <Card><CardHeader><CardTitle>Arquivamento e negociações</CardTitle></CardHeader><CardContent><p>Arquivada em {horario.format(new Date(empresa.arquivo.arquivadaEm))}.</p><ul>{empresa.arquivo.negociacoes.map(n => <li key={n.id}>{rotuloSituacao(n.etapa as 'primeiro_contato' | 'em_negociacao' | 'proposta_enviada')} · {n.vendedor ?? 'Autor preservado'} · {n.encerramento === 'arquivamento_legado' ? 'Encerrada por arquivamento da base antiga' : n.encerramento}{n.encerradaEm ? ` em ${horario.format(new Date(n.encerradaEm))}` : ''}</li>)}</ul></CardContent></Card>}<Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
       {!historico.ok ? <Alert variant="danger">Não foi possível carregar o histórico. Atualize a página para tentar novamente.</Alert> : !historico.contatos.length ? <p>Nenhum atendimento registrado.</p> :
-        <ol className={styles.historico}>{historico.contatos.map(c => <li key={c.id}>
-          <div><strong>{c.venda ? 'Venda registrada' : ehTipo(c.tipo) ? ROTULO[c.tipo] : 'Contato registrado'}</strong><time dateTime={c.criadoEm.toISOString()}>{horario.format(c.criadoEm)}</time></div>
-          {c.venda ? <ResumoVenda venda={c.venda} /> : null}
-          <p>{c.nota ?? 'Sem anotação.'}</p>
-          {c.proximoPasso ? <p><strong>Próximo passo:</strong> {c.proximoPasso}{c.proximoPassoData ? ` em ${dataCivil(c.proximoPassoData)}` : ''}</p> : null}
-          <p className={styles.autor}>Registrado por {c.autor ?? 'sistema'}</p>
-        </li>)}</ol>}
+        <LinhaDoTempo contatos={historico.contatos} />}
     </CardContent></Card></>} /></div>
   </main>
 }

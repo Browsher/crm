@@ -1,247 +1,208 @@
 'use client'
 
-import { Cartao } from '../fila/cartao'
-import { ROTULO, ehTipo } from '@/src/features/contato/tipos'
-import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
-
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
-import type { Contato } from '@/src/features/contato/historico'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
-import { Card } from '@/src/components/ui/card'
+import type { NegociacaoResumo } from '@/src/features/funil/consulta'
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
+import { DadosEmpresaPainel } from '@/src/components/crm/empresa-dialogo'
 import { Button } from '@/src/components/ui/button'
+import { pedirSaidaDaEdicao, useDescarteEdicao } from '@/src/components/crm/descarte-edicao'
+import { useEnvioVenda } from '@/src/lib/use-envio-venda'
+import { transmitirVenda } from '../venda-envio'
+import { PainelNegociacao, type PedirFecharNegociacao } from '../funil/modal'
+import { ConfirmarArquivamento } from '../funil/arquivo-lateral'
+import { useEnvioArquivo } from '../funil/use-envio-arquivo'
 import { urlFichaDoMeuDia, urlMeuDia, type FiltrosMeuDia } from './agenda'
-import { historicoDaAgendaAcao } from './historico-acao'
+import { RetornoPainel, type AbaRetorno } from './retorno-painel'
 import styles from './meu-dia.module.css'
-import { ResumoVenda } from '@/src/components/crm/resumo-venda'
-import { AbasFicha } from '@/src/components/crm/abas-ficha'
 
-// Mesmo estreitamento do type predicate de `agendaDoDia`
-// (`app/meu-dia/agenda.ts`), repetido aqui porque a assinatura exportada de
-// `agendaDoDia`/`filtrarAgenda` devolve `EmpresaComigo[]`, então o
-// estreitamento não atravessa a fronteira do módulo sem isto. A página
-// (`app/meu-dia/page.tsx`) reaplica o mesmo predicate antes de passar a prop.
-export type LinhaMeuDia = EmpresaComigo & { situacaoRetorno: 'atrasado' | 'hoje' }
+export type LinhaMeuDia = EmpresaComigo & { situacaoRetorno: 'atrasado' | 'hoje' | 'futuro' }
+type Retorno = { tipo: 'retorno'; empresaId: string; aba: AbaRetorno }
+type Dados = { tipo: 'dados'; empresaId: string; anterior: Contexto }
+type Contexto = { painel: Retorno | Dados | null; gatilho: HTMLElement }
+type Painel = Retorno
+  | Dados
+  | { tipo: 'negociacao'; empresaId: string; negociacaoId: string; anterior: Contexto }
+  | null
+type Props = { usuarioId: string; linhas: LinhaMeuDia[]; agenda: LinhaMeuDia[]; filtros: FiltrosMeuDia }
+const ROTULO_RETORNO = { atrasado: 'Atrasado', hoje: 'Hoje', futuro: 'Próximo' }
 
-const ROTULO_RETORNO: Record<'atrasado' | 'hoje', string> = { atrasado: 'Atrasado', hoje: 'Hoje' }
-
-function dataCivil(valor: string): string {
-  const [ano, mes, dia] = valor.split('-')
-  return ano && mes && dia ? `${dia}/${mes}/${ano}` : valor
+export function PainelMeuDia(props: Props) {
+  return <PainelDoUsuario key={props.usuarioId} {...props} />
 }
 
-function dataHora(valor: Date): string {
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(valor)
-}
-
-function resumo(nota: string | null): string {
-  if (!nota) return 'Atividade registrada sem anotação'
-  return nota.length <= 180 ? nota : `${nota.slice(0, 179).trimEnd()}…`
-}
-
-function localizacao(empresa: EmpresaComigo): string {
-  if (empresa.endereco) return `${empresa.endereco.localidade}, ${empresa.endereco.uf}`
-  if (empresa.cep) return `CEP ${empresa.cep}. Localização não encontrada na base de CEP`
-  return 'Localização não informada'
-}
-
-// `historicoAtual` (abaixo) só usa `historico` quando o `empresaId` bate com
-// a seleção corrente. Isso cobre troca para OUTRA empresa, mas sozinho não
-// cobre ida e volta: reselecionar a MESMA empresa (A -> B -> A) dispara um
-// pedido novo com o MESMO empresaId de um `historico` que já existe em
-// estado (de uma resposta anterior), e só comparar id deixaria esse dado
-// velho vazar de volta para a tela enquanto o pedido novo está no ar. Por
-// isso o clique que muda a seleção (não o efeito: `setState` síncrono no
-// corpo de um efeito é código que o projeto proíbe, por bom motivo — ver
-// `react-hooks/set-state-in-effect`) também zera `historico` na hora: a tela
-// cai em "Carregando histórico" no mesmo render do clique, sem esperar o
-// efeito rodar. Quem decide se o novo pedido "ganha" o direito de preencher
-// `historico` de novo é o guarda de identidade (`pedido.current`) dentro do
-// `.then`/`.catch`.
-type EstadoHistorico =
-  | { fase: 'pronto'; empresaId: string; contatos: Contato[] }
-  | { fase: 'erro'; empresaId: string; motivo: 'falha' }
-
-function Historico({ contatos }: { contatos: Contato[] }) {
-  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma atividade registrada" descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
-  return <ol className={styles.historico}>{contatos.map(c => <li key={c.id}>
-    {c.venda ? <><strong>Venda registrada</strong><ResumoVenda venda={c.venda} />{c.nota ? <p>{resumo(c.nota)}</p> : null}<p>Registrado por {c.autor ?? 'sistema'}</p></> : <><strong>{c.tipo === 'nao_liguei' ? 'Atividade sem ligação: Não liguei' : ehTipo(c.tipo) ? ROTULO[c.tipo] : c.tipo}</strong><p>{resumo(c.nota)}</p><p>Registrado por {c.autor ?? 'sistema'}</p></>}
-    <time dateTime={c.criadoEm.toISOString()}>{dataHora(c.criadoEm)}</time>
-  </li>)}</ol>
-}
-
-export function PainelMeuDia({ linhas, agenda, filtros }: { linhas: LinhaMeuDia[]; agenda: LinhaMeuDia[]; filtros: FiltrosMeuDia }) {
-  const [selecionada, setSelecionada] = useState<string | null>(null)
-  const [perfilMovel, setPerfilMovel] = useState(false)
-  const listaRef = useRef<HTMLUListElement>(null)
-  const devolverFoco = useRef(false)
-  useEffect(() => {
-    if (!perfilMovel && devolverFoco.current) {
-      devolverFoco.current = false
-      listaRef.current?.querySelector<HTMLButtonElement>('[aria-current]')?.focus()
-    }
-  }, [perfilMovel])
-  // Ids que a própria tela já sabe que saíram da carteira (posse negada),
-  // sem esperar a próxima revalidação do servidor. `linhas`/`agenda`
-  // continuam sendo a prop do servidor a cada render; `linhasEfetivas` e
-  // `agendaEfetiva` são o que a tela realmente mostra.
-  //
-  // De propósito, NUNCA se limpa `removidos` a cada prop nova: um id que o
-  // servidor pare de mandar simplesmente não aparece mais em
-  // `linhas`/`agenda`, então filtrar por ele vira um não-operação sozinho
-  // (a linha já não estava lá para ser filtrada). Só isso já faz a contagem
-  // reconciliar sem subtrair a mesma remoção duas vezes: os dois números
-  // vêm de filtrar listas, nunca de um contador subtraído de um total
-  // congelado. E se uma revalidação devolver a MESMA lista de antes (atraso
-  // de réplica, por exemplo), o id continua em `removidos` e o item não
-  // volta a aparecer — não tem timer, não tem `useEffect` de sincronização,
-  // só a mesma filtragem em todo render.
+function PainelDoUsuario({ usuarioId, linhas, agenda, filtros }: Props) {
+  const router = useRouter()
+  const arquivo = useEnvioArquivo(usuarioId)
+  const venda = useEnvioVenda(usuarioId, transmitirVenda)
+  const [painel, setPainel] = useState<Painel>(null)
   const [removidos, setRemovidos] = useState<ReadonlySet<string>>(() => new Set())
-  const linhasEfetivas = linhas.filter(l => !removidos.has(l.id))
-  const agendaEfetiva = agenda.filter(l => !removidos.has(l.id))
-  const totalEfetivo = agendaEfetiva.length
-
-  // O aviso guarda A QUAL EMPRESA ele se refere, não um booleano solto: fica
-  // ativo só enquanto esse id ainda está em `linhas` (a prop crua, antes do
-  // filtro de `removidos`). Assim que o servidor manda uma lista nova sem
-  // aquele id (o link "Recarregar a agenda" é só um `Link` para a mesma
-  // rota — o painel não remonta), `avisoAtivo` cai sozinho, no mesmo render
-  // que recebe a prop, sem efeito e sem limpeza explícita.
+  const [aviso, setAviso] = useState('')
   const [avisoParaId, setAvisoParaId] = useState<string | null>(null)
-  const avisoAtivo = avisoParaId !== null && linhas.some(l => l.id === avisoParaId)
-  const alertaRef = useRef<HTMLDivElement>(null)
+  const [confirmacao, setConfirmacao] = useState<NegociacaoResumo | null>(null)
+  const [filtroAnterior, setFiltroAnterior] = useState(JSON.stringify(filtros))
+  const fecharNegociacao = useRef<PedirFecharNegociacao | null>(null)
+  const origem = useRef<HTMLElement | null>(null)
+  const focoConfirmacao = useRef<HTMLElement | null>(null)
+  const alerta = useRef<HTMLDivElement>(null)
+  const contagem = useRef<HTMLParagraphElement>(null)
+  const identidade = useRef<object | null>(null)
+  const vivo = useRef(true)
+  const operando = useRef(false)
+  const linhasEfetivas = linhas.filter(linha => !removidos.has(linha.id))
+  const agendaEfetiva = agenda.filter(linha => !removidos.has(linha.id))
+  const atual = painel ? linhasEfetivas.find(linha => linha.id === painel.empresaId) : undefined
+  const avisoAtivo = avisoParaId !== null && linhas.some(linha => linha.id === avisoParaId)
 
-  // `selecionada === null` é "nada escolhido ainda": cai na primeira da
-  // lista, como sempre. Uma vez que existe uma escolha explícita (mesmo que
-  // essa empresa tenha acabado de sumir da lista por posse negada), não há
-  // fallback para outra: escolher sozinho disparia um pedido de histórico
-  // que o usuário não pediu.
-  const atual = selecionada === null ? linhasEfetivas[0] : linhasEfetivas.find(l => l.id === selecionada)
-  const atualId = atual?.id
-  const [historico, setHistorico] = useState<EstadoHistorico | null>(null)
-  const pedido = useRef<object | null>(null)
+  // A ausência é persistida no estado: uma prop posterior que recoloque o id
+  // não reabre a seleção. Filtros são submetidos somente após a guarda do editor.
+  if (filtroAnterior !== JSON.stringify(filtros)) {
+    setFiltroAnterior(JSON.stringify(filtros))
+    setPainel(null)
+  } else if (painel && !atual) setPainel(null)
 
   useEffect(() => {
-    if (!atualId) { pedido.current = null; return }
-    const meu = {}
-    pedido.current = meu
-    void historicoDaAgendaAcao(atualId)
-      .then(r => {
-        if (pedido.current !== meu) return
-        if (!r.ok && r.motivo === 'fora_da_carteira') {
-          setPerfilMovel(true)
-          // A posse mudou: a empresa sai da lista e do perfil, sem escolher
-          // outra sozinho. Trava a seleção no id que acabou de sumir (mesmo
-          // que tenha chegado aqui pelo fallback implícito de `linhas[0]`),
-          // para que `atual` vire `undefined` depois da remoção e nenhum
-          // outro item vire seleção automática.
-          setSelecionada(atualId)
-          setRemovidos(prev => { const novo = new Set(prev); novo.add(atualId); return novo })
-          setAvisoParaId(atualId)
-          return
-        }
-        setHistorico(r.ok
-          ? { fase: 'pronto', empresaId: atualId, contatos: r.contatos }
-          : { fase: 'erro', empresaId: atualId, motivo: 'falha' })
-      })
-      .catch(() => {
-        if (pedido.current !== meu) return
-        setHistorico({ fase: 'erro', empresaId: atualId, motivo: 'falha' })
-      })
-  }, [atualId])
+    vivo.current = true
+    return () => { vivo.current = false; identidade.current = null }
+  }, [])
+  useEffect(() => { if (avisoAtivo) alerta.current?.focus() }, [avisoAtivo])
+  useDescarteEdicao(false, arquivo.pendente || venda.pendente && painel?.tipo !== 'negociacao')
 
-  // Foco segue o aviso quando ele aparece: o botão que estava focado acabou
-  // de sair do DOM (a empresa saiu da lista), e sem isto o foco cairia no
-  // `body`, perdendo o lugar de quem navega por teclado — o equivalente, no
-  // teclado, da rolagem preservada para quem usa mouse. Só dispara na
-  // TRANSIÇÃO para `avisoAtivo === true` (dependência no array de deps),
-  // nunca em outro momento, então não sequestra foco enquanto o aviso já
-  // estava visível ou depois que ele some.
-  useEffect(() => {
-    if (avisoAtivo) alertaRef.current?.focus()
-  }, [avisoAtivo])
+  const remover = useCallback((id: string) => {
+    setRemovidos(anteriores => new Set(anteriores).add(id))
+    setAvisoParaId(id)
+    setPainel(null)
+    identidade.current = null
+  }, [])
 
-  const aviso = <div role="alert" tabIndex={-1} ref={alertaRef} className={styles.perfil}>
-    <Button type="button" variant="ghost" className={styles.voltarMovel} onClick={() => setPerfilMovel(false)}>Voltar para retornos</Button>
-    <h2>Esta empresa não está mais na sua agenda</h2>
-    <p>O vínculo ou a tarefa mudou desde que a agenda foi carregada.</p>
-    <Link href={urlMeuDia(filtros)}>Recarregar a agenda</Link>
-  </div>
-
-  if (linhasEfetivas.length === 0) {
-    const semFiltro = filtros.nome === '' && filtros.retorno === ''
-    if (semFiltro) {
-      // Agenda vazia de verdade: "0 de 0 retornos" não ajuda ninguém.
-      return <>{avisoAtivo && aviso}<EstadoVazio titulo="Nenhum retorno pendente para hoje" descricao="Não há tentativas ou retornos atrasados ou de hoje." acao={{ rotulo: 'Ir para Prospecção', href: '/fila' }} /><Button asChild variant="outline"><Link href="/carteira">Ver carteira completa</Link></Button></>
+  function focar(alvo: HTMLElement | null) {
+    requestAnimationFrame(() => {
+      const conectado = alvo?.isConnected ? alvo : alvo?.id ? document.getElementById(alvo.id) : null
+      if (conectado) conectado.focus()
+      else contagem.current?.focus()
+    })
+  }
+  function fechar() { identidade.current = null; setPainel(null); focar(origem.current) }
+  function trocar(proximo: NonNullable<Painel>, gatilho: HTMLElement) {
+    if (arquivo.pendente || venda.pendente || confirmacao || operando.current) return
+    const abrir = () => {
+      identidade.current = {}
+      origem.current = gatilho
+      setAvisoParaId(null)
+      setPainel(proximo)
     }
-    // Busca sem resultado: a contagem continua acima do vazio, como sempre
-    // apareceu (a mudança de trazer a contagem para dentro do painel não
-    // deveria ter tirado isto — corrigido).
-    return <>
-      {avisoAtivo && aviso}
-      <p className={styles.contagem}>0 de {totalEfetivo} {totalEfetivo === 1 ? 'retorno' : 'retornos'}</p>
-      <EstadoVazio titulo="Nenhuma empresa corresponde à busca" descricao="Altere os campos ou limpe os filtros para ver a agenda de hoje." acao={{ rotulo: 'Limpar filtros', href: '/meu-dia' }} />
-    </>
+    if (painel?.tipo === 'negociacao' && fecharNegociacao.current) fecharNegociacao.current(abrir)
+    else abrir()
+  }
+  function voltar(anterior: Contexto) {
+    identidade.current = {}
+    setPainel(anterior.painel)
+    focar(anterior.gatilho)
+  }
+  async function recuperarVenda() {
+    if (operando.current || arquivo.pendente || venda.pendente) return
+    operando.current = true
+    setAviso('')
+    const pedido = identidade.current
+    const empresaDaVenda = venda.comando?.empresaId
+    try {
+      const resultado = await venda.enviar()
+      if (!vivo.current || !resultado) return
+      if (resultado.ok) {
+        setAviso(resultado.aviso ?? 'Venda anterior confirmada.')
+        if (identidade.current === pedido && painel?.empresaId === empresaDaVenda) fechar()
+        router.refresh()
+      }
+    } finally { operando.current = false }
+  }
+  async function arquivar(linha?: NegociacaoResumo) {
+    if (operando.current || venda.pendente || arquivo.pendente) return
+    operando.current = true
+    setAviso('')
+    const alvo = linha ?? arquivo.comando?.linha
+    if (!alvo) { operando.current = false; return }
+    const pedido = identidade.current
+    setConfirmacao(null)
+    try {
+      const resultado = await (linha ? arquivo.enviar(linha) : arquivo.recuperar())
+      if (!vivo.current || !resultado) return
+      if (!resultado.ok) { setAviso(resultado.erro ?? 'Não foi possível confirmar o arquivamento.'); return }
+      if (resultado.atual === true) {
+        setRemovidos(anteriores => new Set(anteriores).add(alvo.empresaId))
+        if (identidade.current === pedido && painel?.empresaId === alvo.empresaId) fechar()
+      }
+      setAviso(resultado.repetida ? 'Arquivamento anterior confirmado.' : 'Empresa marcada como Sem interesse.')
+      router.refresh()
+    } finally { operando.current = false }
   }
 
-  const historicoAtual = historico && atual && historico.empresaId === atual.id ? historico : null
-
+  const semFiltro = filtros.nome === '' && filtros.retorno === ''
+  const recuperacao = <section className={styles.recuperacao} aria-label="Envios anteriores">
+    {venda.comando && <Button variant="outline" disabled={venda.pendente || arquivo.pendente} onClick={() => pedirSaidaDaEdicao(() => void recuperarVenda())}>Confirmar venda anterior</Button>}
+    {arquivo.comando && <Button variant="outline" disabled={arquivo.pendente || venda.pendente} onClick={() => pedirSaidaDaEdicao(() => void arquivar())}>Confirmar arquivamento anterior</Button>}
+    {(aviso || arquivo.aviso || venda.erro) && <p role="status">{aviso || arquivo.aviso || venda.erro}</p>}
+  </section>
   return <>
-    <p className={styles.contagem}>{linhasEfetivas.length} de {totalEfetivo} {totalEfetivo === 1 ? 'retorno' : 'retornos'}</p>
-    <div className={styles.corpo} data-painel-movel={perfilMovel ? 'ficha' : 'lista'}>
-      <ul ref={listaRef} className={styles.colunaLista} data-testid="lista-meu-dia">
-        {linhasEfetivas.map(empresa => {
-          const ehSelecionada = empresa.id === atual?.id
-          return <li key={empresa.id}>
-            <button type="button" className={styles.item} data-retorno={empresa.situacaoRetorno} aria-current={ehSelecionada ? 'true' : undefined}
-              onClick={() => {
-                setPerfilMovel(true)
-                setSelecionada(empresa.id)
-                setAvisoParaId(null)
-                // Zera aqui, no clique (não no efeito, que só reage depois do
-                // commit): revisitar a MESMA empresa (ida e volta) não pode
-                // reexibir um `historico` velho enquanto o novo pedido está no
-                // ar. `historicoAtual` já filtra por id para empresas
-                // diferentes; isto cobre o caso em que o id bate de novo.
-                if (empresa.id !== atualId) setHistorico(null)
-              }}>
-              <strong>{nomeEmpresa(empresa)}</strong>
-              <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span>
-              <span>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</span>
-              {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
-            </button>
-          </li>
-        })}
-      </ul>
-      {avisoAtivo ? <div className={styles.colunaPerfil}>
-        {aviso}
-      </div> : atual ? <div className={styles.colunaPerfil}>
-        <Card role="article" className={styles.perfil}>
-          <Button type="button" variant="ghost" className={styles.voltarMovel} onClick={() => { devolverFoco.current = true; setPerfilMovel(false) }}>Voltar para retornos</Button>
-          {atual.empresa ? <Cartao empresa={atual.empresa} hrefCarteira={urlFichaDoMeuDia(atual.id, filtros)} /> : <header>
-            <h2>{nomeEmpresa(atual)}</h2>
-            {atual.razaoSocial && atual.nomeFantasia ? <p>{atual.nomeFantasia}</p> : null}
-          </header>}
-          <AbasFicha dados={<><dl className={styles.dados}>
-            <div><dt>Contato principal</dt><dd>{atual.contatoNome ?? 'Contato principal não informado'}</dd></div>
-            <div><dt>Telefone</dt><dd>{atual.telefone || 'Telefone não cadastrado'}</dd></div>
-            <div><dt>E-mail</dt><dd>{atual.email ?? 'E-mail não cadastrado'}</dd></div>
-            <div><dt>Localização</dt><dd>{localizacao(atual)}</dd></div>
-          </dl>
-          <section className={styles.bloco} aria-label="Próximo passo">
-            <h3>Próximo passo</h3>
-            <p>{atual.proximoPasso ?? 'Sem próximo passo combinado'}</p>
-            {atual.proximoPassoData ? <time dateTime={atual.proximoPassoData}>{dataCivil(atual.proximoPassoData)}</time> : null}
-          </section></>} historico={<section className={styles.bloco} aria-label="Histórico">
-            <h3>Histórico</h3>
-            {!historicoAtual ? <p>Carregando histórico</p>
-              : historicoAtual.fase === 'pronto' ? <Historico contatos={historicoAtual.contatos} />
-              : <p role="alert">Não foi possível carregar o histórico.</p>}
-          </section>} />
-          <Button asChild><Link href={urlFichaDoMeuDia(atual.id, filtros)}>Abrir atendimento</Link></Button>
-        </Card>
-      </div> : null}
-    </div>
+    {recuperacao}
+    {avisoAtivo && <div role="alert" tabIndex={-1} ref={alerta} className={styles.vazio}>
+      <h2>Esta empresa não está mais na sua agenda</h2>
+      <p>O vínculo ou a tarefa mudou desde que a agenda foi carregada.</p>
+      <Link href={urlMeuDia(filtros)}>Recarregar a agenda</Link>
+    </div>}
+    {(linhasEfetivas.length > 0 || !semFiltro) && <p ref={contagem} tabIndex={-1} className={styles.contagem}>{linhasEfetivas.length} de {agendaEfetiva.length} {agendaEfetiva.length === 1 ? 'retorno' : 'retornos'}</p>}
+    {linhasEfetivas.length === 0 ? semFiltro ? <>
+      <EstadoVazio titulo="Nenhum retorno pendente" descricao="Não há retornos atrasados, de hoje ou próximos." acao={{ rotulo: 'Ir para Prospecção', href: '/fila' }} />
+      <Button asChild variant="outline"><Link href="/carteira">Ver carteira completa</Link></Button>
+    </> : <EstadoVazio titulo="Nenhuma empresa corresponde à busca" descricao="Altere os campos ou limpe os filtros para ver a agenda." acao={{ rotulo: 'Limpar filtros', href: '/meu-dia' }} />
+      : <div className={styles.corpo} data-painel-aberto={!!painel}>
+        <ul className={styles.colunaLista} data-testid="lista-meu-dia">
+          {linhasEfetivas.map(empresa => <li key={empresa.id} className={styles.item} data-retorno={empresa.situacaoRetorno} data-selecionada={painel?.empresaId === empresa.id}>
+            <div className={styles.identidade}><div><strong title={nomeEmpresa(empresa)}>{nomeEmpresa(empresa)}</strong><small>{empresa.endereco ? empresa.endereco.localidade + '/' + empresa.endereco.uf : empresa.empresa?.cidade ?? 'Localização não informada'}</small></div>
+              <span className={styles.itemEstado}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</span></div>
+            <div className={styles.tarefa}><p title={empresa.proximoPasso ?? undefined}>{empresa.proximoPasso ?? 'Sem próximo passo combinado'}</p>{empresa.proximoPassoData && <time dateTime={empresa.proximoPassoData}>{empresa.proximoPassoData.split('-').reverse().join('/')}</time>}</div>
+            <div className={styles.acoesCard}>
+              <Button variant="outline" onClick={evento => trocar({ tipo: 'dados', empresaId: empresa.id, anterior: { painel: null, gatilho: evento.currentTarget } }, evento.currentTarget)}>Dados da empresa</Button>
+              <Button variant="outline" onClick={evento => trocar({ tipo: 'retorno', empresaId: empresa.id, aba: 'passo' }, evento.currentTarget)}>Abrir retorno</Button>
+            </div>
+          </li>)}
+        </ul>
+        {painel && atual && <div className={styles.colunaPerfil}>
+          {painel.tipo === 'retorno' && <RetornoPainel key={atual.id} empresa={atual} filtros={filtros} aba={painel.aba} bloqueado={arquivo.pendente || venda.pendente} aoMudarAba={aba => pedirSaidaDaEdicao(() => setPainel({ ...painel, aba }))}
+            aoFechar={() => pedirSaidaDaEdicao(fechar)} aoRemover={remover}
+            aoDados={gatilho => trocar({ tipo: 'dados', empresaId: atual.id, anterior: { painel, gatilho } }, origem.current ?? gatilho)}
+            aoNegociacao={gatilho => { if (atual.empresa?.negociacaoId) trocar({ tipo: 'negociacao', empresaId: atual.id, negociacaoId: atual.empresa.negociacaoId, anterior: { painel, gatilho } }, origem.current ?? gatilho) }} />}
+          {painel.tipo === 'dados' && <DadosEmpresaPainel referencia={{ tipo: 'cadastro', empresaId: atual.id }} rotuloFechar="Voltar" aoFechar={() => pedirSaidaDaEdicao(() => voltar(painel.anterior))}
+            rodapeComercial={atual.situacao !== 'cliente' && atual.empresa?.negociacaoId
+              ? <Button id={'meu-dia-dados-negociacao-' + atual.id} disabled={arquivo.pendente || venda.pendente} onClick={evento => trocar({ tipo: 'negociacao', empresaId: atual.id, negociacaoId: atual.empresa!.negociacaoId!, anterior: { painel, gatilho: evento.currentTarget } }, origem.current ?? evento.currentTarget)}>Negociação</Button>
+              : <Button asChild><Link href={urlFichaDoMeuDia(atual.id, filtros)}>Atendimento</Link></Button>} />}
+          {painel.tipo === 'negociacao' && <PainelNegociacao key={painel.negociacaoId} id={painel.negociacaoId} usuarioId={usuarioId} fecharRef={fecharNegociacao}
+            rotuloFechar="Voltar" bloqueada={!!arquivo.comando || arquivo.pendente || venda.pendente || !!confirmacao}
+            fechar={(texto, resultadoVenda) => {
+              if (resultadoVenda) {
+                fechar()
+                if (resultadoVenda.leituraDestino?.ok) {
+                  setAviso(resultadoVenda.aviso ?? 'Venda registrada.')
+                  try { router.replace('/carteira/' + resultadoVenda.leituraDestino.destino.empresaId + '?venda=registrada') }
+                  catch { setAviso('Venda registrada. Não foi possível abrir a ficha. Abra a Carteira.') }
+                } else {
+                  setAviso('Venda registrada. Não foi possível abrir a ficha. Atualize a página ou abra a Carteira.')
+                  router.refresh()
+                }
+              }
+              else if (texto) { setAviso(texto); fechar(); router.refresh() }
+              else voltar(painel.anterior)
+            }}
+            aoPedirArquivar={detalhe => {
+              focoConfirmacao.current = document.activeElement as HTMLElement | null
+              setConfirmacao(detalhe)
+            }} />}
+        </div>}
+      </div>}
+    {!painel && linhasEfetivas.length > 0 && <p className={styles.contagem}>Nenhum retorno selecionado</p>}
+    {confirmacao && <ConfirmarArquivamento nome={confirmacao.nome} aoCancelar={() => setConfirmacao(null)} aoConfirmar={() => void arquivar(confirmacao)}
+      aoRestaurarFoco={() => focar(focoConfirmacao.current)} />}
   </>
 }

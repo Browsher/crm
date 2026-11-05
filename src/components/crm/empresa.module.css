@@ -19,3 +19,11 @@
 .dadosLateral { display: grid; gap: var(--space-3); min-width: 0; }
 .dadosLateral h4 { font-size: 14px; font-weight: 600; }
 .dadosLateral .dados dd { margin: 0; overflow-wrap: anywhere; }
+
+.lateralComercial { display: flex; flex-direction: column; height: 80dvh; max-height: 80dvh; min-height: 380px; overflow: hidden; }
+.lateralComercial > header { flex: none; }
+.lateralComercial > div { display: flex; flex: 1; flex-direction: column; min-height: 0; padding: 0; }
+.lateralComercial > div > .dadosLateral { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 20px; }
+.rodapeComercial { display: flex; flex: none; flex-wrap: wrap; gap: var(--space-2); padding: 16px 20px; border-top: 1px solid var(--border); background: var(--background); }
+@media (min-width: 1121px), (max-width: 650px) { .lateralComercial { height: 100dvh; max-height: 100dvh; } }
+@media (max-width: 650px) { .rodapeComercial button, .rodapeComercial a { min-height: 44px; } }

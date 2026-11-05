@@ -11,11 +11,12 @@ type Props = {
   aoFechar: () => void
   children: ReactNode
   id?: string
+  rotuloFechar?: 'Fechar' | 'Voltar'
   fecharBloqueado?: boolean
   className?: string
 }
 
-export function PainelLateralCrm({ titulo, descricao, rotulo, aoFechar, children, id, fecharBloqueado = false, className }: Props) {
+export function PainelLateralCrm({ titulo, descricao, rotulo, aoFechar, children, id, fecharBloqueado = false, className, rotuloFechar = 'Fechar' }: Props) {
   const tituloId = useId()
   const cabecalho = useRef<HTMLHeadingElement>(null)
   useLayoutEffect(() => {
@@ -34,7 +35,7 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, aoFechar, children
     }}>
     <header className={styles.cabecalho}>
       <div><h2 id={tituloId} ref={cabecalho} tabIndex={-1}>{titulo}</h2>{descricao && <div className={styles.descricao}>{descricao}</div>}</div>
-      <Button type="button" variant="outline" size="sm" disabled={fecharBloqueado} onClick={aoFechar}>Fechar</Button>
+      <Button type="button" variant="outline" size="sm" disabled={fecharBloqueado} onClick={aoFechar}>{rotuloFechar}</Button>
     </header>
     <div className={styles.corpo}>{children}</div>
   </aside>

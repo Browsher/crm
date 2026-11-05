@@ -96,3 +96,14 @@ test('arquivar e retomar não fazem o Funil restaurar próximo passo histórico 
   const agenda = await lerAgendaAtendimento(eu)
   expect(agenda.ok && agenda.linhas.some(e => e.id === empresa)).toBe(false)
 })
+
+
+test.each(['origem_inativa', 'pendente'])('futuro indisponível por %s não entra na agenda', async tipo => {
+  await interessado()
+  await banco.sql("UPDATE contato SET proximo_passo_data=DATE '2099-01-01' WHERE id=(SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1)", [empresa])
+  let agenda = await lerAgendaAtendimento(eu, '2026-11-05')
+  expect(agenda.ok && agenda.linhas.find(e => e.id === empresa)).toMatchObject({ situacaoRetorno: 'futuro' })
+  await indisponivel(tipo)
+  agenda = await lerAgendaAtendimento(eu, '2026-11-05')
+  expect(agenda.ok && agenda.linhas.some(e => e.id === empresa)).toBe(false)
+})

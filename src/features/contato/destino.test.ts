@@ -104,3 +104,24 @@ test('nome no limite de 120 continua valendo', () => {
 test('filtro vazio sai do destino em vez de derrubar a volta', () => {
   expect(destinoDeVolta('/meu-dia?nome=&retorno=hoje')).toBe('/meu-dia?retorno=hoje')
 })
+
+
+test('preserva próximos e período em ordem canônica', () => {
+  expect(destinoDeVolta('/meu-dia?periodo=amanha&retorno=proximos&nome=Aurora'))
+    .toBe('/meu-dia?nome=Aurora&retorno=proximos&periodo=amanha')
+})
+
+test.each([
+  '/meu-dia?retorno=proximos&periodo=amanha&periodo=amanha',
+  '/meu-dia?retorno=proximos&periodo=invalido',
+  '/meu-dia?retorno=futuro&periodo=amanha',
+  '/meu-dia?retorno=proximos&periodo=amanha&extra=x',
+  '/meu-dia?retorno=proximos&periodo=amanha#fim',
+  '//externo.invalido/meu-dia?retorno=proximos&periodo=amanha',
+])('recusa destino adulterado com período %s', bruto => {
+  expect(destinoDeVolta(bruto)).toBe(SEGURO)
+})
+
+test('normaliza período fora de próximos também no destino de volta', () => {
+  expect(destinoDeVolta('/meu-dia?retorno=hoje&periodo=amanha')).toBe('/meu-dia?retorno=hoje')
+})

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
 import { criarBancoDeTeste, criarUsuario, type BancoDeTeste } from './ajuda'
 import { contatoDireto } from './fixtures/contato-direto'
 import { lerFunil, lerNegociacao } from '@/src/features/funil/consulta'
+import { lerHistorico } from '@/src/features/contato/historico'
 import { lerDashboard } from '@/src/features/gestao/consulta'
 import { randomUUID } from 'node:crypto'
 import { registrarContatoDireto } from '@/src/server/atendimento/operacoes'
@@ -68,6 +69,7 @@ test('cliente arquivado preserva dono inativo e não volta ao catálogo',async()
 test('funil filtra autoria também no último contato e não devolve dados de outro dono', async () => {
   await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'legado')",[empresa,a])
   expect(await registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:1},{tipo:'interessado',nota:'Nota de '+a,proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
+  expect(await lerHistorico(b, empresa)).toEqual({ ok: true, contatos: [] })
   const [antiga] = await lerFunil(a)
   expect(await registrarContatoDireto(a,{empresaId:empresa,chave:randomUUID(),versao:antiga.versao},{tipo:'sem_interesse',nota:'Sem interesse em conversa real',proximoPasso:null,proximoPassoData:null})).toMatchObject({ok:true})
   // Mudança administrativa explícita somente da fixture para observar o novo
@@ -143,4 +145,36 @@ test('duas intenções com mesma versão não duplicam contato ou ciclo',async()
  expect(resultados.filter(r=>!r.ok)).toEqual([{ok:false,motivo:'desatualizada'}])
  expect(await banco.sql('SELECT id FROM negociacao')).toHaveLength(1)
  expect(await banco.sql('SELECT id FROM contato')).toHaveLength(1)
+})
+
+test('histórico genérico permite autor anterior somente com RLS e Funil não serializa nota nem venda adicional', async () => {
+  expect(await assumir(a)).toMatchObject({ ok: true })
+  await venda()
+  expect(await lerHistorico(b, empresa)).toEqual({ ok: true, contatos: [] })
+  // Transferência administrativa apenas da fixture, conservando a venda e o
+  // contato do responsável anterior. O aplicativo não oferece transferência.
+  await banco.sql('UPDATE empresa_vinculo SET vendedor_id=$2 WHERE empresa_id=$1', [empresa,b])
+  await banco.sql('UPDATE empresa_fila SET vendedor_id=$2 WHERE empresa_id=$1', [empresa,b])
+  const [ciclo] = await banco.sql<{ id: string }>('INSERT INTO negociacao(empresa_id,vendedor_id) VALUES($1,$2) RETURNING id', [empresa,b])
+  expect(await contatoDireto(banco,b,empresa,{ tipo:'nao_atendeu',nota:'Conversa própria de B',proximoPasso:null,proximoPassoData:null })).toMatchObject({ ok: true })
+  const generico = await lerHistorico(b, empresa)
+  expect(generico.ok).toBe(true)
+  if (!generico.ok) throw new Error('esperava histórico autorizado pela RLS')
+  expect(generico.contatos).toEqual(expect.arrayContaining([
+    expect.objectContaining({ nota: 'Nota de '+a, autor: 'Ana', natureza: 'contato' }),
+  ]))
+  // A política de venda é mais restrita que a de contato: B não recebe a
+  // venda de A nem pelo histórico genérico. O gestor continua autorizado.
+  expect(generico.contatos.every(c => c.natureza !== 'venda')).toBe(true)
+  const doGestor = await lerHistorico(gestor, empresa)
+  expect(doGestor.ok && doGestor.contatos).toEqual(expect.arrayContaining([
+    expect.objectContaining({ autor: 'Ana', natureza: 'venda', venda: { centavos: '12500', data: expect.any(String) } }),
+  ]))
+  expect(await lerHistorico(a, empresa)).toEqual({ ok: true, contatos: [] })
+  const detalhe = await lerNegociacao(b, ciclo.id)
+  expect(detalhe?.historico).toEqual([expect.objectContaining({ nota: 'Conversa própria de B' })])
+  expect(JSON.stringify(detalhe)).not.toContain('Nota de '+a)
+  expect(JSON.stringify(detalhe)).not.toContain('centavos')
+  expect(detalhe).not.toHaveProperty('vendas')
+  expect(detalhe?.historico.every(c => !('venda' in c))).toBe(true)
 })

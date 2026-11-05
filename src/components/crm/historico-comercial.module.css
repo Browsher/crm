@@ -1,0 +1,33 @@
+.historico { display: grid; gap: var(--space-4); min-width: 0; color: var(--foreground); font-size: 14px; overflow-wrap: anywhere; }
+.controles { display: grid; gap: var(--space-2); }
+.filtros { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface-muted); }
+.filtros > button { flex: 1 1 auto; }
+.contagem { color: var(--muted-foreground); font-size: 12px; }
+.opcoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--muted-foreground); font-size: 12px; }
+.lista { display: grid; gap: var(--space-4); margin: 0; padding: 0 0 0 var(--space-8); list-style: none; position: relative; }
+.lista::before { content: ''; position: absolute; left: 10px; top: var(--space-6); bottom: var(--space-6); border-left: 1px solid var(--border); }
+.registro { position: relative; min-width: 0; }
+.icone, .iconeVenda { position: absolute; left: calc(-1 * var(--space-8)); top: var(--space-4); display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--border); border-radius: 50%; color: var(--muted-foreground); background: var(--background); }
+.iconeVenda { color: var(--success); border-color: var(--success); background: var(--success-background); }
+.evento { border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--background); }
+.cabecalho { position: relative; padding: var(--space-4) 36px var(--space-4) var(--space-4); cursor: pointer; list-style: none; border-radius: var(--radius-panel); }
+.cabecalho::-webkit-details-marker { display: none; }
+.cabecalho::after { content: ''; position: absolute; right: var(--space-4); top: 22px; width: 7px; height: 7px; border-right: 1.5px solid var(--muted-foreground); border-bottom: 1.5px solid var(--muted-foreground); transform: rotate(45deg); }
+.evento[open] > .cabecalho { border-bottom: 1px solid var(--border); border-radius: var(--radius-panel) var(--radius-panel) 0 0; }
+.evento[open] > .cabecalho::after { transform: rotate(225deg); top: 26px; }
+.cabecalho:hover { background: var(--surface-muted); }
+.cabecalho:focus-visible, .controles button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.empresa { display: block; margin-bottom: var(--space-2); font-weight: 600; }
+.titulo { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.titulo strong { font-weight: 600; }
+.tipo, .tipoVenda { padding: 2px var(--space-2); border-radius: var(--radius-control); font-size: 11px; color: var(--muted-foreground); background: var(--muted); }
+.tipoVenda { color: var(--success); background: var(--success-background); }
+.metadados { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin-top: var(--space-2); color: var(--muted-foreground); font-size: 12px; }
+.detalhes { display: grid; gap: var(--space-3); padding: var(--space-4); }
+.detalhes p { margin: 0; }
+.nota { white-space: pre-wrap; }
+.semNota { color: var(--muted-foreground); }
+.informacoes { display: grid; gap: var(--space-3); margin: 0; }
+.informacoes dt { color: var(--muted-foreground); font-size: 12px; }
+.informacoes dd { margin: var(--space-1) 0 0; white-space: pre-wrap; }
+.rodape, .vazio { margin: 0; color: var(--muted-foreground); font-size: 12px; }

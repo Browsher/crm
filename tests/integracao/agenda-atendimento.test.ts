@@ -33,9 +33,9 @@ test.each(['nao_atendeu', 'nao_liguei'] as const)('%s devido entra em Meu dia se
   expect(carteira.ok && carteira.carteira.map(e => e.id)).not.toContain(empresa)
   expect(await banco.sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL', [empresa])).toEqual([])
 })
-test('futuro e ausência de data não inferem tarefa de hoje', async () => {
+test('futuro entra na agenda e ausência de data fica fora', async () => {
   await registrar(1)
-  expect((await agenda()).map(e => e.id)).not.toContain(empresa)
+  expect((await agenda()).find(e => e.id === empresa)).toMatchObject({ situacaoRetorno: 'futuro', vencido: false })
   await registrar(null)
   expect((await agenda()).map(e => e.id)).not.toContain(empresa)
 })
@@ -77,5 +77,26 @@ test('mais de cem tarefas usam resumos autorizados em lotes e ordem estável por
   const gestor=await criarUsuario(banco,'gestor','AgendaLotes')
   const painel=await lerDashboard(gestor)
   const resumo=painel?.vendedores.find(v=>v.id===vendedor)
-  expect((resumo?.hoje??0)+(resumo?.atrasados??0)).toBe((await agenda()).length)
+  expect((resumo?.hoje??0)+(resumo?.atrasados??0)).toBe((await agenda()).filter(e => e.situacaoRetorno === 'atrasado' || e.situacaoRetorno === 'hoje').length)
+})
+
+
+test('referência civil explícita classifica hoje, atraso e futuro sem trocar agenda por último contato', async () => {
+  await registrar(1)
+  const dataVigente = await data(1)
+  const [idAgenda] = await banco.sql<{ agenda_contato_id: string }>('SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1', [empresa])
+  // O histórico mais recente pode ter outro autor e outra data. Não é a agenda vigente.
+  await banco.sql('ALTER TABLE contato DISABLE TRIGGER contato_auditoria')
+  try {
+    await banco.sql("INSERT INTO contato(empresa_id,tipo,nota,proximo_passo,proximo_passo_data,criado_em) VALUES($1,'nao_atendeu','Histórico posterior','Histórico',DATE '2020-01-01',clock_timestamp())", [empresa])
+  } finally {
+    await banco.sql('ALTER TABLE contato ENABLE TRIGGER contato_auditoria')
+  }
+  for (const [hoje, situacaoRetorno, vencido] of [
+    [await data(0), 'futuro', false], [dataVigente, 'hoje', false], [await data(2), 'atrasado', true],
+  ] as const) {
+    const r = await lerAgendaAtendimento(vendedor, hoje)
+    expect(r.ok && r.linhas.find(e => e.id === empresa)).toMatchObject({ proximoPasso: 'Tentar novamente', proximoPassoData: dataVigente, situacaoRetorno, vencido })
+  }
+  expect((await banco.sql<{ agenda_contato_id: string }>('SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1', [empresa]))[0]).toEqual(idAgenda)
 })

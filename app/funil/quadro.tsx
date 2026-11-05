@@ -14,17 +14,16 @@ import { Button } from '@/src/components/ui/button'
 import type { EstadoVenda } from '@/src/lib/venda-envio'
 import { useEnvioVenda } from '@/src/lib/use-envio-venda'
 import { transmitirVenda } from '../venda-envio'
-import { devolverFunilAcao, etapaAcao, semInteresseAcao } from './acoes'
+import { useEnvioArquivo } from './use-envio-arquivo'
+import { devolverFunilAcao, etapaAcao } from './acoes'
 import { ConfirmarArquivamento, EfeitoArquivo, IconeLixeira, ID_ARQUIVO, PainelArquivo, RecuperacaoDevolucao, type AnimacaoArquivo } from './arquivo-lateral'
 import { PainelNegociacao, type PedirFecharNegociacao } from './modal'
 import { ROTULOS_ETAPA } from './rotulos'
 import styles from './funil.module.css'
 
-const STORAGE_ARQUIVO = 'crm:funil:arquivo:v1'
 const STORAGE_DEVOLUCAO = 'crm:funil:devolver:v1'
 const SEM_ARQUIVOS: ArquivoFunilRecente[] = []
 
-type EnvioArquivo = { linha: NegociacaoResumo; chave: string }
 type EnvioDevolucao = { item: ArquivoFunilRecente; chave: string }
 type Painel =
   | { tipo: 'empresa'; id: string; referencia: ReferenciaEmpresa }
@@ -61,7 +60,8 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   const router = useRouter()
   const venda = useEnvioVenda(usuarioId, transmitirVenda)
   const vendaBloqueada = venda.bloqueada || venda.pendente
-  const storageArquivo = STORAGE_ARQUIVO + ':' + usuarioId
+  const arquivo = useEnvioArquivo(usuarioId)
+  const envioArquivo = arquivo.comando
   const storageDevolucao = STORAGE_DEVOLUCAO + ':' + usuarioId
 
   const [painel, setPainel] = useState<Painel>(negociacaoInicial ? { tipo: 'negociacao', id: negociacaoInicial } : null)
@@ -74,7 +74,6 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   const [destino, setDestino] = useState<EtapaFunil | null>(null)
   const [confirmacao, setConfirmacao] = useState<NegociacaoResumo | null>(null)
   const [animacao, setAnimacao] = useState<AnimacaoArquivo | null>(null)
-  const [envioArquivo, setEnvioArquivo] = useState<EnvioArquivo | null>(null)
   const [envioDevolucao, setEnvioDevolucao] = useState<EnvioDevolucao | null>(null)
   const [removidas, setRemovidas] = useState<Set<string>>(() => new Set())
   const [ocultacaoArquivo, setOcultacaoArquivo] = useState<{ base: ArquivoFunilRecente[]; ciclos: Set<string> } | null>(null)
@@ -83,7 +82,6 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   const arraste = useRef<NegociacaoResumo | null>(null)
   const bloqueado = useRef(false)
   const vivo = useRef(true)
-  const envioArquivoRef = useRef<EnvioArquivo | null>(null)
   const envioDevolucaoRef = useRef<EnvioDevolucao | null>(null)
   const fecharNegociacao = useRef<PedirFecharNegociacao | null>(null)
   const origem = useRef<HTMLElement | null>(null)
@@ -114,15 +112,6 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
     queueMicrotask(() => {
       if (!ativo) return
       try {
-        const salvo = sessionStorage.getItem(storageArquivo)
-        const anterior = salvo ? JSON.parse(salvo) as EnvioArquivo : null
-        if (anterior?.linha?.id && anterior.chave) {
-          envioArquivoRef.current = anterior
-          setEnvioArquivo(anterior)
-          setAviso('Confirme o envio anterior antes de iniciar outra operação.')
-        }
-      } catch { setAviso('Não foi possível recuperar o envio anterior. Atualize a página.') }
-      try {
         const salvo = sessionStorage.getItem(storageDevolucao)
         const anterior = salvo ? JSON.parse(salvo) as EnvioDevolucao : null
         if (anterior?.item?.empresaId && anterior.item.negociacaoId && anterior.chave) {
@@ -132,7 +121,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
       } catch { setAviso('Não foi possível recuperar a devolução anterior. Atualize a página.') }
     })
     return () => { ativo = false }
-  }, [storageArquivo, storageDevolucao])
+  }, [storageDevolucao])
 
   useEffect(() => {
     vivo.current = true
@@ -188,7 +177,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   }
 
   function iniciarArraste(evento: DragEvent<HTMLElement>, linha: NegociacaoResumo) {
-    if (!podeArrastar(linha) || bloqueado.current || envioArquivoRef.current || envioDevolucaoRef.current) {
+    if (!podeArrastar(linha) || bloqueado.current || envioArquivo || envioDevolucaoRef.current) {
       evento.preventDefault()
       return
     }
@@ -239,7 +228,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   }
 
   function pedirArquivamento(linha: NegociacaoResumo, gatilho: HTMLElement | null) {
-    if (bloqueado.current || bloqueiaAcao || envioArquivoRef.current || envioDevolucaoRef.current || !disponivel(linha)) return
+    if (bloqueado.current || bloqueiaAcao || envioArquivo || envioDevolucaoRef.current || !disponivel(linha)) return
     origemConfirmacao.current = gatilho
     setConfirmacao(linha)
   }
@@ -256,7 +245,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
 
   async function arquivar(linha: NegociacaoResumo) {
     if (bloqueado.current || vendaBloqueada || envioDevolucaoRef.current) return
-    const anterior = envioArquivoRef.current
+    const anterior = envioArquivo
     if (anterior ? anterior.linha.id !== linha.id : !disponivel(linha)) return
     bloqueado.current = true
     setPendente(true)
@@ -266,23 +255,8 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
     const card = document.getElementById(idCard(linha.id))
     const inicioAntesDoEnvio = centro(card)
     try {
-      // Persiste o comando inteiro antes da transmissão para recuperar a mesma intenção.
-      const comando = anterior ?? { linha, chave: crypto.randomUUID() }
-      sessionStorage.setItem(storageArquivo, JSON.stringify(comando))
-      envioArquivoRef.current = comando
-      setEnvioArquivo(comando)
-      const form = new FormData()
-      form.set('id', comando.linha.id)
-      form.set('empresaId', comando.linha.empresaId)
-      form.set('versao', String(comando.linha.versao))
-      form.set('chave', comando.chave)
-      const resultado = await enviar(semInteresseAcao, form)
-      if (!vivo.current) return
-      if (resultado.ok || (resultado.motivo !== 'sem_permissao' && resultado.motivo !== 'nao_encontrada')) {
-        sessionStorage.removeItem(storageArquivo)
-        envioArquivoRef.current = null
-        setEnvioArquivo(null)
-      }
+      const resultado = await (anterior ? arquivo.recuperar() : arquivo.enviar(linha))
+      if (!vivo.current || !resultado) return
       if (!resultado.ok) {
         setAviso(resultado.erro ?? 'Não foi possível arquivar. A empresa foi mantida.')
         return
@@ -314,7 +288,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   }
 
   async function devolver(item: ArquivoFunilRecente, recuperar = false) {
-    if (bloqueado.current || vendaBloqueada || envioArquivoRef.current || confirmacao) return
+    if (bloqueado.current || vendaBloqueada || envioArquivo || confirmacao) return
     const anterior = envioDevolucaoRef.current
     if (recuperar ? !anterior || cicloArquivo(anterior.item) !== cicloArquivo(item) : !!anterior) return
     bloqueado.current = true
@@ -414,7 +388,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
         onDrop={soltarNaLixeira}
       ><IconeLixeira iconeRef={iconeArquivo}/>Sem interesse</Button>
     }/>
-    <p role="status" tabIndex={-1} ref={mensagem} className={styles.aviso}>{aviso}</p>
+    <p role="status" tabIndex={-1} ref={mensagem} className={styles.aviso}>{arquivo.aviso || aviso || (envioArquivo ? 'Confirme o envio anterior antes de iniciar outra operação.' : '')}</p>
     {venda.erro && <p role="alert">{venda.erro}</p>}
     {venda.comando && <section aria-label="Venda pendente" className={styles.recuperacao}>
       <p>Venda de R$ {venda.comando.entrada.valor} em {venda.comando.entrada.data.split('-').reverse().join('/')}. Confirme o envio anterior antes de registrar outra venda.</p>
@@ -428,7 +402,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
       key={negociacaoAberta} id={negociacaoAberta} usuarioId={usuarioId} fechar={fecharPainel} fecharRef={fecharNegociacao}
       aoMudarBloqueioDeArraste={setArrasteBloqueado}
       bloqueada={pendente || !!envioArquivo || !!envioDevolucao || !!confirmacao}
-      aoPedirArquivar={linhaAberta && disponivel(linhaAberta) ? () => pedirArquivamento(linhaAberta, document.activeElement as HTMLElement | null) : undefined}
+      aoPedirArquivar={linhaAberta && disponivel(linhaAberta) ? detalhe => pedirArquivamento(detalhe, document.activeElement as HTMLElement | null) : undefined}
     />}
     {painel?.tipo === 'arquivo' && <PainelArquivo
       arquivos={recentes} recuperacao={pendente ? undefined : envioDevolucao?.item}

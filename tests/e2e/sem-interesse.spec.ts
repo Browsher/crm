@@ -11,7 +11,7 @@ const lateral=(page:Page)=>page.locator('[data-painel-lateral]')
 const confirmacao=(page:Page)=>page.getByRole('dialog',{name:'Marcar como Sem interesse?',exact:true})
 async function pedirArquivo(page:Page,nome:string){
  await card(page,nome).getByRole('button',{name:'Negociação',exact:true}).click()
- await lateral(page).getByRole('button',{name:'Marcar como Sem interesse',exact:true}).click()
+ await lateral(page).getByRole('button',{name:'Sem interesse',exact:true}).click()
 }
 async function confirmarArquivo(page:Page){await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).click()}
 
@@ -148,7 +148,7 @@ test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({b
   await page.goto('/funil')
   await expect(card(page,'Descarte toque')).toHaveAttribute('draggable','false')
   await card(page,'Descarte toque').getByRole('button',{name:'Negociação',exact:true}).tap()
-  await lateral(page).getByRole('button',{name:'Marcar como Sem interesse',exact:true}).tap()
+  await lateral(page).getByRole('button',{name:'Sem interesse',exact:true}).tap()
   await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).tap()
   await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')
   expect((await sql("SELECT count(*)::int AS n FROM contato WHERE empresa_id='00000000-0000-4000-8000-000000009827'")).rows[0].n).toBe(1)

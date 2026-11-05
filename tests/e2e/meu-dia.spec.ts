@@ -1,378 +1,276 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
-import type { Client } from 'pg'
-import { comAdmin } from '../../src/server/db/admin'
-import { exigirAdminLocal } from './ambiente'
-import {
-  EMPRESA_MEU_DIA_DEVOLUCAO,
-  EMPRESA_MEU_DIA_POSSE_PERDIDA,
-  EMPRESA_MEU_DIA_PRIVADA,
-  EMPRESA_MEU_DIA_REAGENDA,
-  NOME_MEU_DIA_BUSCA_UNICA,
-  NOME_MEU_DIA_ROLAGEM,
-  NOME_MEU_DIA_ULTIMO,
-} from './dados-meu-dia'
+import { expect, test, type Page } from '@playwright/test'
+import { comBancoGrupos } from './dados-grupos'
+import { EMPRESA_MEU_DIA_PRIVADA, EMPRESA_MEU_DIA_POSSE_PERDIDA, EMPRESA_MEU_DIA_REAGENDA } from './dados-meu-dia'
 
-const ORDEM_AGENDA = [
-  'Meu Dia Atraso A14', 'Meu Dia Atraso A13', 'Meu Dia Atraso A12', 'Meu Dia Atraso A11', 'Meu Dia Atraso A10',
-  NOME_MEU_DIA_ROLAGEM, 'Meu Dia Posse Perdida', NOME_MEU_DIA_BUSCA_UNICA, 'Meu Dia Atraso Devolucao', 'Meu Dia Atraso Reagenda',
-  'Meu Dia Aurora', 'Meu Dia Cedro', 'Meu Dia Dourada', NOME_MEU_DIA_ULTIMO,
-]
+const lista = (page: Page) => page.getByTestId('lista-meu-dia')
+const painel = (page: Page) => page.locator('[data-painel-lateral]')
+const card = (page: Page, nome: string) => lista(page).getByRole('listitem').filter({ has: page.locator('strong', { hasText: nome }) })
+const filtros = (page: Page) => page.getByRole('group', { name: 'Filtrar retornos' })
+const pasta = 'docs/design/2026-11-05-meu-dia'
 
-// A única forma real de simular "outra sessão mudou a posse enquanto a
-// agenda estava aberta" é falar com o banco por fora do app, como admin.
-// `DATABASE_URL_ADMIN` só existe no processo do Playwright (scripts/e2e/run.mts),
-// nunca no processo do servidor testado.
-async function comBancoAdmin<T>(trabalho: (cliente: Client) => Promise<T>): Promise<T> {
-  const url = process.env.DATABASE_URL_ADMIN
-  if (!url) throw new Error('DATABASE_URL_ADMIN ausente: scripts/e2e/run.mts precisa repassá-la ao Playwright')
-  exigirAdminLocal(url)
-  return comAdmin(url, trabalho)
-}
-
-async function revogarPosse(empresaId: string) {
-  await comBancoAdmin((cliente) => cliente.query('UPDATE empresa_vinculo SET vendedor_id = (SELECT id FROM usuario WHERE email=$2) WHERE empresa_id = $1', [empresaId,'meudiaprivadae2e@teste.local']))
-}
-
-async function dataCivilFutura(dias: number): Promise<string> {
-  const r = await comBancoAdmin((cliente) =>
-    cliente.query<{ data: string }>(
-      `SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date + $1::integer, 'YYYY-MM-DD') AS data`,
-      [dias],
-    ))
-  return r.rows[0].data
-}
-
-async function entrar(page: Page, apelido: string) {
+async function entrar(page: Page, apelido = 'meudiae2e') {
   await page.goto('/login')
-  await page.getByLabel('E-mail').fill(`${apelido.toLowerCase()}@teste.local`)
+  await page.getByLabel('E-mail').fill(apelido + '@teste.local')
   await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await expect(page).toHaveURL('/meu-dia')
-  await page.goto('/meu-dia')
 }
 
-function perfilAtual(page: Page): Locator {
-  return page.getByRole('article')
+async function abrirRetorno(page: Page, nome: string) {
+  await card(page, nome).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
+  await expect(painel(page).getByRole('heading', { name: nome, exact: true })).toBeVisible()
 }
 
-// Tabula de verdade até o alvo ficar focado, em vez de presumir a posição
-// exata na ordem de tabulação. O `expect` final falha com uma mensagem clara
-// se o alvo nunca for alcançado dentro do limite.
-async function tabAte(page: Page, alvo: Locator, maximo = 30) {
-  for (let i = 0; i < maximo; i++) {
-    if (await alvo.evaluate((el) => el === document.activeElement)) return
-    await page.keyboard.press('Tab')
+test('cards iniciam sem seleção nem leitura, incluem futuros e filtram por períodos civis de Brasília', async ({ page }) => {
+  const leituras: string[] = []
+  page.on('request', r => { if (r.method() === 'POST' && r.url().includes('/meu-dia')) leituras.push(r.postData() ?? '') })
+  await entrar(page)
+  await expect(page.getByText('Nenhum retorno selecionado', { exact: true })).toBeVisible()
+  await expect(painel(page)).toHaveCount(0)
+  expect(leituras).toEqual([])
+  await expect(lista(page).getByRole('listitem')).toHaveCount(18)
+  await expect(page.getByText('18 de 18 retornos', { exact: true })).toBeVisible()
+  expect((await lista(page).locator('li strong').allTextContents()).slice(0, 2)).toEqual(['Meu Dia Atraso A14', 'Meu Dia Atraso A13'])
+  for (const excluida of ['Meu Dia SemContato Ignorado', 'Meu Dia Arquivada', 'Meu Dia Privada Ignorada']) {
+    await expect(page.getByRole('main')).not.toContainText(excluida)
   }
-  await expect(alvo).toBeFocused()
-}
-
-async function conferirTamanhos(page: Page, tela: string) {
-  for (const tema of ['light', 'dark'] as const) {
-    await page.getByRole('combobox', { name: 'Tema do Meu dia' }).selectOption(tema)
-    for (const width of [390, 820, 1280, 1920]) {
-      await page.setViewportSize({ width, height: 844 })
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-
-      const lista = page.getByTestId('lista-meu-dia')
-      if (width <= 820) {
-        await expect(lista).toBeVisible()
-        await lista.getByRole('button').first().click()
-        await expect(lista).toBeHidden()
-      }
-      // "Abrir atendimento" precisa existir e caber inteiro na largura, dos
-      // dois lados: nem cortado à direita, nem começando fora à esquerda.
-      const abrir = page.getByRole('link', { name: 'Abrir atendimento', exact: true })
-      await expect(abrir).toBeVisible()
-      await expect(page.getByRole('article')).toHaveCSS('border-radius', '10px')
-      await expect(page.getByRole('article')).toHaveCSS('padding', width <= 820 ? '20px' : '24px')
-      const caixa = (await abrir.boundingBox())!
-      expect(caixa.x).toBeGreaterThanOrEqual(0)
-      expect(caixa.x + caixa.width).toBeLessThanOrEqual(width)
-
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/meu-dia-${tela}-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
-      if (width <= 820) {
-        await page.getByRole('button', { name: 'Voltar para retornos', exact: true }).click()
-        await expect(lista).toBeVisible()
-        await expect(lista.getByRole('button').first()).toBeFocused()
-      } else {
-        await expect(lista).toBeVisible()
-      }
-    }
+  await filtros(page).getByRole('button', { name: 'Atrasos', exact: true }).click()
+  await expect(lista(page).getByRole('listitem')).toHaveCount(10)
+  await filtros(page).getByRole('button', { name: 'Hoje', exact: true }).click()
+  await expect(lista(page).getByRole('listitem')).toHaveCount(4)
+  await filtros(page).getByRole('button', { name: 'Próximos', exact: true }).click()
+  await expect(lista(page).getByRole('listitem')).toHaveCount(4)
+  const periodos = [['amanha', 'Meu Dia Amanhã'], ['semana_que_vem', 'Meu Dia Semana Que Vem'], ['mes_que_vem', 'Meu Dia Mês Que Vem']] as const
+  // Datas esperadas vêm do PG local, sem reaproveitar a função de filtro do app.
+  const datas = await comBancoGrupos(async c => (await c.query<{ nome: string; data: string; amanha: boolean; semana_que_vem: boolean; mes_que_vem: boolean }>(`SELECT e.razao_social nome,to_char(c.proximo_passo_data,'YYYY-MM-DD') data,
+    c.proximo_passo_data=(now() AT TIME ZONE 'America/Sao_Paulo')::date+1 amanha,
+    c.proximo_passo_data BETWEEN date_trunc('week',now() AT TIME ZONE 'America/Sao_Paulo')::date+7 AND date_trunc('week',now() AT TIME ZONE 'America/Sao_Paulo')::date+13 semana_que_vem,
+    c.proximo_passo_data >= (date_trunc('month',now() AT TIME ZONE 'America/Sao_Paulo')+interval '1 month')::date AND c.proximo_passo_data < (date_trunc('month',now() AT TIME ZONE 'America/Sao_Paulo')+interval '2 months')::date mes_que_vem
+    FROM empresa e JOIN empresa_vinculo v ON v.empresa_id=e.id JOIN contato c ON c.id=v.agenda_contato_id WHERE e.razao_social = ANY($1)`, [periodos.map(([, nome]) => nome)])).rows)
+  for (const [periodo, nome] of periodos) {
+    await page.getByLabel('Período dos próximos retornos').selectOption(periodo)
+    await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
+    const esperadas = datas.filter(d => d[periodo])
+    await expect(lista(page).getByRole('listitem')).toHaveCount(esperadas.length)
+    await expect(card(page, nome)).toBeVisible()
+    for (const linha of esperadas) await expect(card(page, linha.nome).locator('time')).toHaveAttribute('datetime', linha.data)
+    await expect(page.getByText('Nenhum retorno selecionado', { exact: true })).toBeVisible()
   }
-}
-
-test('Meu dia recorta a agenda, prova a rolagem, filtra e preserva os filtros na ida e volta', async ({ page }) => {
-  test.setTimeout(60_000)
-  await entrar(page, 'meudiae2e')
-
-  const lista = page.getByTestId('lista-meu-dia')
-  await expect(page.getByRole('main')).toContainText('14 de 14 retornos')
-  await expect(lista.getByRole('button')).toHaveCount(14)
-  expect(await lista.locator('li strong').allTextContents()).toEqual(ORDEM_AGENDA)
-  await expect(lista.getByRole('listitem').filter({ hasText: 'Meu Dia Atraso A14' })).toContainText('Atrasado')
-  await expect(lista.getByRole('listitem').filter({ hasText: NOME_MEU_DIA_ULTIMO })).toContainText('Hoje')
-
-  // Recorte: a futura e a sem contato existem na carteira, mas não na agenda.
-  await expect(page.getByRole('main')).not.toContainText('Meu Dia Futuro Ignorado')
-  await expect(page.getByRole('main')).not.toContainText('Meu Dia SemContato Ignorado')
-
-  // Privacidade: a empresa do outro vendedor não aparece, e a ficha dela é 404.
-  await expect(page.getByRole('main')).not.toContainText('Meu Dia Privada Ignorada')
   await page.goto(`/carteira/${EMPRESA_MEU_DIA_PRIVADA}?de=meu-dia`)
   await expect(page.locator('body')).toContainText('404')
-  await page.goto('/meu-dia')
+})
 
-  await conferirTamanhos(page, 'lista')
-  await page.setViewportSize({ width: 1280, height: 800 })
-  await lista.evaluate((el) => { el.scrollTop = 0 })
+test('retorno, dados e negociação respeitam Voltar, tabs, teclado, temas e rodapés alcançáveis', async ({ page }) => {
+  await entrar(page)
+  for (const tema of ['light', 'dark']) {
+    await page.getByRole('combobox', { name: 'Tema do Meu dia' }).selectOption(tema)
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      const alturas = await lista(page).getByRole('listitem').evaluateAll(itens => itens.map(i => i.getBoundingClientRect().height))
+      expect(new Set(alturas).size).toBe(1)
+      await page.screenshot({ path: `${pasta}/cards-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
+      const gatilho = card(page, 'Meu Dia Aurora').getByRole('button', { name: 'Abrir retorno' })
+      await page.getByLabel('Nome', { exact: true }).focus()
+      for (let i = 0; i < 50 && !await gatilho.evaluate(el => el === document.activeElement); i++) await page.keyboard.press('Tab')
+      await expect(gatilho).toBeFocused()
+      expect(await gatilho.evaluate(el => getComputedStyle(el).outlineStyle)).not.toBe('none')
+      await gatilho.press('Enter')
+      await expect(painel(page).getByRole('tab', { name: 'Próximo passo', exact: true })).toHaveAttribute('aria-selected', 'true')
+      if (width === 1440) {
+        const grade = (await lista(page).boundingBox())!, lateral = (await painel(page).boundingBox())!
+        expect(lateral.x - grade.x - grade.width).toBeLessThanOrEqual(33)
+      }
+      await expect(painel(page).getByRole('tab', { name: 'Resumo', exact: true })).toHaveCount(0)
+      await expect(painel(page).getByRole('button', { name: 'Registrar atendimento', exact: true })).toHaveCount(0)
+      const historico = painel(page).getByRole('tab', { name: 'Histórico', exact: true })
+      await painel(page).getByRole('tab', { name: 'Próximo passo', exact: true }).press('ArrowRight')
+      await expect(historico).toBeFocused()
+      await expect(painel(page).locator('details')).toHaveCount(1)
+      await expect(painel(page).locator('details')).not.toHaveAttribute('open', '')
+      await page.screenshot({ path: `${pasta}/retorno-${tema}-${width}.png`, animations: 'disabled' })
+      await painel(page).getByRole('button', { name: 'Dados da empresa', exact: true }).click()
+      await expect(painel(page)).toContainText('Cadastro')
+      await page.screenshot({ path: `${pasta}/dados-${tema}-${width}.png`, animations: 'disabled' })
+      const comercialDados = painel(page).locator('footer').getByRole('button', { name: 'Negociação', exact: true })
+      await comercialDados.scrollIntoViewIfNeeded()
+      await comercialDados.press('Enter')
+      await expect(painel(page)).toHaveCount(1)
+      await expect(painel(page).getByRole('button', { name: 'Registrar venda', exact: true })).toBeVisible()
+      await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+      await expect(painel(page).getByRole('heading', { name: 'Dados da empresa', exact: true })).toBeVisible()
+      await expect(comercialDados).toBeFocused()
+      await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+      await expect(historico).toHaveAttribute('aria-selected', 'true')
+      await expect(painel(page).getByRole('button', { name: 'Dados da empresa', exact: true })).toBeFocused()
+      await painel(page).getByRole('button', { name: 'Negociação', exact: true }).click()
+      await expect(painel(page).getByRole('tab', { name: 'Atendimento', exact: true })).toBeVisible()
+      for (const aba of ['Próximo passo', 'Histórico']) {
+        await painel(page).getByRole('tab', { name: aba, exact: true }).click()
+        const venda = painel(page).getByRole('button', { name: 'Registrar venda', exact: true })
+        const arquivo = painel(page).getByRole('button', { name: 'Sem interesse', exact: true })
+        await venda.scrollIntoViewIfNeeded()
+        const a = (await venda.boundingBox())!, b = (await arquivo.boundingBox())!
+        expect(Math.abs(a.y - b.y)).toBeLessThan(2)
+        expect(a.x + a.width).toBeLessThanOrEqual(b.x)
+        expect(b.x + b.width).toBeLessThanOrEqual(width)
+        expect(a.y + a.height).toBeLessThanOrEqual(900)
+      }
+      await page.screenshot({ path: `${pasta}/negociacao-${tema}-${width}.png`, animations: 'disabled' })
+      await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+      await expect(painel(page).getByRole('tab', { name: 'Próximo passo', exact: true })).toHaveAttribute('aria-selected', 'true')
+      await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+      await expect(historico).toHaveAttribute('aria-selected', 'true')
+      await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+      await painel(page).getByRole('button', { name: 'Fechar', exact: true }).click()
+      await expect(gatilho).toBeFocused()
+    }
+  }
+})
 
-  // Rolagem provada, não presumida: a lista TRANSBORDA de verdade antes de
-  // qualquer medição de posição.
-  const medida = await lista.evaluate((el) => ({ scroll: el.scrollHeight, cliente: el.clientHeight }))
-  expect(medida.scroll).toBeGreaterThan(medida.cliente)
-
-  // O item de rolagem não é o último: precisa ficar dentro do viewport do
-  // NAVEGADOR (não só do container) depois de uma rolagem moderada, para que
-  // o clique NATIVO logo abaixo exerça a própria acionabilidade (visível,
-  // sem overlay, hit-test no lugar certo) em vez de contorná-la. "Dentro do
-  // container" não basta: o container começa em y≈351 (depois do cabeçalho e
-  // dos filtros) e é mais alto que a fatia do viewport de 800px que sobra
-  // para ele, então uma rolagem calculada só pela caixa do container ainda
-  // pode deixar o item fora da tela — a rolagem abaixo mira o viewport.
-  const viewportAltura = 800
-  const listaBox = (await lista.boundingBox())!
-  const alvoRolagem = lista.getByRole('button', { name: NOME_MEU_DIA_ROLAGEM })
-  const antesAlvo = (await alvoRolagem.boundingBox())!
-  // Fora da tela antes de rolar: só existe visível depois.
-  expect(antesAlvo.y + antesAlvo.height).toBeGreaterThan(viewportAltura)
-
-  const margem = 8
-  const rolagemNecessaria = Math.ceil(antesAlvo.y + antesAlvo.height - viewportAltura + margem)
-  await lista.evaluate((el, alvo) => { el.scrollTop = alvo }, rolagemNecessaria)
-  const scrollAplicado = await lista.evaluate((el) => el.scrollTop)
-  expect(scrollAplicado).toBeGreaterThan(0)
-  const depoisAlvo = (await alvoRolagem.boundingBox())!
-  // Dentro do viewport do navegador E do container depois de rolar: acionável de verdade.
-  expect(depoisAlvo.y).toBeGreaterThanOrEqual(Math.max(0, listaBox.y))
-  expect(depoisAlvo.y + depoisAlvo.height).toBeLessThanOrEqual(Math.min(viewportAltura, listaBox.y + listaBox.height))
-
-  const perfil = perfilAtual(page)
-  const antesPerfil = await perfil.boundingBox()
-  const antesPagina = await page.evaluate(() => window.scrollY)
-  await alvoRolagem.click()
-  await expect(perfil.getByRole('heading', { name: NOME_MEU_DIA_ROLAGEM, exact: true })).toBeVisible()
-
-  expect(await lista.evaluate((el) => el.scrollTop)).toBe(scrollAplicado)
-  expect((await perfil.boundingBox())?.y).toBe(antesPerfil?.y)
-  expect(await page.evaluate(() => window.scrollY)).toBe(antesPagina)
-
-  // Filtros e busca.
-  await page.getByLabel('Nome', { exact: true }).fill(NOME_MEU_DIA_BUSCA_UNICA)
-  await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
-  await expect(lista.getByRole('button')).toHaveCount(1)
-  await expect(page.getByRole('main')).toContainText('1 de 14 retornos')
-
-  await page.getByLabel('Nome', { exact: true }).fill('')
-  await page.getByLabel('Retorno', { exact: true }).selectOption('atrasado')
-  await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
-  await expect(lista.getByRole('button')).toHaveCount(10)
-  await expect(page.getByRole('main')).toContainText('10 de 14 retornos')
-
-  // Os dois vazios são distintos: busca sem resultado não é agenda vazia.
-  await page.getByLabel('Nome', { exact: true }).fill('Empresa que não existe na agenda')
-  await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Nenhuma empresa corresponde à busca', exact: true })).toBeVisible()
-  await expect(page.getByRole('main')).not.toContainText('Nenhum retorno pendente para hoje')
-
-  await page.getByRole('link', { name: 'Limpar filtros', exact: true }).first().click()
-  await expect(page).toHaveURL('/meu-dia')
-  await expect(lista.getByRole('button')).toHaveCount(14)
-
-  // Ida e volta com filtros: abrir a ficha filtrada e voltar preserva a URL.
-  await page.getByLabel('Nome', { exact: true }).fill('irassol')
-  await page.getByLabel('Retorno', { exact: true }).selectOption('atrasado')
-  await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
-  await expect(lista.getByRole('button')).toHaveCount(1)
-  const filtros = new URL(page.url()).search
-  await perfil.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/carteira/[0-9a-f-]+\\?de=meu-dia`))
-  expect(new URL(page.url()).search).toContain(filtros.slice(1))
-  await expect(page.getByRole('heading', { name: NOME_MEU_DIA_BUSCA_UNICA, exact: true })).toBeVisible()
+test('cliente leva todos os filtros para a Carteira e retorna sem selecionar vizinho', async ({ page }) => {
+  await entrar(page)
+  await page.getByLabel('Nome', { exact: true }).fill('Amanhã')
+  await filtros(page).getByRole('button', { name: 'Próximos', exact: true }).click()
+  await page.getByLabel('Período dos próximos retornos').selectOption('amanha')
+  await page.getByLabel('Nome', { exact: true }).press('Enter')
+  await expect(lista(page).getByRole('listitem')).toHaveCount(1)
+  await expect(page).toHaveURL(/periodo=amanha/)
+  const query = new URL(page.url()).search
+  await abrirRetorno(page, 'Meu Dia Amanhã')
+  await painel(page).getByRole('link', { name: 'Atendimento', exact: true }).click()
+  await expect(page).toHaveURL(/\/carteira\/.*de=meu-dia.*nome=.*retorno=proximos.*periodo=amanha/)
+  await expect(page.getByRole('heading', { name: 'Meu Dia Amanhã', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Voltar para o Meu dia', exact: true }).click()
-  await expect(page).toHaveURL(`/meu-dia${filtros}`)
-  await expect(lista.getByRole('button')).toHaveCount(1)
-  await expect(lista.getByRole('button', { name: NOME_MEU_DIA_BUSCA_UNICA })).toBeVisible()
-
-  // Teclado: busca, filtro, itens da lista e "Abrir atendimento" são alcançáveis;
-  // Enter e Espaço selecionam, e o foco não é sequestrado ao trocar de item.
-  // O foco chega por `Tab` de verdade (não `.focus()`): só assim o Chromium
-  // acende o anel de foco que a checagem de `outlineStyle` abaixo prova.
-  await page.getByRole('link', { name: 'Limpar filtros', exact: true }).first().click()
-  await expect(lista.getByRole('button')).toHaveCount(14)
-
-  await page.getByLabel('Nome', { exact: true }).focus()
-  await expect(page.getByLabel('Nome', { exact: true })).toBeFocused()
-  await page.keyboard.press('Tab')
-  await expect(page.getByLabel('Retorno', { exact: true })).toBeFocused()
-
-  const primeiroItem = lista.getByRole('button', { name: 'Meu Dia Atraso A14' })
-  await tabAte(page, primeiroItem)
-  const contorno = await primeiroItem.evaluate((el) => getComputedStyle(el).outlineStyle)
-  expect(contorno).not.toBe('none')
-  await page.keyboard.press('Enter')
-  await expect(perfil.getByRole('heading', { name: 'Meu Dia Atraso A14', exact: true })).toBeVisible()
-  await expect(primeiroItem).toBeFocused()
-
-  const segundoItem = lista.getByRole('button', { name: 'Meu Dia Atraso A13' })
-  await page.keyboard.press('Tab')
-  await expect(segundoItem).toBeFocused()
-  await page.keyboard.press(' ')
-  await expect(perfil.getByRole('heading', { name: 'Meu Dia Atraso A13', exact: true })).toBeVisible()
-  await expect(segundoItem).toBeFocused()
-
-  const abrirAtendimento = perfil.getByRole('link', { name: 'Abrir atendimento', exact: true })
-  await tabAte(page, abrirAtendimento)
-  const contornoLink = await abrirAtendimento.evaluate((el) => getComputedStyle(el).outlineStyle)
-  expect(contornoLink).not.toBe('none')
+  await expect(page).toHaveURL('/meu-dia' + query)
+  await expect(painel(page)).toHaveCount(0)
+  await expect(card(page, 'Meu Dia Amanhã')).toBeVisible()
 })
 
-test('Sem retorno pendente, a agenda mostra o vazio com caminho para a Carteira', async ({ page }) => {
+test('vazio diferencia agenda sem retornos de busca sem resultado', async ({ page }) => {
   await entrar(page, 'meudiavazioe2e')
-  await expect(page.getByRole('heading', { name: 'Nenhum retorno pendente para hoje', exact: true })).toBeVisible()
-  await expect(page.getByRole('main')).not.toContainText('Nenhuma empresa corresponde à busca')
+  await expect(page.getByRole('heading', { name: 'Nenhum retorno pendente', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Ver carteira completa', exact: true })).toHaveAttribute('href', '/carteira')
+  await page.getByLabel('Nome', { exact: true }).fill('Não existe')
+  await page.getByLabel('Nome', { exact: true }).press('Enter')
+  await expect(page.getByRole('heading', { name: 'Nenhuma empresa corresponde à busca', exact: true })).toBeVisible()
 })
 
-test('Reagendar para o futuro pela ficha tira a empresa da agenda e mantém na Carteira', async ({ page }) => {
-  test.setTimeout(45_000)
-  await entrar(page, 'meudiae2e')
-  const lista = page.getByTestId('lista-meu-dia')
-  const perfil = perfilAtual(page)
-  await lista.getByRole('button', { name: 'Meu Dia Atraso Reagenda' }).click()
-  await perfil.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
+test('reagendar para o futuro mantém empresa na agenda e na Carteira', async ({ page }) => {
+  await entrar(page)
+  await abrirRetorno(page, 'Meu Dia Atraso Reagenda')
+  await painel(page).getByRole('link', { name: 'Atendimento', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`/carteira/${EMPRESA_MEU_DIA_REAGENDA}\\?de=meu-dia`))
-
+  const data = await comBancoGrupos(async c => (await c.query<{ data: string }>(`SELECT to_char((now() AT TIME ZONE 'America/Sao_Paulo')::date + 7, 'YYYY-MM-DD') data`)).rows[0].data)
   await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
   await page.getByLabel('Nota', { exact: true }).fill('Reagendado para o futuro pelo Meu dia')
   await page.getByLabel('Próximo passo', { exact: true }).fill('Retomar contato mais adiante')
-  await page.getByLabel('Data do próximo passo', { exact: true }).fill(await dataCivilFutura(7))
+  await page.getByLabel('Data do próximo passo', { exact: true }).fill(data)
   await page.getByRole('button', { name: 'Registrar', exact: true }).click()
   await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
   await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await page.getByRole('button', { name: 'Expandir todos', exact: true }).click()
   await expect(page.getByText('Reagendado para o futuro pelo Meu dia', { exact: true })).toBeVisible()
-
   await page.getByRole('link', { name: 'Voltar para o Meu dia', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
-  await expect(page.getByRole('main')).toContainText('13 de 13 retornos')
-  await expect(page.getByTestId('lista-meu-dia')).not.toContainText('Meu Dia Atraso Reagenda')
-
-  await page.goto('/carteira')
-  await expect(page.getByRole('heading', { name: 'Meu Dia Atraso Reagenda', exact: true })).toBeVisible()
+  await expect(card(page, 'Meu Dia Atraso Reagenda')).toContainText('Próximo')
+  await filtros(page).getByRole('button', { name: 'Atrasos', exact: true }).click()
+  await expect(lista(page)).not.toContainText('Meu Dia Atraso Reagenda')
 })
 
-test('Sem interesse pela ficha cancela agenda e retomar não restaura tarefa histórica', async ({ page }) => {
-  test.setTimeout(45_000)
-  await entrar(page, 'meudiae2e')
-  await page.getByLabel('Nome', { exact: true }).fill('Devolucao')
-  await page.getByLabel('Retorno', { exact: true }).selectOption('atrasado')
-  await page.getByRole('button', { name: 'Filtrar', exact: true }).click()
-  await expect(page).toHaveURL(/nome=Devolucao.*retorno=atrasado/)
-  const filtros = new URL(page.url()).search
-  const lista = page.getByTestId('lista-meu-dia')
-  await expect(lista.getByRole('button')).toHaveCount(1)
-  const perfil = perfilAtual(page)
-  await perfil.getByRole('link', { name: 'Abrir atendimento', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/carteira/${EMPRESA_MEU_DIA_DEVOLUCAO}\\?de=meu-dia`))
-  const fichaUrl = page.url()
-
-  await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
-  await page.getByLabel('Nota', { exact: true }).fill('Devolvida pelo Meu dia')
-  await page.getByRole('radio', { name: 'Falei, não tem interesse', exact: true }).check()
-  await page.getByRole('button', { name: 'Registrar', exact: true }).click()
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
-  await page.getByRole('link', { name: 'Voltar para o Meu dia', exact: true }).click()
-
-  await expect(page).toHaveURL(`/meu-dia${filtros}`)
-  await expect(page.getByRole('heading', { name: 'Nenhuma empresa corresponde à busca', exact: true })).toBeVisible()
-
-  await page.goto('/carteira')
-  await expect(page.getByRole('heading', { name: 'Meu Dia Atraso Devolucao', exact: true })).toHaveCount(0)
-
-  await page.goto(fichaUrl)
-  await expect(page.getByText('Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.')).toBeVisible()
-  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
-  await expect(page.getByText('Devolvida pelo Meu dia', {exact:true})).toBeVisible()
-  await page.getByRole('button',{name:'Retomar atendimento',exact:true}).click()
-  await expect(page).toHaveURL(/\/fila\/atendimento\//)
-  await page.goto('/meu-dia')
-  await expect(page.getByTestId('lista-meu-dia')).not.toContainText('Meu Dia Atraso Devolucao')
-})
-
-test('Posse perdida durante a sessão remove o item, atualiza a contagem e preserva a rolagem dos itens restantes', async ({ page }) => {
-  test.setTimeout(45_000)
-  await entrar(page, 'meudiae2e')
-  await page.setViewportSize({ width: 1280, height: 800 })
-  const lista = page.getByTestId('lista-meu-dia')
-  const perfil = perfilAtual(page)
-  const listaBox = (await lista.boundingBox())!
-
-  // A contagem de partida não é sempre 14: os testes de reagendamento e
-  // devolução, quando rodam antes deste no mesmo processo, já tiraram
-  // empresas da agenda de verdade no banco. Lê a contagem real da tela em
-  // vez de presumir um número, para a asserção de "caiu em um" valer
-  // independentemente da ordem de execução dos outros testes.
-  const contagem = page.getByText(/^\d+ de \d+ retornos?$/)
-  const totalAntes = Number((await contagem.textContent())!.match(/de (\d+)/)![1])
-
-  const alvoRemocao = lista.getByRole('button', { name: 'Meu Dia Posse Perdida' })
-  // Rola exatamente o bastante para o PRÓPRIO item de remoção (medido a
-  // scrollTop=0) ficar acima da dobra do container, com uma folga pequena
-  // só para não deixar a prova de "escondido" na margem exata do pixel.
-  const folga = 20
-  const antesAlvoRemocao = (await alvoRemocao.boundingBox())!
-  const rolagemNecessaria = Math.ceil(antesAlvoRemocao.y + antesAlvoRemocao.height - listaBox.y + folga)
-  await lista.evaluate((el, alvo) => { el.scrollTop = alvo }, rolagemNecessaria)
-  const scrollAntes = await lista.evaluate((el) => el.scrollTop)
-  expect(scrollAntes).toBeGreaterThan(0)
-  const alvoRemocaoBox = (await alvoRemocao.boundingBox())!
-  // Acima da dobra do próprio container, por medição: a remoção que este
-  // teste prova é de um item que já saiu da posição visível.
-  expect(alvoRemocaoBox.y + alvoRemocaoBox.height).toBeLessThanOrEqual(listaBox.y)
-
-  // A agenda já está aberta com a posse intacta; a posse muda por fora agora.
-  await revogarPosse(EMPRESA_MEU_DIA_POSSE_PERDIDA)
-  // Clique despachado no DOM, de propósito: o item está acima da dobra (é o
-  // que acabou de ser medido), e um `.click()` normal traria a lista de
-  // volta para o topo antes de medir a rolagem preservada — mascarando
-  // exatamente o que este teste prova. A acionabilidade de um clique real
-  // já foi provada no teste principal, com outro item nas mesmas condições;
-  // aqui o clique é só o gatilho para a checagem de posse no servidor.
-  await alvoRemocao.evaluate((el) => (el as HTMLElement).click())
-
-  await expect(page.getByRole('alert').getByRole('heading', { name: 'Esta empresa não está mais na sua agenda', exact: true })).toBeVisible()
-  await expect(perfil).toHaveCount(0)
-  // '11999990401' é o telefone real de "Meu Dia Posse Perdida" na fixture:
-  // ele só apareceria na tela se o perfil vazasse os dados da empresa.
+test('perda de vínculo ao abrir remove card sem serializar histórico privado', async ({ page }) => {
+  await entrar(page)
+  const total = await lista(page).getByRole('listitem').count()
+  await comBancoGrupos(c => c.query('UPDATE empresa_vinculo SET vendedor_id=(SELECT id FROM usuario WHERE email=$2) WHERE empresa_id=$1', [EMPRESA_MEU_DIA_POSSE_PERDIDA, 'meudiaprivadae2e@teste.local']))
+  let payload = ''
+  await page.route('**/meu-dia*', async rota => {
+    if (rota.request().method() !== 'POST') return rota.continue()
+    const resposta = await rota.fetch()
+    payload = await resposta.text()
+    await rota.fulfill({ response: resposta })
+  })
+  await card(page, 'Meu Dia Posse Perdida').getByRole('button', { name: 'Abrir retorno' }).click()
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('Esta empresa não está mais na sua agenda')
+  expect(payload).not.toBe('')
+  expect(payload).not.toContain('Nota de Meu Dia Posse Perdida')
+  await expect(painel(page)).toHaveCount(0)
+  await expect(lista(page).getByRole('listitem')).toHaveCount(total - 1)
   await expect(page.getByRole('main')).not.toContainText('11999990401')
-
-  // Comportamento atual: a empresa sai da lista na hora (não só o perfil).
-  await expect(alvoRemocao).toHaveCount(0)
-  // A contagem cai em um, com a frase real que a tela usa.
-  const totalDepois = totalAntes - 1
-  await expect(contagem).toHaveText(`${totalDepois} de ${totalDepois} ${totalDepois === 1 ? 'retorno' : 'retornos'}`)
-
-  // A rolagem dos itens restantes não voltou ao topo. O `scrollTop` não
-  // precisa ficar idêntico bit a bit: remover conteúdo ACIMA do ponto
-  // rolado encolhe o `scrollHeight`, e o navegador pode clampar o
-  // `scrollTop` para o novo teto — comportamento legítimo do navegador,
-  // diferente de um reset para 0. A prova aqui é dupla: continua bem longe
-  // do topo, e a eventual queda não passa da altura do próprio item
-  // removido (a explicação real de um clamp, não um reset disfarçado).
-  const scrollDepois = await lista.evaluate((el) => el.scrollTop)
-  expect(scrollDepois).toBeGreaterThan(0)
-  expect(scrollAntes - scrollDepois).toBeLessThanOrEqual(alvoRemocaoBox.height + folga)
-
-  await page.getByRole('link', { name: 'Recarregar a agenda', exact: true }).click()
-  await expect(page).toHaveURL('/meu-dia')
-  await expect(page.getByTestId('lista-meu-dia')).not.toContainText('Meu Dia Posse Perdida')
 })
+
+
+test('Dados direto oferece negociação e Voltar fecha com foco no card, sem seleção automática', async ({ page }) => {
+  await entrar(page)
+  const gatilho = card(page, 'Meu Dia Aurora').getByRole('button', { name: 'Dados da empresa', exact: true })
+  await gatilho.press('Enter')
+  await expect(painel(page).locator('header').getByRole('button')).toHaveText('Voltar')
+  await painel(page).locator('footer').getByRole('button', { name: 'Negociação', exact: true }).press('Enter')
+  await expect(painel(page)).toHaveCount(1)
+  await painel(page).getByRole('tab', { name: 'Atendimento', exact: true }).click()
+  await painel(page).getByRole('textbox', { name: 'Nota', exact: true }).fill('Preservar contexto Dados')
+  await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+  const descarte = page.getByRole('dialog', { name: 'Descartar alterações?', exact: true })
+  await expect(descarte).toBeVisible()
+  await descarte.getByRole('button', { name: 'Continuar editando', exact: true }).click()
+  await expect(painel(page).getByRole('textbox', { name: 'Nota', exact: true })).toHaveValue('Preservar contexto Dados')
+  await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+  await descarte.getByRole('button', { name: 'Descartar', exact: true }).click()
+  await expect(painel(page).getByRole('tab', { name: 'Próximo passo', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+  await expect(painel(page).getByRole('heading', { name: 'Dados da empresa', exact: true })).toBeVisible()
+  await expect(painel(page).locator('footer').getByRole('button', { name: 'Negociação', exact: true })).toBeFocused()
+  await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+  await expect(painel(page)).toHaveCount(0)
+  await expect(gatilho).toBeFocused()
+  await expect(page.getByText('Nenhum retorno selecionado', { exact: true })).toBeVisible()
+})
+
+for (const [nome, situacao] of [['Meu Dia Amanhã', 'cliente'], ['Meu Dia Semana Que Vem', 'tentativa']] as const) {
+  test(`Dados de ${situacao} usa Atendimento com nome, retorno e período intactos`, async ({ page }) => {
+    await entrar(page)
+    const periodo = situacao === 'cliente' ? 'amanha' : 'semana_que_vem'
+    const query = new URLSearchParams({ nome, retorno: 'proximos', periodo })
+    await page.goto('/meu-dia?' + query)
+    await card(page, nome).getByRole('button', { name: 'Dados da empresa', exact: true }).click()
+    const link = painel(page).locator('footer').getByRole('link', { name: 'Atendimento', exact: true })
+    const destino = new URL((await link.getAttribute('href'))!, page.url())
+    expect(destino.searchParams.get('de')).toBe('meu-dia')
+    for (const [chave, valor] of query) expect(destino.searchParams.get(chave)).toBe(valor)
+    await link.press('Enter')
+    await expect(page).toHaveURL(new RegExp('/carteira/.*de=meu-dia'))
+    const url = new URL(page.url())
+    for (const [chave, valor] of query) expect(url.searchParams.get(chave)).toBe(valor)
+    await page.getByRole('link', { name: 'Voltar para o Meu dia', exact: true }).click()
+    await expect(page).toHaveURL('/meu-dia?' + query)
+    await expect(painel(page)).toHaveCount(0)
+  })
+}
+
+
+for (const tema of ['light', 'dark']) {
+  for (const width of [1440, 390]) {
+    test(`rodapé comercial de Dados permanece na viewport antes de rolar em ${tema}/${width}`, async ({ page }) => {
+      await entrar(page)
+      await page.getByRole('combobox', { name: 'Tema do Meu dia' }).selectOption(tema)
+      await page.setViewportSize({ width, height: 1000 })
+      await card(page, 'Meu Dia Aurora').getByRole('button', { name: 'Dados da empresa', exact: true }).click()
+      await expect(painel(page)).toContainText('Cadastro')
+      const comercial = painel(page).locator('footer').getByRole('button', { name: 'Negociação', exact: true })
+      const caixa = (await comercial.boundingBox())!
+      expect(caixa.x).toBeGreaterThanOrEqual(0)
+      expect(caixa.y).toBeGreaterThanOrEqual(0)
+      expect(caixa.x + caixa.width).toBeLessThanOrEqual(width)
+      expect(caixa.y + caixa.height).toBeLessThanOrEqual(1000)
+      const cadastro = painel(page).locator('[aria-busy=false]')
+      const medidas = await cadastro.evaluate(el => ({ altura: el.clientHeight, conteudo: el.scrollHeight }))
+      expect(medidas.conteudo).toBeGreaterThan(medidas.altura)
+      await cadastro.evaluate(el => { el.scrollTop = el.scrollHeight })
+      const depois = (await comercial.boundingBox())!
+      expect(depois.y + depois.height).toBeLessThanOrEqual(1000)
+      expect(depois.y).toBe(caixa.y)
+      await expect(cadastro.getByRole('heading', { name: 'Origem', exact: true })).toBeVisible()
+      await page.screenshot({ path: `${pasta}/dados-rodape-${tema}-${width}.png`, animations: 'disabled' })
+      await comercial.press('Enter')
+      await expect(painel(page).getByRole('tab', { name: 'Próximo passo', exact: true })).toHaveAttribute('aria-selected', 'true')
+    })
+  }
+}

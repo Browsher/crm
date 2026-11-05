@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter, DialogHeader } from '@/src/components/ui/dialog'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -13,6 +13,9 @@ import { FormularioContato } from '@/src/features/contato/formulario'
 import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial } from '@/src/features/contato/rascunho'
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
+import { HistoricoComercial } from '@/src/components/crm/historico-comercial'
+import type { EventoHistoricoComercial } from '@/src/lib/historico-comercial'
+import { ROTULO, type TipoContato } from '@/src/features/contato/tipos'
 import { ROTULOS_ETAPA } from './rotulos'
 import { detalheAcao, telefoneAcao, etapaAcao, type EstadoFunil } from './acoes'
 import { PainelLateralCrm } from '@/src/components/crm/painel-lateral'
@@ -21,8 +24,8 @@ import { criarComandoVenda, type EstadoVenda } from '@/src/lib/venda-envio'
 import { useEnvioVenda } from '@/src/lib/use-envio-venda'
 import { transmitirVenda } from '../venda-envio'
 
-type Modo = 'resumo' | 'venda' | 'atendimento'
-type PedidoDescarte = { destino: 'fechar' | 'resumo' | 'voltar'; depois?: () => void }
+type Modo = 'passo' | 'venda' | 'atendimento' | 'historico'
+type PedidoDescarte = { destino: 'fechar' | 'passo' | 'voltar' | 'arquivo' | 'venda'; depois?: () => void }
 type ConfirmacaoVenda = Extract<EstadoVenda, { ok: true }>
 
 export type PedirFecharNegociacao = (depois?: () => void) => void
@@ -32,27 +35,50 @@ type PainelNegociacaoProps = {
   usuarioId: string
   fechar: (aviso?: string, venda?: ConfirmacaoVenda) => void
   fecharRef?: RefObject<PedirFecharNegociacao | null>
-  aoPedirArquivar?: () => void
+  rotuloFechar?: 'Fechar' | 'Voltar'
+  aoPedirArquivar?: (detalhe: NegociacaoDetalhe) => void
   aoMudarBloqueioDeArraste?: (bloqueado: boolean) => void
   bloqueada?: boolean
 }
 
-const formatarAtendimento = new Intl.DateTimeFormat('pt-BR', {
-  dateStyle: 'short',
-  timeStyle: 'short',
-  timeZone: 'America/Sao_Paulo',
-})
+function assinarContato(avisar: () => void) {
+  window.addEventListener('crm-contato', avisar)
+  return () => window.removeEventListener('crm-contato', avisar)
+}
+function sessaoContato(empresaId?: string) {
+  if (!empresaId) return ''
+  try { return sessionStorage.getItem('crm:contato:v1:' + empresaId) ?? '' }
+  catch { return '!erro' }
+}
+function contatoAlterado(bruto: string | null) {
+  if (!bruto) return false
+  try {
+    const dados = JSON.parse(bruto)
+    return Boolean(dados.envio && !dados.envio.resolvido || dados.valor && rascunhoAlterado(dados.valor, rascunhoInicial(true)))
+  } catch { return true }
+}
+function eventosDaNegociacao(detalhe: NegociacaoDetalhe): EventoHistoricoComercial[] {
+  // Esta fonte já filtra criado_por pelo ator e pelo ciclo autorizado da negociação.
+  return detalhe.historico.map(contato => ({
+    id: contato.id, empresa: detalhe.empresaId,
+    natureza: contato.tipo === 'nao_liguei' ? 'atividade_sem_ligacao' : 'contato',
+    titulo: ROTULO[contato.tipo as TipoContato] ?? 'Atendimento',
+    criadoEm: contato.em, autor: 'Você', nota: contato.nota,
+    resultado: ROTULO[contato.tipo as TipoContato] ?? contato.tipo,
+    proximoPasso: contato.proximoPasso ? { descricao: contato.proximoPasso, data: contato.retorno } : undefined,
+  }))
+}
 
 function dataCurta(data: string) {
   return data.split('-').reverse().join('/')
 }
 
-export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArquivar, aoMudarBloqueioDeArraste, bloqueada = false }: PainelNegociacaoProps) {
+export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArquivar, aoMudarBloqueioDeArraste, bloqueada = false, rotuloFechar = 'Fechar' }: PainelNegociacaoProps) {
   const tema=useTemaCrm()
   const venda=useEnvioVenda(usuarioId,transmitirVenda)
   const [detalhe,setDetalhe]=useState<NegociacaoDetalhe|null>(null)
   const [carregando,setCarregando]=useState(true),[erro,setErro]=useState('')
-  const [modo,setModo]=useState<Modo>('resumo')
+  const [modo,setModo]=useState<Modo>('passo')
   const [fechandoVenda,setFechandoVenda]=useState(false)
   const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState('')
   const [confirmado,setConfirmado]=useState(false),[descarte,setDescarte]=useState<PedidoDescarte|null>(null)
@@ -61,12 +87,15 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   const [rascunho,setRascunho]=useState(()=>rascunhoInicial(true))
   const bloqueado=useRef(false),vivo=useRef(true),sentinela=useRef<string|null>(null)
   const pedidoTelefone=useRef(0)
-  const [historicoAberto, setHistoricoAberto] = useState(false)
-  const historicoId = useId()
+  const [atendimentoAberto, setAtendimentoAberto] = useState(false)
+  const abasId = useId()
+  const abas = [{ valor: 'passo', rotulo: 'Próximo passo' }, { valor: 'atendimento', rotulo: 'Atendimento' }, { valor: 'historico', rotulo: 'Histórico' }] as const
+  const sessao = useSyncExternalStore(assinarContato, () => sessaoContato(detalhe?.empresaId), () => null)
   const tituloEdicao = useRef<HTMLHeadingElement>(null)
   const registrarAtendimento = useRef<HTMLButtonElement>(null)
   const registrarVenda = useRef<HTMLButtonElement>(null)
-  const modoAnterior = useRef<Modo>('resumo')
+  const abaHistorico = useRef<HTMLButtonElement>(null)
+  const modoAnterior = useRef<Modo>('passo')
   const recuperarVenda = useRef<HTMLButtonElement>(null)
   const rascunhoPreservado = useRef<HTMLTextAreaElement>(null)
   const focoVenda = useRef<HTMLElement | null>(null)
@@ -80,17 +109,21 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     history.back()
   },[])
   const [baseline]=useState(()=>rascunhoInicial(true))
-  const dirty=!fechandoVenda&&!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||(modo==='atendimento'&&detalhe&&contatoPendente(detalhe.empresaId)))
+  const dirty=!fechandoVenda&&!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||contatoAlterado(sessao))
   const dirtyRef=useRef(dirty)
-  const arrasteBloqueado = modo !== 'resumo' || dirty || pendente || venda.pendente
+  // O replay pode nascer em outro consumidor do mesmo ator, sem pendência local.
+  const vendaPendenteRef = useRef(venda.pendente)
+  useLayoutEffect(() => { vendaPendenteRef.current = venda.pendente }, [venda.pendente])
+  const arrasteBloqueado = modo === 'atendimento' || modo === 'venda' || dirty || pendente || venda.pendente
   useLayoutEffect(() => { aoMudarBloqueioDeArraste?.(arrasteBloqueado) }, [aoMudarBloqueioDeArraste, arrasteBloqueado])
   useLayoutEffect(() => () => aoMudarBloqueioDeArraste?.(false), [aoMudarBloqueioDeArraste])
   useLayoutEffect(() => {
     const anterior = modoAnterior.current
     modoAnterior.current = modo
-    if (modo !== 'resumo') tituloEdicao.current?.focus()
-    else if (anterior === 'atendimento') registrarAtendimento.current?.focus({ preventScroll: true })
-    else if (anterior === 'venda') registrarVenda.current?.focus({ preventScroll: true })
+    if (modo === 'venda') tituloEdicao.current?.focus()
+    else if (modo === 'passo' && anterior === 'historico') abaHistorico.current?.focus({ preventScroll: true })
+    else if (modo === 'passo' && anterior === 'atendimento') registrarAtendimento.current?.focus({ preventScroll: true })
+    else if (modo === 'passo' && anterior === 'venda') registrarVenda.current?.focus({ preventScroll: true })
   }, [modo])
   useEffect(()=>{dirtyRef.current=dirty},[dirty])
   useEffect(()=>{
@@ -101,13 +134,13 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   },[id])
   useEffect(()=>{vivo.current=true;return()=>{vivo.current=false}},[])
   useEffect(()=>{
-    const guardar=(e:BeforeUnloadEvent)=>{if(!finalizando.current&&(dirtyRef.current||bloqueado.current))e.preventDefault()}
+    const guardar=(e:BeforeUnloadEvent)=>{if(!finalizando.current&&(dirtyRef.current||bloqueado.current||vendaPendenteRef.current))e.preventDefault()}
     const voltar=(e:PopStateEvent)=>{
       if(removendoSentinela.current){
         removendoSentinela.current=false
         const continuar=depoisDeRemover.current;depoisDeRemover.current=null
         const rearmar=()=>{
-          if((dirtyRef.current||bloqueado.current)&&!finalizando.current&&!sentinela.current){
+          if((dirtyRef.current||bloqueado.current||vendaPendenteRef.current)&&!finalizando.current&&!sentinela.current){
             const nova=crypto.randomUUID();sentinela.current=nova
             history.pushState({...history.state,__funilRascunho:nova},'',location.href)
           }
@@ -126,7 +159,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       const s=sentinela.current
       if(!s||e.state?.__funilRascunho===s)return
       history.pushState({...history.state,__funilRascunho:s},'',location.href)
-      if (!bloqueado.current) {
+      if (!bloqueado.current && !vendaPendenteRef.current) {
         focoDescarte.current = document.activeElement as HTMLElement | null
         setDescarte(atual => atual ?? { destino: 'voltar' })
       }
@@ -135,11 +168,11 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     return()=>{window.removeEventListener('beforeunload',guardar);window.removeEventListener('popstate',voltar)}
   },[])
   useEffect(()=>{
-    if((dirty||pendente)&&!sentinela.current&&!removendoSentinela.current&&!finalizando.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
-  },[dirty,pendente])
+    if((dirty||pendente||venda.pendente)&&!sentinela.current&&!removendoSentinela.current&&!finalizando.current){const s=crypto.randomUUID();sentinela.current=s;history.pushState({...history.state,__funilRascunho:s},'',location.href)}
+  },[dirty,pendente,venda.pendente])
   useEffect(()=>{
-    if(!dirty&&!pendente)removerSentinela()
-  },[dirty,pendente,removerSentinela])
+    if(!dirty&&!pendente&&!venda.pendente)removerSentinela()
+  },[dirty,pendente,venda.pendente,removerSentinela])
   function concluir(aviso?: string, confirmacao?: ConfirmacaoVenda, depois?: () => void){
     if(finalizando.current)return
     finalizando.current=true;pedidoTelefone.current++
@@ -158,13 +191,14 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     })
   }
 
-  function voltarAoResumo() {
+  function voltarAoPasso() {
     pedidoTelefone.current++
-    setModo('resumo')
+    setModo('passo')
   }
 
-  function pedir(destino: 'fechar' | 'resumo', depois?: () => void) {
+  function pedir(destino: 'fechar' | 'passo' | 'arquivo' | 'venda', depois?: () => void) {
     if (bloqueado.current || venda.pendente || finalizando.current || descarte || confirmacaoVendaAberta) return
+    if ((destino === 'venda' || destino === 'arquivo') && detalhe?.empresa?.situacao === 'indisponivel') return
     if (venda.comando) {
       setErro('Confirme a venda anterior ou feche mantendo o envio. Os dados não podem ser descartados.')
       return
@@ -181,8 +215,10 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     removerSentinela(() => {
       if (dirtyRef.current) {
         focoDescarte.current = document.activeElement as HTMLElement | null
-        setDescarte(atual => atual ?? { destino: 'resumo' })
-      } else voltarAoResumo()
+        setDescarte(atual => atual ?? { destino, depois })
+      } else if (destino === 'arquivo') depois?.()
+      else if (destino === 'venda') { if (venda.iniciarNovo()) setModo('venda') }
+      else voltarAoPasso()
     })
   }
 
@@ -191,9 +227,9 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     () => dirty || pendente || venda.pendente || bloqueado.current || removendoSentinela.current || finalizando.current,
     pendente || venda.pendente,
     depois => pedir('fechar', () => {
-      // Se a saída falhar, o painel pode continuar no resumo e aceitar nova tentativa.
+      // Se a saída falhar, o painel pode continuar no próximo passo e aceitar nova tentativa.
       dirtyRef.current = false
-      voltarAoResumo()
+      voltarAoPasso()
       finalizando.current = false
       depois()
     }),
@@ -205,8 +241,8 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       setErro('Confirme a venda anterior antes de descartar.')
       return
     }
-    if (!preservar && modo === 'atendimento' && detalhe && !descartarRascunhoContato(detalhe.empresaId)) {
-      setErro('Confirme o envio anterior no atendimento antes de descartar. Você também pode fechar mantendo o rascunho.')
+    if (!preservar && detalhe && !descartarRascunhoContato(detalhe.empresaId)) {
+      setErro('Confirme o envio anterior no atendimento antes de descartar. Volte à aba Atendimento para confirmar o envio anterior.')
       return
     }
     const { destino, depois } = descarte
@@ -223,7 +259,11 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       return
     }
     if (destino === 'fechar') concluir(undefined, undefined, depois)
-    else removerSentinela(voltarAoResumo)
+    else removerSentinela(() => {
+      if (destino === 'arquivo') depois?.()
+      else if (destino === 'venda') { if (venda.iniciarNovo()) setModo('venda') }
+      else voltarAoPasso()
+    })
   }
 
   function restaurarFoco(evento: Event, origem: HTMLElement | null) {
@@ -243,6 +283,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   }
   async function salvarVenda(){
     const anterior = venda.comando
+    if (!anterior && detalhe?.empresa?.situacao === 'indisponivel') return
     if (bloqueado.current || finalizando.current || fechandoVenda || venda.pendente || !detalhe && !anterior) return
     const alvo = anterior?.alvo ?? { tipo: 'primeira' as const, negociacaoId: id }
     const vendaDesteFormulario = alvo.tipo === 'primeira' && alvo.negociacaoId === id && modo === 'venda'
@@ -252,7 +293,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     try {
       const r = await venda.enviar(novo)
       if (!vivo.current || !r) return
-      if (r.ok && alvo.tipo === 'primeira' && (vendaDesteFormulario || !dirty)) {
+      if (r.ok && alvo.tipo === 'primeira' && alvo.negociacaoId === id && (vendaDesteFormulario || !dirty)) {
         setFechandoVenda(true)
         setConfirmado(false)
         concluir('Venda registrada.', r)
@@ -264,15 +305,20 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     }
   }
   async function atender(){
+    if (detalhe?.empresa?.situacao === 'indisponivel') return
     const pedido=++pedidoTelefone.current
-    setModo('atendimento');setBuscandoTelefone(true);setErro('');setTelefone(null)
+    setModo('atendimento')
+    if (telefone !== null) return
+    setAtendimentoAberto(true);setBuscandoTelefone(true);setErro('');setTelefone(null)
     try{const t=await telefoneAcao(id);if(vivo.current&&pedido===pedidoTelefone.current){setTelefone(t);if(t===null)concluir('A negociação não está mais disponível.')}}
     catch{if(vivo.current&&pedido===pedidoTelefone.current)setErro('Não foi possível carregar o telefone. Volte e tente novamente.')}
     finally{if(vivo.current&&pedido===pedidoTelefone.current)setBuscandoTelefone(false)}
   }
 
   const etapaSeguinte = detalhe && proximaEtapa(detalhe.etapa)
-  const acoesBloqueadas = pendente || venda.pendente || dirty || detalhe?.empresa?.situacao === 'indisponivel'
+  const empresaIndisponivel = detalhe?.empresa?.situacao === 'indisponivel'
+  const novasOperacoesBloqueadas = pendente || venda.pendente || empresaIndisponivel
+  const acoesBloqueadas = novasOperacoesBloqueadas || dirty
   const alerta = (erro || venda.erro) && <Alert variant="danger" role="alert">{erro || venda.erro}</Alert>
   return <>
     <PainelLateralCrm
@@ -281,7 +327,8 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       rotulo="Negociação"
       titulo={indisponivel ? 'Negociação indisponível' : detalhe?.nome ?? 'Negociação'}
       descricao={!indisponivel && detalhe ? <>Etapa atual: <strong>{ROTULOS_ETAPA[detalhe.etapa]}</strong></> : undefined}
-      aoFechar={() => pedir('fechar')}
+      rotuloFechar={modo === 'passo' ? rotuloFechar : 'Voltar'}
+      aoFechar={() => pedir(modo === 'passo' ? 'fechar' : 'passo')}
       fecharBloqueado={pendente || venda.pendente || !!descarte || confirmacaoVendaAberta}
     >
       {carregando && <p role="status">Carregando negociação...</p>}
@@ -305,44 +352,54 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
         <Button variant="outline" onClick={() => pedir('fechar')}>Fechar rascunho</Button>
       </section>}
       {detalhe && !indisponivel && <fieldset disabled={bloqueada || venda.pendente || !!venda.comando || fechandoVenda} className={styles.corpo}>
-        {modo === 'resumo' ? <>
+        {modo !== 'venda' && <div role="tablist" aria-label="Negociação" className={styles.abas} onKeyDown={evento => {
+          if (pendente || bloqueada || venda.bloqueada || fechandoVenda) return
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return
+          evento.preventDefault()
+          const disponiveis = abas.filter(aba => aba.valor !== 'atendimento' || !empresaIndisponivel)
+          const indice = disponiveis.findIndex(aba => aba.valor === modo)
+          const proximo = evento.key === 'Home' ? 0 : evento.key === 'End' ? disponiveis.length - 1 : (indice + (evento.key === 'ArrowRight' ? 1 : -1) + disponiveis.length) % disponiveis.length
+          const aba = disponiveis[proximo]
+          if (aba.valor === 'atendimento') void atender()
+          else setModo(aba.valor)
+          document.getElementById(abasId + '-' + aba.valor)?.focus()
+        }}>
+          {abas.map(aba => <Button key={aba.valor} ref={aba.valor === 'atendimento' ? registrarAtendimento : aba.valor === 'historico' ? abaHistorico : undefined} type="button" role="tab"
+            id={abasId + '-' + aba.valor} aria-controls={abasId + '-painel-' + aba.valor} aria-selected={modo === aba.valor} tabIndex={modo === aba.valor ? 0 : -1}
+            variant="ghost" disabled={pendente || aba.valor === 'atendimento' && empresaIndisponivel} onClick={() => { if (aba.valor === 'atendimento') void atender(); else setModo(aba.valor) }}>{aba.rotulo}</Button>)}
+        </div>}
+        <section role="tabpanel" id={abasId + '-painel-passo'} aria-labelledby={abasId + '-passo'} hidden={modo !== 'passo'} className={styles.secao}>
           <dl className={styles.dados}>
             <div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso ?? 'Sem próximo passo combinado'}</dd></div>
             <div><dt>Retorno</dt><dd>{detalhe.retorno ? <time dateTime={detalhe.retorno}>{dataCurta(detalhe.retorno)}</time> : 'Sem retorno agendado'}</dd></div>
           </dl>
-          <div className={styles.acoes}>
-            <Button ref={registrarAtendimento} disabled={acoesBloqueadas} onClick={() => void atender()}>Registrar atendimento</Button>
-            <Button ref={registrarVenda} variant="outline" disabled={acoesBloqueadas} onClick={() => { if (venda.iniciarNovo()) setModo('venda') }}>Registrar venda</Button>
-            {etapaSeguinte && <Button variant="outline" disabled={acoesBloqueadas} onClick={() => void executar(etapaAcao, { etapa: etapaSeguinte, anterior: detalhe.etapa }, 'Etapa atualizada.')}>
-              Avançar para {ROTULOS_ETAPA[etapaSeguinte]}
-            </Button>}
-            {aoPedirArquivar && <Button variant="ghost" disabled={acoesBloqueadas} onClick={aoPedirArquivar}>Marcar como Sem interesse</Button>}
+          {etapaSeguinte && <Button variant="outline" disabled={acoesBloqueadas} onClick={() => void executar(etapaAcao, { etapa: etapaSeguinte, anterior: detalhe.etapa }, 'Etapa atualizada.')}>
+            Avançar para {ROTULOS_ETAPA[etapaSeguinte]}
+          </Button>}
+        </section>
+        <section role="tabpanel" id={abasId + '-painel-atendimento'} aria-labelledby={abasId + '-atendimento'} hidden={modo !== 'atendimento'} className={styles.secao}>
+          {atendimentoAberto && <>
+          <h3 ref={modo === 'atendimento' ? tituloEdicao : undefined} tabIndex={-1}>Registrar atendimento</h3>
+          {buscandoTelefone ? <p role="status">Carregando telefone...</p> : telefone !== null && <>
+            <p>Telefone: <strong>{telefone || 'Não cadastrado'}</strong></p>
+            <FormularioContato empresaId={detalhe.empresaId} posse visual="fila" rascunho={rascunho} onDraftChange={setRascunho} onPendingChange={informarPendente}
+              rotuloSalvar="Salvar atendimento" onCancel={() => pedir('passo')} onSaved={() => concluir('Atendimento registrado.')} />
+          </>}
+          </>}
+        </section>
+        <section role="tabpanel" id={abasId + '-painel-historico'} aria-labelledby={abasId + '-historico'} hidden={modo !== 'historico'}>
+          {modo === 'historico' && <HistoricoComercial eventos={eventosDaNegociacao(detalhe)} />}
+        </section>
+        {(modo === 'passo' || modo === 'historico') && <footer className={styles.rodape}>
+          <span>Ações da negociação</span>
+          <div className={styles.parAcoes}>
+            <Button ref={registrarVenda} disabled={novasOperacoesBloqueadas} onClick={() => pedir('venda')}>Registrar venda</Button>
+            <Button variant="outline" disabled={!aoPedirArquivar || novasOperacoesBloqueadas} onClick={() => pedir('arquivo', () => aoPedirArquivar?.(detalhe))}>Sem interesse</Button>
           </div>
-          <section className={styles.secao}>
-            <h3>{historicoAberto ? 'Histórico de atendimentos' : 'Último atendimento'}</h3>
-            {detalhe.historico.length ? <>
-              <ol id={historicoId} className={styles.historico}>
-                {(historicoAberto ? detalhe.historico : detalhe.historico.slice(0, 1)).map(contato => <li key={contato.id}>
-                  <time dateTime={contato.em}>{formatarAtendimento.format(new Date(contato.em))}</time>
-                  <p>{contato.nota ?? 'Sem anotação'}</p>
-                  {contato.proximoPasso && <p>Próximo passo: {contato.proximoPasso}</p>}
-                </li>)}
-              </ol>
-              <Button variant="outline" aria-expanded={historicoAberto} aria-controls={historicoId} onClick={() => setHistoricoAberto(aberto => !aberto)}>{historicoAberto ? 'Ver menos' : 'Ver todos'}</Button>
-            </> : <p className={styles.muted}>Nenhum atendimento seu registrado.</p>}
-          </section>
-        </> : <>
-          <Button variant="ghost" disabled={pendente} onClick={() => pedir('resumo')}>Voltar ao resumo</Button>
-          {modo === 'atendimento' && <section className={styles.secao}>
-            <h3 ref={tituloEdicao} tabIndex={-1}>Registrar atendimento</h3>
-            {buscandoTelefone ? <p role="status">Carregando telefone...</p> : telefone !== null && <>
-              <p>Telefone: <strong>{telefone || 'Não cadastrado'}</strong></p>
-              <FormularioContato empresaId={detalhe.empresaId} posse visual="fila" rascunho={rascunho} onDraftChange={setRascunho} onPendingChange={informarPendente} onSaved={() => concluir('Atendimento registrado.')} />
-            </>}
-          </section>}
+        </footer>}
           {modo === 'venda' && <form className={styles.secao} onSubmit={evento => {
             evento.preventDefault()
-            if (pendente || fechandoVenda || confirmado || venda.bloqueada) return
+            if (pendente || fechandoVenda || confirmado || venda.bloqueada || empresaIndisponivel) return
             focoVenda.current = document.activeElement as HTMLElement | null
             setConfirmado(true)
           }}>
@@ -356,7 +413,6 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
             <p className={styles.muted}>Nesta versão, vendas não podem ser editadas nem excluídas. Confira os dados antes de confirmar.</p>
             <Button type="submit" disabled={pendente || confirmado}>Conferir venda</Button>
           </form>}
-        </>}
       </fieldset>}
     </PainelLateralCrm>
 
@@ -369,7 +425,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
         {alerta}
         <DialogFooter>
           <Button variant="outline" onClick={() => setDescarte(null)}>Continuar editando</Button>
-          {modo === 'atendimento' && <Button variant="outline" onClick={() => descartar(true)}>Fechar mantendo rascunho</Button>}
+          {(atendimentoAberto || detalhe && contatoPendente(detalhe.empresaId)) && descarte?.destino !== 'arquivo' && descarte?.destino !== 'venda' && <Button variant="outline" onClick={() => descartar(true)}>Fechar mantendo rascunho</Button>}
           <Button onClick={() => descartar()}>Descartar</Button>
         </DialogFooter>
       </DialogContent>

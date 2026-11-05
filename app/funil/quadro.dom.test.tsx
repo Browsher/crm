@@ -18,7 +18,7 @@ vi.mock('./modal', () => {
   function Painel({ fechar, fecharRef, aoPedirArquivar, aoMudarBloqueioDeArraste }: {
     fechar: (aviso?: string) => void
     fecharRef?: RefObject<((depois?: () => void) => void) | null>
-    aoPedirArquivar?: () => void
+    aoPedirArquivar?: (detalhe: NegociacaoResumo) => void
     aoMudarBloqueioDeArraste?: (bloqueado: boolean) => void
   }) {
     const [editando, setEditando] = useState(false)
@@ -33,7 +33,7 @@ vi.mock('./modal', () => {
     return <aside aria-label="Negociação operacional">
       <p>Negociação operacional</p>
       <button onClick={() => setEditando(true)}>Editar rascunho de teste</button>
-      {aoPedirArquivar && <button onClick={aoPedirArquivar}>Marcar como Sem interesse</button>}
+      {aoPedirArquivar && <button onClick={() => aoPedirArquivar(linha())}>Marcar como Sem interesse</button>}
       <button onClick={() => fechar('Atendimento registrado.')}>Fechar modal de teste</button>
     </aside>
   }
