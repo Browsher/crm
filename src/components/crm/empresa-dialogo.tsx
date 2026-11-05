@@ -12,7 +12,7 @@ import { PainelLateralCrm } from './painel-lateral'
 import { useTemaCrm } from './tema'
 import styles from './empresa.module.css'
 
-type Props = { referencia: ReferenciaEmpresa; aoFechar: () => void }
+type Props = { referencia: ReferenciaEmpresa; aoFechar: () => void; rotuloFechar?: 'Fechar' | 'Voltar' }
 
 // A chave desmonta a seleção anterior antes do próximo paint e invalida seu efeito.
 function chaveReferencia(ref: ReferenciaEmpresa) {
@@ -39,8 +39,8 @@ function ConteudoDialogo({ referencia, guardarFoco, devolverFoco }: { referencia
   </DialogContent>
 }
 
-export function DadosEmpresaPainel({ referencia, aoFechar }: Props) {
-  return <PainelLateralCrm key={chaveReferencia(referencia)} titulo="Dados da empresa" aoFechar={aoFechar} className={styles.lateral}>
+export function DadosEmpresaPainel({ referencia, aoFechar, rotuloFechar }: Props) {
+  return <PainelLateralCrm key={chaveReferencia(referencia)} titulo="Dados da empresa" aoFechar={aoFechar} rotuloFechar={rotuloFechar} className={styles.lateral}>
     <ConteudoEmpresa referencia={referencia} lateral />
   </PainelLateralCrm>
 }

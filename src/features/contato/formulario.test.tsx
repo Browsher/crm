@@ -178,3 +178,26 @@ test.each([true,false])('nova versão de props preserva snapshot anterior quando
   expect(gravar.mock.calls[0][1].get('nota')).toBe('Original')
  }
 })
+
+
+test('rodapé contextual salva atendimento e Cancelar delega à guarda sem limpar o rascunho', async () => {
+  const cancelar = vi.fn()
+  await act(async () => root.render(<FormularioContato empresaId="A" versao={2} fase="inicial" onCancel={cancelar} rotuloSalvar="Salvar atendimento" />))
+  await nota('Preservar ao cancelar')
+  expect(host.querySelector('button[type=submit]')?.textContent).toBe('Salvar atendimento')
+  expect(host.textContent).not.toContain('Descartar anotações')
+  const botao = [...host.querySelectorAll('button')].find(b => b.textContent === 'Cancelar')!
+  await act(async () => botao.click())
+  expect(cancelar).toHaveBeenCalledOnce()
+  expect(gravar).not.toHaveBeenCalled()
+  expect(sessionStorage.getItem('crm:contato:v1:A')).toContain('Preservar ao cancelar')
+})
+
+test('rodapé contextual bloqueia Cancelar durante transmissão', async () => {
+  let resolver!: (r: {ok:true;erro:null}) => void
+  gravar.mockReturnValue(new Promise(r => { resolver = r }))
+  await act(async () => root.render(<FormularioContato empresaId="A" versao={2} fase="inicial" onCancel={vi.fn()} rotuloSalvar="Salvar atendimento" />))
+  await enviar()
+  expect([...host.querySelectorAll('button')].find(b => b.textContent === 'Cancelar')?.disabled).toBe(true)
+  await act(async () => resolver({ok:true,erro:null}))
+})

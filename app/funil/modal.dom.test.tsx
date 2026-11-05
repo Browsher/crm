@@ -10,11 +10,24 @@ import { detalhesSnapshot } from '@/src/lib/empresa-visual'
 import { pedirSaidaDaEdicao } from '@/src/components/crm/descarte-edicao'
 vi.mock('../carteira/venda-acao',()=>({vendaCarteiraAcao:vi.fn()}))
 vi.mock('./acoes',()=>({detalheAcao:vi.fn(),telefoneAcao:vi.fn(),etapaAcao:vi.fn(),vendaAcao:vi.fn(),devolverAcao:vi.fn()}))
-vi.mock('@/src/features/contato/formulario',()=>({FormularioContato:({onDraftChange,onSaved}:{onDraftChange:(r:unknown)=>void;onSaved:(id:string,r:unknown)=>void})=><><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button><button onClick={()=>onDraftChange({tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''})}>Reverter rascunho de teste</button><button onClick={()=>onSaved('e',{ok:true,leituraDestino:{ok:true,destino:{tipo:'funil',negociacaoId:'atual'}}})}>Confirmar contato de teste</button></>}))
+const editorReal = vi.hoisted(() => ({ ativo: false }))
+const prepararContato = vi.hoisted(() => vi.fn())
+const gravarContato = vi.hoisted(() => vi.fn())
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+vi.mock('@/src/features/contato/acao', () => ({ prepararContatoAcao: prepararContato, registrarContatoAcao: gravarContato }))
+vi.mock('@/src/features/contato/formulario', async importar => {
+  const real = await importar<typeof import('@/src/features/contato/formulario')>()
+  return { FormularioContato: (props: ComponentProps<typeof real.FormularioContato>) => editorReal.ativo ? <real.FormularioContato {...props} /> : <>
+    <button onClick={() => props.onDraftChange?.({tipo:'acompanhamento',nota:'Preservar',proximoPasso:'',proximoPassoData:''})}>Editar rascunho de teste</button>
+    <button onClick={() => props.onDraftChange?.({tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''})}>Reverter rascunho de teste</button>
+    <button onClick={() => props.onSaved?.('e',{ok:true,erro:null,repetida:false,chave:'teste',rascunho:{tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''},leituraDestino:{ok:true,destino:{tipo:'funil',negociacaoId:'atual'}}})}>Confirmar contato de teste</button>
+    <button onClick={props.onCancel}>Cancelar</button>
+  </> }
+})
 Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true})
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 const detalhe={id:'a',empresaId:'e',nome:'Aurora',cidade:null,uf:null,cnpj:'123',etapa:'primeiro_contato' as const,versao:3,empresa:{...detalhesSnapshot({razao_social:'Aurora'},{tipo:'cadastro',empresaId:'e'}),id:'e',versao:3,situacao:'primeiro_contato' as const,negociacaoId:'a'},proximoPasso:null,retorno:null,historico:[]}
-afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();sessionStorage.clear();vi.restoreAllMocks()})
+afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();sessionStorage.clear();editorReal.ativo=false;vi.restoreAllMocks()})
 async function montar(id='a', props: Partial<ComponentProps<typeof PainelNegociacao>> = {}){host=document.createElement('div');document.body.append(host);root=createRoot(host);const fechar=vi.fn();await act(async()=>root.render(<PainelNegociacao usuarioId="teste" id={id} fechar={fechar} {...props}/>));return fechar}
 async function popstate(){await act(async()=>{window.dispatchEvent(new PopStateEvent('popstate'));await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))})}
 async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>e.textContent===nome||e.getAttribute('aria-label')===nome);expect(b, nome).toBeTruthy();await act(async()=>{b!.focus();b!.click()})}
@@ -38,8 +51,9 @@ test('ação Sem interesse solicita confirmação ao quadro sem sair do painel',
   vi.mocked(detalheAcao).mockResolvedValue(detalhe)
   const aoPedirArquivar = vi.fn()
   const fechar = await montar('a', { aoPedirArquivar })
-  await clicar('Marcar como Sem interesse')
+  await clicar('Sem interesse')
   expect(aoPedirArquivar).toHaveBeenCalledOnce()
+  expect(aoPedirArquivar).toHaveBeenCalledWith(detalhe)
   expect(fechar).not.toHaveBeenCalled()
   expect(document.body.textContent).not.toContain('Confirmar Sem interesse')
 })
@@ -85,7 +99,7 @@ test('troca após manter rascunho preserva o envio desconhecido de atendimento',
   sessionStorage.setItem('crm:contato:v1:e', salvo)
   const fecharRef = createRef<PedirFecharNegociacao>()
   const fechar = await montar('a', { fecharRef })
-  await clicar('Registrar atendimento')
+  await clicar('Atendimento')
   const depois = vi.fn()
   await act(async () => fecharRef.current?.(depois))
   await clicar('Fechar mantendo rascunho')
@@ -157,7 +171,7 @@ test('saída do CRM aguarda o Back da guarda do Funil antes de continuar', async
   const salvo = JSON.stringify({ envio: { chave: 'original', versao: 2, valor: { nota: 'Preservar' } } })
   sessionStorage.setItem('crm:contato:v1:e', salvo)
   await montar()
-  await clicar('Registrar atendimento')
+  await clicar('Atendimento')
   const sair = vi.fn(() => {
     const evento = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(evento)
@@ -173,7 +187,8 @@ test('saída do CRM aguarda o Back da guarda do Funil antes de continuar', async
   expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
   const tentarNovamente = vi.fn()
   await act(async () => pedirSaidaDaEdicao(tentarNovamente))
-  expect(tentarNovamente).toHaveBeenCalledOnce()
+  expect(tentarNovamente).not.toHaveBeenCalled()
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Descartar alterações?')
 })
 
 
@@ -183,9 +198,9 @@ test('arraste fica bloqueado durante edição e volta a ser permitido no resumo'
   const aoMudarBloqueioDeArraste = vi.fn()
   await montar('a', { aoMudarBloqueioDeArraste })
   expect(aoMudarBloqueioDeArraste).toHaveBeenLastCalledWith(false)
-  await clicar('Registrar atendimento')
+  await clicar('Atendimento')
   expect(aoMudarBloqueioDeArraste).toHaveBeenLastCalledWith(true)
-  await clicar('Voltar ao resumo')
+  await clicar('Voltar')
   expect(aoMudarBloqueioDeArraste).toHaveBeenLastCalledWith(false)
 })
 
@@ -203,7 +218,7 @@ test('descarte externo não perde envio desconhecido e permite fechar mantendo s
   vi.spyOn(history,'back').mockImplementation(()=>{})
   const salvo=JSON.stringify({envio:{chave:'original',versao:2,valor:{nota:'Preservar'}}})
   sessionStorage.setItem('crm:contato:v1:e',salvo)
-  const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Voltar ao resumo');await clicar('Descartar')
+  const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste');await clicar('Voltar');await clicar('Descartar')
   expect(document.body.textContent).toContain('Confirme o envio anterior')
   expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
   await clicar('Fechar mantendo rascunho')
@@ -233,18 +248,24 @@ test('modal oferece apenas próximo avanço e última etapa não tem select nem 
 })
 
 
-test('painel mostra o último atendimento e permite expandir o histórico', async () => {
+test('Histórico usa eventos próprios recolhidos e preserva o próximo passo histórico', async () => {
   vi.mocked(detalheAcao).mockResolvedValue({ ...detalhe, historico: [
-    { id: 'recente', em: '2026-10-21T12:00:00Z', tipo: 'acompanhamento', nota: 'Negociar prazo com Aurora', proximoPasso: null, retorno: null },
-    { id: 'antigo', em: '2026-10-20T12:00:00Z', tipo: 'acompanhamento', nota: 'Primeiro retorno da Aurora', proximoPasso: null, retorno: null },
+    { id: 'recente', em: '2026-10-21T12:00:00Z', tipo: 'acompanhamento', nota: 'Negociar prazo com Aurora', proximoPasso: 'Enviar proposta antiga', retorno: '2026-10-22' },
+    { id: 'antigo', em: '2026-10-20T12:00:00Z', tipo: 'nao_liguei', nota: 'Primeira nota da Aurora', proximoPasso: null, retorno: null },
   ] })
   await montar()
-  expect(document.body.textContent).toContain('Negociar prazo com Aurora')
-  expect(document.body.textContent).not.toContain('Primeiro retorno da Aurora')
-  await clicar('Ver todos')
-  expect(document.body.textContent).toContain('Primeiro retorno da Aurora')
-  expect([...document.querySelectorAll('button')].some(b => b.textContent === 'Avançar para Em negociação')).toBe(true)
+  expect(host.textContent).not.toContain('Negociar prazo com Aurora')
+  await clicar('Histórico')
+  expect(host.querySelectorAll('details')).toHaveLength(2)
+  expect([...host.querySelectorAll('details')].every(evento => !evento.open)).toBe(true)
+  expect(host.textContent).toContain('Por Você')
+  await clicar('Expandir todos')
+  expect([...host.querySelectorAll('details')].every(evento => evento.open)).toBe(true)
+  expect(host.textContent).toContain('Negociar prazo com Aurora')
+  expect(host.textContent).toContain('Enviar proposta antiga')
+  expect(host.textContent).toContain('22/10/2026')
 })
+
 test('resposta tardia após desmontagem não apresenta dados em outra abertura',async()=>{
   let liberar!:(d:typeof detalhe)=>void
   vi.mocked(detalheAcao).mockReturnValueOnce(new Promise(r=>liberar=r))
@@ -281,28 +302,28 @@ test('perda de posse bloqueia escrita mas preserva rascunho para copiar',async()
 test('resposta antiga do telefone não fecha novo formulário de venda',async()=>{
   vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.spyOn(history,'back').mockImplementation(()=>{})
   let liberar!:(t:string|null)=>void;vi.mocked(telefoneAcao).mockReturnValue(new Promise(r=>liberar=r))
-  const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo');await clicar('Registrar venda');await escrever('40,00')
+  const fechar=await montar();await clicar('Atendimento');await clicar('Voltar');await clicar('Registrar venda');await escrever('40,00')
   await act(async()=>liberar(null));expect(fechar).not.toHaveBeenCalled();expect(document.querySelector('input')?.value).toBe('40,00')
 })
 
 test('contato confirmado no modal conserva callback de fechamento contextual',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Confirmar contato de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Confirmar contato de teste')
  expect(fechar).toHaveBeenCalledWith('Atendimento registrado.')
 })
 test('acompanhamento intocado do modal volta ao resumo sem descarte',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Voltar')
  expect(document.body.textContent).not.toContain('Descartar alterações?')
  expect(document.body.textContent).toContain('Registrar venda')
- expect(document.activeElement?.textContent).toBe('Registrar atendimento')
+ expect(document.activeElement?.textContent).toBe('Atendimento')
  expect(fechar).not.toHaveBeenCalled()
 })
 
 test('reverter ao baseline remove proteção temporária do histórico do modal',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
  expect(voltar).toHaveBeenCalledTimes(1)
  await popstate()
  expect(document.body.textContent).not.toContain('Descartar alterações?')
@@ -312,7 +333,7 @@ test('reverter ao baseline remove proteção temporária do histórico do modal'
 test('fechamento após contato aguarda popstate da sentinela e só então chama o Quadro',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste')
  await clicar('Confirmar contato de teste')
  expect(voltar).toHaveBeenCalledTimes(1)
  expect(fechar).not.toHaveBeenCalled()
@@ -323,11 +344,12 @@ test('fechamento após contato aguarda popstate da sentinela e só então chama 
 test('Escape durante retirada por reversão aguarda a mesma navegação sem recuar duas vezes',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
  await escapar()
  expect(voltar).toHaveBeenCalledTimes(1);expect(fechar).not.toHaveBeenCalled()
  await popstate()
- expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).toHaveBeenCalledTimes(1)
+ expect(fechar).not.toHaveBeenCalled();expect(voltar).toHaveBeenCalledTimes(1)
+ expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Próximo passo')
 })
 test('Escape intocado fecha imediatamente sem recuo de histórico',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
@@ -340,30 +362,33 @@ test('Escape intocado fecha imediatamente sem recuo de histórico',async()=>{
 test('X intocado fecha sem sentinela e Voltar ao resumo não navega',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Voltar ao resumo')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Voltar')
  expect(fechar).not.toHaveBeenCalled();expect(voltar).not.toHaveBeenCalled()
  await clicar('Fechar')
  expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).not.toHaveBeenCalled()
 })
-test.each(['Fechar','Escape'])('fechar com %s preserva comando desconhecido e aguarda só um recuo',async(como)=>{
+test.each(['Voltar','Escape'])('retorno interno com %s preserva comando desconhecido e mantém guarda no passo',async(como)=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
  const valor={tipo:'acompanhamento',nota:'',proximoPasso:'',proximoPassoData:''}
  const salvo=JSON.stringify({valor,envio:{chave:'anterior',versao:2,valor}})
  sessionStorage.setItem('crm:contato:v1:e',salvo)
- const fechar=await montar();await clicar('Registrar atendimento')
+ const fechar=await montar();await clicar('Atendimento')
  if(como==='Escape')await escapar()
- else await clicar('Fechar')
+ else await clicar('Voltar')
  await clicar('Fechar mantendo rascunho')
  expect(fechar).not.toHaveBeenCalled();expect(voltar).toHaveBeenCalledTimes(1)
  await popstate()
- expect(fechar).toHaveBeenCalledTimes(1);expect(voltar).toHaveBeenCalledTimes(1)
+ expect(fechar).not.toHaveBeenCalled();expect(voltar).toHaveBeenCalledTimes(1)
+ expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Próximo passo')
+ await clicar('Fechar')
+ expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Descartar alterações?')
  expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
 })
 test('Voltar do navegador confirmado remove só a sentinela e a intenção original de voltar',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{}),ir=vi.spyOn(history,'go').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste')
  await popstate()
  await clicar('Descartar')
  expect(ir).toHaveBeenCalledTimes(1);expect(ir).toHaveBeenCalledWith(-2)
@@ -373,7 +398,7 @@ test('Voltar do navegador confirmado remove só a sentinela e a intenção origi
 test('nova edição enquanto a sentinela sai continua protegida no próximo Voltar',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste');await clicar('Editar rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste');await clicar('Editar rascunho de teste')
  await popstate()
  await popstate()
  expect(document.body.textContent).toContain('Descartar alterações?')
@@ -383,8 +408,8 @@ test('nova edição enquanto a sentinela sai continua protegida no próximo Volt
 test('Voltar ao resumo durante retirada reavalia edição antes do popstate e rearma próxima guarda',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
  const voltar=vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
- await clicar('Voltar ao resumo');await clicar('Editar rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste')
+ await clicar('Voltar');await clicar('Editar rascunho de teste')
  await popstate()
  await popstate()
  expect(document.body.textContent).toContain('Descartar alterações?')
@@ -449,7 +474,7 @@ test('desmontar antes do frame impede callback antigo sem perder a confirmação
 })
 test('edição refeita continua guardada se próximo Back chega antes do frame de conclusão',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.mocked(telefoneAcao).mockResolvedValue('11999999999');vi.spyOn(history,'back').mockImplementation(()=>{})
- const fechar=await montar();await clicar('Registrar atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste');await clicar('Voltar ao resumo');await clicar('Editar rascunho de teste')
+ const fechar=await montar();await clicar('Atendimento');await clicar('Editar rascunho de teste');await clicar('Reverter rascunho de teste');await clicar('Voltar');await clicar('Editar rascunho de teste')
  await act(async()=>{window.dispatchEvent(new PopStateEvent('popstate'));window.dispatchEvent(new PopStateEvent('popstate'))})
  expect(document.body.textContent).toContain('Descartar alterações?');expect(fechar).not.toHaveBeenCalled()
 })
@@ -475,7 +500,7 @@ test('confirmar recompra não fecha nem desarma a guarda de um rascunho de atend
  vi.mocked(vendaAcao).mockReset().mockResolvedValue({ok:true})
  vi.mocked(vendaCarteiraAcao).mockReset().mockResolvedValue({ok:true})
  const fechar=await montar()
- await clicar('Registrar atendimento');await clicar('Editar rascunho de teste')
+ await clicar('Atendimento');await clicar('Editar rascunho de teste')
  const comando=criarComandoVenda('teste','cliente',{tipo:'recompra'},{valor:'22,00',data:'2026-01-01',observacao:'Outra venda'})
  await act(async()=>{persistirComandoVenda(comando);window.dispatchEvent(new Event('crm-venda'))})
  await clicar('Confirmar venda anterior')
@@ -483,4 +508,129 @@ test('confirmar recompra não fecha nem desarma a guarda de um rascunho de atend
  expect(document.body.textContent).toContain('Venda registrada.')
  await popstate()
  expect(document.body.textContent).toContain('Descartar alterações?')
+})
+
+
+test('editor inicia em Próximo passo com três abas e ações fixas em passo e histórico', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  await montar('a', { aoPedirArquivar: vi.fn() })
+  expect([...host.querySelectorAll('[role="tab"]')].map(b => b.textContent)).toEqual(['Próximo passo', 'Atendimento', 'Histórico'])
+  expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe('Próximo passo')
+  expect(host.textContent).not.toContain('Resumo')
+  expect(host.textContent).not.toContain('Editar rascunho de teste')
+  await clicar('Histórico')
+  expect([...host.querySelectorAll('footer button')].map(b => b.textContent)).toEqual(['Registrar venda', 'Sem interesse'])
+})
+
+test('Atendimento monta somente na primeira abertura e preserva o editor ao visitar Histórico', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(telefoneAcao).mockClear().mockResolvedValue('11999999999')
+  await montar()
+  expect(host.querySelector('button')?.textContent).toBe('Fechar')
+  expect(host.textContent).not.toContain('Editar rascunho de teste')
+  await clicar('Atendimento')
+  const editor = [...host.querySelectorAll('button')].find(b => b.textContent === 'Editar rascunho de teste')!
+  await clicar('Editar rascunho de teste')
+  await clicar('Histórico')
+  expect(editor.isConnected).toBe(true)
+  expect(editor.closest('[hidden]')).not.toBeNull()
+  await clicar('Atendimento')
+  expect([...host.querySelectorAll('button')].find(b => b.textContent === 'Editar rascunho de teste')).toBe(editor)
+  expect(telefoneAcao).toHaveBeenCalledTimes(1)
+})
+
+test('envio de contato bloqueia descarte e arquivo mesmo com Histórico ativo', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  const salvo = JSON.stringify({ envio: { chave: 'anterior', versao: 2, valor: { nota: 'Preservar' } } })
+  sessionStorage.setItem('crm:contato:v1:e', salvo)
+  const aoPedirArquivar = vi.fn()
+  await montar('a', { aoPedirArquivar })
+  await clicar('Histórico')
+  await clicar('Sem interesse')
+  expect(aoPedirArquivar).not.toHaveBeenCalled()
+  await clicar('Descartar')
+  expect(document.body.textContent).toContain('Confirme o envio anterior')
+  expect(aoPedirArquivar).not.toHaveBeenCalled()
+  expect(sessionStorage.getItem('crm:contato:v1:e')).toBe(salvo)
+})
+
+
+test('preparação real captura versão só ao abrir Atendimento e preserva snapshot em outra aba', async () => {
+  editorReal.ativo = true
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(telefoneAcao).mockClear().mockResolvedValue('11999999999')
+  prepararContato.mockReset().mockResolvedValue({ ok: true, fase: 'negociacao', empresa: { versao: 9, situacao: 'primeiro_contato' } })
+  await montar()
+  await clicar('Histórico')
+  expect(prepararContato).not.toHaveBeenCalled()
+  expect(telefoneAcao).not.toHaveBeenCalled()
+  expect(host.querySelector('form')).toBeNull()
+  await clicar('Atendimento')
+  expect(prepararContato).toHaveBeenCalledOnce()
+  prepararContato.mockResolvedValue({ ok: true, fase: 'negociacao', empresa: { versao: 12, situacao: 'primeiro_contato' } })
+  const formulario = host.querySelector('form')!
+  const nota = formulario.querySelector('textarea')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Rascunho real')
+    nota.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await clicar('Histórico')
+  expect(document.activeElement?.textContent).toBe('Histórico')
+  await clicar('Atendimento')
+  expect(host.querySelector('form')).toBe(formulario)
+  expect(nota.value).toBe('Rascunho real')
+  expect(prepararContato).toHaveBeenCalledOnce()
+  expect(host.querySelector('button[type=submit]')?.textContent).toBe('Salvar atendimento')
+  gravarContato.mockRejectedValueOnce(Error('resposta perdida'))
+  await act(async () => formulario.requestSubmit())
+  expect(gravarContato.mock.calls.at(-1)![1].get('versao')).toBe('9')
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  await clicar('Cancelar')
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('Descartar alterações?')
+  expect(nota.value).toBe('Rascunho real')
+})
+
+test('Voltar do cabeçalho é único e retorna ao passo; rótulo contextual permanece na raiz', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  const fechar = await montar('a', { rotuloFechar: 'Voltar' })
+  await clicar('Histórico')
+  expect([...host.querySelectorAll('button')].filter(b => b.textContent === 'Voltar')).toHaveLength(1)
+  await clicar('Voltar')
+  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Próximo passo')
+  expect(document.activeElement?.textContent).toBe('Histórico')
+  expect(fechar).not.toHaveBeenCalled()
+  await clicar('Voltar')
+  expect(fechar).toHaveBeenCalledOnce()
+})
+
+test('arquivo aguarda descarte do rascunho em aba inativa e retirada da sentinela', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  const arquivar = vi.fn()
+  await montar('a', { aoPedirArquivar: arquivar })
+  await clicar('Atendimento')
+  await clicar('Editar rascunho de teste')
+  await clicar('Histórico')
+  await clicar('Sem interesse')
+  expect(arquivar).not.toHaveBeenCalled()
+  await clicar('Descartar')
+  expect(arquivar).not.toHaveBeenCalled()
+  await popstate()
+  expect(arquivar).toHaveBeenCalledWith(detalhe)
+})
+
+
+test('envio de contato desconhecido também impede abrir venda pela ação do Histórico', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  sessionStorage.setItem('crm:contato:v1:e', JSON.stringify({ envio: { chave: 'original', versao: 2, valor: { nota: 'Preservar' } } }))
+  await montar()
+  await clicar('Histórico')
+  await clicar('Registrar venda')
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('Descartar alterações?')
+  expect(document.querySelector('[role=dialog]')?.textContent).not.toContain('Fechar mantendo rascunho')
+  await clicar('Descartar')
+  expect(host.querySelector('input')).toBeNull()
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('Confirme o envio anterior')
 })

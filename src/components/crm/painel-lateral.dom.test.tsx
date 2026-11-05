@@ -47,3 +47,17 @@ test('envio pendente impede fechamento pelo botão e Escape', async () => {
   await act(async () => host?.querySelector('h2')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
   expect(fechar).not.toHaveBeenCalled()
 })
+
+
+test('rótulo Voltar usa o mesmo fechamento pelo botão e Escape', async () => {
+  host = document.createElement('div')
+  document.body.append(host)
+  root = createRoot(host)
+  const fechar = vi.fn()
+  await act(async () => root?.render(<PainelLateralCrm titulo="Empresa" rotuloFechar="Voltar" aoFechar={fechar}>Dados</PainelLateralCrm>))
+  const botao = host.querySelector('button')!
+  expect(botao.textContent).toBe('Voltar')
+  await act(async () => botao.click())
+  await act(async () => botao.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+  expect(fechar).toHaveBeenCalledTimes(2)
+})

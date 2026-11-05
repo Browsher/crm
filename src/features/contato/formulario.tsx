@@ -15,6 +15,7 @@ export type ConfirmacaoContato = Extract<EstadoContato, { ok: true }> & { chave:
 type Props = {
   empresaId: string; posse?: boolean; comDevolver?: boolean; tipoInicial?: TipoContato; voltarPara?: string
   versao?: number; fase?: 'inicial' | 'negociacao' | 'cliente'
+  onCancel?: () => void; rotuloSalvar?: string
   somenteConfirmacao?: boolean
   rascunho?: RascunhoContato; onDraftChange?: (valor: RascunhoContato) => void
   onSaved?: (empresaId: string, confirmacao: ConfirmacaoContato) => void; bloqueado?: boolean; somenteLeitura?: boolean
@@ -41,7 +42,7 @@ function decodificarSessao(bruto: string | null): { valor?: RascunhoContato; env
 // A chave e a entrada ficam na sessão da aba ANTES da chamada. Recarregar a página
 // não transforma uma resposta perdida em outro comando nem sincroniza uma aba antiga.
 export function FormularioContato(props: Props) { return <EditorContato key={props.empresaId} {...props} /> }
-function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmacao = false, rascunho, onDraftChange, onSaved, bloqueado = false, somenteLeitura = false, onPendingChange, visual }: Props) {
+function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmacao = false, rascunho, onDraftChange, onSaved, bloqueado = false, somenteLeitura = false, onPendingChange, visual, onCancel, rotuloSalvar = 'Registrar' }: Props) {
   const camposId = useId()
   const router = useRouter()
   const chaveStorage = 'crm:contato:v1:' + empresaId
@@ -151,8 +152,11 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
     <label>Data do próximo passo<Input type="date" name="proximoPassoData" value={atual.proximoPassoData} readOnly={congelado} onChange={e => alterar({ proximoPassoData: e.target.value })} /></label>
     {atual.tipo === 'sem_interesse' && <p>Sem interesse encerra a negociação e cancela os próximos passos.</p>}
     {(atual.tipo === 'interessado' || atual.tipo === 'retornar_depois') && <p>A empresa segue no seu Funil.</p>}
-    <Button type="submit" className="self-start" disabled={pendente || bloqueado || !envio && !preparado || !carregado || Boolean(envio?.resolvido)}>{pendente ? 'Registrando…' : envio && !envio.resolvido ? 'Confirmar envio anterior' : 'Registrar'}</Button>
-    {!envio && <Button type="button" variant="ghost" disabled={pendente} onClick={() => { limpar(); setInterno(rascunhoInicial(false)); onDraftChange?.(rascunhoInicial(false)) }}>Descartar anotações</Button>}
+    <footer className={onCancel ? 'sticky bottom-0 grid grid-cols-2 gap-2 border-t border-border bg-background py-4' : 'contents'}>
+      {onCancel && <Button type="button" variant="outline" disabled={pendente || bloqueado} onClick={onCancel}>Cancelar</Button>}
+      <Button type="submit" className={onCancel ? 'min-w-0 px-2' : 'self-start'} disabled={pendente || bloqueado || !envio && !preparado || !carregado || Boolean(envio?.resolvido)}>{pendente ? 'Registrando…' : envio && !envio.resolvido ? 'Confirmar envio anterior' : rotuloSalvar}</Button>
+    </footer>
+    {!envio && !onCancel && <Button type="button" variant="ghost" disabled={pendente} onClick={() => { limpar(); setInterno(rascunhoInicial(false)); onDraftChange?.(rascunhoInicial(false)) }}>Descartar anotações</Button>}
     {envio?.resolvido && <Button type="button" variant="outline" onClick={async () => {
       const r = await prepararContatoAcao(empresaId)
       if (!r.ok || !r.empresa.versao || ['sem_interesse','indisponivel'].includes(r.empresa.situacao)) { setErroPreparacao('Esta empresa não está disponível para registro.'); return }
