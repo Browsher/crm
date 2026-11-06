@@ -229,6 +229,8 @@ test('card abre um painel por vez sem abrir diálogo de conteúdo', async () => 
   expect(host.textContent).not.toContain('Negociação operacional')
   const link = [...host.querySelectorAll('a')].find(item => item.textContent === 'Ver todos em Sem interesse')
   expect(link?.getAttribute('href')).toBe('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+  expect(link?.closest('[data-painel-rodape]')).not.toBeNull()
+  expect(link?.closest('[data-painel-corpo]')).toBeNull()
 })
 
 test('troca de Negociação para Sem interesse espera a decisão sobre o rascunho', async () => {

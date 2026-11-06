@@ -35,7 +35,12 @@ beforeEach(() => {
   vi.mocked(detalheAcao).mockResolvedValue(detalhe)
 })
 afterEach(async () => {
-  if (root) await act(async () => root.unmount())
+  if (root) await act(async () => {
+    root.unmount()
+    // A retirada nativa do histórico e seu callback de foco são assíncronos.
+    // Deixar o frame concluir antes de montar o dono do teste seguinte.
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  })
   host?.remove()
   sessionStorage.clear()
   vi.clearAllMocks()
@@ -49,7 +54,7 @@ async function renderizar(linhas: LinhaMeuDia[], f: FiltrosMeuDia = filtros) {
   await act(async () => root.render(<><FiltrosForm filtros={f} /><PainelMeuDia usuarioId="u" linhas={linhas} agenda={linhas} filtros={f} /></>))
 }
 async function clicar(nome: string, base: ParentNode = host) {
-  const botao = [...base.querySelectorAll('button')].find(e => e.textContent === nome)
+  const botao = [...base.querySelectorAll('button')].find(e => e.textContent === nome && !e.closest('[hidden]'))
   expect(botao, nome).toBeTruthy()
   await act(async () => { botao!.focus(); botao!.click() })
   return botao!
@@ -100,7 +105,7 @@ test('menu troca seção sem perder o contexto', async () => {
   expect(host.querySelector('[data-painel-lateral] button')?.textContent).toBe('Voltar')
   expect(host.querySelector('aside nav')).toBeNull()
   await clicar('Negociação')
-  expect(host.querySelector('aside')?.textContent).toContain('Registrar venda')
+  expect(host.querySelector('aside nav')?.textContent).toContain('Atendimento e próximo passo')
   await clicar('Voltar')
   expect(host.querySelector('aside h3')?.textContent).toBe('Histórico')
   await clicar('Voltar')
@@ -205,7 +210,7 @@ test('envios salvos de venda e arquivo ficam explícitos mesmo com agenda vazia,
   expect(host.querySelector('aside')).toBeNull()
 })
 test('submit de filtro com venda suja pede descarte e permite continuar editando', async () => {
-  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Registrar venda')
+  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento e próximo passo'); await clicar('Registrar venda')
   const input = host.querySelector('aside input')!
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '25,00')
@@ -243,12 +248,20 @@ test('Dados pelo menu após Voltar devolve foco ao gatilho reconstruído e à or
   expect(host.querySelector('aside nav')).not.toBeNull()
 })
 test('recuperação de venda de outra empresa não fecha a negociação aberta', async () => {
+  const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
   persistirComandoVenda({ usuarioId: 'u', empresaId: 'fora', chave: 'outra', alvo: { tipo: 'primeira', negociacaoId: 'n-fora' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
   vi.mocked(transmitirVenda).mockResolvedValue({ ok: true })
   await montar(); await abrir('Aurora'); await clicar('Negociação')
   await clicar('Confirmar venda anterior', host.querySelector('section[aria-label="Envios anteriores"]')!)
+  // O replay termina retirando a sentinela da negociação.
+  // Concluir seu popstate aqui, antes de desmontar o dono e iniciar outro teste.
+  expect(voltar).toHaveBeenCalled()
+  await act(async () => {
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  })
   expect(host.querySelector('aside')?.textContent).toContain('Aurora')
-  expect(host.querySelector('aside')?.textContent).toContain('Registrar venda')
+  expect(host.querySelector('aside nav')?.textContent).toContain('Atendimento e próximo passo')
 })
 test('recuperação de arquivo pendente protege submit e links mesmo sem editor', async () => {
   sessionStorage.setItem('crm:funil:arquivo:v1:u', JSON.stringify({ linha: detalhe, chave: 'pendente' }))
@@ -272,7 +285,7 @@ test('recuperação de arquivo pendente protege submit e links mesmo sem editor'
 })
 test('confirmação de arquivo usa detalhe autorizado e fecha só a seleção correspondente', async () => {
   vi.mocked(semInteresseAcao).mockResolvedValue({ ok: true, atual: true, repetida: false })
-  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Sem interesse')
+  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento e próximo passo'); await clicar('Sem interesse')
   expect(document.querySelector('[role=dialog]')?.textContent).toContain('Confirmar Sem interesse')
   await clicar('Confirmar Sem interesse', document)
   expect(vi.mocked(semInteresseAcao).mock.calls[0][0].get('versao')).toBe('3')
@@ -303,18 +316,21 @@ test('Enter da pesquisa mantém recorte e período atuais em vez do primeiro bot
 test('rascunho real em Atendimento permanece protegido no Histórico e no submit de pesquisa', async () => {
   vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
   vi.mocked(prepararContatoAcao).mockResolvedValue({ ok: true, fase: 'negociacao', empresa: a.empresa! })
-  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento')
+  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento e próximo passo'); await clicar('Registrar atendimento')
   const nota = host.querySelector('aside textarea')!
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Rascunho real')
     nota.dispatchEvent(new Event('input', { bubbles: true }))
   })
-  await clicar('Histórico')
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  await clicar('Voltar'); await clicar('Fechar mantendo rascunho', document)
+  await act(async () => { window.dispatchEvent(new PopStateEvent('popstate')); await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
+  await clicar('Voltar'); await clicar('Histórico')
   await act(async () => host.querySelector('form')!.requestSubmit())
   expect(navegar.push).not.toHaveBeenCalled()
   expect(document.querySelector('[role=dialog]')?.textContent).toContain('Descartar alterações?')
   await clicar('Continuar editando', document)
-  await clicar('Atendimento')
+  await clicar('Voltar'); await clicar('Atendimento e próximo passo'); await clicar('Registrar atendimento')
   expect((host.querySelector('aside textarea') as HTMLTextAreaElement).value).toBe('Rascunho real')
   await abrir('Boreal')
   expect(document.querySelector('[role=dialog]')?.textContent).toContain('Descartar alterações?')
@@ -336,7 +352,7 @@ test('contato pendente em aba inativa conserva comando e impede submit, Sem inte
 test('venda confirmada fecha seleção após a sentinela sem abrir o próximo card', async () => {
   vi.spyOn(history, 'back').mockImplementation(() => {})
   vi.mocked(transmitirVenda).mockResolvedValue({ ok: true })
-  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Registrar venda')
+  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento e próximo passo'); await clicar('Registrar venda')
   const inputs = host.querySelectorAll<HTMLInputElement>('aside input')
   for (const [indice, valor] of ['25,00', '2026-11-05'].entries()) await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(inputs[indice], valor)
@@ -374,7 +390,7 @@ test('replay explícito também respeita rascunho ativo quando comando chega de 
   vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
   vi.mocked(prepararContatoAcao).mockResolvedValue({ ok: true, fase: 'negociacao', empresa: a.empresa! })
   vi.mocked(semInteresseAcao).mockResolvedValue({ ok: true, atual: true, repetida: true })
-  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento')
+  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento e próximo passo'); await clicar('Registrar atendimento')
   const nota = host.querySelector('aside textarea')!
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Não descartar no replay')
@@ -396,7 +412,7 @@ test('envio real em voo bloqueia filtro e troca de painel e preserva versão par
   vi.mocked(prepararContatoAcao).mockResolvedValue({ ok: true, fase: 'negociacao', empresa: { ...a.empresa!, versao: 9 } })
   let resolver!: (r: Awaited<ReturnType<typeof registrarContatoAcao>>) => void
   vi.mocked(registrarContatoAcao).mockReturnValue(new Promise(resolve => { resolver = resolve }))
-  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento')
+  await montar(); await abrir('Aurora'); await clicar('Negociação'); await clicar('Atendimento e próximo passo'); await clicar('Registrar atendimento')
   const formulario = host.querySelector<HTMLFormElement>('aside form')!
   const nota = formulario.querySelector('textarea')!
   await act(async () => {
@@ -446,18 +462,18 @@ test('replay pelo editor de outra empresa preserva seleção e continua permitin
   vi.mocked(telefoneAcao).mockResolvedValue('11999999999')
   vi.mocked(prepararContatoAcao).mockResolvedValue({ ok: true, fase: 'negociacao', empresa: b.empresa! })
   await montar(); await abrir('Boreal'); await clicar('Negociação')
-  await clicar('Confirmar venda anterior', host.querySelector('aside')!)
+  await clicar('Verificar registro', host.querySelector('aside')!)
   await act(async () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
   })
   expect(host.querySelector('aside')?.textContent).toContain('Boreal')
   expect(vi.mocked(transmitirVenda).mock.calls.at(-1)![1].empresaId).toBe('a')
-  await clicar('Atendimento')
+  await clicar('Atendimento e próximo passo'); await clicar('Registrar atendimento')
   expect(host.querySelector('aside textarea')).not.toBeNull()
   await clicar('Voltar')
-  // O primeiro Voltar sai do editor interno da negociação, ainda anterior à tarefa 3.
-  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Próximo passo')
+  // O primeiro Voltar sai da tarefa para sua leitura de origem.
+  expect(host.querySelector('section:not([hidden]) h3')?.textContent).toBe('Atendimento e próximo passo')
   await clicar('Voltar')
   expect(host.querySelector('aside nav')).not.toBeNull()
 })
@@ -566,7 +582,7 @@ test('primeira venda da negociação abre somente o destino autenticado, mesmo j
   persistirComandoVenda({ usuarioId: 'u', empresaId: 'a', chave: 'primeira-destino', alvo: { tipo: 'primeira', negociacaoId: 'n-a' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
   vi.mocked(transmitirVenda).mockResolvedValue({ ok: true, leituraDestino: { ok: true, destino: { tipo: 'carteira', empresaId: 'destino-autorizado' } } })
   await montar(); await abrir('Aurora'); await clicar('Negociação')
-  await clicar('Confirmar venda anterior', host.querySelector('aside')!)
+  await clicar('Verificar registro', host.querySelector('aside')!)
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(navegar.replace).toHaveBeenCalledWith('/carteira/destino-autorizado?venda=registrada')
   expect(host.querySelector('aside')).toBeNull()
@@ -584,7 +600,7 @@ test.each(['card', 'historico'])('Dados pelo %s mantém negociação na lateral 
   expect([...host.querySelectorAll('aside header button')].map(b => b.textContent)).toEqual(['Voltar'])
   const comercial = await clicar('Negociação', host.querySelector('aside footer')!)
   expect(host.querySelectorAll('aside')).toHaveLength(1)
-  expect(host.querySelector('aside')?.textContent).toContain('Registrar venda')
+  expect(host.querySelector('aside nav')?.textContent).toContain('Atendimento e próximo passo')
   await clicar('Voltar')
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(host.querySelector('aside h2')?.textContent).toBe('Dados da empresa')

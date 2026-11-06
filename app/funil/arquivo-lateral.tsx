@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { PainelLateralCrm } from '@/src/components/crm/painel-lateral'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { Button } from '@/src/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
+import { Dialog, DialogContent } from '@/src/components/ui/dialog'
+import { ConfirmacaoPainelCrm } from '@/src/components/crm/confirmacao-painel'
 import { dataEmpresa } from '@/src/lib/empresa-visual'
 import type { ArquivoFunilRecente } from '@/src/lib/funil-arquivo'
 import styles from './funil.module.css'
@@ -28,7 +29,8 @@ export function PainelArquivo({ arquivos, recuperacao, bloqueado, fechandoBloque
   aoDevolver: (item: ArquivoFunilRecente) => void
   aoConfirmar: () => void
 }) {
-  return <PainelLateralCrm id={ID_ARQUIVO} titulo="Sem interesse" rotulo="Arquivo de prospecção" descricao="As três empresas arquivadas mais recentemente pelo Funil." aoFechar={aoFechar} fecharBloqueado={fechandoBloqueado}>
+  return <PainelLateralCrm id={ID_ARQUIVO} titulo="Sem interesse" rotulo="Arquivo de prospecção" descricao="As três empresas arquivadas mais recentemente pelo Funil." aoFechar={aoFechar} fecharBloqueado={fechandoBloqueado}
+    ocupado={fechandoBloqueado} rodape={<Button asChild variant="outline"><Link href="/fila/localizar?disponibilidade=sem_interesse&pagina=1">Ver todos em Sem interesse</Link></Button>}>
     <div className={styles.arquivo}>
       {recuperacao && <RecuperacaoDevolucao item={recuperacao} bloqueado={fechandoBloqueado} aoConfirmar={aoConfirmar}/>}
       {arquivos.length > 0
@@ -37,7 +39,6 @@ export function PainelArquivo({ arquivos, recuperacao, bloqueado, fechandoBloque
           <Button variant="outline" type="button" aria-label={`Devolver ${item.nome} para Primeiro contato`} disabled={bloqueado} onClick={() => aoDevolver(item)}>Devolver</Button>
         </li>)}</ul>
         : <p className={styles.muted}>Nenhuma empresa em Sem interesse.</p>}
-      <Button asChild variant="outline"><Link href="/fila/localizar?disponibilidade=sem_interesse&pagina=1">Ver todos em Sem interesse</Link></Button>
     </div>
   </PainelLateralCrm>
 }
@@ -67,16 +68,11 @@ export function ConfirmarArquivamento({ nome, aoCancelar, aoConfirmar, aoRestaur
       className={styles.dialogoArquivo}
       onCloseAutoFocus={evento => { evento.preventDefault(); aoRestaurarFoco() }}
     >
-      <DialogHeader>
-        <span className={styles.iconeConfirmacao}><IconeLixeira/></span>
-        <DialogTitle>Marcar como Sem interesse?</DialogTitle>
-        <strong>{nome}</strong>
-        <DialogDescription>A negociação sai do Funil e os retornos pendentes são cancelados. O histórico fica disponível em Sem interesse.</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
+      <ConfirmacaoPainelCrm titulo="Marcar como Sem interesse?" alvo={<strong>{nome}</strong>}
+        descricao="A negociação sai do Funil e os retornos pendentes são cancelados. O histórico fica disponível em Sem interesse." acoes={<>
         <Button variant="outline" type="button" onClick={aoCancelar}>Cancelar</Button>
         <Button variant="destructive" type="button" onClick={aoConfirmar}>Confirmar Sem interesse</Button>
-      </DialogFooter>
+      </>} />
     </DialogContent>
   </Dialog>
 }

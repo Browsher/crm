@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter, DialogHeader } from '@/src/components/ui/dialog'
+import { Dialog, DialogContent } from '@/src/components/ui/dialog'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { Textarea } from '@/src/components/ui/textarea'
@@ -14,18 +14,22 @@ import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoIn
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
 import { HistoricoComercial } from '@/src/components/crm/historico-comercial'
-import type { EventoHistoricoComercial } from '@/src/lib/historico-comercial'
+import { filtrarEventosHistorico, type FiltroHistoricoComercial, type EventoHistoricoComercial } from '@/src/lib/historico-comercial'
 import { ROTULO, type TipoContato } from '@/src/features/contato/tipos'
 import { ROTULOS_ETAPA } from './rotulos'
 import { detalheAcao, telefoneAcao, etapaAcao, type EstadoFunil } from './acoes'
 import { PainelLateralCrm } from '@/src/components/crm/painel-lateral'
 import styles from './negociacao.module.css'
+import { MenuPainelCrm } from '@/src/components/crm/menu-painel'
+import { EstadoPainelCrm } from '@/src/components/crm/estado-painel'
+import { ConfirmacaoPainelCrm } from '@/src/components/crm/confirmacao-painel'
 import { criarComandoVenda, type EstadoVenda } from '@/src/lib/venda-envio'
 import { useEnvioVenda } from '@/src/lib/use-envio-venda'
 import { transmitirVenda } from '../venda-envio'
 
-type Modo = 'passo' | 'venda' | 'atendimento' | 'historico'
-type PedidoDescarte = { destino: 'fechar' | 'passo' | 'voltar' | 'arquivo' | 'venda'; depois?: () => void }
+type Leitura = 'menu' | 'passo' | 'historico'
+type Modo = Leitura | 'venda' | 'atendimento'
+type PedidoDescarte = { destino: 'fechar' | Leitura | 'voltar' | 'arquivo' | 'venda'; origem?: Leitura; depois?: () => void }
 type ConfirmacaoVenda = Extract<EstadoVenda, { ok: true }>
 
 export type PedirFecharNegociacao = (depois?: () => void) => void
@@ -78,7 +82,13 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   const venda=useEnvioVenda(usuarioId,transmitirVenda)
   const [detalhe,setDetalhe]=useState<NegociacaoDetalhe|null>(null)
   const [carregando,setCarregando]=useState(true),[erro,setErro]=useState('')
-  const [modo,setModo]=useState<Modo>('passo')
+  const [modo,setModo]=useState<Modo>('menu')
+  const [origemTarefa, setOrigemTarefa] = useState<Leitura>('passo')
+  const [filtro, setFiltro] = useState<FiltroHistoricoComercial>('todos')
+  const [destinoAcoes, setDestinoAcoes] = useState<HTMLDivElement | null>(null)
+  const [tentativaDetalhe, setTentativaDetalhe] = useState(0)
+  const [erroLeitura, setErroLeitura] = useState(false)
+  const [erroTelefone, setErroTelefone] = useState(false)
   const [fechandoVenda,setFechandoVenda]=useState(false)
   const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState('')
   const [confirmado,setConfirmado]=useState(false),[descarte,setDescarte]=useState<PedidoDescarte|null>(null)
@@ -88,14 +98,15 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   const bloqueado=useRef(false),vivo=useRef(true),sentinela=useRef<string|null>(null)
   const pedidoTelefone=useRef(0)
   const [atendimentoAberto, setAtendimentoAberto] = useState(false)
-  const abasId = useId()
-  const abas = [{ valor: 'passo', rotulo: 'Próximo passo' }, { valor: 'atendimento', rotulo: 'Atendimento' }, { valor: 'historico', rotulo: 'Histórico' }] as const
+  const secaoId = useId()
+  const formularioVendaId = useId()
+  const gatilhoMenu = useRef<HTMLButtonElement | null>(null)
+  const tituloLeitura = useRef<HTMLHeadingElement>(null)
   const sessao = useSyncExternalStore(assinarContato, () => sessaoContato(detalhe?.empresaId), () => null)
   const tituloEdicao = useRef<HTMLHeadingElement>(null)
   const registrarAtendimento = useRef<HTMLButtonElement>(null)
   const registrarVenda = useRef<HTMLButtonElement>(null)
-  const abaHistorico = useRef<HTMLButtonElement>(null)
-  const modoAnterior = useRef<Modo>('passo')
+  const modoAnterior = useRef<Modo>('menu')
   const recuperarVenda = useRef<HTMLButtonElement>(null)
   const rascunhoPreservado = useRef<HTMLTextAreaElement>(null)
   const focoVenda = useRef<HTMLElement | null>(null)
@@ -120,18 +131,19 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   useLayoutEffect(() => {
     const anterior = modoAnterior.current
     modoAnterior.current = modo
-    if (modo === 'venda') tituloEdicao.current?.focus()
-    else if (modo === 'passo' && anterior === 'historico') abaHistorico.current?.focus({ preventScroll: true })
-    else if (modo === 'passo' && anterior === 'atendimento') registrarAtendimento.current?.focus({ preventScroll: true })
-    else if (modo === 'passo' && anterior === 'venda') registrarVenda.current?.focus({ preventScroll: true })
+    if (modo === 'venda' || modo === 'atendimento') tituloEdicao.current?.focus()
+    else if (modo === 'menu') gatilhoMenu.current?.focus({ preventScroll: true })
+    else if (anterior === 'atendimento') registrarAtendimento.current?.focus({ preventScroll: true })
+    else if (anterior === 'venda') registrarVenda.current?.focus({ preventScroll: true })
+    else tituloLeitura.current?.focus({ preventScroll: true })
   }, [modo])
   useEffect(()=>{dirtyRef.current=dirty},[dirty])
   useEffect(()=>{
     let atual=true
     detalheAcao(id).then(d=>{if(atual){setDetalhe(d);if(!d)setErro('Esta negociação não está mais disponível para você.')}})
-      .catch(()=>{if(atual)setErro('Não foi possível carregar. Feche e tente novamente.')}).finally(()=>{if(atual)setCarregando(false)})
+      .catch(()=>{if(atual){setErroLeitura(true);setErro('Não foi possível carregar a negociação. Tente novamente.')}}).finally(()=>{if(atual)setCarregando(false)})
     return()=>{atual=false}
-  },[id])
+  },[id,tentativaDetalhe])
   useEffect(()=>{vivo.current=true;return()=>{vivo.current=false}},[])
   useEffect(()=>{
     const guardar=(e:BeforeUnloadEvent)=>{if(!finalizando.current&&(dirtyRef.current||bloqueado.current||vendaPendenteRef.current))e.preventDefault()}
@@ -191,21 +203,24 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     })
   }
 
-  function voltarAoPasso() {
+  function voltarALeitura(destino: Leitura = origemTarefa) {
     pedidoTelefone.current++
-    setModo('passo')
+    setBuscandoTelefone(false)
+    setErroTelefone(false)
+    setModo(destino)
   }
 
-  function pedir(destino: 'fechar' | 'passo' | 'arquivo' | 'venda', depois?: () => void) {
+  function pedir(destino: 'fechar' | Leitura | 'arquivo' | 'venda', depois?: () => void) {
     if (bloqueado.current || venda.pendente || finalizando.current || descarte || confirmacaoVendaAberta) return
     if ((destino === 'venda' || destino === 'arquivo') && detalhe?.empresa?.situacao === 'indisponivel') return
     if (venda.comando) {
       setErro('Confirme a venda anterior ou feche mantendo o envio. Os dados não podem ser descartados.')
       return
     }
+    const origem = modo === 'atendimento' || modo === 'venda' ? origemTarefa : modo
     if (dirty) {
       focoDescarte.current = document.activeElement as HTMLElement | null
-      setDescarte({ destino, depois })
+      setDescarte({ destino, depois, origem })
       return
     }
     if (destino === 'fechar') {
@@ -215,10 +230,10 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     removerSentinela(() => {
       if (dirtyRef.current) {
         focoDescarte.current = document.activeElement as HTMLElement | null
-        setDescarte(atual => atual ?? { destino, depois })
+        setDescarte(atual => atual ?? { destino, depois, origem })
       } else if (destino === 'arquivo') depois?.()
-      else if (destino === 'venda') { if (venda.iniciarNovo()) setModo('venda') }
-      else voltarAoPasso()
+      else if (destino === 'venda') { if (venda.iniciarNovo()) { setOrigemTarefa(origem ?? 'passo'); setModo('venda') } }
+      else voltarALeitura(destino)
     })
   }
 
@@ -229,7 +244,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     depois => pedir('fechar', () => {
       // Se a saída falhar, o painel pode continuar no próximo passo e aceitar nova tentativa.
       dirtyRef.current = false
-      voltarAoPasso()
+      voltarALeitura()
       finalizando.current = false
       depois()
     }),
@@ -242,16 +257,16 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       return
     }
     if (!preservar && detalhe && !descartarRascunhoContato(detalhe.empresaId)) {
-      setErro('Confirme o envio anterior no atendimento antes de descartar. Volte à aba Atendimento para confirmar o envio anterior.')
+      setErro('Confirme o envio anterior no atendimento antes de descartar. Volte ao atendimento para confirmar o envio anterior.')
       return
     }
-    const { destino, depois } = descarte
+    const { destino, depois, origem } = descarte
     setDescarte(null)
     setValor('')
     setData('')
     setNota('')
     setConfirmado(false)
-    setRascunho(rascunhoInicial(true))
+    if (!preservar) setRascunho(rascunhoInicial(true))
     if (destino === 'voltar') {
       finalizando.current = true
       sentinela.current = null
@@ -261,8 +276,8 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     if (destino === 'fechar') concluir(undefined, undefined, depois)
     else removerSentinela(() => {
       if (destino === 'arquivo') depois?.()
-      else if (destino === 'venda') { if (venda.iniciarNovo()) setModo('venda') }
-      else voltarAoPasso()
+      else if (destino === 'venda') { if (venda.iniciarNovo()) { setOrigemTarefa(origem ?? 'passo'); setModo('venda') } }
+      else voltarALeitura(destino)
     })
   }
 
@@ -307,19 +322,37 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   async function atender(){
     if (detalhe?.empresa?.situacao === 'indisponivel') return
     const pedido=++pedidoTelefone.current
+    if (modo !== 'atendimento') setOrigemTarefa(modo === 'venda' ? origemTarefa : modo)
     setModo('atendimento')
+    setErroTelefone(false)
     if (telefone !== null) return
     setAtendimentoAberto(true);setBuscandoTelefone(true);setErro('');setTelefone(null)
     try{const t=await telefoneAcao(id);if(vivo.current&&pedido===pedidoTelefone.current){setTelefone(t);if(t===null)concluir('A negociação não está mais disponível.')}}
-    catch{if(vivo.current&&pedido===pedidoTelefone.current)setErro('Não foi possível carregar o telefone. Volte e tente novamente.')}
+    catch{if(vivo.current&&pedido===pedidoTelefone.current){setErroTelefone(true);setErro('Não foi possível carregar o telefone. Tente novamente.')}}
     finally{if(vivo.current&&pedido===pedidoTelefone.current)setBuscandoTelefone(false)}
   }
 
   const etapaSeguinte = detalhe && proximaEtapa(detalhe.etapa)
   const empresaIndisponivel = detalhe?.empresa?.situacao === 'indisponivel'
-  const novasOperacoesBloqueadas = pendente || venda.pendente || empresaIndisponivel
+  const novasOperacoesBloqueadas = bloqueada || fechandoVenda || !!venda.comando || pendente || venda.pendente || empresaIndisponivel
   const acoesBloqueadas = novasOperacoesBloqueadas || dirty
-  const alerta = (erro || venda.erro) && <Alert variant="danger" role="alert">{erro || venda.erro}</Alert>
+  const alerta = (erro || venda.erro) && <Alert variant="danger" role="alert">{venda.erro || erro}</Alert>
+  const eventos = detalhe ? eventosDaNegociacao(detalhe) : []
+  const filtroVazio = modo === 'historico' && filtro !== 'todos' && filtrarEventosHistorico(eventos, filtro).length === 0
+  const rodape = venda.comando ? <div className={styles.parAcoes}>
+    <Button ref={recuperarVenda} variant="outline" disabled={pendente || venda.pendente} onClick={() => void salvarVenda()}>{venda.pendente ? 'Verificando...' : 'Verificar registro'}</Button>
+    <Button variant="outline" disabled={pendente || venda.pendente} onClick={() => concluir()}>Fechar mantendo envio</Button>
+  </div> : erroLeitura ? <Button onClick={() => { setCarregando(true); setErroLeitura(false); setErro(''); setTentativaDetalhe(t => t + 1) }}>Tentar novamente</Button>
+    : modo === 'atendimento' ? <div ref={setDestinoAcoes}>{erroTelefone && <Button onClick={() => void atender()}>Tentar novamente</Button>}</div>
+    : detalhe && !indisponivel && modo === 'venda' ? <div className={styles.parAcoes}>
+      <Button variant="outline" disabled={novasOperacoesBloqueadas || confirmado} onClick={() => pedir(origemTarefa)}>Cancelar</Button>
+      <Button type="submit" form={formularioVendaId} disabled={novasOperacoesBloqueadas || confirmado}>Conferir venda</Button>
+    </div> : detalhe && !indisponivel && (modo === 'passo' || modo === 'historico') ? filtroVazio
+      ? <Button onClick={() => { setFiltro('todos'); tituloLeitura.current?.focus({ preventScroll: true }) }}>Ver todos</Button>
+      : <div className={styles.parAcoes}>
+        <Button ref={registrarVenda} disabled={novasOperacoesBloqueadas} onClick={() => pedir('venda')}>Registrar venda</Button>
+        <Button variant="outline" disabled={!aoPedirArquivar || novasOperacoesBloqueadas} onClick={() => pedir('arquivo', () => aoPedirArquivar?.(detalhe))}>Sem interesse</Button>
+      </div> : null
   return <>
     <PainelLateralCrm
       id="painel-negociacao"
@@ -327,18 +360,24 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       rotulo="Negociação"
       titulo={indisponivel ? 'Negociação indisponível' : detalhe?.nome ?? 'Negociação'}
       descricao={!indisponivel && detalhe ? <>Etapa atual: <strong>{ROTULOS_ETAPA[detalhe.etapa]}</strong></> : undefined}
-      rotuloFechar={modo === 'passo' ? rotuloFechar : 'Voltar'}
-      aoFechar={() => pedir(modo === 'passo' ? 'fechar' : 'passo')}
+      rotuloFechar={modo === 'menu' ? rotuloFechar : 'Voltar'}
+      aoFechar={() => { if (modo === 'menu') pedir('fechar'); else if (modo === 'atendimento' || modo === 'venda') pedir(origemTarefa); else voltarALeitura('menu') }}
+      rodape={rodape}
+      ocupado={carregando || buscandoTelefone || pendente || venda.pendente}
       fecharBloqueado={pendente || venda.pendente || !!descarte || confirmacaoVendaAberta}
     >
-      {carregando && <p role="status">Carregando negociação...</p>}
-      {!descarte && !confirmacaoVendaAberta && alerta}
-      {venda.comando && !pendente && <section className={styles.secao}>
-        <p>Venda pendente de confirmação. Os dados do envio anterior foram preservados.</p>
-        <div className={styles.acoes}>
-          <Button ref={recuperarVenda} variant="outline" disabled={venda.pendente} onClick={() => void salvarVenda()}>{venda.pendente ? 'Confirmando venda...' : 'Confirmar venda anterior'}</Button>
-          <Button variant="outline" disabled={venda.pendente} onClick={() => concluir()}>Fechar mantendo envio</Button>
-        </div>
+      {carregando && <EstadoPainelCrm tipo="carregando" titulo="Carregando negociação" descricao="Aguarde os dados autorizados desta negociação." />}
+      {!carregando && !detalhe && <EstadoPainelCrm tipo={erroLeitura ? 'erro' : 'indisponivel'} titulo={erroLeitura ? 'Não foi possível carregar' : 'Negociação indisponível'} descricao={erro} />}
+      {!descarte && !confirmacaoVendaAberta && (detalhe || venda.erro) && !erroTelefone && alerta}
+      {venda.comando && <section className={styles.secao}>
+        <EstadoPainelCrm tipo={venda.pendente ? 'pendente' : 'incerto'} titulo={venda.pendente ? 'Verificando registro' : 'Venda pendente de confirmação'} descricao="Os dados do envio anterior foram preservados. Verificar registro repete o mesmo envio." />
+        <dl className={styles.dados}>
+          <div><dt>Empresa do envio</dt><dd>{venda.comando.empresaId === detalhe?.empresaId ? detalhe.nome : venda.comando.empresaId}</dd></div>
+          <div><dt>Tipo de venda</dt><dd>{venda.comando.alvo.tipo === 'primeira' ? 'Primeira venda · Negociação ' + venda.comando.alvo.negociacaoId : 'Recompra'}</dd></div>
+          <div><dt>Valor</dt><dd>R$ {venda.comando.entrada.valor}</dd></div>
+          <div><dt>Data efetiva</dt><dd>{dataCurta(venda.comando.entrada.data)}</dd></div>
+          <div><dt>Observação</dt><dd>{venda.comando.entrada.observacao || 'Sem observação'}</dd></div>
+        </dl>
       </section>}
       {venda.resultado?.ok && <div>
         <p role="status">{venda.resultado.aviso ?? 'Venda registrada.'}</p>
@@ -346,29 +385,19 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
       </div>}
       {bloqueada && <Alert role="alert">Confirme o envio anterior no Funil antes de iniciar outra operação. Feche o painel para continuar a confirmação.</Alert>}
       {indisponivel && <section className={styles.secao}>
-        <h3>Rascunho preservado</h3>
-        <p>Não é possível gravar nesta negociação. Copie o que digitou antes de fechar.</p>
+        <EstadoPainelCrm tipo="indisponivel" titulo="Rascunho preservado" descricao="Não é possível gravar nesta negociação. Copie o que digitou antes de fechar." />
         <Textarea ref={rascunhoPreservado} aria-label="Rascunho preservado" readOnly rows={6} value={[valor && `Valor: ${valor}`, data && `Data: ${data}`, nota, rascunho.nota, rascunho.proximoPasso, rascunho.proximoPassoData].filter(Boolean).join('\n')} />
         <Button variant="outline" onClick={() => pedir('fechar')}>Fechar rascunho</Button>
       </section>}
-      {detalhe && !indisponivel && <fieldset disabled={bloqueada || venda.pendente || !!venda.comando || fechandoVenda} className={styles.corpo}>
-        {modo !== 'venda' && <div role="tablist" aria-label="Negociação" className={styles.abas} onKeyDown={evento => {
-          if (pendente || bloqueada || venda.bloqueada || fechandoVenda) return
-          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(evento.key)) return
-          evento.preventDefault()
-          const disponiveis = abas.filter(aba => aba.valor !== 'atendimento' || !empresaIndisponivel)
-          const indice = disponiveis.findIndex(aba => aba.valor === modo)
-          const proximo = evento.key === 'Home' ? 0 : evento.key === 'End' ? disponiveis.length - 1 : (indice + (evento.key === 'ArrowRight' ? 1 : -1) + disponiveis.length) % disponiveis.length
-          const aba = disponiveis[proximo]
-          if (aba.valor === 'atendimento') void atender()
-          else setModo(aba.valor)
-          document.getElementById(abasId + '-' + aba.valor)?.focus()
-        }}>
-          {abas.map(aba => <Button key={aba.valor} ref={aba.valor === 'atendimento' ? registrarAtendimento : aba.valor === 'historico' ? abaHistorico : undefined} type="button" role="tab"
-            id={abasId + '-' + aba.valor} aria-controls={abasId + '-painel-' + aba.valor} aria-selected={modo === aba.valor} tabIndex={modo === aba.valor ? 0 : -1}
-            variant="ghost" disabled={pendente || aba.valor === 'atendimento' && empresaIndisponivel} onClick={() => { if (aba.valor === 'atendimento') void atender(); else setModo(aba.valor) }}>{aba.rotulo}</Button>)}
-        </div>}
-        <section role="tabpanel" id={abasId + '-painel-passo'} aria-labelledby={abasId + '-passo'} hidden={modo !== 'passo'} className={styles.secao}>
+      {detalhe && !indisponivel && <>
+        <div hidden={modo !== 'menu'}><MenuPainelCrm rotulo="Seções da negociação" itens={[
+          { id: secaoId + '-passo', titulo: 'Atendimento e próximo passo', aoAbrir: gatilho => { gatilhoMenu.current = gatilho; setModo('passo') } },
+          { id: secaoId + '-historico', titulo: 'Histórico', aoAbrir: gatilho => { gatilhoMenu.current = gatilho; setModo('historico') } },
+        ]} /></div>
+        <fieldset disabled={bloqueada || venda.pendente || !!venda.comando || fechandoVenda} className={styles.corpo}>
+        <section hidden={modo !== 'passo'} className={styles.secao}>
+          <h3 ref={modo === 'passo' ? tituloLeitura : undefined} tabIndex={-1}>Atendimento e próximo passo</h3>
+          <Button ref={registrarAtendimento} disabled={novasOperacoesBloqueadas} onClick={() => void atender()}>Registrar atendimento</Button>
           <dl className={styles.dados}>
             <div><dt>Próximo passo</dt><dd>{detalhe.proximoPasso ?? 'Sem próximo passo combinado'}</dd></div>
             <div><dt>Retorno</dt><dd>{detalhe.retorno ? <time dateTime={detalhe.retorno}>{dataCurta(detalhe.retorno)}</time> : 'Sem retorno agendado'}</dd></div>
@@ -377,27 +406,26 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
             Avançar para {ROTULOS_ETAPA[etapaSeguinte]}
           </Button>}
         </section>
-        <section role="tabpanel" id={abasId + '-painel-atendimento'} aria-labelledby={abasId + '-atendimento'} hidden={modo !== 'atendimento'} className={styles.secao}>
+        <section hidden={modo !== 'atendimento'} className={styles.secao}>
           {atendimentoAberto && <>
           <h3 ref={modo === 'atendimento' ? tituloEdicao : undefined} tabIndex={-1}>Registrar atendimento</h3>
-          {buscandoTelefone ? <p role="status">Carregando telefone...</p> : telefone !== null && <>
+          {buscandoTelefone && <EstadoPainelCrm tipo="carregando" titulo="Carregando telefone" descricao="Aguarde para registrar o atendimento." />}
+          {erroTelefone && <EstadoPainelCrm tipo="erro" titulo="Não foi possível carregar o telefone" descricao={erro} />}
+          {telefone !== null && <>
             <p>Telefone: <strong>{telefone || 'Não cadastrado'}</strong></p>
             <FormularioContato empresaId={detalhe.empresaId} posse visual="fila" rascunho={rascunho} onDraftChange={setRascunho} onPendingChange={informarPendente}
-              rotuloSalvar="Salvar atendimento" onCancel={() => pedir('passo')} onSaved={() => concluir('Atendimento registrado.')} />
+              destinoAcoes={modo === 'atendimento' && !venda.comando ? destinoAcoes : null} bloqueado={bloqueada || venda.bloqueada || fechandoVenda}
+              rotuloSalvar="Salvar atendimento" onCancel={() => pedir(origemTarefa)} onSaved={() => concluir('Atendimento registrado.')} />
           </>}
           </>}
         </section>
-        <section role="tabpanel" id={abasId + '-painel-historico'} aria-labelledby={abasId + '-historico'} hidden={modo !== 'historico'}>
-          {modo === 'historico' && <HistoricoComercial eventos={eventosDaNegociacao(detalhe)} />}
+        <section hidden={modo !== 'historico'}>
+          {modo === 'historico' && <>
+            <h3 ref={tituloLeitura} tabIndex={-1}>Histórico</h3>
+            <HistoricoComercial eventos={eventos} controleFiltro={{ valor: filtro, aoMudar: setFiltro }} conteudoVazio={<EstadoPainelCrm tipo="vazio" titulo="Nenhum registro neste filtro" descricao="Os registros disponíveis pertencem ao seu ciclo desta negociação." />} />
+          </>}
         </section>
-        {(modo === 'passo' || modo === 'historico') && <footer className={styles.rodape}>
-          <span>Ações da negociação</span>
-          <div className={styles.parAcoes}>
-            <Button ref={registrarVenda} disabled={novasOperacoesBloqueadas} onClick={() => pedir('venda')}>Registrar venda</Button>
-            <Button variant="outline" disabled={!aoPedirArquivar || novasOperacoesBloqueadas} onClick={() => pedir('arquivo', () => aoPedirArquivar?.(detalhe))}>Sem interesse</Button>
-          </div>
-        </footer>}
-          {modo === 'venda' && <form className={styles.secao} onSubmit={evento => {
+          {modo === 'venda' && <form id={formularioVendaId} className={styles.secao} onSubmit={evento => {
             evento.preventDefault()
             if (pendente || fechandoVenda || confirmado || venda.bloqueada || empresaIndisponivel) return
             focoVenda.current = document.activeElement as HTMLElement | null
@@ -411,37 +439,26 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
               <label>Observação (opcional)<Textarea value={nota} onChange={e => setNota(e.target.value)} maxLength={2000} /></label>
             </fieldset>
             <p className={styles.muted}>Nesta versão, vendas não podem ser editadas nem excluídas. Confira os dados antes de confirmar.</p>
-            <Button type="submit" disabled={pendente || confirmado}>Conferir venda</Button>
           </form>}
-      </fieldset>}
+      </fieldset></>}
     </PainelLateralCrm>
 
     <Dialog open={!!descarte} onOpenChange={aberto => { if (!aberto && !bloqueado.current && !venda.pendente) setDescarte(null) }}>
       <DialogContent theme={tema} showCloseButton={false} onCloseAutoFocus={evento => restaurarFoco(evento, focoDescarte.current)}>
-        <DialogHeader>
-          <DialogTitle>Descartar alterações?</DialogTitle>
-          <DialogDescription>As informações não salvas serão perdidas.</DialogDescription>
-        </DialogHeader>
-        {alerta}
-        <DialogFooter>
+        <ConfirmacaoPainelCrm titulo="Descartar alterações?" alvo={<strong>{detalhe?.nome ?? 'Negociação'}</strong>} descricao="As informações não salvas serão perdidas." acoes={<>
           <Button variant="outline" onClick={() => setDescarte(null)}>Continuar editando</Button>
           {(atendimentoAberto || detalhe && contatoPendente(detalhe.empresaId)) && descarte?.destino !== 'arquivo' && descarte?.destino !== 'venda' && <Button variant="outline" onClick={() => descartar(true)}>Fechar mantendo rascunho</Button>}
           <Button onClick={() => descartar()}>Descartar</Button>
-        </DialogFooter>
+        </>}>{alerta}</ConfirmacaoPainelCrm>
       </DialogContent>
     </Dialog>
 
     <Dialog open={confirmacaoVendaAberta} onOpenChange={aberto => { if (!aberto && !bloqueado.current && !venda.pendente) setConfirmado(false) }}>
       <DialogContent theme={tema} showCloseButton={false} onCloseAutoFocus={evento => restaurarFoco(evento, recuperarVenda.current ?? rascunhoPreservado.current ?? focoVenda.current)}>
-        <DialogHeader>
-          <DialogTitle>Confirmar venda</DialogTitle>
-          <DialogDescription>Confirmar venda de R$ {valor} em {dataCurta(data)}?</DialogDescription>
-        </DialogHeader>
-        {alerta}
-        <DialogFooter>
+        <ConfirmacaoPainelCrm titulo="Confirmar venda" alvo={<strong>{detalhe?.nome} · R$ {valor} · {dataCurta(data)}</strong>} descricao={<>Confirmar venda de R$ {valor} em {dataCurta(data)}? A empresa seguirá para a Carteira.</>} acoes={<>
           <Button variant="outline" disabled={pendente || venda.pendente} onClick={() => setConfirmado(false)}>Corrigir dados</Button>
           <Button disabled={pendente || venda.pendente} onClick={() => void salvarVenda()}>{pendente ? 'Registrando...' : 'Confirmar venda'}</Button>
-        </DialogFooter>
+        </>}>{alerta}</ConfirmacaoPainelCrm>
       </DialogContent>
     </Dialog>
   </>
