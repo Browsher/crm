@@ -23,17 +23,14 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, aoFechar, children
   const tituloId = useId()
   const raiz = useRef<HTMLElement>(null)
   const cabecalho = useRef<HTMLHeadingElement>(null)
-  // Compatibilidade temporária até a migração dos quatro consumidores (etapa 4).
-  const composicaoComum = rodape !== undefined
-  usePainelMovel(raiz, composicaoComum)
+  usePainelMovel(raiz, true)
   useLayoutEffect(() => {
     const alvo = cabecalho.current
     if (!alvo) return
     alvo.focus({ preventScroll: true })
-    if (!raiz.current?.hasAttribute('data-painel-composicao') && window.matchMedia?.('(max-width: 1120px)').matches) alvo.scrollIntoView?.({ block: 'nearest' })
   }, [])
 
-  return <aside ref={raiz} id={id} data-painel-lateral data-painel-composicao={composicaoComum ? 'padrao' : undefined} aria-label={rotulo} aria-labelledby={rotulo ? undefined : tituloId}
+  return <aside ref={raiz} id={id} data-painel-lateral data-painel-composicao="padrao" aria-label={rotulo} aria-labelledby={rotulo ? undefined : tituloId}
     className={[styles.painel, className].filter(Boolean).join(' ')} onKeyDown={evento => {
       if (evento.key !== 'Escape' || evento.defaultPrevented || !evento.currentTarget.contains(evento.target as Node)) return
       evento.preventDefault()
@@ -44,7 +41,7 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, aoFechar, children
       <div><h2 id={tituloId} ref={cabecalho} tabIndex={-1}>{titulo}</h2>{descricao && <div className={styles.descricao}>{descricao}</div>}</div>
       <Button type="button" variant="outline" size="sm" disabled={fecharBloqueado} onClick={() => { if (!fecharBloqueado) aoFechar() }}>{rotuloFechar}</Button>
     </header>
-    <div className={styles.corpo} data-painel-corpo={composicaoComum ? '' : undefined} aria-busy={composicaoComum ? ocupado : undefined}>{children}</div>
-    {composicaoComum && rodape != null && <footer className={styles.rodape} data-painel-rodape>{rodape}</footer>}
+    <div className={styles.corpo} data-painel-corpo aria-busy={ocupado}>{children}</div>
+    {rodape != null && <footer className={styles.rodape} data-painel-rodape>{rodape}</footer>}
   </aside>
 }

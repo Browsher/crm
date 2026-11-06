@@ -22,7 +22,7 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   await entrar(page, apelido)
   await page.goto('/fila/localizar')
   await page.getByRole('button', { name: 'Ver empresa: Fluxo Integrado' }).click()
-  await expect(page.getByRole('dialog')).toContainText('Fluxo Integrado')
+  await expect(page.locator('[data-slot="dialog-content"]')).toContainText('Fluxo Integrado')
   expect((await sql('SELECT iniciada_em FROM empresa_vinculo WHERE empresa_id=$1', [empresa])).rows[0].iniciada_em).toBeNull()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Iniciar atendimento', exact: true }).click()
@@ -47,8 +47,9 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   await expect(page.getByRole('main')).toContainText('Retorno da jornada integrada')
   await page.goto('/funil')
   await page.locator('article[draggable]').getByRole('button', { name: 'Negociação', exact: true }).click()
+  await abrirLeitura(page)
   await modal.getByRole('button', { name: 'Sem interesse', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
+  await page.locator('[data-slot="dialog-content"]').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
   await expect(page.getByRole('status').filter({hasText:'Empresa marcada como Sem interesse'})).toBeVisible()
   const historia = (await sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).rows
   await page.goto('/fila/sem-interesse')
@@ -67,6 +68,7 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   expect(negociacaoInteresse.id).not.toBe(negociacaoRetorno.id)
   await expect(page).toHaveURL('/funil?negociacao=' + negociacaoInteresse.id)
   expect(await banco.sql("SELECT id FROM contato WHERE empresa_id=$1 AND tipo='interessado'", [empresa])).toHaveLength(1)
+  await abrirLeitura(page)
   await modal.getByRole('button', { name: 'Registrar venda', exact: true }).click()
   await page.getByLabel('Valor em reais').fill('100,00')
   await page.getByLabel('Data da venda').fill(hoje)
@@ -161,3 +163,12 @@ test('replay de iniciar após arquivamento em outra aba confirma o comando e abr
   expect(await banco.sql('SELECT chave FROM empresa_atendimento_operacao WHERE chave=$1', [comando.chave])).toEqual([{ chave: comando.chave }])
   await page.screenshot({ path: testInfo.outputPath('inicio-replay-situacao-atual.png'), fullPage: true })
 })
+
+async function abrirLeitura(page: import('@playwright/test').Page) {
+  const lateral = page.locator('[data-painel-lateral]')
+  if (new URL(page.url()).pathname.startsWith('/carteira/')) return
+  await expect(lateral).toBeVisible()
+  await expect(lateral.locator('[data-painel-corpo]')).toHaveAttribute('aria-busy', 'false')
+  const menu = lateral.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })
+  if (await menu.isVisible()) await menu.click()
+}

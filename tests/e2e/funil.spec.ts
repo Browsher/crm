@@ -28,14 +28,14 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
       await expect(cardVisual.getByRole('heading',{name:'Funil Aurora',exact:true})).toHaveCSS('font-size','15px')
       await expect(cardVisual.getByRole('heading',{name:'Funil Aurora',exact:true})).toHaveCSS('line-height','22px')
       await cardVisual.getByRole('button',{name:'Negociação',exact:true}).click()
-      const modal=page.locator('[data-painel-lateral]');await expect(page.getByRole('dialog')).toHaveCount(0);await modal.getByRole('tab',{name:'Histórico',exact:true}).click();await modal.getByRole('button',{name:'Expandir todos',exact:true}).click();await expect(modal.getByText('Nota própria Aurora',{exact:true})).toBeVisible();await expect(modal).not.toContainText('SEGREDO DO COLEGA');await expect(modal).not.toContainText('11977778888')
+      const modal=page.locator('[data-painel-lateral]');await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0);await modal.getByRole('button',{name:'Histórico',exact:true}).click();await modal.getByRole('button',{name:'Expandir todos',exact:true}).click();await expect(modal.getByText('Nota própria Aurora',{exact:true})).toBeVisible();await expect(modal).not.toContainText('SEGREDO DO COLEGA');await expect(modal).not.toContainText('11977778888')
       await expect(modal.getByRole('region',{name:'Histórico comercial',exact:true})).toBeVisible()
       const tituloModal=(await modal.getByRole('heading',{level:2}).boundingBox())!
       const fecharModal=(await modal.getByRole('button',{name:'Voltar',exact:true}).boundingBox())!
       if(width>=1121){const caixa=(await modal.boundingBox())!;expect(caixa.y).toBe(0);expect(caixa.height).toBe(844);expect(caixa.x+caixa.width).toBe(width)}
       expect(tituloModal.x+tituloModal.width<=fecharModal.x||tituloModal.y+tituloModal.height<=fecharModal.y).toBe(true)
       await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-modal-${tema}-${width}.png`,animations:'disabled'})
-      await page.keyboard.press('Escape');await expect(modal.getByRole('tab',{name:'Próximo passo',exact:true})).toHaveAttribute('aria-selected','true');await page.keyboard.press('Escape');await expect(modal).toHaveCount(0);await expect(cartaoAurora(page).getByRole('button',{name:'Negociação',exact:true})).toBeFocused()
+      await page.keyboard.press('Escape');await expect(modal.getByRole('button',{name:'Atendimento e próximo passo',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(modal).toHaveCount(0);await expect(cartaoAurora(page).getByRole('button',{name:'Negociação',exact:true})).toBeFocused()
     }
   }
   await page.unroute('**/funil*',interceptar)
@@ -53,21 +53,23 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await expect(page.getByRole('status')).toContainText('Etapa atualizada para Em negociação')
   await card.dragTo(primeiro)
   await expect(negociacao).toContainText('Funil Aurora')
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0)
   await page.setViewportSize({width:390,height:844})
   await expect(card).toHaveAttribute('draggable','false')
   await card.getByRole('button',{name:'Negociação',exact:true}).click()
   await expect(page.locator('[data-painel-lateral]').getByRole('combobox')).toHaveCount(0)
+  await page.getByRole('button',{name:'Atendimento e próximo passo',exact:true}).click()
   const avancar=page.getByRole('button',{name:'Avançar para Proposta enviada',exact:true})
   await avancar.focus();await avancar.press('Enter')
   await expect(page.locator('[data-painel-lateral]')).toHaveCount(0)
   await expect(page.getByRole('region',{name:'Proposta enviada'})).toContainText('Funil Aurora')
-  await card.getByRole('button',{name:'Negociação',exact:true}).click();await expect(page.getByRole('button',{name:/Avançar para/})).toHaveCount(0);await page.getByRole('tab',{name:'Atendimento',exact:true}).click();await expect(page.locator('[data-painel-lateral]')).toContainText('11977778888');await page.getByRole('button',{name:'Voltar',exact:true}).click()
+  await card.getByRole('button',{name:'Negociação',exact:true}).click();await expect(page.getByRole('button',{name:/Avançar para/})).toHaveCount(0);await page.getByRole('button',{name:'Atendimento e próximo passo',exact:true}).click();await page.getByRole('button',{name:'Registrar atendimento',exact:true}).click();await expect(page.locator('[data-painel-lateral]')).toContainText('11977778888');await page.getByRole('button',{name:'Voltar',exact:true}).click()
+  await abrirLeitura(page)
   await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
   await page.getByLabel('Valor em reais').fill('123,45')
   await page.keyboard.press('Escape');await expect(page.getByText('Descartar alterações?')).toBeVisible();await page.getByRole('button',{name:'Continuar editando',exact:true}).click();await expect(page.getByLabel('Valor em reais')).toHaveValue('123,45')
   await page.evaluate(()=>history.back());await expect(page.getByText('Descartar alterações?')).toBeVisible();await page.getByRole('button',{name:'Continuar editando',exact:true}).click()
-  await page.getByRole('button',{name:'Menu do CRM',exact:true}).click()
+  await page.setViewportSize({width:1440,height:844})
   await page.getByRole('navigation',{name:'Navegação do CRM'}).getByRole('link',{name:'Carteira',exact:true}).click()
   const descarte=page.getByRole('dialog',{name:'Descartar alterações?',exact:true})
   await expect(descarte).toBeVisible()
@@ -76,11 +78,12 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await expect(page.getByLabel('Valor em reais')).toHaveValue('123,45')
   await page.getByLabel('Data da venda').fill('2026-01-01');await page.getByRole('button',{name:'Conferir venda'}).click();await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
   await expect(page).toHaveURL(`/carteira/${FUNIL_EMPRESA}?venda=registrada`)
-  await expect(page.getByRole('dialog')).toHaveCount(0);await expect(cartaoAurora(page)).toHaveCount(0)
+  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0);await expect(cartaoAurora(page)).toHaveCount(0)
   await page.goto('/carteira');await expect(page.getByRole('main')).toContainText('Funil Aurora')
   await page.goto(`/carteira/${FUNIL_EMPRESA}`)
   await page.getByRole('tab',{name:'Histórico',exact:true}).click();await page.getByRole('button',{name:'Expandir todos',exact:true}).click();await expect(page.getByRole('main')).toContainText('Venda registrada')
   await expect(page.getByRole('main')).toContainText('123,45')
+  await abrirLeitura(page)
   await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
   await page.getByLabel('Valor em reais').fill('250,50')
   await page.getByLabel('Data da venda').fill('2026-01-02')
@@ -95,7 +98,7 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   }
   await page.getByRole('button',{name:'Conferir venda'}).click()
   await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0)
   await page.getByRole('tab',{name:'Histórico',exact:true}).click();const expandir=page.getByRole('button',{name:'Expandir todos',exact:true});if(await expandir.count())await expandir.click();await expect(page.getByRole('main')).toContainText('250,50')
   await expect(page.getByRole('main')).toContainText('Segunda compra')
   await expect(page.getByRole('main').locator('summary').filter({hasText:'Venda registrada'})).toHaveCount(2)
@@ -119,13 +122,15 @@ test('negociação de origem indisponível conserva Histórico e bloqueia novas 
     await card.getByRole('button', { name: 'Negociação', exact: true }).click()
     const painel = page.locator('[data-painel-lateral]')
     for (const tema of ['light', 'dark']) {
+      await page.setViewportSize({ width: 1440, height: 900 })
       await page.getByRole('combobox', { name: 'Tema do Funil' }).selectOption(tema)
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 900 })
+        await painel.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
         for (const nome of ['Registrar venda', 'Sem interesse', 'Avançar para Proposta enviada']) await expect(painel.getByRole('button', { name: nome, exact: true })).toBeDisabled()
-        await expect(painel.getByRole('tab', { name: 'Atendimento', exact: true })).toBeDisabled()
-        await painel.getByRole('tab', { name: 'Próximo passo', exact: true }).press('ArrowRight')
-        await expect(painel.getByRole('tab', { name: 'Histórico', exact: true })).toBeFocused()
+        await expect(painel.getByRole('button', { name: 'Registrar atendimento', exact: true })).toBeDisabled()
+        await painel.getByRole('button', { name: 'Voltar', exact: true }).click()
+        await painel.getByRole('button', { name: 'Histórico', exact: true }).press('Enter')
         await expect(painel.getByRole('region', { name: 'Histórico comercial', exact: true })).toBeVisible()
         await painel.getByRole('button', { name: 'Expandir todos', exact: true }).click()
         await expect(painel.locator('details[open]')).toHaveCount(1)
@@ -144,3 +149,12 @@ test('negociação de origem indisponível conserva Histórico e bloqueia novas 
     await comBancoGrupos(c => c.query('UPDATE grupo_importacao SET ativo=true WHERE id=ANY($1::uuid[])', [grupos]))
   }
 })
+
+async function abrirLeitura(page: import('@playwright/test').Page) {
+  const lateral = page.locator('[data-painel-lateral]')
+  if (new URL(page.url()).pathname.startsWith('/carteira/')) return
+  await expect(lateral).toBeVisible()
+  await expect(lateral.locator('[data-painel-corpo]')).toHaveAttribute('aria-busy', 'false')
+  const menu = lateral.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })
+  if (await menu.isVisible()) await menu.click()
+}

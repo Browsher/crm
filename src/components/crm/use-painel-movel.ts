@@ -30,6 +30,7 @@ export function usePainelMovel(raiz: RefObject<HTMLElement | null>, ativo: boole
         return
       }
       if (liberar || !painel) return
+      let ativoMovel = true
 
       const atributos = ['role', 'aria-modal'].map(nome => [nome, painel.getAttribute(nome)] as const)
       painel.setAttribute('role', 'dialog')
@@ -89,13 +90,19 @@ export function usePainelMovel(raiz: RefObject<HTMLElement | null>, ativo: boole
       }
 
       isolarFundo()
-      const observador = new MutationObserver(isolarFundo)
+      const observador = new MutationObserver(() => {
+        if (!ativoMovel || !painel.isConnected) return
+        isolarFundo()
+        // Remover o controle focado pode levar a BODY sem emitir focusin.
+        if (!dialogosCentrais().length && !painel.contains(document.activeElement)) focarTitulo()
+      })
       observador.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['role', 'aria-modal', 'data-state'] })
       document.addEventListener('focusin', guardarFoco)
       document.addEventListener('keydown', guardarTab)
       if (!dialogosCentrais().length && !painel.contains(document.activeElement)) focarTitulo()
 
       liberar = () => {
+        ativoMovel = false
         observador.disconnect()
         document.removeEventListener('focusin', guardarFoco)
         document.removeEventListener('keydown', guardarTab)

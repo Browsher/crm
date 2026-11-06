@@ -33,7 +33,9 @@ test('galeria compartilha shell e tema sem perder rascunho no atendimento: jorna
   for (const largura of [1440, 1280, 820, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light', 'dark']) {
+      await page.setViewportSize({ width: 1440, height: 900 })
       await page.getByLabel('Tema do Meu dia').selectOption(tema)
+      await page.setViewportSize({ width: largura, height: 900 })
       await capturar(page, `agenda-${largura}-${tema}`)
     }
   }
@@ -328,12 +330,15 @@ test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ b
     await expect(empresa.getByRole('heading', { name: 'Redesign Negociação', exact: true })).toHaveCSS('font-size', '15px')
     await card.click()
     const modal = page.locator('[data-painel-lateral]')
+    await modal.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
     await expect(modal.getByRole('button', { name: /Avançar para/ })).toBeVisible()
+    await modal.getByRole('button', { name: 'Voltar', exact: true }).click()
     for (const tema of ['light', 'dark']) {
       await page.keyboard.press('Escape')
       await expect(card).toBeFocused()
       await page.getByLabel('Tema do Funil').selectOption(tema)
       await card.click()
+      await modal.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
       await page.getByRole('button', { name: 'Registrar venda', exact: true }).click()
       expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true)
       await expect(page.getByLabel('Valor em reais')).toHaveCSS('font-size', '16px')
@@ -342,6 +347,8 @@ test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ b
       await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-toque-1280-${tema}.png`, animations: 'disabled' })
       await page.keyboard.press('Escape')
       await page.getByRole('button', { name: 'Descartar', exact: true }).click()
+      await page.keyboard.press('Escape')
+      await page.keyboard.press('Escape')
       await card.click()
     }
     await page.keyboard.press('Escape')

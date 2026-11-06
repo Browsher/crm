@@ -153,6 +153,7 @@ test('filtro sem resultados conserva controles e eventos e Ver todos limpa sem n
   expect(host.querySelector('aside [role=status]')?.textContent).toContain('Nenhum registro neste filtro')
   expect(host.querySelector('[data-painel-rodape]')?.textContent).toBe('Ver todos')
   await clicar('Ver todos')
+  expect(document.activeElement).toBe(host.querySelector('aside h3'))
   await expandir()
   expect(host.querySelector('aside')?.textContent).toContain('CONTATO AUTORIZADO')
   expect(host.querySelector('[data-painel-rodape]')?.textContent).toBe('Negociação')

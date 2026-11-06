@@ -13,7 +13,8 @@ test.beforeEach(async () => {
 })
 async function entrar(page: Page) {
   await page.goto('/login'); await page.getByLabel('E-mail').fill(email); await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click(); await expect(page).toHaveURL('/meu-dia')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/meu-dia')
 }
 async function atores() { return { eu: (await sql('SELECT id FROM usuario WHERE email=$1', [email])).rows[0].id as string, outro: (await sql("SELECT id FROM usuario WHERE email='funiloutroe2e@teste.local'")).rows[0].id as string } }
 async function preparar(nome: string, arquivo: boolean) {
@@ -47,7 +48,7 @@ test('arquivo indisponível mantém consulta e histórico, sem retomada nova', a
   await expect(card(page, 'Revisão arquivo indisponível')).toContainText('Indisponível')
   await expect(card(page, 'Revisão arquivo indisponível').getByRole('button', { name: 'Retomar atendimento', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Ver empresa: Revisão arquivo indisponível' }).click()
-  await expect(page.getByRole('dialog')).toContainText('Revisão arquivo indisponível')
+  await expect(page.locator('[data-slot="dialog-content"]')).toContainText('Revisão arquivo indisponível')
   expect((await sql('SELECT nota FROM contato WHERE empresa_id=$1', [c.empresa])).rows).toEqual([{ nota: 'História própria revisão' }])
 })
 
@@ -58,7 +59,7 @@ test('Funil separa agenda vigente de outro autor do histórico próprio e não r
   await card(page, 'Revisão agenda canônica').getByRole('button', { name: 'Negociação', exact: true }).click()
   const dialogo = page.locator('[data-painel-lateral]')
   await expect(dialogo).toContainText('Sem próximo passo combinado')
-  await dialogo.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await dialogo.getByRole('button', { name: 'Histórico', exact: true }).click()
   await dialogo.getByRole('button', { name: 'Expandir todos', exact: true }).click()
   await expect(dialogo.getByText('Agenda antiga revisão', { exact: true })).toBeVisible()
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape')
@@ -76,7 +77,7 @@ test('Funil separa agenda vigente de outro autor do histórico próprio e não r
   })
   await page.reload(); await card(page, 'Revisão agenda canônica').getByRole('button', { name: 'Negociação', exact: true }).click()
   await expect(dialogo).toContainText('Agenda vigente revisão')
-  await dialogo.getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await dialogo.getByRole('button', { name: 'Histórico', exact: true }).click()
   await dialogo.getByRole('button', { name: 'Expandir todos', exact: true }).click()
   await expect(dialogo.getByText('História própria revisão', { exact: true })).toBeVisible()
   await expect(dialogo).not.toContainText('Nota alheia privada')
@@ -107,8 +108,9 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
   const origem = tipo === 'arquivar' ? page.locator('[draggable]').filter({ has: page.getByRole('heading', { name: nome + ' A', exact: true }) }) : card(page, nome + ' A')
   if (arquivar) {
     await origem.getByRole('button', { name: 'Negociação', exact: true }).click()
+    await page.locator('[data-painel-lateral]').getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
     await page.locator('[data-painel-lateral]').getByRole('button', { name: 'Sem interesse', exact: true }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
+    await page.locator('[data-slot="dialog-content"]').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
   } else await origem.getByRole('button', { name: 'Retomar atendimento', exact: true }).click()
   await expect(status).toContainText('Não foi possível confirmar')
   const salvo = await page.evaluate(k => sessionStorage.getItem(k), storage)
@@ -123,7 +125,7 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
     await expect(page.locator('[data-painel-lateral]')).toContainText(nome + ' B')
   } else {
     await card(page, nome + ' B').getByRole('button', { name: 'Ver empresa: ' + nome + ' B' }).click()
-    await expect(page.getByRole('dialog')).toContainText(nome + ' B')
+    await expect(page.locator('[data-slot="dialog-content"]')).toContainText(nome + ' B')
   }
   await page.keyboard.press('Escape')
   expect(envios).toHaveLength(1)

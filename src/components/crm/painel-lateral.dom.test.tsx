@@ -171,3 +171,14 @@ test('rótulo Voltar usa o mesmo fechamento pelo botão e Escape', async () => {
   await act(async () => botao.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
   expect(fechar).toHaveBeenCalledTimes(2)
 })
+
+test('omitir rodapé mantém a base comum e não cria ações', async () => {
+  simularLargura(820)
+  host = document.createElement('div'); document.body.append(host); root = createRoot(host)
+  await act(async () => root?.render(<PainelLateralCrm titulo="Leitura" aoFechar={() => {}}>Conteúdo</PainelLateralCrm>))
+  const painel = host.querySelector('aside')!
+  expect(painel.getAttribute('data-painel-composicao')).toBe('padrao')
+  expect(painel.getAttribute('aria-modal')).toBe('true')
+  expect(painel.querySelector('[data-painel-corpo]')?.textContent).toBe('Conteúdo')
+  expect(painel.querySelector('footer')).toBeNull()
+})

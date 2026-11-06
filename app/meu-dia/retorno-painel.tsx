@@ -66,7 +66,7 @@ export function RetornoPainel({ empresa, filtros, aba, bloqueado = false, aoMuda
   const rodape = aba === 'historico' && historico?.fase === 'erro'
     ? <Button variant="outline" disabled={bloqueado} onClick={() => { setHistorico(null); setTentativa(t => t + 1) }}>Tentar novamente</Button>
     : aba === 'historico' && filtroVazio
-      ? <Button variant="outline" disabled={bloqueado} onClick={() => setFiltro('todos')}>Ver todos</Button>
+      ? <Button variant="outline" disabled={bloqueado} onClick={() => { setFiltro('todos'); tituloHistorico.current?.focus({ preventScroll: true }) }}>Ver todos</Button>
       : comercial
   return <PainelLateralCrm titulo={nomeEmpresa(empresa)} rotulo="Retorno"
     descricao={empresa.situacaoRetorno === 'atrasado' ? 'Retorno atrasado' : empresa.situacaoRetorno === 'hoje' ? 'Retorno de hoje' : 'Próximo retorno'}

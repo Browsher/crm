@@ -287,7 +287,12 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     if (origem?.isConnected) origem.focus()
     else tituloEdicao.current?.focus()
   }
-  function informarPendente(p:boolean){bloqueado.current=p;setPendente(p)}
+  function informarPendente(p:boolean){
+    bloqueado.current=p
+    // O formulário chama dentro da Action: a guarda é imediata, mas o estado
+    // visual deve sair da Transition para acompanhar o envio ainda em curso.
+    queueMicrotask(() => { if (vivo.current) setPendente(p) })
+  }
   async function executar(acao:(f:FormData)=>Promise<EstadoFunil>,campos:Record<string,string>,sucesso:string) {
     if(bloqueado.current||finalizando.current)return
     informarPendente(true);setErro('')

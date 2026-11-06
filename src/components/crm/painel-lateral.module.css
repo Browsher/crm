@@ -56,17 +56,3 @@
   .painel[data-painel-composicao="padrao"] { width: 100vw; border: 0; }
   .painel[data-painel-composicao="padrao"] .cabecalho > button, .rodape button { min-height: 44px; }
 }
-@media (min-width: 1121px) {
-  .painel {
-    position: fixed;
-    inset: 0 0 0 auto;
-    z-index: 20;
-    width: var(--crm-painel-lateral-largura, clamp(320px, 26vw, 420px));
-    border-width: 0 0 0 1px;
-    border-radius: 0;
-    overflow-y: auto;
-    overscroll-behavior-y: contain;
-    scrollbar-gutter: stable;
-  }
-  .cabecalho { position: sticky; top: 0; z-index: 1; }
-}
