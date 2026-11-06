@@ -10,3 +10,9 @@ export type EventoHistoricoComercial = {
   venda?: { centavos: string; data: string }
   empresa?: string
 }
+
+export type FiltroHistoricoComercial = 'todos' | 'atendimentos' | 'vendas'
+
+export function filtrarEventosHistorico(eventos: readonly EventoHistoricoComercial[], filtro: FiltroHistoricoComercial): EventoHistoricoComercial[] {
+  return eventos.filter(evento => filtro === 'todos' || (filtro === 'vendas' ? evento.natureza === 'venda' : evento.natureza !== 'venda'))
+}

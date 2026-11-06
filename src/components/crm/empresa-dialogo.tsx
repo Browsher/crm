@@ -40,9 +40,8 @@ function ConteudoDialogo({ referencia, guardarFoco, devolverFoco }: { referencia
 }
 
 export function DadosEmpresaPainel({ referencia, aoFechar, rotuloFechar, rodapeComercial }: Props & { rodapeComercial?: ReactNode }) {
-  return <PainelLateralCrm key={chaveReferencia(referencia)} titulo="Dados da empresa" aoFechar={aoFechar} rotuloFechar={rotuloFechar} className={rodapeComercial ? styles.lateral + ' ' + styles.lateralComercial : styles.lateral}>
+  return <PainelLateralCrm key={chaveReferencia(referencia)} titulo="Dados da empresa" aoFechar={aoFechar} rotuloFechar={rotuloFechar} className={styles.lateral} rodape={rodapeComercial ?? null}>
     <ConteudoEmpresa referencia={referencia} lateral />
-    {rodapeComercial && <footer className={styles.rodapeComercial}>{rodapeComercial}</footer>}
   </PainelLateralCrm>
 }
 

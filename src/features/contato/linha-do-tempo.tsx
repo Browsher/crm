@@ -1,19 +1,17 @@
+import type { ReactNode } from 'react'
 import type { Contato } from './historico'
 import { ROTULO, ehTipo } from './tipos'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { HistoricoComercial } from '@/src/components/crm/historico-comercial'
-import type { EventoHistoricoComercial } from '@/src/lib/historico-comercial'
+import type { EventoHistoricoComercial, FiltroHistoricoComercial } from '@/src/lib/historico-comercial'
 
 function rotulo(tipo: string): string {
   // O banco só exige não-vazio, então o texto de tipos antigos é preservado.
   return ehTipo(tipo) ? ROTULO[tipo] : tipo
 }
 
-export function LinhaDoTempo({ contatos }: { contatos: Contato[] }) {
-  if (contatos.length === 0) {
-    return <EstadoVazio nivelTitulo={3} titulo="Nenhum contato registrado nesta empresa ainda." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
-  }
-  const eventos: EventoHistoricoComercial[] = contatos.map(contato => {
+export function eventosDeContatos(contatos: readonly Contato[]): EventoHistoricoComercial[] {
+  return contatos.map(contato => {
     const natureza = contato.venda ? 'venda' : contato.natureza ?? (contato.tipo === 'nao_liguei' ? 'atividade_sem_ligacao' : 'contato')
     const resultado = rotulo(contato.tipo)
     return {
@@ -28,5 +26,15 @@ export function LinhaDoTempo({ contatos }: { contatos: Contato[] }) {
       ...(contato.venda ? { venda: contato.venda } : {}),
     }
   })
-  return <HistoricoComercial eventos={eventos} />
+}
+
+export function LinhaDoTempo({ contatos, controleFiltro, conteudoVazio }: {
+  contatos: readonly Contato[]
+  controleFiltro?: { valor: FiltroHistoricoComercial; aoMudar: (valor: FiltroHistoricoComercial) => void }
+  conteudoVazio?: ReactNode
+}) {
+  if (contatos.length === 0) {
+    return conteudoVazio ?? <EstadoVazio nivelTitulo={3} titulo="Nenhum contato registrado nesta empresa ainda." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
+  }
+  return <HistoricoComercial eventos={eventosDeContatos(contatos)} controleFiltro={controleFiltro} conteudoVazio={conteudoVazio} />
 }

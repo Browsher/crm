@@ -81,26 +81,33 @@ test('abrir e fechar preserva rota e devolve foco ao gatilho', async () => {
   const gatilho = await abrir('Boreal')
   expect(historicoDaAgendaAcao).toHaveBeenCalledWith('b')
   expect(host.querySelector('aside')?.textContent).toContain('Boreal')
-  for (const aba of host.querySelectorAll('[role=tab]')) expect(document.getElementById(aba.getAttribute('aria-controls')!)).not.toBeNull()
+  expect(host.querySelector('[role=tablist]')).toBeNull()
+  expect(host.querySelector('aside nav')?.textContent).toContain('Histórico')
+  expect(host.querySelector('[data-painel-rodape]')?.textContent).toBe('Negociação')
   await clicar('Fechar')
   expect(host.querySelector('aside')).toBeNull()
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(document.activeElement).toBe(gatilho)
   expect(location.href).toBe(url)
 })
-test('histórico, dados e negociação voltam ao contexto exato no cabeçalho', async () => {
+test('menu troca seção sem perder o contexto', async () => {
   await montar()
+  expect(host.querySelector('[data-painel-lateral]')).toBeNull()
   await abrir('Aurora')
+  expect(host.querySelector('[role="tablist"]')).toBeNull()
+  expect(host.querySelector('aside')?.textContent).toContain('Próximo passo')
   await clicar('Histórico')
-  await clicar('Dados da empresa', host.querySelector('aside')!)
-  await clicar('Voltar')
-  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Histórico')
+  expect(host.querySelector('[data-painel-lateral] button')?.textContent).toBe('Voltar')
+  expect(host.querySelector('aside nav')).toBeNull()
   await clicar('Negociação')
   expect(host.querySelector('aside')?.textContent).toContain('Registrar venda')
   await clicar('Voltar')
-  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Histórico')
+  expect(host.querySelector('aside h3')?.textContent).toBe('Histórico')
   await clicar('Voltar')
-  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Próximo passo')
+  await clicar('Dados da empresa', host.querySelector('aside')!)
+  await clicar('Voltar')
+  expect(host.querySelector('aside nav')).not.toBeNull()
+  expect(host.querySelector('aside')?.textContent).toContain('Próximo passo')
   expect(host.querySelector('aside')?.textContent).not.toContain('Registrar atendimento')
   expect(host.textContent).not.toContain('Voltar ao retorno')
 })
@@ -126,8 +133,34 @@ test('falha tem retry explícito que usa leitura nova', async () => {
   vi.mocked(historicoDaAgendaAcao).mockRejectedValueOnce(Error('rede')).mockResolvedValueOnce(contatos('RECUPERADA'))
   await montar(); await abrir('Aurora'); await clicar('Histórico')
   expect(host.querySelector('[role=alert]')?.textContent).toContain('Não foi possível')
+  expect(host.querySelector('[data-painel-rodape]')?.textContent).toContain('Tentar novamente')
   await clicar('Tentar novamente'); await expandir()
   expect(host.textContent).toContain('RECUPERADA')
+})
+
+test('filtro sem resultados conserva controles e eventos e Ver todos limpa sem nova consulta', async () => {
+  vi.mocked(historicoDaAgendaAcao).mockResolvedValueOnce(contatos('CONTATO AUTORIZADO'))
+  await montar(); await abrir('Aurora'); await clicar('Histórico')
+  const vendas = [...host.querySelectorAll<HTMLButtonElement>('aside button')].find(b => b.textContent?.startsWith('Vendas'))!
+  await act(async () => vendas.click())
+  expect(host.querySelector('aside [aria-label="Filtrar eventos"]')).not.toBeNull()
+  expect(host.querySelector('aside details')).toBeNull()
+  expect(host.querySelector('aside [role=status]')?.textContent).toContain('Nenhum registro neste filtro')
+  expect(host.querySelector('[data-painel-rodape]')?.textContent).toBe('Ver todos')
+  await clicar('Ver todos')
+  await expandir()
+  expect(host.querySelector('aside')?.textContent).toContain('CONTATO AUTORIZADO')
+  expect(host.querySelector('[data-painel-rodape]')?.textContent).toBe('Negociação')
+  expect(historicoDaAgendaAcao).toHaveBeenCalledTimes(1)
+  expect(host.querySelector('aside')?.textContent).not.toContain('Venda registrada')
+})
+
+test('histórico realmente vazio orienta primeiro registro sem criar ação no corpo', async () => {
+  await montar(); await abrir('Aurora'); await clicar('Histórico')
+  const corpo = host.querySelector('[data-painel-corpo]')!
+  expect(corpo.textContent).toContain('Nenhum contato registrado')
+  expect(corpo.querySelector('button, a')).toBeNull()
+  expect(host.querySelector('[data-painel-rodape]')?.textContent).toBe('Negociação')
 })
 test('posse negada reconcilia contagens e props atrasadas não reintroduzem empresa', async () => {
   vi.mocked(historicoDaAgendaAcao).mockResolvedValueOnce({ ok: false, motivo: 'fora_da_carteira' })
@@ -201,13 +234,13 @@ test('Dados pelo grid não busca histórico e Voltar retoma seu botão', async (
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(document.activeElement).toBe(gatilho)
 })
-test('Dados aberto no retorno devolve foco ao gatilho reconstruído e à aba anterior', async () => {
-  await montar(); await abrir('Aurora'); await clicar('Histórico')
+test('Dados pelo menu após Voltar devolve foco ao gatilho reconstruído e à origem real', async () => {
+  await montar(); await abrir('Aurora'); await clicar('Histórico'); await clicar('Voltar')
   await clicar('Dados da empresa', host.querySelector('aside')!)
   await clicar('Voltar')
   await act(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => resolve())) })
   expect(document.activeElement?.textContent).toBe('Dados da empresa')
-  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Histórico')
+  expect(host.querySelector('aside nav')).not.toBeNull()
 })
 test('recuperação de venda de outra empresa não fecha a negociação aberta', async () => {
   persistirComandoVenda({ usuarioId: 'u', empresaId: 'fora', chave: 'outra', alvo: { tipo: 'primeira', negociacaoId: 'n-fora' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
@@ -319,13 +352,20 @@ test('venda confirmada fecha seleção após a sentinela sem abrir o próximo ca
   expect(historicoDaAgendaAcao).toHaveBeenCalledTimes(1)
   expect(navegar.refresh).toHaveBeenCalled()
 })
-test('teclado das abas e Escape mantêm o mapa de Voltar e Fechar', async () => {
+test('botões de seção e Escape mantêm o mapa de Voltar e Fechar sem protocolo de setas', async () => {
   await montar(); await abrir('Aurora')
-  const primeira = host.querySelector('[role=tab]')!
-  await act(async () => primeira.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true })))
-  expect(document.activeElement?.textContent).toBe('Histórico')
+  const historico = host.querySelector<HTMLButtonElement>('aside nav button:last-child')!
+  historico.focus()
+  const seta = new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true })
+  await act(async () => historico.dispatchEvent(seta))
+  expect(seta.defaultPrevented).toBe(false)
+  expect(document.activeElement).toBe(historico)
+  await clicar('Histórico')
+  expect(host.querySelector('aside h3')?.textContent).toBe('Histórico')
+  expect(document.activeElement).toBe(host.querySelector('aside h3'))
   await act(async () => host.querySelector('aside')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
-  expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Próximo passo')
+  expect(host.querySelector('aside nav')).not.toBeNull()
+  expect(document.activeElement?.id).toBe('meu-dia-historico-a')
   await act(async () => host.querySelector('aside')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
   expect(host.querySelector('aside')).toBeNull()
 })
@@ -416,7 +456,10 @@ test('replay pelo editor de outra empresa preserva seleção e continua permitin
   await clicar('Atendimento')
   expect(host.querySelector('aside textarea')).not.toBeNull()
   await clicar('Voltar')
+  // O primeiro Voltar sai do editor interno da negociação, ainda anterior à tarefa 3.
   expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Próximo passo')
+  await clicar('Voltar')
+  expect(host.querySelector('aside nav')).not.toBeNull()
 })
 
 test('replay compacto com editor limpo protege reload e Back pelas duas instâncias reais de venda', async () => {
@@ -461,8 +504,8 @@ test.each([
   { tela: 'retorno', aba: 'historico', acao: 'Escape' },
   { tela: 'dados-grid', aba: 'passo', acao: 'Voltar' },
   { tela: 'dados-grid', aba: 'passo', acao: 'Escape' },
-  { tela: 'dados-retorno', aba: 'historico', acao: 'Voltar' },
-  { tela: 'dados-retorno', aba: 'historico', acao: 'Escape' },
+  { tela: 'dados-retorno', aba: 'passo', acao: 'Voltar' },
+  { tela: 'dados-retorno', aba: 'passo', acao: 'Escape' },
 ])('replay pendente protege $acao em $tela/$aba e libera a mesma seleção depois', async ({ tela, aba, acao }) => {
   persistirComandoVenda({ usuarioId: 'u', empresaId: 'fora', chave: 'guarda-interna', alvo: { tipo: 'recompra' }, entrada: { valor: '20', data: '2026-11-05', observacao: '' } })
   let resolver!: (r: Awaited<ReturnType<typeof transmitirVenda>>) => void
@@ -480,11 +523,11 @@ test.each([
     if (acao === 'Escape') await act(async () => host.querySelector('aside')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
     else if (acao === 'teclado') {
       const foco = document.activeElement
-      await act(async () => host.querySelector('[role=tab]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true })))
+      await act(async () => host.querySelector('aside nav button')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true })))
       expect(document.activeElement).toBe(foco)
     } else await clicar(acao, host.querySelector('aside')!)
     expect(host.querySelector('aside h2')?.textContent).toBe(titulo)
-    if (tela === 'retorno') expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe(aba === 'passo' ? 'Próximo passo' : 'Histórico')
+    if (tela === 'retorno') expect(!!host.querySelector('aside nav')).toBe(aba === 'passo')
     expect(document.querySelector('[role=dialog]')).toBeNull()
   } finally {
     await act(async () => resolver({ ok: false, erro: 'Ainda sem confirmação' }))
@@ -495,7 +538,7 @@ test.each([
   const cabecalho = host.querySelector('aside header')!
   await clicar(tela === 'retorno' && aba === 'passo' ? 'Fechar' : 'Voltar', cabecalho)
   if (tela === 'dados-grid' || tela === 'retorno' && aba === 'passo') expect(host.querySelector('aside')).toBeNull()
-  else expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe(tela === 'dados-retorno' ? 'Histórico' : 'Próximo passo')
+  else expect(host.querySelector('aside nav')).not.toBeNull()
 })
 
 test('guarda de recuperação não bloqueia o fechamento interno após confirmação de arquivo', async () => {
@@ -535,6 +578,7 @@ test.each(['card', 'historico'])('Dados pelo %s mantém negociação na lateral 
   const card = await abrir('Aurora', origem === 'card' ? 'Dados da empresa' : 'Abrir retorno')
   if (origem === 'historico') {
     await clicar('Histórico')
+    await clicar('Voltar')
     await clicar('Dados da empresa', host.querySelector('aside')!)
   }
   expect([...host.querySelectorAll('aside header button')].map(b => b.textContent)).toEqual(['Voltar'])
@@ -551,7 +595,7 @@ test.each(['card', 'historico'])('Dados pelo %s mantém negociação na lateral 
     expect(host.querySelector('aside')).toBeNull()
     expect(document.activeElement).toBe(card)
   } else {
-    expect(host.querySelector('[role=tab][aria-selected=true]')?.textContent).toBe('Histórico')
+    expect(host.querySelector('aside nav')).not.toBeNull()
     expect(document.activeElement?.textContent).toBe('Dados da empresa')
   }
 })

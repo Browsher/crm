@@ -1,21 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Banknote, FileText, Phone } from 'lucide-react'
-import type { EventoHistoricoComercial } from '@/src/lib/historico-comercial'
+import { filtrarEventosHistorico, type EventoHistoricoComercial, type FiltroHistoricoComercial } from '@/src/lib/historico-comercial'
 import { Button } from '@/src/components/ui/button'
 import { ResumoVenda } from './resumo-venda'
 import styles from './historico-comercial.module.css'
 
 type Props = {
-  eventos: EventoHistoricoComercial[]
+  eventos: readonly EventoHistoricoComercial[]
   rotulo?: string
   // Opt-in para listas multiempresa com nome autorizado. Outros adaptadores
   // usam evento.empresa apenas como identidade e podem fornecer um UUID.
   mostrarEmpresa?: boolean
+  controleFiltro?: { valor: FiltroHistoricoComercial; aoMudar: (valor: FiltroHistoricoComercial) => void }
+  conteudoVazio?: ReactNode
 }
-type Filtro = 'todos' | 'atendimentos' | 'vendas'
-const filtros: { valor: Filtro; rotulo: string }[] = [
+const filtros: { valor: FiltroHistoricoComercial; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todos' },
   { valor: 'atendimentos', rotulo: 'Atendimentos' },
   { valor: 'vendas', rotulo: 'Vendas' },
@@ -23,23 +24,21 @@ const filtros: { valor: Filtro; rotulo: string }[] = [
 const dataRegistro = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short' })
 const horaRegistro = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', timeStyle: 'short' })
 
-function pertenceAoFiltro(evento: EventoHistoricoComercial, filtro: Filtro) {
-  return filtro === 'todos' || (filtro === 'vendas' ? evento.natureza === 'venda' : evento.natureza !== 'venda')
-}
 function identidade(evento: EventoHistoricoComercial) {
   return JSON.stringify([evento.empresa, evento.id])
 }
 
-export function HistoricoComercial({ eventos, rotulo = 'Histórico comercial', mostrarEmpresa = false }: Props) {
+export function HistoricoComercial({ eventos, rotulo = 'Histórico comercial', mostrarEmpresa = false, controleFiltro, conteudoVazio }: Props) {
   // A identidade reinicia também em A → B → A, sem reutilizar a expansão anterior.
   const chave = JSON.stringify([rotulo, eventos.map(evento => [evento.empresa, evento.id])])
-  return <ListaHistorico key={chave} eventos={eventos} rotulo={rotulo} mostrarEmpresa={mostrarEmpresa} />
+  return <ListaHistorico key={chave} eventos={eventos} rotulo={rotulo} mostrarEmpresa={mostrarEmpresa} controleFiltro={controleFiltro} conteudoVazio={conteudoVazio} />
 }
 
-function ListaHistorico({ eventos, rotulo, mostrarEmpresa }: Props) {
-  const [filtro, setFiltro] = useState<Filtro>('todos')
+function ListaHistorico({ eventos, rotulo, mostrarEmpresa, controleFiltro, conteudoVazio }: Props) {
+  const [filtroInterno, setFiltro] = useState<FiltroHistoricoComercial>('todos')
+  const filtro = controleFiltro?.valor ?? filtroInterno
   const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set())
-  const visiveis = eventos.filter(evento => pertenceAoFiltro(evento, filtro))
+  const visiveis = filtrarEventosHistorico(eventos, filtro)
   const todosExpandidos = visiveis.length > 0 && visiveis.every(evento => expandidos.has(identidade(evento)))
 
   function definirExpansao(chave: string, aberto: boolean) {
@@ -68,8 +67,8 @@ function ListaHistorico({ eventos, rotulo, mostrarEmpresa }: Props) {
       <div className={styles.filtros} role="group" aria-label="Filtrar eventos">
         {filtros.map(opcao => <Button key={opcao.valor} type="button" size="sm"
           variant={filtro === opcao.valor ? 'secondary' : 'ghost'} aria-pressed={filtro === opcao.valor}
-          onClick={() => setFiltro(opcao.valor)}>
-          {opcao.rotulo} <span className={styles.contagem}>{eventos.filter(evento => pertenceAoFiltro(evento, opcao.valor)).length}</span>
+          onClick={() => controleFiltro ? controleFiltro.aoMudar(opcao.valor) : setFiltro(opcao.valor)}>
+          {opcao.rotulo} <span className={styles.contagem}>{filtrarEventosHistorico(eventos, opcao.valor).length}</span>
         </Button>)}
       </div>
       <div className={styles.opcoes}>
@@ -79,7 +78,7 @@ function ListaHistorico({ eventos, rotulo, mostrarEmpresa }: Props) {
         </Button>
       </div>
     </div>
-    {visiveis.length === 0 ? <p className={styles.vazio}>Nenhum registro neste filtro.</p> : <ol className={styles.lista}>
+    {visiveis.length === 0 ? conteudoVazio ?? <p className={styles.vazio}>Nenhum registro neste filtro.</p> : <ol className={styles.lista}>
       {visiveis.map(evento => {
         const chave = identidade(evento)
         const instante = new Date(evento.criadoEm)

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import type { EventoHistoricoComercial } from '@/src/lib/historico-comercial'
+import { filtrarEventosHistorico, type FiltroHistoricoComercial, type EventoHistoricoComercial } from '@/src/lib/historico-comercial'
 import { HistoricoComercial } from './historico-comercial'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -164,4 +164,34 @@ test('empresa é identificação separada no cabeçalho somente no histórico mu
   await act(async () => root.render(<HistoricoComercial mostrarEmpresa eventos={[{ ...eventos[1], empresa: undefined }]} />))
   expect(registros()[0].querySelector('summary')?.textContent).not.toContain('Aurora Comercial')
   expect(registros()[0].querySelector('strong')?.textContent).toBe('Retorno combinado')
+})
+
+test('filtro controlado mantém controles e permite limpar vazio sem descartar eventos', async () => {
+  function Dono() {
+    const [valor, aoMudar] = useState<FiltroHistoricoComercial>('vendas')
+    return <><HistoricoComercial eventos={eventos.slice(1)} controleFiltro={{ valor, aoMudar }} conteudoVazio={<p role="status">Sem vendas neste recorte</p>} />
+      <button onClick={() => aoMudar('todos')}>Ver todos</button></>
+  }
+  await act(async () => root.render(<Dono />))
+  expect(host.querySelector('[aria-label="Filtrar eventos"]')).not.toBeNull()
+  expect(host.textContent).toContain('Sem vendas neste recorte')
+  expect(registros()).toHaveLength(0)
+  await clicar('Atendimentos')
+  expect(registros()).toHaveLength(3)
+  await clicar('Vendas')
+  expect(registros()).toHaveLength(0)
+  await clicar('Ver todos')
+  expect(registros()).toHaveLength(3)
+  expect(host.querySelector('button[aria-pressed=true]')?.textContent).toContain('Todos')
+  expect(eventos).toHaveLength(4)
+})
+
+test('projeção do filtro preserva ordem, referências e entrada readonly incluindo atividade em atendimentos', () => {
+  const entrada = Object.freeze([...eventos])
+  expect(filtrarEventosHistorico(entrada, 'vendas').map(e => e.id)).toEqual(['venda:1'])
+  expect(filtrarEventosHistorico(entrada, 'atendimentos').map(e => e.id)).toEqual(['contato:1', 'contato:2', 'atividade:1'])
+  const todos = filtrarEventosHistorico(entrada, 'todos')
+  expect(todos).toEqual(eventos)
+  expect(todos).not.toBe(entrada)
+  expect(todos[0]).toBe(entrada[0])
 })
