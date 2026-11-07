@@ -94,3 +94,16 @@ Em 390 × 844, armazenamento sem comando passou em 3,4 s: faixa de erro visível
 Os 18 PNGs históricos regravados pelo E2E foram copiados para evidências locais com manifesto SHA-256 e restaurados por lista explícita, após conferir caminhos absolutos e staging vazio para PNGs. As três capturas manuais de 06/11 permanecem intactas. Não houve nova integração integral nesta correção restrita à apresentação, conforme escopo do controlador.
 
 A revisão final independente e o CI integral do PR pertencem ao controlador e ainda devem verificar a árvore com o último ajuste. Não houve merge ou publicação nesta validação.
+
+
+## Primeiro gate CI e sincronização do teste Google — 07/11/2026
+
+O [CI 42423734261](https://github.com/Browsher/crm/actions/runs/42423734261), na base d914c7c, aprovou tipos, lint, convenções, unitários, integração e build. O navegador terminou com 195 aprovados e 1 falha, sem retry: após Continuar editando no diálogo de descarte de critérios Google, o clique cru no fundo não gerou a segunda confirmação esperada. O CI desta base ficou vermelho; um novo gate integral pertence ao controlador após revisão do próximo commit.
+
+Error-context, screenshot e trace mostram Critérios aberto e rascunho intacto. O ponto 4,4 fica fora do conteúdo e o snapshot tem o overlay único open/pointer-events:auto. O clique ocorreu 9,305 ms após Enter, sem espera de fechamento/foco. A reprodução original local passou 1/1. Instrumentação temporária demonstrou uma lacuna real de aproximadamente 10 ms entre remover e reinstalar o listener da camada, embora o diálogo já estivesse visível; o foco foi restaurado pouco antes do novo registro. O clique local posterior atingiu exatamente dialog-overlay e abriu confirmação. Como o trace CI não registra listeners, atribuir aquele clique à lacuna é inferência, não reprodução confirmada; não há defeito de produto demonstrado.
+
+A correção limita-se ao teste: exige confirmação oculta e termos focado, preserva o valor e clica no overlay do mesmo portal, na mesma posição 4,4, usando Locator.click com actionability/estabilidade. Mantém backdrop real, cancelamento, alvo, rascunhos, descarte, Back e links internos. Toda instrumentação foi removida; nenhum produto, prazo ou retry mudou. O teste exato corrigido passou 1/1 em 7,6 s; banco teste_15bc7147d589 removido.
+
+Artefatos e logs estão preservados no workspace ignorado ci-42423734261 da tarefa, com manifesto SHA-256. Hash do trace CI: 247349e91921372d7d9efd28f392a43d7694d4a42cba8e271a58847d5be70f8c. A documentação Playwright 1.63 de actionability/Locator.click e Radix Dialog/onCloseAutoFocus foi consultada via Context7 e comparada ao código instalado. Esta evidência mantém separadas a lacuna comprovada e a atribuição inferida ao CI.
+
+Após a correção, a spec Google completa passou **12/12 em 45,7 s**, incluindo descarte por Back, links, erros e envio pendente; banco teste_229d6b5efffc removido. A mesma build foi usada, pois somente o teste mudou. Nenhum E2E integral local ou rebuild foi repetido nesta rodada.
