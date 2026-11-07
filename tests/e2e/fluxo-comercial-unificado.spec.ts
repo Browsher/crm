@@ -1,3 +1,4 @@
+import { abrirLeitura } from './paineis-ajuda'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { bancoGruposDoHarness, comBancoGrupos } from './dados-grupos'
@@ -163,12 +164,3 @@ test('replay de iniciar após arquivamento em outra aba confirma o comando e abr
   expect(await banco.sql('SELECT chave FROM empresa_atendimento_operacao WHERE chave=$1', [comando.chave])).toEqual([{ chave: comando.chave }])
   await page.screenshot({ path: testInfo.outputPath('inicio-replay-situacao-atual.png'), fullPage: true })
 })
-
-async function abrirLeitura(page: import('@playwright/test').Page) {
-  const lateral = page.locator('[data-painel-lateral]')
-  if (new URL(page.url()).pathname.startsWith('/carteira/')) return
-  await expect(lateral).toBeVisible()
-  await expect(lateral.locator('[data-painel-corpo]')).toHaveAttribute('aria-busy', 'false')
-  const menu = lateral.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })
-  if (await menu.isVisible()) await menu.click()
-}

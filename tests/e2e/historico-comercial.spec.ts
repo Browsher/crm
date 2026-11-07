@@ -1,3 +1,4 @@
+import { abrirLeitura } from './paineis-ajuda'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { comoUsuario } from '../../src/server/db/como-usuario'
@@ -322,12 +323,3 @@ test('sucesso de arquivo revalida as duas rotas e navegação com remontagem con
   await expect(painel(page)).toHaveCount(0)
   expect(await banco().sql('SELECT agenda_contato_id FROM empresa_vinculo WHERE empresa_id=$1', [a.id])).toEqual([{ agenda_contato_id: null }])
 })
-
-async function abrirLeitura(page: import('@playwright/test').Page) {
-  const lateral = page.locator('[data-painel-lateral]')
-  if (new URL(page.url()).pathname.startsWith('/carteira/')) return
-  await expect(lateral).toBeVisible()
-  await expect(lateral.locator('[data-painel-corpo]')).toHaveAttribute('aria-busy', 'false')
-  const menu = lateral.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })
-  if (await menu.isVisible()) await menu.click()
-}

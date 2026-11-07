@@ -1,6 +1,6 @@
 # Validação da primeira entrega dos painéis comuns
 
-Data: 2026-11-06. Branch: `codex/paineis-comuns-entrega-1`.
+Data inicial: 2026-11-06. Correção da revisão: 2026-11-07. Branch: `codex/paineis-comuns-entrega-1`.
 
 Validação local concluída, com conferência manual e correções reproduzidas. As rodadas anteriores e posteriores ao ajuste final de foco estão identificadas separadamente; revisão independente e CI do PR permanecem a cargo do controlador.
 
@@ -73,8 +73,24 @@ Capturas reais dessa conferência, anteriores ao ajuste final de foco e preserva
 
 Envio lento e perda de resposta foram comprovados pelo E2E, sem novo ensaio manual desses dois cenários. Não há evidência de dispositivo físico, teclado virtual ou barras de um navegador móvel real; esses cenários permanecem não ensaiados.
 
-A recuperação de Devolver já existe dentro do Arquivo, com nome do alvo e botão Confirmar devolução anterior. O feedback visual da lista e o foco permanecem no painel. O texto global de sucesso/erro continua em um status fora da lateral, inert no móvel: não foi validado como anúncio acessível dentro do painel. Esse limite fica explícito para a revisão independente do padrão de estados, sem ampliar conteúdo por suposição.
+A validação de 06/11 constatou recuperação de Devolver dentro do Arquivo, com alvo e botão Confirmar devolução anterior, mas o texto de sucesso/erro permanecia no status global inert no móvel. Esse limite originou o achado Important da revisão e foi corrigido em 07/11, conforme a seção seguinte; não é uma limitação atual da apresentação.
 
-Após o ajuste, o navegador confirmou foco no h2 após Devolver em 390/820 px nas duas cores e preservou foco no status do quadro nos desktops. O novo caso móvel de resposta perdida confirmou recuperação visível e habilitada dentro do Arquivo, dois POSTs com a mesma chave, uma única negociação aberta, vínculo sem segunda alteração e limpeza do comando depois do replay. O anexo capturado confirmou explicitamente inert=true para os textos globais de erro e sucesso; a recuperação funcional não depende desses textos externos.
+Após o ajuste da guarda em 06/11, o navegador confirmou foco no h2 após Devolver em 390/820 px nas duas cores e preservou foco no status do quadro nos desktops. O caso móvel de resposta perdida confirmou recuperação visível e habilitada dentro do Arquivo, dois POSTs com a mesma chave, uma única negociação aberta, vínculo sem segunda alteração e limpeza do comando depois do replay. O anexo daquela rodada registrou inert=true nos textos globais de erro e sucesso; esse registro histórico foi substituído por assertivas de feedback local na correção da revisão.
+
+## Correção dos achados da revisão — 07/11/2026
+
+O Quadro classifica o aviso de Devolver nos ramos existentes como pendente, erro, incerto ou sucesso, por valores tipados de apresentação. O Arquivo usa a faixa EstadoPainelCrm no corpo, com o nome da empresa; erro tem role=alert, os demais resultados usam role=status. Falha de armazenamento antes do comando e recusa conclusiva também têm explicação local. O mesmo aviso não aparece simultaneamente no status global enquanto o Arquivo está ativo. Avisos de outras operações do quadro desktop permanecem visíveis no fundo.
+
+A conclusão torna a faixa visível e foca o título do Arquivo, sem focar a live region e repetir seu texto. O frame captura a lateral original e ignora fechamento, troca ou desmontagem posteriores. A recuperação mantém o comando original e o replay com a mesma chave; não há outra máquina de envio. Comandos, hooks, storage, autorização e banco permanecem intactos.
+
+As cinco cópias de abrirLeitura foram substituídas pelo helper tests/e2e/paineis-ajuda.ts. Foram preservadas a exceção de rota Carteira e as esperas observáveis de lateral e leitura; nenhum retry ou prazo novo foi introduzido.
+
+RED DOM dos quatro resultados falhou por ausência da faixa; GREEN aprovou os quatro. RED de foco tardio falhou ao fechar/trocar a lateral; a correção aprovou fechar, trocar e unmount. A regressão de Quadro, guarda móvel e painel lateral aprovou 4 arquivos e 58 testes em 11,29 s. Uma anotação this: Storage ausente no spy foi apontada pelos tipos e corrigida; typecheck e build final passaram (compilação 4,5 s, tipos 9,4 s, 27 páginas). As execuções integrais de 2642 unitários, 829 integrações e 193 E2E registradas acima antecedem esta correção; não foram repetidas nesta rodada de apresentação.
+
+A rodada dirigida de 07/11 executou as 11 specs afetadas na build final, com --sem-build e um worker: **78 aprovados em 4,8 min**, sem falhas, skips ou retries; banco teste_40baa4d69c0f removido. Inclui as cinco jornadas que importam o helper e as dez combinações de geometria. Após Devolver, a faixa de sucesso identifica a empresa e o título recebe foco tanto no móvel quanto no desktop.
+
+Em 390 × 844, armazenamento sem comando passou em 3,4 s: faixa de erro visível, role=alert, inert=false, zero POST, nenhum comando salvo e nenhuma negociação aberta. A recusa conclusiva por versão obsoleta passou em 2,3 s: explicação local, sem recuperação ou chave pendente e sem negociação criada. A resposta perdida/replay passou em 3,1 s: incerteza e sucesso visíveis com role=status e inert=false dentro do Arquivo, uma única cópia live de cada resultado, recuperação acionável, dois POSTs com a mesma chave, uma negociação aberta e vínculo sem segunda alteração. O envio lento 820/821 e a prioridade das confirmações também passaram. Essas assertivas de DOM/navegador validam a estrutura anunciável; não houve ensaio manual com leitor de tela.
+
+Os 18 PNGs históricos regravados pelo E2E foram copiados para evidências locais com manifesto SHA-256 e restaurados por lista explícita, após conferir caminhos absolutos e staging vazio para PNGs. As três capturas manuais de 06/11 permanecem intactas. Não houve nova integração integral nesta correção restrita à apresentação, conforme escopo do controlador.
 
 A revisão final independente e o CI integral do PR pertencem ao controlador e ainda devem verificar a árvore com o último ajuste. Não houve merge ou publicação nesta validação.

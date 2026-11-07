@@ -1,3 +1,4 @@
+import { abrirLeitura } from './paineis-ajuda'
 import { expect, test, type Page } from '@playwright/test'
 import { Client } from 'pg'
 import { FUNIL_EMPRESA } from './dados-funil'
@@ -149,12 +150,3 @@ test('negociação de origem indisponível conserva Histórico e bloqueia novas 
     await comBancoGrupos(c => c.query('UPDATE grupo_importacao SET ativo=true WHERE id=ANY($1::uuid[])', [grupos]))
   }
 })
-
-async function abrirLeitura(page: import('@playwright/test').Page) {
-  const lateral = page.locator('[data-painel-lateral]')
-  if (new URL(page.url()).pathname.startsWith('/carteira/')) return
-  await expect(lateral).toBeVisible()
-  await expect(lateral.locator('[data-painel-corpo]')).toHaveAttribute('aria-busy', 'false')
-  const menu = lateral.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })
-  if (await menu.isVisible()) await menu.click()
-}

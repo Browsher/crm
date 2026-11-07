@@ -16,7 +16,7 @@ import { useEnvioVenda } from '@/src/lib/use-envio-venda'
 import { transmitirVenda } from '../venda-envio'
 import { useEnvioArquivo } from './use-envio-arquivo'
 import { devolverFunilAcao, etapaAcao } from './acoes'
-import { ConfirmarArquivamento, EfeitoArquivo, IconeLixeira, ID_ARQUIVO, PainelArquivo, RecuperacaoDevolucao, type AnimacaoArquivo } from './arquivo-lateral'
+import { ConfirmarArquivamento, EfeitoArquivo, IconeLixeira, ID_ARQUIVO, PainelArquivo, RecuperacaoDevolucao, type AnimacaoArquivo, type FeedbackDevolucao } from './arquivo-lateral'
 import { PainelNegociacao, type PedirFecharNegociacao } from './modal'
 import { ROTULOS_ETAPA } from './rotulos'
 import styles from './funil.module.css'
@@ -25,6 +25,7 @@ const STORAGE_DEVOLUCAO = 'crm:funil:devolver:v1'
 const SEM_ARQUIVOS: ArquivoFunilRecente[] = []
 
 type EnvioDevolucao = { item: ArquivoFunilRecente; chave: string }
+type AvisoQuadro = { origem: 'quadro'; texto: string } | ({ origem: 'devolucao' } & FeedbackDevolucao)
 type Painel =
   | { tipo: 'empresa'; id: string; referencia: ReferenciaEmpresa }
   | { tipo: 'negociacao'; id: string }
@@ -65,7 +66,9 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   const storageDevolucao = STORAGE_DEVOLUCAO + ':' + usuarioId
 
   const [painel, setPainel] = useState<Painel>(negociacaoInicial ? { tipo: 'negociacao', id: negociacaoInicial } : null)
-  const [aviso, setAviso] = useState('')
+  const [aviso, definirAviso] = useState<AvisoQuadro>({ origem: 'quadro', texto: '' })
+  const setAviso = useCallback((texto: string) => definirAviso({ origem: 'quadro', texto }), [])
+  const avisarDevolucao = useCallback((tipo: FeedbackDevolucao['tipo'], texto: string, alvo?: string) => definirAviso({ origem: 'devolucao', tipo, texto, alvo }), [])
   const [desktop, setDesktop] = useState(false)
   const [pendente, setPendente] = useState(false)
   const [arrasteBloqueado, setArrasteBloqueado] = useState(false)
@@ -117,11 +120,12 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
         if (anterior?.item?.empresaId && anterior.item.negociacaoId && anterior.chave) {
           envioDevolucaoRef.current = anterior
           setEnvioDevolucao(anterior)
+          avisarDevolucao('incerto', 'Confirme a devolução anterior com os mesmos dados.', anterior.item.nome)
         }
-      } catch { setAviso('Não foi possível recuperar a devolução anterior. Atualize a página.') }
+      } catch { avisarDevolucao('erro', 'Não foi possível recuperar a devolução anterior. Atualize a página.') }
     })
     return () => { ativo = false }
-  }, [storageDevolucao])
+  }, [storageDevolucao, avisarDevolucao])
 
   useEffect(() => {
     vivo.current = true
@@ -129,6 +133,16 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   }, [])
 
   function focarMensagem() { requestAnimationFrame(() => mensagem.current?.focus()) }
+  function focarDevolucao() {
+    const lateral = document.getElementById(ID_ARQUIVO)
+    requestAnimationFrame(() => {
+      if (!vivo.current || (lateral && !lateral.isConnected)) return
+      const feedback = lateral?.querySelector<HTMLElement>('[data-feedback-devolucao]')
+      if (!feedback) { mensagem.current?.focus(); return }
+      feedback.scrollIntoView?.({ block: 'nearest' })
+      lateral?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true })
+    })
+  }
   function focarOrigem(alvo: HTMLElement | null) {
     requestAnimationFrame(() => (alvo?.isConnected ? alvo : botaoArquivo.current)?.focus())
   }
@@ -293,7 +307,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
     if (recuperar ? !anterior || cicloArquivo(anterior.item) !== cicloArquivo(item) : !!anterior) return
     bloqueado.current = true
     setPendente(true)
-    setAviso('Confirmando devolução...')
+    avisarDevolucao('pendente', 'Aguarde a confirmação deste envio.', item.nome)
     try {
       const comando = anterior ?? { item, chave: crypto.randomUUID() }
       sessionStorage.setItem(storageDevolucao, JSON.stringify(comando))
@@ -312,7 +326,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
         setEnvioDevolucao(null)
       }
       if (!resultado.ok && resultado.motivo !== 'desatualizada') {
-        setAviso(textoDoMotivo(resultado.motivo))
+        avisarDevolucao('erro', textoDoMotivo(resultado.motivo), item.nome)
         return
       }
       // O recorte antigo não deve oferecer outra tentativa com a mesma versão.
@@ -320,22 +334,22 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
         base: arquivos,
         ciclos: new Set(anterior?.base === arquivos ? anterior.ciclos : undefined).add(cicloArquivo(item)),
       }))
-      setAviso(resultado.ok
+      avisarDevolucao(resultado.ok ? 'sucesso' : 'erro', resultado.ok
         ? resultado.aviso ?? (resultado.repetida ? 'Devolução anterior confirmada.' : 'Empresa devolvida para Primeiro contato.')
-        : 'O arquivo desta empresa mudou. Confira os itens recentes.')
+        : 'O arquivo desta empresa mudou. Confira os itens recentes.', item.nome)
       try { router.refresh() }
       catch {
-        setAviso(resultado.ok
+        avisarDevolucao(resultado.ok ? 'sucesso' : 'erro', resultado.ok
           ? 'Devolução confirmada. Atualize a página para conferir o Funil.'
-          : 'O arquivo desta empresa mudou. Atualize a página para conferir os itens recentes.')
+          : 'O arquivo desta empresa mudou. Atualize a página para conferir os itens recentes.', item.nome)
       }
     } catch {
-      if (vivo.current) setAviso(envioDevolucaoRef.current
+      if (vivo.current) avisarDevolucao(envioDevolucaoRef.current ? 'incerto' : 'erro', envioDevolucaoRef.current
         ? 'Não foi possível confirmar o resultado. Confirme a devolução anterior.'
-        : 'Não foi possível salvar a devolução nesta aba. Nenhum envio foi feito.')
+        : 'Não foi possível salvar a devolução nesta aba. Nenhum envio foi feito.', item.nome)
     } finally {
       bloqueado.current = false
-      if (vivo.current) { setPendente(false); focarMensagem() }
+      if (vivo.current) { setPendente(false); focarDevolucao() }
     }
   }
 
@@ -369,6 +383,8 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
   }
 
   const linhaAberta = visiveis.find(linha => linha.id === negociacaoAberta)
+  const feedbackArquivo = painel?.tipo === 'arquivo' && aviso.origem === 'devolucao' ? aviso : undefined
+  const avisoGlobal = arquivo.aviso || (feedbackArquivo ? '' : aviso.texto) || (envioArquivo ? 'Confirme o envio anterior antes de iniciar outra operação.' : '')
 
   return <>
     <CabecalhoPagina titulo="Funil comercial" descricao="Acompanhe suas negociações até a primeira venda." acoes={
@@ -388,7 +404,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
         onDrop={soltarNaLixeira}
       ><IconeLixeira iconeRef={iconeArquivo}/>Sem interesse</Button>
     }/>
-    <p role="status" tabIndex={-1} ref={mensagem} className={styles.aviso}>{arquivo.aviso || aviso || (envioArquivo ? 'Confirme o envio anterior antes de iniciar outra operação.' : '')}</p>
+    <p role={avisoGlobal ? 'status' : undefined} tabIndex={-1} ref={mensagem} className={styles.aviso}>{avisoGlobal}</p>
     {venda.erro && <p role="alert">{venda.erro}</p>}
     {venda.comando && <section aria-label="Venda pendente" className={styles.recuperacao}>
       <p>Venda de R$ {venda.comando.entrada.valor} em {venda.comando.entrada.data.split('-').reverse().join('/')}. Confirme o envio anterior antes de registrar outra venda.</p>
@@ -405,7 +421,7 @@ function QuadroUsuario({ linhas, arquivos = SEM_ARQUIVOS, negociacaoInicial = nu
       aoPedirArquivar={linhaAberta && disponivel(linhaAberta) ? detalhe => pedirArquivamento(detalhe, document.activeElement as HTMLElement | null) : undefined}
     />}
     {painel?.tipo === 'arquivo' && <PainelArquivo
-      arquivos={recentes} recuperacao={pendente ? undefined : envioDevolucao?.item}
+      arquivos={recentes} recuperacao={pendente ? undefined : envioDevolucao?.item} feedback={feedbackArquivo}
       bloqueado={bloqueiaAcao} fechandoBloqueado={pendente || !!confirmacao}
       aoFechar={() => fecharPainel()} aoDevolver={item => void devolver(item)} aoConfirmar={confirmarDevolucao}
     />}
