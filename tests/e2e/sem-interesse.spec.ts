@@ -11,6 +11,7 @@ const lateral=(page:Page)=>page.locator('[data-painel-lateral]')
 const confirmacao=(page:Page)=>page.getByRole('dialog',{name:'Marcar como Sem interesse?',exact:true})
 async function pedirArquivo(page:Page,nome:string){
  await card(page,nome).getByRole('button',{name:'Negociação',exact:true}).click()
+ await lateral(page).getByRole('button',{name:'Atendimento e próximo passo',exact:true}).click()
  await lateral(page).getByRole('button',{name:'Sem interesse',exact:true}).click()
 }
 async function confirmarArquivo(page:Page){await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).click()}
@@ -114,7 +115,9 @@ test('visual claro/escuro desktop/móvel, dados separados e movimento reduzido',
  await page.keyboard.press('Escape')
  const n=(await sql("SELECT id FROM negociacao WHERE empresa_id='00000000-0000-4000-8000-000000009826' AND encerrada_em IS NULL")).rows[0]
  await page.goto('/funil?negociacao='+n.id)
+ await lateral(page).getByRole('button',{name:'Atendimento e próximo passo',exact:true}).click()
  await expect(lateral(page).getByRole('button',{name:'Registrar venda',exact:true})).toBeVisible()
+ await page.keyboard.press('Escape')
  await page.keyboard.press('Escape')
  await page.setViewportSize({width:390,height:900})
  await page.getByRole('combobox',{name:/Tema/}).selectOption('dark')
@@ -148,6 +151,7 @@ test('toque consulta e retoma empresa do arquivo em dispositivo móvel',async({b
   await page.goto('/funil')
   await expect(card(page,'Descarte toque')).toHaveAttribute('draggable','false')
   await card(page,'Descarte toque').getByRole('button',{name:'Negociação',exact:true}).tap()
+  await lateral(page).getByRole('button',{name:'Atendimento e próximo passo',exact:true}).tap()
   await lateral(page).getByRole('button',{name:'Sem interesse',exact:true}).tap()
   await confirmacao(page).getByRole('button',{name:'Confirmar Sem interesse',exact:true}).tap()
   await expect(page.getByRole('status')).toContainText('Empresa marcada como Sem interesse')

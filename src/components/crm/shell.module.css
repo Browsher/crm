@@ -67,9 +67,9 @@
 
 @media (pointer: coarse) { .sidebar nav a, .menuMovel nav a { min-height: 44px; } }
 
-@media (min-width: 1121px) {
- .workspace:has([data-painel-lateral]) {
-   --crm-painel-lateral-largura: clamp(320px, 26vw, 420px);
+@media (min-width: 821px) {
+ .workspace:has([data-painel-composicao="padrao"]) {
+   --crm-painel-lateral-largura: clamp(380px, 47vw, 520px);
    padding-inline-end: var(--crm-painel-lateral-largura);
  }
 }

@@ -229,6 +229,8 @@ test('card abre um painel por vez sem abrir diálogo de conteúdo', async () => 
   expect(host.textContent).not.toContain('Negociação operacional')
   const link = [...host.querySelectorAll('a')].find(item => item.textContent === 'Ver todos em Sem interesse')
   expect(link?.getAttribute('href')).toBe('/fila/localizar?disponibilidade=sem_interesse&pagina=1')
+  expect(link?.closest('[data-painel-rodape]')).not.toBeNull()
+  expect(link?.closest('[data-painel-corpo]')).toBeNull()
 })
 
 test('troca de Negociação para Sem interesse espera a decisão sobre o rascunho', async () => {
@@ -285,9 +287,68 @@ test('arquivo recente mostra no máximo três e devolução confirmada retira a 
   expect(host.textContent).not.toContain('Fora do recorte')
   vi.mocked(devolverFunilAcao).mockResolvedValueOnce({ ok: true, repetida: false, versao: 5 })
   await clicar('Devolver')
-  expect(host.textContent).not.toContain('Primeira')
+  expect(host.querySelector('#painel-sem-interesse ul')?.textContent ?? '').not.toContain('Primeira')
   expect(host.textContent).toContain('Segunda')
   expect(host.textContent).toContain('Empresa devolvida para Primeiro contato')
+})
+
+test.each(['armazenamento', 'recusa', 'incerto', 'sucesso'] as const)('Arquivo anuncia %s dentro da tarefa sem duplicar a mensagem global', async caso => {
+  if (caso === 'armazenamento') {
+    const original = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, chave, valor) {
+      if (chave === 'crm:funil:devolver:v1:teste') throw Error('quota sintética')
+      original.call(this, chave, valor)
+    })
+  } else if (caso === 'recusa') vi.mocked(devolverFunilAcao).mockResolvedValueOnce({ ok: false, motivo: 'chave_reutilizada' })
+  else if (caso === 'incerto') vi.mocked(devolverFunilAcao).mockRejectedValueOnce(Error('resposta perdida'))
+  else vi.mocked(devolverFunilAcao).mockResolvedValueOnce({ ok: true, repetida: false, versao: 5 })
+  await montar([], null, 'teste', [arquivo('Alvo da devolução', '1')])
+  await clicar('Sem interesse')
+  await clicar('Devolver')
+  const painel = host.querySelector('#painel-sem-interesse')!
+  const tipo = caso === 'armazenamento' || caso === 'recusa' ? 'erro' : caso
+  const feedback = painel.querySelector(`[data-tipo="${tipo}"]`)
+  expect(feedback).not.toBeNull()
+  expect(feedback?.getAttribute('role')).toBe(tipo === 'erro' ? 'alert' : 'status')
+  expect(feedback?.textContent).toContain('Alvo da devolução')
+  expect(feedback?.closest('[inert]')).toBeNull()
+  const texto = feedback!.querySelector('p')!.textContent!
+  expect(host.querySelector(':scope > p[role=status]')?.textContent ?? '').not.toContain(texto)
+  if (caso === 'armazenamento') {
+    expect(devolverFunilAcao).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('crm:funil:devolver:v1:teste')).toBeNull()
+  }
+  if (caso === 'incerto') expect(painel.querySelector('section[aria-label="Devolução pendente"] button')).not.toBeNull()
+})
+
+test.each(['fechar', 'trocar', 'desmontar'] as const)('devolução não rouba foco após %s o contexto antes do frame', async destino => {
+  vi.mocked(devolverFunilAcao).mockResolvedValueOnce({ ok: true, repetida: false, versao: 5 })
+  await montar([linha()], null, 'teste', [arquivo('Alvo', '1')])
+  await clicar('Sem interesse')
+  const frames: (() => void)[] = []
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => { frames.push(callback); return frames.length })
+  await clicar('Devolver')
+  const anteriores = frames.splice(0)
+  if (destino === 'trocar') await clicar('Negociação')
+  else if (destino === 'fechar') await act(async () => { host.querySelector<HTMLButtonElement>('#painel-sem-interesse header button')!.click() })
+  else { await act(async () => root.unmount()); host.remove() }
+  const alvo = document.createElement('button')
+  document.body.append(alvo)
+  alvo.focus()
+  await act(async () => anteriores.forEach(callback => callback()))
+  expect(document.activeElement).toBe(alvo)
+  alvo.remove()
+})
+
+test('aviso de avanço no desktop continua visível com Arquivo aberto', async () => {
+  vi.stubGlobal('matchMedia', (consulta: string) => ({ matches: consulta.includes('min-width'), addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  vi.mocked(etapaAcao).mockResolvedValueOnce({ ok: true })
+  await montar([linha()], null, 'teste', [arquivo('Alvo', '1')])
+  await clicar('Sem interesse')
+  await evento(host.querySelector('[draggable=true]')!, 'dragstart')
+  await evento(host.querySelectorAll('[data-etapa]')[1], 'drop')
+  expect(host.querySelector(':scope > p[role=status]')?.textContent).toContain('Etapa atualizada')
+  expect(host.querySelector('#painel-sem-interesse')).not.toBeNull()
 })
 
 test('arquivamento novo anima o cartão e partículas apenas sem movimento reduzido', async () => {
@@ -369,8 +430,8 @@ test('devolução de arquivo obsoleto retira a linha e atualiza o recorte', asyn
   await clicar('Sem interesse')
   vi.mocked(devolverFunilAcao).mockResolvedValueOnce({ ok: false, motivo: 'desatualizada' })
   await clicar('Devolver')
-  expect(host.textContent).not.toContain('Arquivo obsoleto')
-  expect(host.querySelector('[role=status]')?.textContent).toContain('O arquivo desta empresa mudou')
+  expect(host.querySelector('#painel-sem-interesse ul')?.textContent ?? '').not.toContain('Arquivo obsoleto')
+  expect(host.querySelector('#painel-sem-interesse [role=alert]')?.textContent).toContain('O arquivo desta empresa mudou')
   expect(sessionStorage.getItem('crm:funil:devolver:v1:teste')).toBeNull()
   expect(refresh).toHaveBeenCalledOnce()
 })
@@ -381,7 +442,7 @@ test('novo recorte pode reexibir o mesmo ciclo e versão após recusa anterior',
   await clicar('Sem interesse')
   vi.mocked(devolverFunilAcao).mockResolvedValueOnce({ ok: false, motivo: 'desatualizada' })
   await clicar('Devolver')
-  expect(host.textContent).not.toContain(item.nome)
+  expect(host.querySelector('#painel-sem-interesse ul')?.textContent ?? '').not.toContain(item.nome)
 
   await act(async () => root.render(<Quadro usuarioId="teste" linhas={[]} arquivos={[{ ...item }]}/>))
 

@@ -7,7 +7,8 @@
     "deploymentEnabled": {
       "main": false,
       "codex/simplificar-crm-fluxos": false,
-      "codex/funil-painel-lateral": false
+      "codex/funil-painel-lateral": false,
+      "codex/paineis-comuns-entrega-1": false
     }
   }
 }

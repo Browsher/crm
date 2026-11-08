@@ -1,3 +1,4 @@
+import { abrirLeitura } from './paineis-ajuda'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { comoUsuario } from '../../src/server/db/como-usuario'
@@ -64,11 +65,13 @@ test('lixeira confirma antes de arquivar, lista três do Funil e devolve uma vez
   await expect(card(page, nome)).toContainText('Agenda antiga')
   await card(page, nome).getByRole('button', { name: 'Negociação', exact: true }).click()
   await expect(painel(page).getByRole('tab', { name: 'Resumo', exact: true })).toHaveCount(0)
-  await painel(page).getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Histórico', exact: true }).click()
   await expect(painel(page).locator('details[open]')).toHaveCount(0)
   await painel(page).getByRole('button', { name: 'Expandir todos', exact: true }).click()
   await expect(painel(page).getByText('História preservada', { exact: true })).toBeVisible()
   await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await abrirLeitura(page)
   await painel(page).getByRole('button', { name: 'Registrar venda', exact: true }).click()
   await painel(page).getByLabel('Valor em reais').fill('150,00')
   await page.getByRole('navigation', { name: 'Navegação do CRM' }).getByRole('link', { name: 'Meu dia', exact: true }).click()
@@ -86,7 +89,7 @@ test('lixeira confirma antes de arquivar, lista três do Funil e devolve uma vez
   await expect(painel(page)).toContainText('Contatos')
   await expect(painel(page)).toContainText('Cadastro')
   await expect(painel(page)).not.toContainText('Registrar venda')
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0)
   const lateral = (await painel(page).boundingBox())!
   expect(lateral.y).toBe(0)
   expect(lateral.height).toBe(900)

@@ -1,5 +1,6 @@
 'use client'
 import { useActionState, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { prepararContatoAcao, registrarContatoAcao, type EstadoContato } from './acao'
 import { ROTULO, TIPOS_CONTATO, type TipoContato } from './tipos'
@@ -20,6 +21,7 @@ type Props = {
   rascunho?: RascunhoContato; onDraftChange?: (valor: RascunhoContato) => void
   onSaved?: (empresaId: string, confirmacao: ConfirmacaoContato) => void; bloqueado?: boolean; somenteLeitura?: boolean
   onPendingChange?: (valor: boolean) => void; visual?: 'fila'
+  destinoAcoes?: HTMLElement | null
 }
 const INICIAL: EstadoContato = { erro: null, ok: false }
 function assinarSessao(avisar: () => void) {
@@ -42,7 +44,7 @@ function decodificarSessao(bruto: string | null): { valor?: RascunhoContato; env
 // A chave e a entrada ficam na sessão da aba ANTES da chamada. Recarregar a página
 // não transforma uma resposta perdida em outro comando nem sincroniza uma aba antiga.
 export function FormularioContato(props: Props) { return <EditorContato key={props.empresaId} {...props} /> }
-function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmacao = false, rascunho, onDraftChange, onSaved, bloqueado = false, somenteLeitura = false, onPendingChange, visual, onCancel, rotuloSalvar = 'Registrar' }: Props) {
+function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmacao = false, rascunho, onDraftChange, onSaved, bloqueado = false, somenteLeitura = false, onPendingChange, visual, onCancel, rotuloSalvar = 'Registrar', destinoAcoes }: Props) {
   const camposId = useId()
   const router = useRouter()
   const chaveStorage = 'crm:contato:v1:' + empresaId
@@ -141,7 +143,20 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
   const mensagemConfirmacao = estado.ok ? estado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.' : null
   const avisoConfirmacao = estado.ok ? estado.aviso || (estado.leituraDestino?.ok === false ? 'Atendimento registrado. Não foi possível abrir o destino. Atualize a página ou abra o Funil.' : null) : null
   if (somenteConfirmacao && !envio) return mensagemConfirmacao ? <div><p role="status">{mensagemConfirmacao}</p>{avisoConfirmacao && <p role="status">{avisoConfirmacao}</p>}</div> : null
-  return <form data-visual={visual} action={agir} onSubmit={e => { if (pendente || bloqueado) e.preventDefault() }} className="flex flex-col gap-4">
+  const formularioId = camposId + '-formulario'
+  const acoesComplementares = <>
+    {!envio && !onCancel && <Button type="button" variant="ghost" disabled={pendente || destinoAcoes !== undefined && bloqueado} onClick={() => { limpar(); setInterno(rascunhoInicial(false)); onDraftChange?.(rascunhoInicial(false)) }}>Descartar anotações</Button>}
+    {envio?.resolvido && <Button type="button" variant="outline" disabled={destinoAcoes !== undefined && (pendente || bloqueado)} onClick={async () => {
+      const r = await prepararContatoAcao(empresaId)
+      if (!r.ok || !r.empresa.versao || ['sem_interesse','indisponivel'].includes(r.empresa.situacao)) { setErroPreparacao('Esta empresa não está disponível para registro.'); return }
+      salvar(atual, null); setPreparado({ versao: r.empresa.versao, fase: r.fase }); router.refresh()
+    }}>Atualizar atendimento para novo envio</Button>}
+  </>
+  const acoes = <>
+    {onCancel && <Button type="button" variant="outline" disabled={pendente || bloqueado} onClick={onCancel}>Cancelar</Button>}
+    <Button type="submit" form={formularioId} className={onCancel ? 'min-w-0 px-2' : 'self-start'} disabled={pendente || bloqueado || !envio && !preparado || !carregado || Boolean(envio?.resolvido)}>{pendente ? 'Registrando…' : envio && !envio.resolvido ? 'Confirmar envio anterior' : rotuloSalvar}</Button>
+  </>
+  return <form id={formularioId} data-visual={visual} action={agir} onSubmit={e => { if (pendente || bloqueado) e.preventDefault() }} className="flex flex-col gap-4">
     <input type="hidden" name="id" value={empresaId} />
     {(estado.erro || erroPreparacao || sessao.erro) && <Alert variant="danger">{estado.erro || erroPreparacao || 'Não foi possível recuperar as anotações desta aba.'}</Alert>}
     {mensagemConfirmacao && <p role="status">{mensagemConfirmacao}</p>}
@@ -152,15 +167,9 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
     <label>Data do próximo passo<Input type="date" name="proximoPassoData" value={atual.proximoPassoData} readOnly={congelado} onChange={e => alterar({ proximoPassoData: e.target.value })} /></label>
     {atual.tipo === 'sem_interesse' && <p>Sem interesse encerra a negociação e cancela os próximos passos.</p>}
     {(atual.tipo === 'interessado' || atual.tipo === 'retornar_depois') && <p>A empresa segue no seu Funil.</p>}
-    <footer className={onCancel ? 'sticky bottom-0 grid grid-cols-2 gap-2 border-t border-border bg-background py-4' : 'contents'}>
-      {onCancel && <Button type="button" variant="outline" disabled={pendente || bloqueado} onClick={onCancel}>Cancelar</Button>}
-      <Button type="submit" className={onCancel ? 'min-w-0 px-2' : 'self-start'} disabled={pendente || bloqueado || !envio && !preparado || !carregado || Boolean(envio?.resolvido)}>{pendente ? 'Registrando…' : envio && !envio.resolvido ? 'Confirmar envio anterior' : rotuloSalvar}</Button>
-    </footer>
-    {!envio && !onCancel && <Button type="button" variant="ghost" disabled={pendente} onClick={() => { limpar(); setInterno(rascunhoInicial(false)); onDraftChange?.(rascunhoInicial(false)) }}>Descartar anotações</Button>}
-    {envio?.resolvido && <Button type="button" variant="outline" onClick={async () => {
-      const r = await prepararContatoAcao(empresaId)
-      if (!r.ok || !r.empresa.versao || ['sem_interesse','indisponivel'].includes(r.empresa.situacao)) { setErroPreparacao('Esta empresa não está disponível para registro.'); return }
-      salvar(atual, null); setPreparado({ versao: r.empresa.versao, fase: r.fase }); router.refresh()
-    }}>Atualizar atendimento para novo envio</Button>}
+    {destinoAcoes === undefined
+      ? <footer className={onCancel ? 'sticky bottom-0 grid grid-cols-2 gap-2 border-t border-border bg-background py-4' : 'contents'}>{acoes}</footer>
+      : destinoAcoes && createPortal(<div className="grid gap-2"><div className={onCancel ? 'grid grid-cols-2 gap-2' : 'flex gap-2'}>{acoes}</div>{acoesComplementares}</div>, destinoAcoes)}
+    {destinoAcoes === undefined && acoesComplementares}
   </form>
 }

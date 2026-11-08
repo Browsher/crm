@@ -1,3 +1,4 @@
+import { abrirLeitura } from './paineis-ajuda'
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { comoUsuario } from '../../src/server/db/como-usuario'
@@ -37,7 +38,7 @@ async function entrar(page: Page, email: string) {
 async function abrirNegociacao(page: Page, nome: string) {
   await card(page, nome).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
   await painel(page).getByRole('button', { name: 'Negociação', exact: true }).click()
-  await expect(painel(page).getByRole('tab', { name: 'Atendimento', exact: true })).toBeVisible()
+  await expect(painel(page).getByRole('button', { name: 'Atendimento e próximo passo', exact: true })).toBeVisible()
 }
 
 test('histórico preserva nota longa, autoria ausente, atividade e data da venda; expansão é por filtro e teclado', async ({ page }) => {
@@ -102,19 +103,19 @@ test('erro permite retry e A para B para A descarta resposta lenta e expansão a
     return rota.continue()
   })
   await card(page, a.nome).getByRole('button', { name: 'Abrir retorno' }).click()
-  await painel(page).getByRole('tab', { name: 'Histórico', exact: true }).click()
-  await expect(painel(page).getByRole('alert')).toHaveText('Não foi possível carregar o histórico.')
+  await painel(page).getByRole('button', { name: 'Histórico', exact: true }).click()
+  await expect(painel(page).getByRole('alert').getByRole('heading')).toHaveText('Não foi possível carregar o histórico.')
   await painel(page).getByRole('button', { name: 'Tentar novamente', exact: true }).click()
   await painel(page).getByRole('button', { name: 'Expandir todos', exact: true }).click()
   await expect(painel(page).getByText('Nota autorizada A', { exact: true })).toBeVisible()
   bloquearB = true
   await card(page, b.nome).getByRole('button', { name: 'Abrir retorno' }).click()
-  await painel(page).getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Histórico', exact: true }).click()
   await recebidoB
-  await expect(painel(page).getByRole('status')).toHaveText('Carregando histórico')
+  await expect(painel(page).getByRole('status').getByRole('heading')).toHaveText('Carregando histórico')
   await expect(painel(page)).not.toContainText('Nota autorizada A')
   await card(page, a.nome).getByRole('button', { name: 'Abrir retorno' }).click()
-  await painel(page).getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Histórico', exact: true }).click()
   liberar()
   await expect(painel(page).locator('details')).toHaveCount(1)
   await expect(painel(page).locator('details[open]')).toHaveCount(0)
@@ -123,25 +124,27 @@ test('erro permite retry e A para B para A descarta resposta lenta e expansão a
   await expect(painel(page)).not.toContainText('Nota autorizada B')
   await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
   await painel(page).getByRole('button', { name: 'Negociação', exact: true }).click()
-  await painel(page).getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Histórico', exact: true }).click()
   await painel(page).getByRole('button', { name: /^Vendas/ }).click()
-  await expect(painel(page).getByText('Nenhum registro neste filtro.', { exact: true })).toBeVisible()
+  await expect(painel(page).getByText('Nenhum registro neste filtro', { exact: true })).toBeVisible()
   await expect(painel(page).getByRole('button', { name: 'Expandir todos', exact: true })).toBeDisabled()
 })
 
-test('rascunho em aba inativa protege filtros, pesquisa Enter, navegação, Sair, Back e beforeunload', async ({ page }) => {
+test('rascunho no editor protege filtros, pesquisa Enter, navegação, Sair, Back e beforeunload', async ({ page }) => {
   const { empresas: [a], email } = await cenario()
   await entrar(page, email)
   await abrirNegociacao(page, a.nome)
-  await painel(page).getByRole('tab', { name: 'Atendimento', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
   await painel(page).getByLabel('Nota', { exact: true }).fill('Rascunho que não pode sumir')
-  await painel(page).getByRole('tab', { name: 'Histórico', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
   const descartar = page.getByRole('dialog', { name: 'Descartar alterações?', exact: true })
   const manter = async () => {
     await expect(descartar).toBeVisible()
     await descartar.getByRole('button', { name: 'Continuar editando', exact: true }).click()
     await expect(page).toHaveURL('/meu-dia')
   }
+  await manter()
   await page.getByRole('group', { name: 'Filtrar retornos' }).getByRole('button', { name: 'Hoje', exact: true }).click()
   await manter()
   await page.getByLabel('Nome', { exact: true }).fill('Outro filtro')
@@ -158,10 +161,10 @@ test('rascunho em aba inativa protege filtros, pesquisa Enter, navegação, Sair
   await manter()
   await page.getByRole('navigation', { name: 'Navegação do CRM' }).getByRole('link', { name: 'Carteira', exact: true }).click()
   await manter()
-  await painel(page).getByRole('tab', { name: 'Atendimento', exact: true }).click()
   await expect(painel(page).getByLabel('Nota', { exact: true })).toHaveValue('Rascunho que não pode sumir')
   await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
   await descartar.getByRole('button', { name: 'Descartar', exact: true }).click()
+  await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
   await painel(page).getByRole('button', { name: 'Voltar', exact: true }).click()
   await painel(page).getByRole('button', { name: 'Fechar', exact: true }).click()
   await page.getByRole('button', { name: 'Sair', exact: true }).click()
@@ -172,6 +175,8 @@ test('primeira venda iniciada no Meu dia abre a ficha correta da Carteira', asyn
   const { empresas: [a], email } = await cenario()
   await entrar(page, email)
   await abrirNegociacao(page, a.nome)
+  await painel(page).getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await abrirLeitura(page)
   await painel(page).getByRole('button', { name: 'Registrar venda', exact: true }).click()
   await painel(page).getByLabel('Valor em reais').fill('101,50')
   await painel(page).getByLabel('Data da venda').fill('2026-01-02')
@@ -196,8 +201,9 @@ test('arquivo perde resposta após commit, recarrega e confirma a mesma chave no
     expect(resposta.ok()).toBe(true)
     await rota.abort('failed')
   })
+  await abrirLeitura(page)
   await painel(page).getByRole('button', { name: 'Sem interesse', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
+  await page.locator('[data-slot="dialog-content"]').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
   const recuperar = page.getByRole('button', { name: 'Confirmar arquivamento anterior', exact: true })
   await expect(recuperar).toBeEnabled()
   await expect(page.getByRole('status')).toContainText('Não foi possível confirmar')
@@ -244,6 +250,7 @@ test(`venda perdida confirma a mesma chave após reload; replay externo protege 
     await liberado
     return rota.fulfill({ response: resposta })
   })
+  await abrirLeitura(page)
   await painel(page).getByRole('button', { name: 'Registrar venda', exact: true }).click()
   await painel(page).getByLabel('Valor em reais').fill('97,31')
   await painel(page).getByLabel('Data da venda').fill('2026-01-03')
@@ -302,8 +309,10 @@ test('sucesso de arquivo revalida as duas rotas e navegação com remontagem con
   await expect(page.getByRole('heading', { name: a.nome, exact: true })).toBeVisible()
   await page.getByRole('navigation', { name: 'Navegação do CRM' }).getByRole('link', { name: 'Meu dia', exact: true }).click()
   await abrirNegociacao(page, a.nome)
+  await painel(page).getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await abrirLeitura(page)
   await painel(page).getByRole('button', { name: 'Sem interesse', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
+  await page.locator('[data-slot="dialog-content"]').getByRole('button', { name: 'Confirmar Sem interesse', exact: true }).click()
   await expect(card(page, a.nome)).toHaveCount(0)
   await expect(painel(page)).toHaveCount(0)
   expect(await page.evaluate(id => sessionStorage.getItem('crm:funil:arquivo:v1:' + id), usuario.id)).toBeNull()

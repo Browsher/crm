@@ -1,0 +1,17 @@
+.menu { display: grid; gap: 4px; min-width: 0; }
+.item { justify-content: space-between; min-height: 40px; height: auto; padding: 12px; text-align: left; white-space: normal; border: 1px solid var(--border); }
+.item > span { min-width: 0; overflow-wrap: anywhere; }
+.item strong { display: block; font-size: 14px; font-weight: 600; }
+.item small { display: block; margin-top: 4px; color: var(--muted-foreground); font-size: 12px; }
+.estado { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); }
+.estado > svg { flex: none; margin-top: 2px; color: var(--muted-foreground); }
+.estado > div { min-width: 0; overflow-wrap: anywhere; }
+.estado h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.estado p { margin: 4px 0 0; color: var(--muted-foreground); font-size: 13px; }
+.estado[data-tipo='erro'] > svg, .estado[data-tipo='incerto'] > svg { color: var(--warning); }
+.estado[data-tipo='sucesso'] > svg { color: var(--success); }
+.alvoConfirmacao { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); overflow-wrap: anywhere; }
+.acoesConfirmacao { display: flex; flex-wrap: wrap; }
+.acoesConfirmacao > button { flex: 1; min-height: 40px; white-space: normal; }
+@media (max-width: 820px) { .acoesConfirmacao > button { min-height: 44px; } }
+@media (max-width: 820px) { .item { min-height: 44px; } }

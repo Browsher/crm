@@ -5,12 +5,16 @@ import Link from 'next/link'
 import { PainelLateralCrm } from '@/src/components/crm/painel-lateral'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { Button } from '@/src/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
+import { Dialog, DialogContent } from '@/src/components/ui/dialog'
+import { ConfirmacaoPainelCrm } from '@/src/components/crm/confirmacao-painel'
+import { EstadoPainelCrm } from '@/src/components/crm/estado-painel'
 import { dataEmpresa } from '@/src/lib/empresa-visual'
 import type { ArquivoFunilRecente } from '@/src/lib/funil-arquivo'
 import styles from './funil.module.css'
 
 export const ID_ARQUIVO = 'painel-sem-interesse'
+export type FeedbackDevolucao = { tipo: 'pendente' | 'erro' | 'incerto' | 'sucesso'; texto: string; alvo?: string }
+const TITULOS_DEVOLUCAO = { pendente: 'Confirmando devolução', erro: 'Não foi possível devolver', incerto: 'Devolução sem confirmação', sucesso: 'Devolução confirmada' }
 
 export function IconeLixeira({ iconeRef }: { iconeRef?: RefObject<SVGSVGElement | null> }) {
   return <svg ref={iconeRef} viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -19,17 +23,21 @@ export function IconeLixeira({ iconeRef }: { iconeRef?: RefObject<SVGSVGElement 
   </svg>
 }
 
-export function PainelArquivo({ arquivos, recuperacao, bloqueado, fechandoBloqueado, aoFechar, aoDevolver, aoConfirmar }: {
+export function PainelArquivo({ arquivos, recuperacao, feedback, bloqueado, fechandoBloqueado, aoFechar, aoDevolver, aoConfirmar }: {
   arquivos: ArquivoFunilRecente[]
   recuperacao?: ArquivoFunilRecente
+  feedback?: FeedbackDevolucao
   bloqueado: boolean
   fechandoBloqueado: boolean
   aoFechar: () => void
   aoDevolver: (item: ArquivoFunilRecente) => void
   aoConfirmar: () => void
 }) {
-  return <PainelLateralCrm id={ID_ARQUIVO} titulo="Sem interesse" rotulo="Arquivo de prospecção" descricao="As três empresas arquivadas mais recentemente pelo Funil." aoFechar={aoFechar} fecharBloqueado={fechandoBloqueado}>
+  return <PainelLateralCrm id={ID_ARQUIVO} titulo="Sem interesse" rotulo="Arquivo de prospecção" descricao="As três empresas arquivadas mais recentemente pelo Funil." aoFechar={aoFechar} fecharBloqueado={fechandoBloqueado}
+    ocupado={fechandoBloqueado} rodape={<Button asChild variant="outline"><Link href="/fila/localizar?disponibilidade=sem_interesse&pagina=1">Ver todos em Sem interesse</Link></Button>}>
     <div className={styles.arquivo}>
+      {feedback && <div data-feedback-devolucao><EstadoPainelCrm tipo={feedback.tipo} titulo={TITULOS_DEVOLUCAO[feedback.tipo]}
+        descricao={(feedback.alvo ? feedback.alvo + '. ' : '') + feedback.texto} /></div>}
       {recuperacao && <RecuperacaoDevolucao item={recuperacao} bloqueado={fechandoBloqueado} aoConfirmar={aoConfirmar}/>}
       {arquivos.length > 0
         ? <ul className={styles.listaArquivo}>{arquivos.map(item => <li key={item.negociacaoId}>
@@ -37,7 +45,6 @@ export function PainelArquivo({ arquivos, recuperacao, bloqueado, fechandoBloque
           <Button variant="outline" type="button" aria-label={`Devolver ${item.nome} para Primeiro contato`} disabled={bloqueado} onClick={() => aoDevolver(item)}>Devolver</Button>
         </li>)}</ul>
         : <p className={styles.muted}>Nenhuma empresa em Sem interesse.</p>}
-      <Button asChild variant="outline"><Link href="/fila/localizar?disponibilidade=sem_interesse&pagina=1">Ver todos em Sem interesse</Link></Button>
     </div>
   </PainelLateralCrm>
 }
@@ -67,16 +74,11 @@ export function ConfirmarArquivamento({ nome, aoCancelar, aoConfirmar, aoRestaur
       className={styles.dialogoArquivo}
       onCloseAutoFocus={evento => { evento.preventDefault(); aoRestaurarFoco() }}
     >
-      <DialogHeader>
-        <span className={styles.iconeConfirmacao}><IconeLixeira/></span>
-        <DialogTitle>Marcar como Sem interesse?</DialogTitle>
-        <strong>{nome}</strong>
-        <DialogDescription>A negociação sai do Funil e os retornos pendentes são cancelados. O histórico fica disponível em Sem interesse.</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
+      <ConfirmacaoPainelCrm titulo="Marcar como Sem interesse?" alvo={<strong>{nome}</strong>}
+        descricao="A negociação sai do Funil e os retornos pendentes são cancelados. O histórico fica disponível em Sem interesse." acoes={<>
         <Button variant="outline" type="button" onClick={aoCancelar}>Cancelar</Button>
         <Button variant="destructive" type="button" onClick={aoConfirmar}>Confirmar Sem interesse</Button>
-      </DialogFooter>
+      </>} />
     </DialogContent>
   </Dialog>
 }
