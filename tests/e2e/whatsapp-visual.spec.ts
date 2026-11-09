@@ -25,9 +25,9 @@ test('primeira abertura móvel mostra mensagens recentes e reabertura conserva l
   await expect.poll(() => mensagens.evaluate(el => el.scrollTop)).toBe(topo)
 })
 
-for (const [largura, tema] of [[1440, 'light'], [390, 'dark']] as const) {
-  test(`WhatsApp real com serviço local em ${largura}px e tema ${tema}`, async ({ page }) => {
-    await page.setViewportSize({ width: largura, height: 900 })
+for (const [largura, tema] of [[1440, 'light'], [821, 'dark'], [820, 'light'], [390, 'dark']] as const) {
+  test(`WhatsApp real com serviço local em ${largura}px e tema ${tema}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: largura, height: largura === 390 ? 844 : 900 })
     await page.goto('/login')
     await page.getByLabel('E-mail').fill('gestore2e@teste.local')
     await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
@@ -37,25 +37,70 @@ for (const [largura, tema] of [[1440, 'light'], [390, 'dark']] as const) {
     await page.getByLabel('Tema do WhatsApp').selectOption(tema)
     const lista = page.getByLabel('Lista de conversas', { exact: true })
     await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
-    await expect(page.getByLabel('Mensagens da conversa')).toContainText('próximo pedido')
+    const mensagens = page.getByLabel('Mensagens da conversa')
+    await expect(mensagens).toContainText('próximo pedido')
     await expect(page.locator('textarea')).toHaveCount(0)
+    const consultasImagem: string[] = []
+    page.on('request', req => {
+      if (new URL(req.url()).pathname === '/whatsapp/midia/imagem-aurora') consultasImagem.push(req.url())
+    })
     await page.getByRole('button', { name: 'Carregar imagem', exact: true }).click()
-    const ampliar = page.getByRole('button', { name: 'Ampliar imagem', exact: true })
-    await ampliar.click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+    const miniatura = mensagens.getByRole('button', { name: 'Ampliar imagem', exact: true })
+    await miniatura.focus()
+    await page.keyboard.press('Enter')
+    const painel = page.locator('[data-slot="painel-lateral-content"]')
+    await expect(painel).toHaveAccessibleName('Imagem da conversa')
     await expect(page.locator('.ui-dialog-portal')).toHaveAttribute('data-theme', tema)
+    const corpo = painel.locator('[data-painel-corpo]')
+    await expect(corpo.locator('figcaption')).toHaveText('Imagem local de teste')
+    const imagem = corpo.getByRole('img')
+    await expect(imagem).toHaveAttribute('src', /^blob:/)
+    const blob = await imagem.getAttribute('src')
+    const caixa = (await painel.boundingBox())!
+    expect(caixa.width).toBeCloseTo(largura <= 820 ? largura : Math.min(520, largura * 0.47), 0)
+    expect(caixa.x + caixa.width).toBeCloseTo(largura, 0)
+    const ampliar = painel.locator('[data-painel-rodape]').getByRole('button', { name: 'Ampliar imagem', exact: true })
+    if (largura <= 820) expect((await ampliar.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await page.screenshot({ path: testInfo.outputPath('imagem-normal.png'), animations: 'disabled' })
+
+    await ampliar.focus()
+    await page.keyboard.press('Enter')
+    await expect(painel).toHaveAccessibleName('Imagem ampliada')
+    await expect(page.getByRole('dialog')).toHaveCount(1)
+    await expect(imagem).toHaveAttribute('src', blob!)
+    await expect(corpo.locator('figcaption')).toHaveCount(0)
+    expect((await painel.boundingBox())!.width).toBeCloseTo(Math.min(largura, 1100), 0)
+    const quadro = corpo.getByRole('figure', { name: 'Área de visualização ampliada' })
+    await expect(quadro).toBeFocused()
+    expect((await quadro.boundingBox())!.width).toBeGreaterThanOrEqual(720)
+    if (largura === 390) {
+      const voltar = painel.getByRole('button', { name: 'Voltar', exact: true })
+      const posicao = await voltar.boundingBox()
+      await page.keyboard.press('ArrowRight')
+      await expect.poll(() => corpo.evaluate(el => el.scrollLeft)).toBeGreaterThan(0)
+      expect(await voltar.boundingBox()).toEqual(posicao)
+    }
+    await page.screenshot({ path: testInfo.outputPath('imagem-ampliada.png'), animations: 'disabled' })
     await page.keyboard.press('Escape')
+    await expect(painel).toHaveAccessibleName('Imagem da conversa')
+    await expect(corpo.locator('figcaption')).toHaveText('Imagem local de teste')
     await expect(ampliar).toBeFocused()
+    await ampliar.click()
+    await painel.getByRole('button', { name: 'Voltar', exact: true }).click()
+    await expect(ampliar).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(painel).toHaveCount(0)
+    await expect(miniatura).toBeFocused()
+    expect(consultasImagem).toHaveLength(1)
     await page.getByRole('button', { name: 'Carregar documento: pedido.pdf', exact: true }).click()
     await expect(page.getByRole('main').getByRole('alert')).toContainText('indisponível')
-    if (largura === 390) {
+    if (largura <= 820) {
       await page.getByRole('button', { name: 'Voltar para conversas' }).click()
       await expect(lista).toBeVisible()
       await lista.getByRole('button').filter({ hasText: 'Contato Aurora' }).click()
-      await expect(ampliar).toBeVisible()
-    } else await expect(page.getByLabel('Contexto da empresa')).toContainText('Cliente WhatsApp Aurora')
+      await expect(miniatura).toBeVisible()
+    } else if (largura === 1440) await expect(page.getByLabel('Contexto da empresa')).toContainText('Cliente WhatsApp Aurora')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await capturar(page, `midia-${largura}-${tema}`)
   })
 }
 
@@ -161,13 +206,12 @@ for (const tema of ['light', 'dark'] as const) {
     const dialogo = page.getByRole('dialog')
     await expect(dialogo).toBeVisible()
     const caixa = (await dialogo.boundingBox())!
-    expect(caixa.x).toBeGreaterThanOrEqual(15)
-    expect(caixa.x + caixa.width).toBeLessThanOrEqual(375)
+    expect(caixa.x).toBeCloseTo(0, 0)
+    expect(caixa.width).toBeCloseTo(390, 0)
     expect(await dialogo.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
     const fechar = (await dialogo.getByRole('button', { name: 'Fechar', exact: true }).boundingBox())!
     const titulo = (await dialogo.getByRole('heading').boundingBox())!
     expect(titulo.x + titulo.width).toBeLessThanOrEqual(fechar.x)
-    await capturar(page, `imagem-overlay-${tema}`)
     await page.keyboard.press('Escape')
     await expect(ampliar).toBeFocused()
   })

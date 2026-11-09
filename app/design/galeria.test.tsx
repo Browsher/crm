@@ -79,16 +79,24 @@ test('aplica os filtros aos dados fictícios e limpar restaura a lista', async (
   expect(container.querySelector('[data-testid="company-list"]')?.textContent).toContain('Aurora Papelaria Ltda.')
 })
 
-test('usa o card real com detalhe cadastral local e ausências explícitas', async () => {
+test('usa o card real com detalhe cadastral local na lateral e restaura o foco', async () => {
   const card = [...container.querySelectorAll('[data-testid="company-list"] > *')]
     .find((item) => item.textContent?.includes('Café Cedro'))
   const abrir = [...(card?.querySelectorAll('button') ?? [])].find((item) => item.textContent === 'Ver empresa')
 
-  await act(async () => abrir?.click())
+  abrir!.focus()
+  await act(async () => abrir!.click())
 
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Telefone principal')
+  const painel = document.querySelector('[role="dialog"][data-slot="painel-lateral-content"]')!
+  expect(painel.querySelector('[data-painel-corpo]')?.textContent).toContain('Telefone principal')
+  expect(painel.textContent).toContain('Dados fictícios para demonstração.')
   expect(card?.textContent).not.toContain('Ausente')
   expect(card?.textContent).toContain('AtividadeNão informado')
+
+  await act(async () => document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  await act(async () => vi.runOnlyPendingTimersAsync())
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(document.activeElement).toBe(abrir)
 })
 
 test('Funil demonstra somente três etapas, sem alvo de arquivo aposentado',async()=>{
@@ -99,7 +107,8 @@ test('Funil demonstra somente três etapas, sem alvo de arquivo aposentado',asyn
 
 test('registra a confirmação junto à seção do diálogo', async () => {
   await act(async () => botao('Próxima').click())
-  expect(document.body.textContent).toContain('Trocar de empresa e descartar as anotações?')
+  expect(document.querySelector('[role="dialog"][data-slot="dialog-content"]')?.textContent)
+    .toContain('Trocar de empresa e descartar as anotações?')
   const confirmar = [...document.body.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Descartar e continuar')
   await act(async () => confirmar?.click())
 

@@ -20,6 +20,7 @@ import { AbasFicha } from '@/src/components/crm/abas-ficha'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { PainelFiltros } from '@/src/components/crm/painel-filtros'
+import { PainelSobrepostoCrm } from '@/src/components/crm/painel-lateral'
 import { useTemaCrm } from '@/src/components/crm/tema'
 import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from '@/src/components/ui/table'
 import styles from './galeria.module.css'
@@ -53,7 +54,7 @@ export function Galeria() {
   const [resposta, setResposta] = useState('')
   const [respostaFiltros, setRespostaFiltros] = useState('')
   const [respostaDialogo, setRespostaDialogo] = useState('')
-  const [empresaAberta, setEmpresaAberta] = useState<ResumoEmpresa | null>(null)
+  const [consulta, setConsulta] = useState<{ empresa: ResumoEmpresa; gatilho: HTMLButtonElement } | null>(null)
   const [carregando, setCarregando] = useState(false)
   const [etapa, setEtapa] = useState<Etapa>(0)
   const [anotacoes, setAnotacoes] = useState('Cliente pediu retorno após conferir a agenda.')
@@ -151,9 +152,20 @@ export function Galeria() {
 
           <Secao id="empresas" titulo="Empresas" descricao="Situação sempre escrita, sem depender apenas da cor.">
             <div className={styles.companyGrid} data-testid="company-list">
-              {empresasFiltradas.map(empresa => <CardEmpresa key={empresa.id} empresa={empresa} aoVer={() => setEmpresaAberta(empresa)} aoAcionar={acao=>setRespostaDialogo(`${acao.rotulo}: demonstração local, sem alterar empresas.`)} />)}
+              {empresasFiltradas.map(empresa => <CardEmpresa key={empresa.id} empresa={empresa} aoVer={(_, gatilho) => setConsulta({ empresa, gatilho })} aoAcionar={acao=>setRespostaDialogo(`${acao.rotulo}: demonstração local, sem alterar empresas.`)} />)}
             </div>
-            {empresaAberta && <Dialog open onOpenChange={aberto=>{if(!aberto)setEmpresaAberta(null)}}><DialogContent theme={tema} className={empresaStyles.dialogo}><DialogHeader><DialogTitle>Ver empresa</DialogTitle><DialogDescription>Dados fictícios para demonstração.</DialogDescription></DialogHeader><div className={empresaStyles.corpo}><h3 className={empresaStyles.nome}>{empresaAberta.nome}</h3><EmpresaDetalhes empresa={{...detalhesSnapshot({},empresaAberta.referencia),...empresaAberta,nomeFantasia:empresaAberta.nome}} /></div></DialogContent></Dialog>}
+            {consulta && <Dialog open>
+              <PainelSobrepostoCrm titulo="Ver empresa" descricao="Dados fictícios para demonstração." aoFechar={() => setConsulta(null)}
+                onCloseAutoFocus={evento => {
+                  evento.preventDefault()
+                  if (consulta.gatilho.isConnected) consulta.gatilho.focus({ preventScroll: true })
+                }}>
+                <div className={empresaStyles.dadosLateral}>
+                  <h3 className={empresaStyles.nome}>{consulta.empresa.nome}</h3>
+                  <EmpresaDetalhes empresa={{ ...detalhesSnapshot({}, consulta.empresa.referencia), ...consulta.empresa, nomeFantasia: consulta.empresa.nome }} />
+                </div>
+              </PainelSobrepostoCrm>
+            </Dialog>}
             {respostaDialogo && <p role="status">{respostaDialogo}</p>}
             {empresasFiltradas.length === 0 && <EstadoVazio titulo="Nenhuma empresa encontrada" descricao="Altere um filtro para ampliar a busca nos dados fictícios." acao={{ rotulo: 'Limpar filtros', variante: 'outline', aoAcionar: limparFiltros }} />}
           </Secao>
