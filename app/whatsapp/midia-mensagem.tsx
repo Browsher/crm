@@ -108,7 +108,7 @@ function VisualizacaoImagem({ url, legenda, aoFechar }: { url: string; legenda?:
     rotuloFechar={ampliada ? 'Voltar' : 'Fechar'}
     aoFechar={ampliada ? () => setAmpliada(false) : aoFechar}
     className={ampliada ? styles.imagemAmpliada : undefined}
-    rodape={!ampliada && <Button ref={botaoAmpliar} type="button" variant="outline" onClick={ampliar}>Ampliar imagem</Button>}
+    rodape={ampliada ? undefined : <Button ref={botaoAmpliar} type="button" variant="outline" onClick={ampliar}>Ampliar imagem</Button>}
   >
     <figure ref={figura} className={styles.imagemPainel} tabIndex={ampliada ? 0 : undefined}
       aria-label={ampliada ? 'Área de visualização ampliada' : undefined}>

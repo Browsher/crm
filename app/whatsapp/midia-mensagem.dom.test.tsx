@@ -44,6 +44,7 @@ test('carrega sob demanda e amplia na mesma lateral, sem nova consulta', async (
   expect(painel.querySelector('h2')?.textContent).toBe('Imagem ampliada')
   expect(corpo.querySelector('img')).toBe(imagem)
   expect(corpo.querySelector('figcaption')).toBeNull()
+  expect(painel.querySelector('[data-painel-rodape]')).toBeNull()
   expect(corpo.scrollTop).toBe(0)
 
   await act(async () => document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
