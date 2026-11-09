@@ -80,6 +80,24 @@ test('formulário lateral mantém campos montados sob confirmações centrais e 
   await vi.waitFor(() => expect(document.activeElement?.textContent).toBe('Registrar venda'))
   expect(mocks.venda).not.toHaveBeenCalled()
 })
+
+test('corrigir dados devolve foco ao campo ativo quando o formulário é conferido por Enter', async () => {
+  await montar()
+  await clicar('Registrar venda')
+  await preencher('valor', '125,50')
+  await preencher('data', '2026-01-01')
+  const painel = document.querySelector('[data-painel-lateral]')!
+  const valor = painel.querySelector<HTMLInputElement>('input[name="valor"]')!
+  const conferir = painel.querySelector<HTMLButtonElement>('[data-painel-rodape] button[type=submit]')!
+  valor.focus()
+  await act(async () => conferir.form!.requestSubmit(conferir))
+  expect(document.activeElement?.textContent).toBe('Corrigir dados')
+
+  await clicar('Corrigir dados')
+  await vi.waitFor(() => expect(document.activeElement).toBe(valor))
+  expect(valor.value).toBe('125,50')
+})
+
 test('venda pede confirmação, preserva rascunho e repete a mesma chave após falha de rede',async()=>{
   await montar()
   await clicar('Registrar venda');await preencher('valor','125,50');await preencher('data','2026-01-01')
@@ -105,6 +123,33 @@ test.each(['Retome o atendimento','O atendimento mudou'])('recusa %s preserva da
  mocks.venda.mockResolvedValueOnce({ok:true});await clicar('Confirmar venda')
  const [a,b]=mocks.venda.mock.calls.map(([f])=>f as FormData)
  expect([...b.entries()]).toEqual([...a.entries()])
+})
+
+test('fechar recompra sem resposta volta à seção de origem e foca a confirmação do envio anterior', async () => {
+  vi.spyOn(history, 'back').mockImplementation(() => {})
+  await montar()
+  await clicar('Histórico')
+  await clicar('Registrar venda')
+  await preencher('valor', '128,50')
+  await preencher('data', '2026-01-01')
+  await clicar('Conferir venda')
+  mocks.venda.mockRejectedValueOnce(new Error('rede'))
+  await clicar('Confirmar venda')
+  const envio = sessionStorage.getItem('crm:venda:v1:ator')
+  const manter = [...document.querySelectorAll('button')].find(botao => botao.textContent === 'Fechar mantendo envio')!
+  manter.focus()
+
+  await clicar('Fechar mantendo envio')
+  await popstate()
+
+  const lateral = document.querySelector('[data-painel-lateral]')!
+  const recuperar = [...lateral.querySelectorAll('button')].find(botao => botao.textContent === 'Confirmar venda anterior')
+  expect(document.querySelector('[data-slot=dialog-content]')).toBeNull()
+  expect(lateral.querySelector('h3')?.textContent).toBe('Histórico')
+  expect(recuperar).toBeDefined()
+  await vi.waitFor(() => expect(document.activeElement).toBe(recuperar))
+  expect(sessionStorage.getItem('crm:venda:v1:ator')).toBe(envio)
+  expect(mocks.venda).toHaveBeenCalledOnce()
 })
 
 test('recompra perdida recupera fora do modal após reload e mantém contexto sem corrigir entrada incerta',async()=>{

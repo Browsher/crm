@@ -127,6 +127,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   const neutro = useRef<HTMLButtonElement>(null)
   const conferirVenda = useRef<HTMLButtonElement>(null)
   const focoConfirmacao = useRef<HTMLElement | null>(null)
+  const aguardarConfirmacao = useRef(false)
   const vivo = useRef(true)
   useEffect(() => { vivo.current = true; return () => { vivo.current = false } }, [])
 
@@ -182,15 +183,18 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   useLayoutEffect(() => {
     const titulo = tituloSecao.current
     const destino = proximoFoco.current ? document.getElementById(proximoFoco.current) : null
-    proximoFoco.current = null
     const alvo = destino instanceof HTMLElement && !destino.matches(':disabled') ? destino
       : nivel === 'atendimento' ? editor.current?.querySelector('textarea') ?? titulo : titulo
     const corpo = alvo?.closest<HTMLElement>('[data-painel-corpo]') ?? titulo?.closest<HTMLElement>('[data-painel-corpo]')
     if (corpo) corpo.scrollTop = 0
+    if (aguardarConfirmacao.current) return
+    proximoFoco.current = null
     alvo?.focus({ preventScroll: true })
   }, [nivel])
   useLayoutEffect(() => {
-    if (confirmacao) neutro.current?.focus({ preventScroll: true })
+    if (!confirmacao) return
+    aguardarConfirmacao.current = true
+    neutro.current?.focus({ preventScroll: true })
   }, [confirmacao])
 
   function voltar() {
@@ -286,6 +290,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   return <>
     <Dialog open={!guarda.restaurando}>
       <PainelSobrepostoCrm titulo={nome} descricao={arquivada ? 'Sem interesse' : cliente ? 'Na sua carteira' : 'Em prospecção'}
+        className={styles.lateralCliente}
         rotuloFechar={nivel === 'menu' ? 'Fechar' : 'Voltar'} aoFechar={voltar} fecharBloqueado={pendente || !!confirmacao}
         ocupado={pendente} rodape={rodape} onCloseAutoFocus={evento => {
           evento.preventDefault()
@@ -348,7 +353,8 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
               <FormularioRecompra id={formVendaId} entrada={entrada} bloqueado={pendente || !!confirmacao || !podeVender} aoMudar={setEntrada} aoConferir={evento => {
                 evento.preventDefault()
                 if (bloqueada() || confirmacao || !podeVender) return
-                focoConfirmacao.current = conferirVenda.current
+                const alvo = document.activeElement
+                focoConfirmacao.current = alvo instanceof HTMLElement && evento.currentTarget.contains(alvo) ? alvo : conferirVenda.current
                 setConferida(true)
               }} />
             </>}
@@ -361,10 +367,23 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
         onOpenAutoFocus={evento => { evento.preventDefault(); neutro.current?.focus({ preventScroll: true }) }}
         onCloseAutoFocus={evento => {
           evento.preventDefault()
+          aguardarConfirmacao.current = false
+          const destino = proximoFoco.current
           const alvo = guarda.foco.current ?? focoConfirmacao.current
+          proximoFoco.current = null
           guarda.foco.current = null
           focoConfirmacao.current = null
-          if (alvo?.isConnected && !alvo.matches(':disabled')) alvo.focus({ preventScroll: true })
+          if (!destino) {
+            if (alvo?.isConnected && !alvo.matches(':disabled')) alvo.focus({ preventScroll: true })
+            return
+          }
+          // O Dialog central libera o foco do painel após este evento.
+          queueMicrotask(() => {
+            if (!vivo.current) return
+            const controle = document.getElementById(destino)
+            const foco = controle instanceof HTMLElement && !controle.matches(':disabled') ? controle : tituloSecao.current
+            foco?.focus({ preventScroll: true })
+          })
         }}>
         {confirmacao === 'descarte' ? <ConfirmacaoPainelCrm titulo="Descartar alterações?" alvo={<strong>{nome}</strong>}
           descricao="As informações não salvas serão perdidas." acoes={<>
