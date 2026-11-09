@@ -66,23 +66,36 @@ export function Ficha(props: Props) {
 }
 
 function ComposicaoFicha({ voltarPara = '/carteira', rotuloVoltar = 'Voltar para a carteira', ...props }: Props) {
-  // Uma revalidação pode mudar a elegibilidade durante uma ação. Enquanto
-  // esta empresa permanecer autorizada, conserve o editor que iniciou o envio.
-  const [lateral] = useState(() => props.cliente || props.interceptada)
-  const [fundoInicial] = useState(props.fundo)
+  const [ocupada, setOcupada] = useState(false)
+  const [mensagem, setMensagem] = useState('')
+  const lateralPreferida = Boolean(props.cliente || props.interceptada)
+  const [composicao, setComposicao] = useState({ lateral: lateralPreferida, fundo: props.fundo })
+  // Uma revalidação pode mudar a elegibilidade enquanto um editor está
+  // aberto. Troque a composição assim que ele liberar a ficha.
+  const lateral = ocupada ? composicao.lateral : lateralPreferida
+  const fundo = props.fundo ?? composicao.fundo
+  if (lateral !== composicao.lateral || fundo !== composicao.fundo) setComposicao({ lateral, fundo })
   if (lateral) return <>
-    {props.fundo ?? fundoInicial}
-    <FichaCliente {...props} voltarPara={voltarPara} rotuloVoltar={rotuloVoltar} />
+    {fundo}
+    <FichaCliente {...props} voltarPara={voltarPara} rotuloVoltar={rotuloVoltar} aoMudarOcupacao={setOcupada}
+      mensagem={mensagem} aoMudarMensagem={setMensagem} />
   </>
   return <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
     <nav aria-label="Navegação da ficha"><Button asChild variant="outline"><Link href={voltarPara}>{rotuloVoltar}</Link></Button></nav>
     {props.vendaRegistrada && <p role="status">Venda registrada. Confira o histórico deste cliente.</p>}
-    <FichaLegada {...props} voltarPara={voltarPara} dadosCadastrais={<DadosCadastrais dados={props.cadastrais ?? null} />} />
+    {mensagem && <p role="status">{mensagem}</p>}
+    <FichaLegada {...props} voltarPara={voltarPara} dadosCadastrais={<DadosCadastrais dados={props.cadastrais ?? null} />} aoMudarOcupacao={setOcupada} />
     {props.visita}
   </main>
 }
 
-function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, interceptada, voltarPara, rotuloVoltar, cadastrais, vendaRegistrada, visita }: Props & { voltarPara: string; rotuloVoltar: string }) {
+function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, interceptada, voltarPara, rotuloVoltar, cadastrais, vendaRegistrada, visita, aoMudarOcupacao, mensagem, aoMudarMensagem }: Props & {
+  voltarPara: string
+  rotuloVoltar: string
+  aoMudarOcupacao: (ocupada: boolean) => void
+  mensagem: string
+  aoMudarMensagem: (mensagem: string) => void
+}) {
   const router = useRouter()
   const tema = useTemaCrm()
   const nome = nomeEmpresa(empresa)
@@ -93,7 +106,6 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   const [origemDados, setOrigemDados] = useState<'menu' | 'passo'>('menu')
   const [filtro, setFiltro] = useState<FiltroHistoricoComercial>('todos')
   const [destinoAcoes, setDestinoAcoes] = useState<HTMLDivElement | null>(null)
-  const [mensagem, setMensagem] = useState('')
   const [erroDescarte, setErroDescarte] = useState('')
   const [gatilhoLista] = useState(() => {
     if (!interceptada || typeof document === 'undefined') return null
@@ -132,6 +144,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   const vendaPendente = venda.comando?.empresaId === empresa.id ? venda.comando : null
   const vendaAlterada = nivel === 'venda' && !venda.resultado?.ok && Boolean(vendaPendente || entrada.valor || entrada.data || entrada.observacao)
   const pendente = enviandoContato || enviandoVenda || venda.pendente
+  useLayoutEffect(() => { aoMudarOcupacao(tarefa || pendente) }, [aoMudarOcupacao, tarefa, pendente])
   const bloqueada = () => contatoEmVoo.current || vendaEmVoo.current || venda.pendente
   const guarda = useGuardaFicha(contatoAlterado || vendaAlterada, pendente, bloqueada, saida => {
     setErroDescarte('')
@@ -182,19 +195,19 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
     setBaseline(inicial)
     setRascunho(inicial)
     setOrigemTarefa('passo')
-    setMensagem('')
+    aoMudarMensagem('')
     mudarNivel('atendimento')
   }
 
   function abrirVenda() {
     if (!podeVender || bloqueada() || !venda.iniciarNovo()) return
-    setMensagem('')
+    aoMudarMensagem('')
     setOrigemTarefa(tarefa ? origemTarefa : nivel)
     mudarNivel('venda')
   }
 
   function vendaConfirmada(resultado: Extract<EstadoVenda, { ok: true }>, primeira: boolean) {
-    setMensagem(resultado.aviso ?? 'Venda registrada.')
+    aoMudarMensagem(resultado.aviso ?? 'Venda registrada.')
     try {
       if (!primeira) router.refresh()
       else if (resultado.leituraDestino?.ok) {
@@ -204,9 +217,9 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
         if (interceptada) router.replace(href)
         else location.replace(href)
       }
-      else setMensagem('Venda registrada. Não foi possível abrir a ficha. Abra a Carteira.')
+      else aoMudarMensagem('Venda registrada. Não foi possível abrir a ficha. Abra a Carteira.')
     } catch {
-      setMensagem('Venda registrada. Atualize a página para conferir o histórico.')
+      aoMudarMensagem('Venda registrada. Atualize a página para conferir o histórico.')
     }
   }
 
@@ -298,7 +311,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
               {arquivada && <>
                 <Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>
                 {empresa.empresa && <ContextoResultadoBusca.Provider value={{ rodape: null, verEmpresa: () => { setOrigemDados('passo'); mudarNivel('dados') } }}>
-                  <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} /></fieldset>
+                  <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} naFichaCarteira={interceptada ? 'interceptada' : 'direta'} /></fieldset>
                 </ContextoResultadoBusca.Provider>}
               </>}
               <Button id={prefixo + '-atender'} disabled={pendente || arquivada} onClick={abrirAtendimento}>Registrar atendimento</Button>
@@ -316,7 +329,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
               visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente}
               somenteConfirmacao={arquivada} onPendingChange={mudarPendenteContato} destinoAcoes={destinoAcoes}
               onCancel={voltar} rotuloSalvar="Salvar atendimento" onSaved={(_, resultado) => {
-                guarda.concluir(() => setMensagem(resultado.aviso ?? (resultado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.')))
+                guarda.concluir(() => aoMudarMensagem(resultado.aviso ?? (resultado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.')))
               }} />}
             {nivel === 'venda' && <>
               <p>A empresa continuará na sua Carteira e o retorno agendado será mantido.</p>

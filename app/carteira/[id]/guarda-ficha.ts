@@ -65,6 +65,7 @@ function marcaAtual(): Marca | null {
 // atual, com a árvore do App Router, e é retirada antes de sair da ficha.
 export function useGuardaFicha(alterada: boolean, pendente: boolean, bloqueada: () => boolean, aoSair: (saida: Saida) => void) {
   const [pedido, setPedido] = useState<Saida | null>(null)
+  const pedidoAtivo = useRef(false)
   const [restaurando, setRestaurando] = useState(() => typeof window !== 'undefined' && !!navegacaoDoNavegador()?.currentEntry && !!marcaAtual())
   const foco = useRef<HTMLElement | null>(null)
   const atual = useRef({ alterada, pendente, bloqueada, aoSair })
@@ -109,20 +110,26 @@ export function useGuardaFicha(alterada: boolean, pendente: boolean, bloqueada: 
   function concluir(saida: Saida) {
     retirar(() => {
       saidaConfirmada.current = true
-      setPedido(null)
+      cancelar()
       atual.current.aoSair(saida)
     })
   }
 
+  function cancelar() {
+    pedidoAtivo.current = false
+    setPedido(null)
+  }
+
   function pedir(saida: Saida) {
-    if (atual.current.bloqueada()) return
+    if (atual.current.bloqueada() || pedidoAtivo.current) return
     if (!atual.current.alterada) {
       concluir(saida)
       return
     }
+    pedidoAtivo.current = true
     const alvo = document.activeElement
     foco.current = alvo instanceof HTMLElement ? alvo : null
-    setPedido(anterior => anterior ?? saida)
+    setPedido(() => saida)
   }
 
   useLayoutEffect(() => {
@@ -202,7 +209,7 @@ export function useGuardaFicha(alterada: boolean, pendente: boolean, bloqueada: 
 
   return {
     pedido, foco, pedir, concluir, restaurando,
-    cancelar: () => setPedido(null),
+    cancelar,
     confirmar: () => { if (pedido && !bloqueada()) concluir(pedido) },
   }
 }

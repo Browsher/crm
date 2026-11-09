@@ -14,7 +14,7 @@ const empresa:ResumoEmpresa={referencia:{tipo:'cadastro',empresaId:'A'},id:'A',n
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
 beforeEach(()=>{sessionStorage.clear();vi.clearAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host)})
 afterEach(async()=>{await act(async()=>root.unmount());host.remove()})
-async function montar(e=empresa,hrefCarteira?:string){await act(async()=>root.render(<Cartao empresa={e} filtros={{origem:'google',pagina:'3'}} hrefCarteira={hrefCarteira}/>))}
+async function montar(e=empresa,hrefCarteira?:string, naFichaCarteira?:'direta'|'interceptada'){await act(async()=>root.render(<Cartao empresa={e} filtros={{origem:'google',pagina:'3'}} hrefCarteira={hrefCarteira} naFichaCarteira={naFichaCarteira}/>))}
 async function clicar(texto:string){await act(async()=>[...host.querySelectorAll('button')].find(b=>b.textContent===texto)!.click())}
 test('Ver empresa usa diálogo informativo, fechar não inicia nem navega',async()=>{
   await montar();await clicar('Ver empresa');expect(host.querySelector('[role=dialog]')).not.toBeNull()
@@ -98,6 +98,25 @@ test('replay de retomar agora vendido usa destino atual em vez da ação antiga'
  await clicar('Retomar atendimento')
  expect(push).toHaveBeenCalledWith('/carteira/A')
  expect(push).not.toHaveBeenCalledWith('/fila/atendimento/A?origem=google&pagina=3')
+})
+test('retomada na ficha atual revalida sem criar uma entrada nem perder filtros', async () => {
+ const href = '/carteira/A?nome=Aurora&uf=SP'
+ history.replaceState(null, '', href)
+ try {
+  iniciar.mockResolvedValueOnce({ ok: true, versao: 3, leituraDestino: { ok: true, destino: { tipo: 'carteira', empresaId: 'A' } } })
+  await montar({ ...empresa, situacao: 'sem_interesse' }, undefined, 'direta')
+  await clicar('Retomar atendimento')
+  expect(refresh).toHaveBeenCalledOnce()
+  expect(push).not.toHaveBeenCalled()
+  expect(location.pathname + location.search).toBe(href)
+ } finally { history.replaceState(null, '', '/') }
+})
+test('retomada na ficha preserva o destino autorizado de outra empresa', async () => {
+ iniciar.mockResolvedValueOnce({ ok: true, versao: 3, leituraDestino: { ok: true, destino: { tipo: 'carteira', empresaId: 'B' } } })
+ await montar({ ...empresa, situacao: 'sem_interesse' }, undefined, 'interceptada')
+ await clicar('Retomar atendimento')
+ expect(push).toHaveBeenCalledWith('/carteira/B')
+ expect(refresh).not.toHaveBeenCalled()
 })
 test('destino indisponível e falha de limpeza não anunciam mutação desconhecida',async()=>{
  iniciar.mockImplementation(async()=>{vi.spyOn(Storage.prototype,'removeItem').mockImplementation(()=>{throw new Error('storage')});return {ok:true,versao:3,repetida:true,leituraDestino:{ok:false,motivo:'leitura_indisponivel'}}})

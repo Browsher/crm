@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { Cartao } from '../../fila/cartao'
 import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { FormularioContato } from '@/src/features/contato/formulario'
@@ -37,7 +37,14 @@ function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   return <LinhaDoTempo contatos={contatos} />
 }
 
-export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPara = '/carteira', dadosCadastrais }: { empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {
+export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPara = '/carteira', dadosCadastrais, aoMudarOcupacao }: {
+  empresa: EmpresaComigo
+  contatos: Contato[]
+  erroHistorico?: boolean
+  voltarPara?: string
+  dadosCadastrais?: ReactNode
+  aoMudarOcupacao: (ocupada: boolean) => void
+}) {
   const arquivada = empresa.situacao === 'sem_interesse'
   const acompanhamentoInicial = ['primeiro_contato','em_negociacao','proposta_enviada'].includes(empresa.situacao)
   const router = useRouter()
@@ -55,6 +62,7 @@ export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPa
   const depoisDeRemover = useRef<(() => void) | null>(null)
   const [baseline, setBaseline] = useState(() => rascunhoInicial(acompanhamentoInicial))
   const alterado = editando && (rascunhoAlterado(rascunho, baseline) || contatoPendente(empresa.id))
+  useLayoutEffect(() => { aoMudarOcupacao(editando || pendente) }, [aoMudarOcupacao, editando, pendente])
 
   function mudarPendente(valor: boolean) {
     pendenteRef.current = valor
@@ -64,6 +72,10 @@ export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPa
   }
 
   function removerSentinela(depois?: () => void) {
+    if (removendoSentinela.current) {
+      if (depois) depoisDeRemover.current = depois
+      return
+    }
     if (!sentinela.current) { depois?.(); return }
     sentinela.current = null
     removendoSentinela.current = true
@@ -140,7 +152,7 @@ export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPa
     const voltar = descarte === 'voltar'
     const href = descarte && descarte !== 'fechar' && descarte !== 'voltar' ? descarte.href : null
     if (!preservar) setRascunho(rascunhoInicial(acompanhamentoInicial))
-    setDescarte(null); setErroDescarte(''); setEditando(false)
+    setDescarte(null); setErroDescarte('')
     if (voltar) {
       sentinela.current = null
       setEditando(false)
@@ -155,7 +167,7 @@ export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPa
 
   return <article className={styles.ficha}>
     <header className={styles.cabecalho}><div><p className={styles.vinculo}>Em prospecção</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => { setBaseline(rascunhoInicial(acompanhamentoInicial)); setEditando(true) }} disabled={editando || pendente || arquivada}>Registrar atendimento</Button></div></header>
-    {arquivada && <><Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>{empresa.empresa && <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} /></fieldset>}</>}
+    {arquivada && <><Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>{empresa.empresa && <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} naFichaCarteira="direta" /></fieldset>}</>}
     <Card className={styles.colunas}><AbasFicha dados={<div className={styles.esquerda}>
       {dadosCadastrais}
       <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>

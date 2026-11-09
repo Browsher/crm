@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
@@ -28,13 +28,18 @@ afterEach(async () => {
   host = null
   sessionStorage.clear()
   history.replaceState(null, '', '/')
+  vi.restoreAllMocks()
 })
+
+async function renderizar(empresa: EmpresaComigo, cliente: boolean, contatos: Contato[] = [], fundo?: ReactNode) {
+  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} cliente={cliente} contatos={contatos} fundo={fundo} voltarPara="/carteira?nome=Aurora" />))
+}
 
 async function montar(empresa = EMPRESA, cliente = false, contatos: Contato[] = []) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} cliente={cliente} contatos={contatos} voltarPara="/carteira?nome=Aurora" />))
+  await renderizar(empresa, cliente, contatos)
   return host
 }
 
@@ -103,6 +108,25 @@ describe('Lateral do cliente', () => {
     expect(nota.value).toBe('Rascunho protegido')
   })
 
+  test('repetir Voltar na confirmação devolve o foco ao controle que abriu o descarte', async () => {
+    await montar({ ...EMPRESA, situacao: 'cliente' }, true)
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    await clicarNaFicha('Atendimento e próximo passo', lateral)
+    await clicarNaFicha('Registrar atendimento', lateral)
+    const nota = lateral.querySelector('textarea')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Rascunho protegido')
+      nota.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(document.activeElement).toBe(nota)
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(document.activeElement?.textContent).toBe('Continuar editando')
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    await clicarNaFicha('Continuar editando', document.querySelector('[data-slot=dialog-content]')!)
+    await vi.waitFor(() => expect(document.activeElement).toBe(nota))
+    expect(nota.value).toBe('Rascunho protegido')
+  })
+
   test('cliente em Sem interesse conserva histórico e pode confirmar o envio anterior, sem criar trabalho', async () => {
     const valor = { tipo: 'acompanhamento', nota: 'Nota pendente', proximoPasso: '', proximoPassoData: '' }
     sessionStorage.setItem('crm:contato:v1:a', JSON.stringify({ valor, envio: { chave: 'original', versao: 2, valor } }))
@@ -122,6 +146,37 @@ describe('Lateral do cliente', () => {
 })
 
 describe('Ficha no navegador', () => {
+  test('revalida a primeira venda de um prospecto sem edição e mostra a carteira e a recompra', async () => {
+    const tela = await montar()
+    expect(tela.textContent).toContain('Em prospecção')
+    await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>)
+    expect(tela.textContent).toContain('Minha carteira')
+    const lateral = document.querySelector('[data-painel-lateral]')
+    expect(lateral?.textContent).toContain('Registrar venda')
+    expect(tela.textContent).not.toContain('Em prospecção')
+  })
+
+  test('conserva a edição legada até retirar a guarda e só então troca para a ficha do cliente', async () => {
+    const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
+    const tela = await montar()
+    await clicarNaFicha('Registrar atendimento', tela)
+    const nota = tela.querySelector('textarea')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Nota anterior à venda')
+      nota.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>)
+    expect(tela.querySelector('textarea')).toBe(nota)
+    expect(nota.value).toBe('Nota anterior à venda')
+    expect(document.querySelector('[data-painel-lateral]')).toBeNull()
+    await clicarNaFicha('Cancelar atendimento', tela)
+    await clicarNaFicha('Descartar e continuar')
+    expect(voltar).toHaveBeenCalledOnce()
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(tela.textContent).toContain('Minha carteira')
+    expect(document.querySelector('[data-painel-lateral]')?.textContent).toContain('Registrar venda')
+  })
+
   test('arquivada confirma somente o envio desconhecido da aba, sem abrir novo registro', async () => {
     const valor={tipo:'nao_liguei',nota:'Sem resposta',proximoPasso:'Retornar',proximoPassoData:'2030-10-01'}
     const salvo=JSON.stringify({valor,envio:{chave:'original',versao:2,valor}})
@@ -143,6 +198,7 @@ describe('Ficha no navegador', () => {
     expect(document.body.textContent).toContain('Confirme o envio anterior')
     expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
     await clicar('Fechar mantendo rascunho')
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(tela.querySelector('form')).toBeNull()
     expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
     vi.restoreAllMocks()

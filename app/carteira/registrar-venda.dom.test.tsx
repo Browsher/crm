@@ -168,6 +168,7 @@ test('envio em voo impede saída e pode confirmar a mesma recompra depois de per
   expect(replay).toEqual(original)
   await popstate()
   expect(document.querySelector('[data-slot=dialog-content]')).toBeNull()
+  expect(document.querySelector('[data-painel-lateral]')).toBeNull()
   expect(document.body.textContent).toContain('Venda registrada.')
 })
 
