@@ -2,6 +2,8 @@
 
 Data: 06/11/2026. Desenho e protótipo local, sem alteração do produto.
 
+Em 09/11/2026 o usuário escolheu abrir também os resultados na lateral. O histórico continua como aba da página e o card de cada busca oferece Ver empresas e Filtros usados. Ver empresa abre a ficha no mesmo painel, com Voltar para os resultados. O protótipo abaixo registra a escolha anterior de expansão na página. A [spec vigente](../../superpowers/specs/2026-11-05-padronizacao-paineis-crm-design.md#prospecção-e-banco-de-empresas) tem o comportamento atual.
+
 ## Decisão do usuário
 
 A opção A foi aprovada: Histórico de buscas como aba dentro da página Banco de empresas, ao lado de Buscar empresas. Não criar nova entrada no menu principal.
