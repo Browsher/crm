@@ -48,7 +48,7 @@ test('arquivo indisponível mantém consulta e histórico, sem retomada nova', a
   await expect(card(page, 'Revisão arquivo indisponível')).toContainText('Indisponível')
   await expect(card(page, 'Revisão arquivo indisponível').getByRole('button', { name: 'Retomar atendimento', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Ver empresa: Revisão arquivo indisponível' }).click()
-  await expect(page.locator('[data-slot="dialog-content"]')).toContainText('Revisão arquivo indisponível')
+  await expect(page.locator('[data-slot="painel-lateral-content"]')).toContainText('Revisão arquivo indisponível')
   expect((await sql('SELECT nota FROM contato WHERE empresa_id=$1', [c.empresa])).rows).toEqual([{ nota: 'História própria revisão' }])
 })
 
@@ -125,7 +125,7 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
     await expect(page.locator('[data-painel-lateral]')).toContainText(nome + ' B')
   } else {
     await card(page, nome + ' B').getByRole('button', { name: 'Ver empresa: ' + nome + ' B' }).click()
-    await expect(page.locator('[data-slot="dialog-content"]')).toContainText(nome + ' B')
+    await expect(page.locator('[data-slot="painel-lateral-content"]')).toContainText(nome + ' B')
   }
   await page.keyboard.press('Escape')
   expect(envios).toHaveLength(1)

@@ -23,7 +23,7 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   await entrar(page, apelido)
   await page.goto('/fila/localizar')
   await page.getByRole('button', { name: 'Ver empresa: Fluxo Integrado' }).click()
-  await expect(page.locator('[data-slot="dialog-content"]')).toContainText('Fluxo Integrado')
+  await expect(page.locator('[data-slot="painel-lateral-content"]')).toContainText('Fluxo Integrado')
   expect((await sql('SELECT iniciada_em FROM empresa_vinculo WHERE empresa_id=$1', [empresa])).rows[0].iniciada_em).toBeNull()
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Iniciar atendimento', exact: true }).click()

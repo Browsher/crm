@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { useRef, useState, useTransition } from 'react'
+import { useContext, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CardEmpresa } from '@/src/components/crm/card-empresa'
 import { EmpresaDialogo } from '@/src/components/crm/empresa-dialogo'
+import { ContextoResultadoBusca } from '@/src/components/crm/contexto-resultado-busca'
 import { Button } from '@/src/components/ui/button'
 import type { AcaoEmpresa, ReferenciaEmpresa, ResumoEmpresa } from '@/src/lib/empresa-visual'
 import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
@@ -15,7 +16,8 @@ import { useRetomadaNaConsulta } from './localizar/recuperacao-retomada'
 export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false }: { empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string; bloquearRetomada?: boolean }) {
   const router = useRouter()
   const retomarNaConsulta = useRetomadaNaConsulta()
-  const [referencia, setReferencia] = useState<ReferenciaEmpresa | null>(null)
+  const resultadoBusca = useContext(ContextoResultadoBusca)
+  const [consulta, setConsulta] = useState<{ referencia: ReferenciaEmpresa; gatilho: HTMLButtonElement } | null>(null)
   const [erro, setErro] = useState('')
   const [confirmarNaConsulta, setConfirmarNaConsulta] = useState(false)
   const [resolvido, setResolvido] = useState(false)
@@ -82,7 +84,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
       finally { ocupado.current = false }
     })
   }
-  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={setReferencia} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
+  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
     {erro && <p role="alert">{erro}</p>}
     {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}
     {resolvido && <Button variant="outline" onClick={() => {
@@ -92,6 +94,6 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
         setResolvido(false); setErro(''); router.refresh()
       } catch { setErro('Envio resolvido. Atualize a página para conferir as anotações desta aba.') }
     }}>Atualizar empresa</Button>}
-    {referencia && <EmpresaDialogo referencia={referencia} aoFechar={() => setReferencia(null)} />}
+    {consulta && <EmpresaDialogo referencia={consulta.referencia} origem={consulta.gatilho} aoFechar={() => setConsulta(null)} />}
   </div>
 }

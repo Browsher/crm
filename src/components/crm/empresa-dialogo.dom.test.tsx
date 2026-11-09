@@ -26,8 +26,30 @@ test('seleção B oculta A imediatamente e resposta atrasada A não substitui B;
   expect(texto).not.toContain('Filtros usados')
   expect(document.querySelector('[role="dialog"] a')).toBeNull()
   expect(document.activeElement?.textContent).toBe('Ver empresa')
-  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
+  expect(document.querySelector('[role="dialog"]')).toBe(document.querySelector('[data-slot="painel-lateral-content"]'))
+  await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent === 'Fechar')!.click())
   expect(fechar).toHaveBeenCalledOnce()
+})
+test('consulta permite navegar por grupos sem reler a empresa e retorna ao botão que abriu o grupo', async () => {
+  m.ler.mockResolvedValue({ ok: true, dados: { ...dados('Empresa'), telefone: '1133334444' } })
+  host = document.createElement('div')
+  document.body.append(host)
+  root = createRoot(host)
+  const fechar = vi.fn()
+  await act(async () => root.render(<EmpresaDialogo referencia={{ tipo: 'cadastro', empresaId: 'A' }} aoFechar={fechar} />))
+  const painel = document.querySelector('[role="dialog"]')!
+  const menu = painel.querySelector('nav')!
+  const gatilho = [...menu.querySelectorAll('button')].find(b => b.textContent === 'Contato e localização')!
+  expect(menu.textContent).toContain('Cadastro e origem')
+  expect(menu.textContent).toContain('Atividades e sócios')
+  await act(async () => { gatilho.focus(); gatilho.click() })
+  expect(painel.textContent).toContain('Telefone principal')
+  expect(painel.textContent).toContain('Logradouro')
+  expect(painel.textContent).not.toContain('CNAE principal')
+  await act(async () => [...painel.querySelectorAll('button')].find(b => b.textContent === 'Voltar')!.click())
+  expect(document.activeElement).toBe(gatilho)
+  expect(fechar).not.toHaveBeenCalled()
+  expect(m.ler).toHaveBeenCalledOnce()
 })
 test('falha não deixa dados antigos e retorno de foco preserva botão que abriu', async () => {
   m.ler.mockResolvedValueOnce({ ok: true, dados: dados('Empresa A') }).mockRejectedValueOnce(new Error('rede'))

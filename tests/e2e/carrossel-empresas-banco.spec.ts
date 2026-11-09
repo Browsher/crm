@@ -77,11 +77,13 @@ test('Últimas buscas usa card comum e detalhe salvo exato sem aquisição ou in
    await abrir.click()
    const d=page.getByRole('dialog',{name:'Ver empresa',exact:true})
    await expect(d).toContainText(nome)
+   await d.getByRole('button',{name:'Cadastro e origem',exact:true}).click()
    await expect(d).toContainText('84.200.000/0000-00')
    await expect(d).toContainText('Não informado')
    await expect(d.getByRole('checkbox')).toHaveCount(0)
    await expect(d.getByRole('button',{name:/Concluir inclusão|Iniciar atendimento|Retomar atendimento/})).toHaveCount(0)
    await d.screenshot({path:resolve(capturas,'detalhe-longo-'+width+'-'+tema+'.png')})
+   await page.keyboard.press('Escape');await expect(d.getByRole('button',{name:'Cadastro e origem',exact:true})).toBeFocused()
    await page.keyboard.press('Escape');await expect(d).not.toBeVisible();await expect(abrir).toBeFocused()
   }
  }
@@ -105,6 +107,6 @@ test('sem resultados não cria cards fictícios e conserva o histórico completo
  await expect(secao).toContainText('As empresas encontradas nas suas buscas aparecerão aqui.')
  await expect(secao.getByRole('link',{name:'Ver todas as empresas',exact:true})).toBeVisible()
  await expect(page.getByRole('button',{name:'Buscar empresas',exact:true})).toBeDisabled()
- await page.getByRole('button',{name:'Ver histórico de buscas',exact:true}).click()
- await expect(page.getByRole('dialog',{name:'Histórico de buscas',exact:true})).toContainText('Nenhuma busca no banco de empresas realizada ainda.')
+ await page.getByRole('tab', { name: 'Histórico de buscas',exact:true}).click()
+ await expect(page.getByRole('tabpanel',{name:'Histórico de buscas',exact:true})).toContainText('Nenhuma busca no banco de empresas realizada ainda.')
 })

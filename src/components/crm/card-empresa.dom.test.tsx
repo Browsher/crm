@@ -8,15 +8,16 @@ let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
 afterEach(async () => { if (root) await act(async () => root.unmount()); host?.remove() })
 const empresa: ResumoEmpresa = { referencia: { tipo: 'cadastro', empresaId: 'id' }, id: 'id', nome: 'Nome muito comprido '.repeat(20), cnpj: null, cnae: null, atividade: null, bairro: null, cidade: null, uf: null, origens: ['google'], recebidaEm: null, situacao: 'sem_interesse', versao: 42, negociacaoId: null }
-test('nome completo, ausências e rótulo centralizado; callbacks recebem referência e versão opaca', async () => {
+test('callbacks recebem referência, gatilho de consulta e versão opaca', async () => {
   const ver = vi.fn(), acionar = vi.fn()
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   await act(async () => root.render(<CardEmpresa empresa={empresa} aoVer={ver} aoAcionar={acionar} />))
   expect(host.querySelector('h3')?.textContent).toBe(empresa.nome)
   expect(host.textContent).toContain('Não informado')
-  await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Ver empresa')!.click())
+  const gatilho = [...host.querySelectorAll('button')].find(b => b.textContent === 'Ver empresa')!
+  await act(async () => gatilho.click())
   await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent === 'Retomar atendimento')!.click())
-  expect(ver).toHaveBeenCalledWith(empresa.referencia)
+  expect(ver).toHaveBeenCalledWith(empresa.referencia, gatilho)
   expect(acionar).toHaveBeenCalledWith({ tipo: 'retomar', rotulo: 'Retomar atendimento', empresaId: 'id', versao: 42 })
   await act(async () => root.render(<CardEmpresa empresa={{ ...empresa, id: null, versao: null, referencia: { tipo: 'busca', buscaId: 'busca', cnpj: '12345678000199' } }} aoVer={ver} aoAcionar={acionar} />))
   expect(host.querySelectorAll('button')).toHaveLength(1)
@@ -30,6 +31,7 @@ test('composição informativa não renderiza comandos mesmo com versão recebid
   expect(host.textContent).toContain('Inativo')
   expect(host.textContent).not.toContain('Retomar atendimento')
   expect(host.querySelectorAll('button')).toHaveLength(1)
-  await act(async()=>host.querySelector('button')!.click())
-  expect(ver).toHaveBeenCalledWith(empresa.referencia)
+  const gatilho = host.querySelector('button')!
+  await act(async()=>gatilho.click())
+  expect(ver).toHaveBeenCalledWith(empresa.referencia, gatilho)
 })

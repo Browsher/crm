@@ -2,13 +2,13 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
-import { BuscaDialogo } from './busca-dialogo'
+import { BuscaPainel } from './busca-dialogo'
 let root: ReturnType<typeof createRoot>
 let host: HTMLDivElement
 afterEach(async () => { if (root) await act(async () => root.unmount()); host?.remove() })
-async function montar(carregarAcao: Parameters<typeof BuscaDialogo>[0]['carregarAcao']) {
+async function montar(carregarAcao: Parameters<typeof BuscaPainel>[0]['carregarAcao']) {
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
-  await act(async () => root.render(<BuscaDialogo nome="Armarinhos" carregarAcao={carregarAcao} />))
+  await act(async () => root.render(<BuscaPainel nome="Armarinhos" carregarAcao={carregarAcao} />))
   const gatilho = host.querySelector('button')!
   return gatilho
 }
@@ -18,14 +18,15 @@ test('só lê ao abrir, mostra carregamento e descarta resposta de abertura ante
   const gatilho = await montar(carregar)
   expect(carregar).not.toHaveBeenCalled()
   await act(async () => gatilho.click())
+  expect(document.querySelector('[data-slot="painel-lateral-content"]')).not.toBeNull()
   expect(document.querySelector('[role="status"]')?.textContent).toBe('Carregando busca…')
-  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
+  await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent === 'Fechar')!.click())
   await act(async () => gatilho.click())
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Dados atuais')
   await act(async () => concluir({ ok: true, conteudo: 'Dados atrasados' }))
   expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain('Dados atrasados')
 })
-test('falha de leitura permite tentar novamente no mesmo pop-up', async () => {
+test('falha de leitura permite tentar novamente na mesma lateral', async () => {
   const carregar = vi.fn().mockRejectedValueOnce(new Error('rede')).mockResolvedValueOnce({ ok: true, conteudo: 'Empresas salvas' })
   const gatilho = await montar(carregar)
   await act(async () => gatilho.click())
@@ -40,11 +41,11 @@ test('resultado inicial abre sem action extra e não reabre após revalidação'
   const carregar = vi.fn().mockResolvedValue({ ok: true, conteudo: 'Resultado relido' })
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
   const props = { nome: 'Resultado recém-salvo', carregarAcao: carregar, abrirInicialmente: true, conteudoInicial: <p>Resultado já salvo</p>, rotulo: 'Ver resultados' }
-  await act(async () => root.render(<BuscaDialogo {...props} />))
+  await act(async () => root.render(<BuscaPainel {...props} />))
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Resultado já salvo')
   expect(carregar).not.toHaveBeenCalled()
-  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
-  await act(async () => root.render(<BuscaDialogo {...props} conteudoInicial={<p>Revalidado</p>} />))
+  await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent === 'Fechar')!.click())
+  await act(async () => root.render(<BuscaPainel {...props} conteudoInicial={<p>Revalidado</p>} />))
   expect(document.querySelector('[role="dialog"]')).toBeNull()
   const gatilho = host.querySelector<HTMLButtonElement>('[aria-label="Ver resultados: Resultado recém-salvo"]')!
   expect(gatilho).not.toBeNull()
