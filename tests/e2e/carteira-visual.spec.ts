@@ -256,8 +256,16 @@ test('Voltar do navegador pede confirmação e cancelar mantém o rascunho', asy
   await expect(page).toHaveURL('/carteira')
   await page.evaluate(() => window.history.forward())
   await expect(page).toHaveURL(fichaUrl)
-  await expect(painel.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })).toBeVisible()
+  await expect(painel.getByRole('heading', { name: 'Carteira Visual Aurora', exact: true })).toBeVisible()
   await expect(dialogo).toHaveCount(0)
+  await expect(nota).toHaveCount(0)
+  // Avançar pode restaurar a seção de origem ou montar a ficha no menu.
+  const secao = painel.getByRole('button', { name: 'Atendimento e próximo passo', exact: true })
+  const registrar = painel.getByRole('button', { name: 'Registrar atendimento', exact: true })
+  await expect(secao.or(registrar)).toBeVisible()
+  if (await secao.isVisible()) await secao.click()
+  await registrar.click()
+  await expect(nota).toHaveValue('')
 })
 
 test('recarregar a ficha conserva o endereço canônico e permite recuperar o rascunho', async ({ page }) => {
