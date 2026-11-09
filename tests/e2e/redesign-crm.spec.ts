@@ -1,5 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
-import { NOME_REDESIGN } from './dados-redesign'
+import { CLIENTE_REDESIGN, NOME_REDESIGN } from './dados-redesign'
 
 async function entrar(page: Page, apelido: string, destino: string) {
   await page.goto('/login')
@@ -334,7 +334,8 @@ test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ b
     await expect(page.getByLabel('Nome', { exact: true })).toHaveCSS('font-size', '16px')
     await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
     await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
-    const ficha = page.locator('[data-painel-lateral]')
+    await expect(page).toHaveURL(url => url.pathname === '/carteira/' + CLIENTE_REDESIGN && url.searchParams.get('de') === 'meu-dia')
+    const ficha = page.locator('[role="dialog"][data-painel-lateral]')
     const voltar = ficha.getByRole('link', { name: 'Voltar para o Meu dia', exact: true })
     const fechar = ficha.getByRole('button', { name: 'Fechar', exact: true })
     await expect(fechar).toBeVisible()
