@@ -19,13 +19,15 @@ function DialogClose(props: React.ComponentProps<typeof DialogPrimitive.Close>) 
 type DialogContentProps = React.ComponentProps<typeof DialogPrimitive.Content> & {
   theme?: Theme
   showCloseButton?: boolean
+  lateral?: boolean
 }
 
-function DialogContent({ className, children, theme = 'system', showCloseButton = true, ...props }: DialogContentProps) {
+function DialogContent({ className, children, theme = 'system', showCloseButton = true, lateral = false, ...props }: DialogContentProps) {
   return <DialogPrimitive.Portal>
     <div className="crm-ui ui-dialog-portal" data-theme={theme}>
       <DialogPrimitive.Overlay data-slot="dialog-overlay" className="ui-dialog-overlay" />
-      <DialogPrimitive.Content data-slot="dialog-content" className={cn('ui-dialog-content', className)} {...props}>
+      <DialogPrimitive.Content data-slot={lateral ? 'painel-lateral-content' : 'dialog-content'}
+        className={cn(!lateral && 'ui-dialog-content', className)} {...props}>
         {children}
         {showCloseButton && <DialogPrimitive.Close className="ui-dialog-close" aria-label="Fechar">
           <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M6 6l12 12M18 6L6 18" /></svg>

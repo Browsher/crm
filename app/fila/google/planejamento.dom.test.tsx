@@ -6,7 +6,8 @@ import { PlanejamentoSemanal } from './planejamento'
 import type { PlanoGoogle } from '@/src/features/google/tipos'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('./acoes', () => ({ salvarSemanaAcao: async () => ({ erro: null, salvo: true }), copiarPlanoAcao: async () => ({ erro: null, salvo: true }), sincronizarPlanoAcao: async () => ({ erro: null }) }))
+const { salvarSemanaAcao } = vi.hoisted(() => ({ salvarSemanaAcao: vi.fn(async () => ({ erro: null, salvo: true })) }))
+vi.mock('./acoes', () => ({ salvarSemanaAcao, copiarPlanoAcao: async () => ({ erro: null, salvo: true }), sincronizarPlanoAcao: async () => ({ erro: null }) }))
 const elemento = document.createElement('div')
 document.body.append(elemento)
 let raiz: ReturnType<typeof createRoot> | undefined
@@ -45,42 +46,68 @@ test('pendência de sincronização permite conferir novamente fora do formulár
   expect(elemento.querySelector('form form')).toBeNull()
   expect(elemento.querySelector('[role="note"]')?.getAttribute('data-slot')).toBe('alert')
 })
-test('critérios abrem em diálogo e cancelar não altera rascunho da semana', async () => {
+test('critérios abrem na lateral e cancelar confirma no centro sem alterar rascunho da semana', async () => {
   raiz = createRoot(elemento)
   await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-23']} planos={[]} hoje="2026-10-22" rotinaIniciada={false} />))
   await act(async () => Array.from(elemento.querySelectorAll('button')).find(b => b.textContent === 'Editar planejamento')!.click())
   const botao = Array.from(elemento.querySelectorAll('button')).find(b => b.textContent?.includes('Critérios de busca'))!
   await act(async () => botao.click())
-  const dialogo = document.querySelector('[role="dialog"]')!
+  const dialogo = document.querySelector('[role="dialog"][data-painel-lateral]')!
   expect(dialogo.textContent).toContain('Contatos e presença digital')
-  expect(dialogo.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(5)
+  await clicar('Contatos e presença digital', dialogo)
   await act(async () => dialogo.querySelector<HTMLInputElement>('input[value="fixo"]')!.click())
   await clicar('Cancelar', dialogo)
+  expect(dialogo.isConnected).toBe(true)
+  expect(document.querySelector('[data-slot="dialog-content"]')?.textContent).toContain('Descartar alterações?')
   await clicar('Descartar alterações')
   await act(async () => botao.click())
+  await clicar('Contatos e presença digital')
   expect(document.querySelector<HTMLInputElement>('[role="dialog"] input[value="fixo"]')?.checked).toBe(false)
 })
 
-test('critérios usam controles compartilhados e aplicar preserva payload sem liberar dias bloqueados', async () => {
+test('critérios preservam os três grupos e o rodapé aplica apenas ao rascunho da semana', async () => {
   raiz = createRoot(elemento)
   await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-22', '2026-10-23']} planos={[]} hoje="2026-10-22" />))
   await act(async () => Array.from(elemento.querySelectorAll('button')).find(b => b.textContent === 'Editar planejamento')!.click())
   const abrir = () => Array.from(elemento.querySelectorAll('button')).find(b => b.textContent === 'Critérios de busca')!.click()
   await act(async () => abrir())
   const dialogo = document.querySelector('[role="dialog"]')!
+  await clicar('Empresas e produtos', dialogo)
   expect(dialogo.querySelector('textarea[name="termos"]')?.getAttribute('data-slot')).toBe('textarea')
+  await alterarTexto(dialogo, 'termos', 'segurança eletrônica')
+  await clicar('Voltar', dialogo)
+  expect(document.activeElement?.textContent).toBe('Empresas e produtos')
+  await clicar('Contatos e presença digital', dialogo)
   expect(dialogo.querySelector('input[value="fixo"]')?.getAttribute('data-slot')).toBe('choice')
   await act(async () => dialogo.querySelector<HTMLInputElement>('input[value="fixo"]')!.click())
-  await act(async () => dialogo.querySelector('form')!.requestSubmit())
+  await clicar('Voltar', dialogo)
+  await clicar('Preferências e restrições', dialogo)
+  await alterarTexto(dialogo, 'excluir', 'lojas de usados')
+  await clicar('Voltar', dialogo)
+  await clicar('Empresas e produtos', dialogo)
+  expect(dialogo.querySelector<HTMLTextAreaElement>('[name="termos"]')?.value).toBe('segurança eletrônica')
+  const aplicar = dialogo.querySelector<HTMLButtonElement>('button[type="submit"]')!
+  expect(aplicar.form).toBe(dialogo.querySelector('form'))
+  expect(aplicar.closest('form')).toBeNull()
+  await clicar('Aplicar critérios', dialogo)
+  expect(salvarSemanaAcao).not.toHaveBeenCalled()
   const payload = JSON.parse(elemento.querySelector<HTMLInputElement>('input[name="dias"]')!.value)
   expect(payload).toHaveLength(1)
-  expect(payload[0]).toMatchObject({ dia: '2026-10-23', criterios: { telefone: ['fixo'], nota: null, termos: '' } })
+  expect(payload[0]).toMatchObject({ dia: '2026-10-23', criterios: { telefone: ['fixo'], nota: null, termos: 'segurança eletrônica', excluir: 'lojas de usados' } })
   await act(async () => abrir())
+  await clicar('Contatos e presença digital')
   expect(document.querySelector<HTMLInputElement>('[role="dialog"] input[value="fixo"]')!.checked).toBe(true)
 })
+function alterarTexto(onde: ParentNode, nome: string, valor: string) {
+  return act(async () => {
+    const campo = onde.querySelector<HTMLTextAreaElement>(`textarea[name="${nome}"]`)!
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(campo, valor)
+    campo.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
 function clicar(rotulo: string, onde: ParentNode = document) {
   return act(async () => {
-    Array.from(onde.querySelectorAll('button')).find(b => b.textContent === rotulo)!.click()
+    Array.from(onde.querySelectorAll('button')).find(b => b.textContent === rotulo || b.getAttribute('aria-label') === rotulo)!.click()
   })
 }
 function alterarNicho(valor: string) {
@@ -131,7 +158,10 @@ test('espelhar com seleções pede descarte e pode retomar sem desmarcar', async
   const origem = { id: 'pedido', dia: '2026-10-22', nicho: 'Papelarias', revisao: 1 } as PlanoGoogle
   await abrirSemana([origem])
   await clicar('Espelhar um dia')
-  const editor = document.querySelector('[role="dialog"]')!
+  const editor = document.querySelector('[role="dialog"][data-painel-lateral]')!
+  const enviar = editor.querySelector<HTMLButtonElement>('button[type="submit"]')!
+  expect(enviar.form).toBe(editor.querySelector('form'))
+  expect(enviar.closest('form')).toBeNull()
   await act(async () => editor.querySelector<HTMLInputElement>('input[value="criterios"]')!.click())
   await clicar('Cancelar', editor)
   expect(document.body.textContent).toContain('Descartar alterações?')
@@ -153,6 +183,7 @@ test('Back autorizado com semana e critérios alterados não rearma a guarda ao 
     await alterarNicho('Lojas')
     await clicar('Critérios de busca')
     const editor = document.querySelector('[role="dialog"]')!
+    await clicar('Contatos e presença digital', editor)
     await act(async () => editor.querySelector<HTMLInputElement>('input[value="fixo"]')!.click())
     await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(armar).toHaveBeenCalledTimes(2)

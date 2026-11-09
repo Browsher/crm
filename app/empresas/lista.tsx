@@ -15,7 +15,7 @@ export function Lista({ linhas, consulta, retorno, vazio }: {
   retorno?: string
   vazio?: { descricao: string; acao?: AcaoEstadoVazio }
 }) {
-  const [referencia, setReferencia] = useState<ReferenciaEmpresa | null>(null)
+  const [selecionada, setSelecionada] = useState<{ referencia: ReferenciaEmpresa; gatilho: HTMLButtonElement } | null>(null)
   const query = retorno ? new URLSearchParams({ retorno }).toString() : consulta ? enderecoEmpresas(consulta).split('?')[1] : undefined
   if (linhas.length === 0) return <EstadoVazio titulo="Nenhuma empresa encontrada"
     descricao={vazio?.descricao ?? 'Tente outro nome ou CNPJ, ou consulte a lista completa.'}
@@ -23,9 +23,9 @@ export function Lista({ linhas, consulta, retorno, vazio }: {
 
   return <section aria-label="Empresas cadastradas">
     <ul className={styles.cartoes}>{linhas.map(empresa => <li key={empresa.id}>
-      <CardEmpresa empresa={empresa} responsavel={empresa.responsavel} aoVer={setReferencia} rotuloVer="Consulta rápida"
+      <CardEmpresa empresa={empresa} responsavel={empresa.responsavel} aoVer={(referencia, gatilho) => setSelecionada({ referencia, gatilho })} rotuloVer="Consulta rápida"
         acoesAdicionais={<Button asChild variant="ghost"><Link href={`/empresas/${empresa.id}${query ? `?${query}` : ''}`}>Ficha completa</Link></Button>} />
     </li>)}</ul>
-    {referencia && <EmpresaDialogo referencia={referencia} aoFechar={() => setReferencia(null)} />}
+    {selecionada && <EmpresaDialogo referencia={selecionada.referencia} origem={selecionada.gatilho} aoFechar={() => setSelecionada(null)} />}
   </section>
 }

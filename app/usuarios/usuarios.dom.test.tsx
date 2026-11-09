@@ -45,6 +45,9 @@ test('lista combina busca e filtros, limpa resultado vazio e não oferece açõe
 })
 test('criação preserva campos no erro, mostra senha, copia e descarta ao fechar',async()=>{
   await montar();await clicar('Novo usuário');await preencher('nome','Daniel');await preencher('email','daniel@teste.local')
+  const painel = document.querySelector('[role=dialog][data-painel-lateral]')!
+  expect(painel).not.toBeNull()
+  expect(botao('Criar usuário', painel.querySelector('[data-painel-rodape]')!).form).toBe(painel.querySelector('form'))
   expect(document.querySelector<HTMLInputElement>('input[value=vendedor]')?.checked).toBe(true)
   const gestor = document.querySelector<HTMLInputElement>('input[value=gestor]')!
   await act(async () => gestor.click())
@@ -53,6 +56,8 @@ test('criação preserva campos no erro, mostra senha, copia e descarta ao fecha
   expect(gestor.checked).toBe(true)
   const copiar=vi.fn().mockResolvedValue(undefined);Object.defineProperty(navigator,'clipboard',{value:{writeText:copiar},configurable:true})
   await enviar();expect(document.querySelector('[role=dialog] code')?.textContent).toBe('Segredo-temporario')
+  expect(document.querySelector('[role=dialog]')).toBe(painel)
+  expect(painel.contains(document.activeElement)).toBe(true)
   await clicar('Copiar senha');expect(copiar).toHaveBeenCalledWith('Segredo-temporario');expect(document.querySelector('[role=status]')?.textContent).toContain('copiada')
   await clicar('Concluir');expect(document.body.textContent).not.toContain('Segredo-temporario');await clicar('Novo usuário');expect(document.querySelector('code')).toBeNull()
 })
@@ -65,13 +70,37 @@ test('cancelamento não envia ação, confirmação envia alvo e novo papel, err
 })
 test('pendência bloqueia botões e Escape; nova senha aguarda confirmação e falha de cópia orienta cópia manual',async()=>{
   await montar();await clicar('Nova senha provisória',linha('Bruno'));expect(agirNaLinhaAcao).not.toHaveBeenCalled()
+  expect(document.querySelector('[data-slot=dialog-content]')?.contains(document.activeElement)).toBe(true)
+  expect(document.activeElement).toBe(botao('Cancelar'))
   let resolver!: (r:{erro:null;senhaProvisoria:string})=>void
   vi.mocked(agirNaLinhaAcao).mockReturnValue(new Promise(r=>{resolver=r}))
   await enviar();expect(botao('Confirmando…').disabled).toBe(true);expect(botao('Cancelar').disabled).toBe(true)
   await act(async()=>document.querySelector('[role=dialog]')!.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})));expect(document.querySelector('[role=dialog]')).not.toBeNull()
   await act(async()=>resolver({erro:null,senhaProvisoria:'Nova-secreta'}));expect(document.querySelector('code')?.textContent).toBe('Nova-secreta')
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  const entrega = document.querySelector('[role=dialog][data-painel-lateral]')!
+  expect(entrega).not.toBeNull()
+  expect(entrega.contains(document.activeElement)).toBe(true)
   Object.defineProperty(navigator,'clipboard',{value:{writeText:vi.fn().mockRejectedValue(new Error('negado'))},configurable:true})
   await clicar('Copiar senha');expect(document.querySelector('[role=status]')?.textContent).toContain('manualmente');expect(document.querySelector('code')?.textContent).toBe('Nova-secreta')
+  await clicar('Concluir')
+  expect(document.body.textContent).not.toContain('Nova-secreta')
+  expect(document.activeElement).toBe(botao('Nova senha provisória', linha('Bruno')))
+})
+
+test('aviso após desativar fica em um recibo lateral sem botão para reenviar', async () => {
+  await montar()
+  await clicar('Desativar', linha('Bruno'))
+  vi.mocked(agirNaLinhaAcao).mockResolvedValueOnce({ erro: null, senhaProvisoria: null, aviso: 'Gravado. Atualize a lista.' })
+  await enviar()
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+  const recibo = document.querySelector('[role=dialog][data-painel-lateral]')!
+  expect(recibo).not.toBeNull()
+  expect(recibo.contains(document.activeElement)).toBe(true)
+  expect(recibo.querySelector('[role=status]')?.textContent).toContain('Gravado')
+  expect(recibo.querySelector('form')).toBeNull()
+  await clicar('Concluir', recibo)
+  expect(agirNaLinhaAcao).toHaveBeenCalledTimes(1)
 })
 
 test('resultado vazio oferece recuperação na faixa e filtros possuem região nomeada', async () => {
@@ -121,8 +150,7 @@ test.each(['Cancelar', 'Fechar', 'Escape'])('criação alterada pede confirmaç�
   if (modo === 'Escape') {
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
   } else if (modo === 'Fechar') {
-    const fechar = document.querySelector<HTMLButtonElement>('[role=dialog] button[aria-label=Fechar]')!
-    await act(async () => fechar.click())
+    await clicar('Fechar')
   } else await clicar(modo)
   expect(document.body.textContent).toContain('Descartar alterações?')
   await clicar('Continuar editando')

@@ -20,15 +20,40 @@ beforeEach(() => {
   host = document.createElement('div'); document.body.append(host); raiz = createRoot(host)
 })
 afterEach(async () => { await act(async () => raiz.unmount()); host.remove(); vi.unstubAllGlobals() })
-test('carrega imagem sob demanda, amplia sem nova consulta e libera blob', async () => {
+test('carrega sob demanda e amplia na mesma lateral, sem nova consulta', async () => {
   await act(async () => raiz.render(<TemaCrmContext.Provider value="dark"><MidiaMensagem id="ABC" conversa="123@lid" midia={{ tipo: 'imagem', legenda: 'Foto do pedido' }} /></TemaCrmContext.Provider>))
   expect(fetcher).not.toHaveBeenCalled()
   await act(async () => host.querySelector('button')!.click())
   expect(fetcher).toHaveBeenCalledWith('/whatsapp/midia/ABC?conversa=123%40lid', expect.objectContaining({ credentials: 'same-origin' }))
   expect(host.querySelector('img')?.src).toBe('blob:midia')
   await act(async () => host.querySelector('button')!.click())
-  expect(document.querySelector('[role="dialog"] img')?.getAttribute('src')).toBe('blob:midia')
-  expect(document.querySelector('[role=dialog]')?.closest('[data-theme]')?.getAttribute('data-theme')).toBe('dark')
+  const painel = document.querySelector('[role="dialog"]')!
+  expect(painel.getAttribute('data-slot')).toBe('painel-lateral-content')
+  expect(painel.closest('[data-theme]')?.getAttribute('data-theme')).toBe('dark')
+  const corpo = painel.querySelector<HTMLElement>('[data-painel-corpo]')!
+  const imagem = corpo.querySelector('img')
+  expect(imagem?.getAttribute('src')).toBe('blob:midia')
+  expect(corpo.querySelector('figcaption')?.textContent).toBe('Foto do pedido')
+  expect(corpo.querySelector('figure')?.tabIndex).toBe(0)
+  const ampliar = painel.querySelector<HTMLButtonElement>('[data-painel-rodape] button')!
+  expect(ampliar.textContent).toBe('Ampliar imagem')
+  corpo.scrollTop = 128
+
+  await act(async () => ampliar.click())
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect(document.querySelector('[role="dialog"]')).toBe(painel)
+  expect(painel.querySelector('h2')?.textContent).toBe('Imagem ampliada')
+  expect(corpo.querySelector('img')).toBe(imagem)
+  expect(corpo.querySelector('figcaption')).toBeNull()
+  expect(painel.querySelector('[data-painel-rodape]')).toBeNull()
+  expect(corpo.scrollTop).toBe(0)
+
+  await act(async () => document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
+  expect(painel.querySelector('h2')?.textContent).toBe('Imagem da conversa')
+  expect(corpo.querySelector('figcaption')?.textContent).toBe('Foto do pedido')
+  expect(corpo.scrollTop).toBe(128)
+  expect(document.activeElement).toBe(painel.querySelector('[data-painel-rodape] button'))
+  expect(revogar).not.toHaveBeenCalled()
   expect(fetcher).toHaveBeenCalledTimes(1)
   await act(async () => raiz.render(null))
   expect(revogar).toHaveBeenCalledWith('blob:midia')
@@ -72,10 +97,14 @@ test('sair da conversa cancela download sem criar blob depois de desmontar', asy
   await act(async () => raiz.render(<MidiaMensagem id="ABC" conversa="123@lid" midia={{ tipo: 'imagem' }} />))
   await act(async () => host.querySelector('button')!.click())
   const signal = fetcher.mock.calls[0][1].signal as AbortSignal
-  await act(async () => raiz.render(null))
+  await act(async () => raiz.render(<MidiaMensagem key="outra" id="ABC" conversa="456@lid" fonte="fonte-2" midia={{ tipo: 'imagem' }} />))
   expect(signal.aborted).toBe(true)
+  fetcher.mockResolvedValueOnce(new Response(new Blob(['outra foto'])))
+  await act(async () => host.querySelector('button')!.click())
+  expect(fetcher).toHaveBeenLastCalledWith('/whatsapp/midia/ABC?conversa=456%40lid&fonte=fonte-2', expect.anything())
   await act(async () => concluir(new Response(new Blob(['foto']))))
-  expect(criar).not.toHaveBeenCalled()
+  expect(criar).toHaveBeenCalledTimes(1)
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
 })
 
 test('fechar imagem devolve foco à miniatura sem repetir download', async () => {
@@ -85,7 +114,8 @@ test('fechar imagem devolve foco à miniatura sem repetir download', async () =>
   miniatura.focus()
   await act(async () => miniatura.click())
   expect(document.querySelector('[role="dialog"]')).not.toBeNull()
-  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!.click())
+  const fechar = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(botao => botao.textContent === 'Fechar')!
+  await act(async () => fechar.click())
   await new Promise(resolve => setTimeout(resolve, 20))
   expect(document.activeElement).toBe(miniatura)
   expect(fetcher).toHaveBeenCalledTimes(1)

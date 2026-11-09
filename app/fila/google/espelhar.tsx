@@ -1,12 +1,12 @@
 'use client'
 
-import { useActionState, useCallback, useLayoutEffect, useState } from 'react'
+import { useActionState, useCallback, useId, useLayoutEffect, useRef, useState } from 'react'
 import { Choice } from '@/src/components/ui/choice'
 import { Alert } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
 import { NativeSelect } from '@/src/components/ui/native-select'
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
-import { useTemaCrm } from '@/src/components/crm/tema'
+import { Dialog, DialogTrigger } from '@/src/components/ui/dialog'
+import { PainelSobrepostoCrm } from '@/src/components/crm/painel-lateral'
 import { semanaDe } from '@/src/features/google/regras'
 import type { PlanoGoogle } from '@/src/features/google/tipos'
 import { copiarPlanoAcao, type EstadoPlano } from './acoes'
@@ -29,7 +29,8 @@ function selecionar(lista: string[], valor: string, marcado: boolean) {
 }
 
 function FormularioEspelhar({ dias, hoje, historico, fechar, informarEdicao, pedirFechar }: CamposEspelho & { fechar: () => void }) {
-  const tema = useTemaCrm()
+  const formId = useId()
+  const aviso = useRef<HTMLDivElement>(null)
   const semanas = [...new Set(historico.map(p => semanaDe(p.dia)?.[0]).filter((d): d is string => Boolean(d)))].sort().reverse()
   const [semana, setSemana] = useState(semanas[0] ?? '')
   const origens = historico.filter(p => semanaDe(p.dia)?.[0] === semana)
@@ -55,24 +56,39 @@ function FormularioEspelhar({ dias, hoje, historico, fechar, informarEdicao, ped
     informarEdicao({ alterado, pendente, fechar })
     return () => informarEdicao(null)
   }, [alterado, pendente, fechar, informarEdicao])
+  useLayoutEffect(() => {
+    if (!pendente) aviso.current?.focus()
+  }, [estado, pendente])
   const selecionado = historico.find(p => p.id === origem)
   const data = (d: string) => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'))
-  return <DialogContent theme={tema} className={styles.dialogoCriterios} showCloseButton={!pendente}>
-    <DialogHeader><DialogTitle>Espelhar planejamento</DialogTitle><DialogDescription>Escolha um dia salvo, os campos que quer copiar e os dias de destino.</DialogDescription></DialogHeader>
-    <form action={acao} className={styles.formulario}>
-    <input type="hidden" name="origem" value={origem} /><input type="hidden" name="revisao" value={selecionado?.revisao ?? 1} />
-    <fieldset disabled={pendente || estado.salvo || incerto} className={styles.corpoDialogo}>
-      <div className={styles.grade}><label>Semana de origem<NativeSelect value={semana} onChange={e => { setSemana(e.target.value); setOrigem(historico.find(p => semanaDe(p.dia)?.[0] === e.target.value)?.id ?? '') }}>{semanas.map(d => <option key={d} value={d}>Semana de {data(d)}</option>)}</NativeSelect></label>
-        <label>Dia de origem<NativeSelect value={origem} onChange={e => setOrigem(e.target.value)}>{origens.map(p => <option key={p.id} value={p.id}>{data(p.dia)} · {p.nicho || 'Não definido'} · {p.bairro || p.cidade || 'Sem região'}</option>)}</NativeSelect></label></div>
-      <fieldset className={styles.caixas}><legend>O que copiar</legend>{[['nicho', 'Nicho'], ['criterios', 'Critérios de busca'], ['regiao', 'Região: bairro, cidade e UF']].map(([v, r]) => <label key={v}><Choice type="checkbox" name="campos" value={v} checked={campos.includes(v)} onChange={e => setCampos(selecionar(campos, v, e.target.checked))} />{r}</label>)}</fieldset>
-      <label>Semana de destino<NativeSelect value={semanaDestino} onChange={e => { setSemanaDestino(e.target.value); setDestinos([]) }}><option value={dias[0]}>Semana exibida</option><option value={proxima}>Próxima semana</option></NativeSelect></label>
-      <fieldset className={styles.caixas}><legend>Dias de destino</legend>{(semanaDe(semanaDestino) ?? []).map(d => <label key={d}><Choice type="checkbox" name="destinos" value={d} disabled={d <= hoje || d === selecionado?.dia} checked={destinos.includes(d)} onChange={e => setDestinos(selecionar(destinos, d, e.target.checked))} />{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'))}, {data(d)}</label>)}</fieldset>
-    </fieldset>
-    {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}{estado.salvo && <Alert role="status" variant="success">{estado.aviso ?? 'Planejamento espelhado.'}</Alert>}
-    <DialogFooter>
-      <Button type="button" variant="outline" disabled={pendente} onClick={pedirFechar}>{estado.salvo ? 'Concluir' : estado.erro ? 'Fechar' : 'Cancelar'}</Button>
-      {!estado.salvo && <Button type="submit" disabled={pendente || incerto}>{pendente ? 'Espelhando…' : 'Espelhar nos dias escolhidos'}</Button>}
-    </DialogFooter>
+  return <PainelSobrepostoCrm titulo="Espelhar planejamento"
+    descricao="Escolha um dia salvo, os campos que quer copiar e os dias de destino."
+    aoFechar={pedirFechar} fecharBloqueado={pendente} ocupado={pendente}
+    rodape={<>
+      <Button type="button" variant="outline" disabled={pendente} onClick={pedirFechar}>{estado.salvo ? 'Concluir' : 'Cancelar'}</Button>
+      {!estado.salvo && <Button type="submit" form={formId} disabled={pendente || incerto}>{pendente ? 'Espelhando…' : 'Espelhar nos dias escolhidos'}</Button>}
+    </>}>
+    <form id={formId} action={acao} className={styles.formulario}>
+      <input type="hidden" name="origem" value={origem} />
+      <input type="hidden" name="revisao" value={selecionado?.revisao ?? 1} />
+      <fieldset disabled={pendente || estado.salvo || incerto}>
+        <fieldset className={styles.grupoEspelho}>
+          <legend>Origem</legend>
+          <label>Semana de origem<NativeSelect value={semana} onChange={e => { setSemana(e.target.value); setOrigem(historico.find(p => semanaDe(p.dia)?.[0] === e.target.value)?.id ?? '') }}>{semanas.map(d => <option key={d} value={d}>Semana de {data(d)}</option>)}</NativeSelect></label>
+          <label>Dia de origem<NativeSelect value={origem} onChange={e => setOrigem(e.target.value)}>{origens.map(p => <option key={p.id} value={p.id}>{data(p.dia)} · {p.nicho || 'Não definido'} · {p.bairro || p.cidade || 'Sem região'}</option>)}</NativeSelect></label>
+        </fieldset>
+        <fieldset className={styles.grupoEspelho}>
+          <legend>O que copiar</legend>
+          <div className={styles.caixas}>{[['nicho', 'Nicho'], ['criterios', 'Critérios de busca'], ['regiao', 'Região: bairro, cidade e UF']].map(([v, r]) => <label key={v}><Choice type="checkbox" name="campos" value={v} checked={campos.includes(v)} onChange={e => setCampos(selecionar(campos, v, e.target.checked))} />{r}</label>)}</div>
+        </fieldset>
+        <fieldset className={styles.grupoEspelho}>
+          <legend>Destino</legend>
+          <label>Semana de destino<NativeSelect value={semanaDestino} onChange={e => { setSemanaDestino(e.target.value); setDestinos([]) }}><option value={dias[0]}>Semana exibida</option><option value={proxima}>Próxima semana</option></NativeSelect></label>
+          <fieldset className={styles.caixas}><legend>Dias de destino</legend>{(semanaDe(semanaDestino) ?? []).map(d => <label key={d}><Choice type="checkbox" name="destinos" value={d} disabled={d <= hoje || d === selecionado?.dia} checked={destinos.includes(d)} onChange={e => setDestinos(selecionar(destinos, d, e.target.checked))} />{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'))}, {data(d)}</label>)}</fieldset>
+        </fieldset>
+      </fieldset>
+      {estado.erro && <Alert ref={aviso} tabIndex={-1} variant="danger">{estado.erro}</Alert>}
+      {estado.salvo && <Alert ref={aviso} tabIndex={-1} role="status" variant="success">{estado.aviso ?? 'Planejamento espelhado.'}</Alert>}
     </form>
-  </DialogContent>
+  </PainelSobrepostoCrm>
 }

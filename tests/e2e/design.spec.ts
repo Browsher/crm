@@ -88,7 +88,7 @@ test('galeria cabe em celular de 390px', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
-test('filtros mostram estado vazio e restauram os exemplos', async ({ page }) => {
+test('filtros restauram os exemplos e a consulta fictícia usa a lateral', async ({ page }) => {
   await entrar(page, 'gestor')
   await page.goto('/design')
   await expect(page.getByLabel('CNAE', { exact: true })).toHaveJSProperty('tagName', 'SELECT')
@@ -99,11 +99,29 @@ test('filtros mostram estado vazio e restauram os exemplos', async ({ page }) =>
   await page.getByRole('button', { name: 'Limpar filtros', exact: true }).click()
   await expect(page.getByTestId('company-list').getByText('Aurora Papelaria Ltda.', { exact: true })).toBeVisible()
   await expect(page.getByLabel('Nome da empresa', { exact: true })).toBeEmpty()
-  const card = page.locator('[data-slot="card"]').filter({ hasText: 'Café Cedro Comércio Ltda.' })
-  await card.getByRole('button', { name: 'Ver empresa: Café Cedro Comércio Ltda.', exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText('Café Cedro Comércio Ltda.')
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Contatos', exact: true })).toBeVisible()
-  await page.keyboard.press('Escape')
+  const abrir = page.getByRole('button', { name: 'Ver empresa: Café Cedro Comércio Ltda.', exact: true })
+  const painel = page.getByRole('dialog', { name: 'Ver empresa', exact: true })
+  for (const [largura, tema] of [[1440, 'light'], [390, 'dark']] as const) {
+    await page.setViewportSize({ width: largura, height: largura === 390 ? 844 : 900 })
+    await page.getByLabel('Tema do design system').selectOption(tema)
+    await abrir.focus()
+    await page.keyboard.press('Enter')
+    await expect(painel).toHaveAttribute('data-slot', 'painel-lateral-content')
+    await expect(painel.locator('..')).toHaveAttribute('data-theme', tema)
+    await expect(painel).toContainText('Dados fictícios para demonstração.')
+    await expect(painel).toContainText('Café Cedro Comércio Ltda.')
+    await expect(painel.getByRole('heading', { name: 'Contatos', exact: true })).toBeVisible()
+    const caixa = (await painel.boundingBox())!
+    expect(caixa.x + caixa.width).toBeCloseTo(largura, 0)
+    expect(caixa.width).toBeCloseTo(largura === 390 ? 390 : 520, 0)
+    await page.keyboard.press('Escape')
+    await expect(painel).toHaveCount(0)
+    await expect(abrir).toBeFocused()
+  }
+  await page.getByRole('button', { name: 'Próxima', exact: true }).click()
+  const confirmar = page.getByRole('dialog', { name: 'Trocar de empresa e descartar as anotações?' })
+  await expect(confirmar).toHaveAttribute('data-slot', 'dialog-content')
+  await confirmar.getByRole('button', { name: 'Cancelar', exact: true }).click()
   const nota = page.getByLabel('Anotações da tentativa', { exact: true })
   await nota.fill('Anotação preservada depois de consultar detalhes')
   await expect(nota).toHaveValue('Anotação preservada depois de consultar detalhes')

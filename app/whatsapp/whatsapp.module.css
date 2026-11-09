@@ -88,8 +88,13 @@ main.pagina.pagina { max-width: none; padding: 24px clamp(16px, 2vw, 36px); }
 .miniatura:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
 .miniatura { border: 0; padding: 0; background: transparent; cursor: zoom-in; }
 .miniatura img { display: block; max-width: 100%; width: 260px; max-height: 240px; object-fit: contain; border-radius: 6px; }
-.imagemDialogo { width: min(900px, calc(100vw - 32px)); max-width: calc(100vw - 32px); }
-.imagemDialogo img { display: block; width: 100%; max-height: 75vh; object-fit: contain; }
+.imagemPainel { display: grid; gap: 12px; margin: 0; }
+.imagemPainel:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.imagemPainel img { display: block; width: 100%; max-height: 75dvh; object-fit: contain; }
+.imagemPainel figcaption { overflow-wrap: anywhere; white-space: pre-wrap; }
+.imagemAmpliada { --crm-painel-lateral-largura: min(1100px, 100vw); }
+.imagemAmpliada .imagemPainel { min-width: 720px; }
+.imagemAmpliada .imagemPainel img { max-height: none; }
 /* A conversa ocupa o espaço restante abaixo da topbar mínima do CRM. */
 @media (min-width: 821px) and (min-height: 650px) {
   main.pagina.pagina { display: flex; flex-direction: column; height: calc(100dvh - 60px); min-height: 0; gap: 12px; padding-top: 16px; padding-bottom: 12px; }

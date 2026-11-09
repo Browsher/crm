@@ -33,10 +33,11 @@ test('indisponibilidade da leitura também preserva o formulário',async()=>{
  expect(html).toContain('<form')
 })
 
-test('histórico vertical não fica duplicado na página do carrossel',async()=>{
+test('histórico fica em aba própria da página do carrossel',async()=>{
  mocks.repo.empresasRecentes.mockResolvedValueOnce([])
- mocks.repo.listar.mockResolvedValueOnce([{id:'historico',nome:'Registro que fica no diálogo',filtros:{quantidade:1},estado:'concluida',retornadas:0,criado_em:'2026-10-27T12:00Z'}])
+ mocks.repo.listar.mockResolvedValueOnce([{id:'historico',nome:'Registro que fica na aba',filtros:{quantidade:1},estado:'concluida',retornadas:0,criado_em:'2026-10-27T12:00Z'}])
  const html=renderToStaticMarkup(await PaginaBuscar({searchParams:Promise.resolve({})}))
- expect(html).not.toContain('Registro que fica no diálogo')
- expect(html).toContain('Ver histórico de buscas')
+ expect(html).toContain('role="tab"')
+ expect(html).toContain('Histórico de buscas')
+ expect(html).not.toContain('Ver histórico de buscas')
 })

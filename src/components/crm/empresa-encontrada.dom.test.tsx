@@ -58,12 +58,14 @@ test('detalhes ignoram resposta atrasada de A depois de selecionar B', async () 
     await act(async () => root.render(<EmpresasBancoRecentes empresas={[recente('Empresa A'), recente('Empresa B')]} />))
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Ver empresa: Empresa A"]')!.click())
     // Fecha A enquanto a action continua pendente e abre B.
-    await act(async () => document.querySelector<HTMLButtonElement>('.ui-dialog-close')!.click())
+    const painelA = document.querySelector('[data-painel-lateral][role="dialog"]')!
+    const fechar = [...painelA.querySelectorAll<HTMLButtonElement>('header button')].find(botao => botao.textContent === 'Fechar')!
+    await act(async () => fechar.click())
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Ver empresa: Empresa B"]')!.click())
     const detalhes = (nome: string) => detalhesSnapshot({ nome_fantasia: nome }, { tipo: 'busca', buscaId: nome, cnpj: '12345678000100' })
     await act(async () => concluirB({ ok: true, dados: detalhes('Empresa B — Detalhe correto B') }))
     await act(async () => concluirA({ ok: true, dados: detalhes('Empresa A — Detalhe antigo A') }))
-    const dialogo = document.querySelector('[role="dialog"]')!
+    const dialogo = document.querySelector('[data-painel-lateral][role="dialog"]')!
     expect(dialogo.textContent).toContain('Empresa B')
     expect(dialogo.textContent).toContain('Detalhe correto B')
     expect(dialogo.textContent).not.toContain('Detalhe antigo A')

@@ -7,7 +7,9 @@ const card=(page:Page,nome:string)=>page.locator('[data-slot=card]').filter({has
 test('visualização mantém vínculo sem iniciar e não revela empresa a outro usuário',async({page,browser})=>{
  await entrar(page,'recenteae2e');await page.goto('/fila/localizar')
  await card(page,'Recente própria').getByRole('button',{name:'Ver empresa: Recente própria'}).click()
+ await page.getByRole('dialog').getByRole('button',{name:'Contato e localização',exact:true}).click()
  await expect(page.getByRole('dialog')).toContainText('(11) 99888-7777')
+ await page.getByRole('dialog').getByRole('button',{name:'Voltar',exact:true}).click()
  await page.keyboard.press('Escape')
  await expect(card(page,'Recente própria').getByRole('button',{name:'Iniciar atendimento',exact:true})).toBeVisible()
  await page.reload();await expect(page.getByRole('heading',{name:'Recente própria',exact:true})).toBeVisible()

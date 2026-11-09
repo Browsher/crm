@@ -6,7 +6,6 @@ import { randomUUID } from 'node:crypto'
 import { gerarHash } from '../../src/server/autenticacao/senha'
 import { comoUsuario } from '../../src/server/db/como-usuario'
 async function sql(texto:string,valores:unknown[]=[]){const url=process.env.DATABASE_URL_ADMIN!;exigirAdminLocal(url);return comAdmin(url,c=>c.query(texto,valores))}
-const pasta='.superpowers/sdd/2026-11-03-simplificacao-fluxos-crm/task-4-captures'
 
 const senha='Senha-e2e-2026',hash=gerarHash(senha)
 let cenario:{empresa:string;ator:string;negociacao:string;email:string}
@@ -23,7 +22,7 @@ test.beforeEach(async()=>{
  cenario={empresa,ator,negociacao,email}
 })
 
-test('primeira venda com resposta recebida abre ficha após um único recuo da guarda',async({page})=>{
+test('primeira venda com resposta recebida abre ficha após um único recuo da guarda',async({page},testInfo)=>{
  const {empresa,negociacao:id}=cenario
  await page.goto('/login');await page.getByLabel('E-mail').fill(cenario.email);await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL('/meu-dia')
  await page.goto('/funil')
@@ -46,11 +45,11 @@ test('primeira venda com resposta recebida abre ficha após um único recuo da g
  await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
  expect(await page.evaluate(()=>(window as unknown as {popstates:number}).popstates)).toBe(1)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(1)
- await page.screenshot({path:`${pasta}/primeira-confirmada-tablet-claro.png`,fullPage:true})
+ await page.screenshot({path:testInfo.outputPath('primeira-confirmada-tablet-claro.png'),fullPage:true})
  await page.reload();await expect(page).toHaveURL('/carteira/'+empresa+'?venda=registrada');await expect(page.getByRole('heading',{name:'Venda Recuperável',exact:true})).toBeVisible()
 })
 
-test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e filtros',async({page})=>{
+test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e filtros',async({page},testInfo)=>{
  test.setTimeout(120_000)
  page.on('dialog',dialog=>dialog.accept())
  await page.setViewportSize({width:390,height:844});await page.emulateMedia({colorScheme:'dark'})
@@ -89,7 +88,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  const original=await page.evaluate(ator=>JSON.parse(sessionStorage.getItem('crm:venda:v1:'+ator)!),ator)
  expect(original.alvo).toEqual({tipo:'primeira',negociacaoId:negociacao})
  expect(original.entrada).toEqual({valor:'123,45',data:'2026-01-01',observacao:'Primeira venda preservada'})
- await page.screenshot({path:`${pasta}/primeira-perdida-mobile.png`,fullPage:true})
+ await page.screenshot({path:testInfo.outputPath('primeira-perdida-mobile.png'),fullPage:true})
  await page.reload();await page.getByRole('button',{name:'Fechar mantendo envio',exact:true}).click()
  await expect(page).toHaveURL('/funil?origem=teste#colunas')
  await expect(page.getByRole('heading',{name:'Nenhuma negociação aberta',exact:true})).toBeVisible()
@@ -99,7 +98,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  await page.evaluate(ator=>{const chave='crm:venda:v1:'+ator;const c=JSON.parse(sessionStorage.getItem(chave)!);c.empresaId='00000000-0000-4000-8000-000000000999';sessionStorage.setItem(chave,JSON.stringify(c))},ator)
  await page.reload()
  expect(posts).toBe(1)
- await page.screenshot({path:`${pasta}/recuperacao-funil-vazio-mobile.png`,fullPage:true})
+ await page.screenshot({path:testInfo.outputPath('recuperacao-funil-vazio-mobile.png'),fullPage:true})
  const confirmar=page.getByRole('button',{name:'Confirmar venda anterior',exact:true});await confirmar.focus();await confirmar.press('Enter')
  await expect(page).toHaveURL(`/carteira/${empresa}?venda=registrada`)
  await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
@@ -133,13 +132,133 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  for(const width of [390,820,1280]){
   await page.setViewportSize({width,height:900})
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-  await page.screenshot({path:`${pasta}/recompra-confirmada-${width}.png`,fullPage:true})
+  await page.screenshot({path:testInfo.outputPath(`recompra-confirmada-${width}.png`),fullPage:true})
  }
  expect(recompras).toBe(2)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[recompra.chave])).rows[0].n).toBe(1)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(2)
  await expect(page.getByRole('link',{name:'Voltar para a carteira',exact:true})).toHaveAttribute('href','/carteira?nome=Aurora&retorno=hoje')
 })
+test('recompra da Carteira protege o painel lateral durante conferência, descarte e envio lento', async ({ page }) => {
+  test.setTimeout(60_000)
+  const { empresa, negociacao, ator, email } = cenario
+  const primeira = await comoUsuario(ator, e => e<{ r: string }>(
+    "SELECT funil_venda_registrar($1,$2,'2026-01-01',1500,NULL) AS r", [negociacao, randomUUID()],
+  ))
+  expect(primeira.linhas[0].r).toBe('ok')
+  const contexto = `/carteira/${empresa}?nome=Aurora&retorno=hoje#historico`
+  const armazenamento = `crm:venda:v1:${ator}`
+  page.on('dialog', dialog => dialog.accept())
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Senha', { exact: true }).fill(senha)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/meu-dia')
+  await page.goto(contexto)
+
+  const abrir = page.getByRole('button', { name: 'Registrar venda', exact: true })
+  const painel = page.locator('[data-slot="painel-lateral-content"]')
+  const central = page.locator('[data-slot="dialog-content"]')
+  const valor = painel.getByLabel('Valor em reais')
+  const conferir = painel.locator('[data-painel-rodape]').getByRole('button', { name: 'Conferir venda' })
+  await abrir.click()
+  await expect(painel.getByRole('heading', { name: 'Registrar venda' })).toBeFocused()
+  const lateralDesktop = await painel.boundingBox()
+  expect(lateralDesktop?.x).toBe(760)
+  expect(lateralDesktop?.width).toBe(520)
+  await conferir.click()
+  await expect(valor).toBeFocused()
+  await expect(central).toHaveCount(0)
+
+  await valor.fill('250,50')
+  await painel.getByLabel('Data da venda').fill('2026-01-02')
+  await painel.getByLabel('Observação (opcional)').fill('Recompra e retorno preservados')
+  await page.keyboard.press('Escape')
+  const continuar = central.getByRole('button', { name: 'Continuar editando' })
+  await expect(central.getByRole('heading', { name: 'Descartar alterações?' })).toBeVisible()
+  await expect(continuar).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(painel.getByLabel('Observação (opcional)')).toBeFocused()
+  await page.mouse.click(10, 100)
+  await expect(continuar).toBeFocused()
+  await continuar.click()
+  await expect(central).toHaveCount(0)
+  await page.evaluate(() => history.back())
+  await expect(continuar).toBeFocused()
+  await continuar.click()
+  await expect(page).toHaveURL(contexto)
+  await expect(valor).toHaveValue('250,50')
+
+  await valor.press('Enter')
+  const corrigir = central.getByRole('button', { name: 'Corrigir dados' })
+  await expect(corrigir).toBeFocused()
+  await expect(central).toContainText('Confirmar venda de R$ 250,50 em 02/01/2026?')
+  await corrigir.click()
+  await expect(valor).toBeFocused()
+  await expect(valor).toHaveValue('250,50')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ colorScheme: 'dark' })
+  expect((await painel.boundingBox())?.width).toBe(390)
+  expect((await conferir.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+  await conferir.click()
+  let liberar!: () => void
+  const respostaLiberada = new Promise<void>(resolve => { liberar = resolve })
+  const corpos: string[] = []
+  await page.route('**/carteira/' + empresa + '*', async rota => {
+    const corpo = rota.request().postData()
+    if (rota.request().method() !== 'POST' || !corpo?.includes('250,50')) return rota.continue()
+    corpos.push(corpo)
+    if (corpos.length > 1) return rota.continue()
+    await rota.fetch()
+    await respostaLiberada
+    await rota.abort('failed')
+  })
+  try {
+    await central.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
+    const registrando = central.getByRole('button', { name: 'Registrando...', exact: true })
+    await expect(registrando).toBeDisabled()
+    await expect(registrando).toBeFocused()
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Escape')
+    await page.evaluate(() => {
+      document.documentElement.dataset.voltou = 'false'
+      window.addEventListener('popstate', () => { document.documentElement.dataset.voltou = 'true' }, { once: true })
+      history.back()
+    })
+    await expect(page.locator('html')).toHaveAttribute('data-voltou', 'true')
+    await expect(page).toHaveURL(contexto)
+    await expect(registrando).toBeFocused()
+    await expect(central.getByRole('heading', { name: 'Descartar alterações?' })).toHaveCount(0)
+    await expect.poll(() => corpos.length).toBe(1)
+  } finally {
+    liberar()
+  }
+
+  await expect(central.getByRole('alert')).toContainText('Não foi possível confirmar o resultado')
+  const original = await page.evaluate(chave => JSON.parse(sessionStorage.getItem(chave)!), armazenamento)
+  expect(original).toMatchObject({ alvo: { tipo: 'recompra' }, entrada: { valor: '250,50', data: '2026-01-02', observacao: 'Recompra e retorno preservados' } })
+  await central.getByRole('button', { name: 'Fechar mantendo envio' }).click()
+  await expect(painel).toHaveCount(0)
+  await expect(page).toHaveURL(contexto)
+  const recuperar = page.getByRole('button', { name: 'Confirmar venda anterior' })
+  await expect(recuperar).toBeFocused()
+  await page.reload()
+  await expect(recuperar).toBeVisible()
+  expect(corpos).toHaveLength(1)
+  await recuperar.press('Enter')
+  await expect(page.getByRole('status').filter({ hasText: 'Venda registrada.' })).toBeVisible()
+  expect(await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBeNull()
+  await expect(page).toHaveURL(contexto)
+  await expect(page.getByRole('link', { name: 'Voltar para a carteira', exact: true })).toHaveAttribute('href', '/carteira?nome=Aurora&retorno=hoje')
+  expect(corpos).toHaveLength(2)
+  expect(corpos.every(corpo => corpo.includes(original.chave))).toBe(true)
+  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1', [original.chave])).rows[0].n).toBe(1)
+  await expect(page.getByRole('main')).toContainText('Retornar após venda')
+})
+
 test('recompra perdida na Carteira é recuperada no painel do Funil sem mudar o contexto',async({page})=>{
  const {empresa,negociacao,ator,email}=cenario
  const primeira=await comoUsuario(ator,e=>e<{r:string}>("SELECT funil_venda_registrar($1,$2,'2026-01-01',1500,NULL) AS r",[negociacao,randomUUID()]))

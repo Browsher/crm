@@ -16,7 +16,7 @@ async function entrar(page: Page, email: string) {
   await expect(page).not.toHaveURL(/login/)
 }
 
-test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria privada', async ({ page, request, browser }) => {
+test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria privada', async ({ page, request, browser }, info) => {
   test.setTimeout(150000)
   const banco = bancoGruposDoHarness()
   const vendedor = await criarUsuarioComSenha(banco, 'vendedor', 'criteriosrodadase2e', 'Senha-e2e-2026')
@@ -91,11 +91,13 @@ test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria
     await page.goto('/fila/google/' + pedido.id)
     await expect(page.getByRole('heading', { name: 'Empresa entregue sem telefone', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Ver empresa: Empresa entregue sem telefone', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Contato e localização', exact: true }).click()
     await expect(page.getByRole('dialog').locator('div').filter({ has: page.locator('dt').filter({ hasText: /^Telefone principal$/ }) }).last()).toContainText('Não informado')
     await page.keyboard.press('Escape')
     await page.goto('/fila/google/' + fixo.id)
     await expect(page.getByRole('heading', { name: 'Empresa para ligação 1', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Ver empresa: Empresa para ligação 1', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Contato e localização', exact: true }).click()
     await expect(page.getByRole('dialog').getByText('(11) 3333-4471', { exact: true }).first()).toBeVisible()
     await page.keyboard.press('Escape')
     const outraSessao = await browser.newContext()
@@ -111,7 +113,7 @@ test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria
     await expect(gestao.getByRole('heading', { name: 'Empresa para ligação 0', exact: true })).toBeVisible()
     await expect(gestao.getByText('Não atende aos critérios selecionados.', { exact: true })).toBeVisible()
     await gestao.evaluate(() => window.scrollTo(0, 0))
-    await gestao.screenshot({ path: '.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-6-captures/google-lotes-auditoria.png', fullPage: true })
+    await gestao.screenshot({ path: info.outputPath('google-lotes-auditoria.png'), fullPage: true })
     await sessaoGestor.close()
   } finally {
     await banco.sql('UPDATE google_agente SET pausado=false WHERE vendedor_id=ANY($1::uuid[])', [pausados.map(p => p.vendedor_id)])

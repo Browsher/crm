@@ -34,7 +34,7 @@ As escolhas abaixo foram aprovadas em rodadas individuais. Os documentos por ár
 
 Uma lateral por vez, com largura comum para conteúdos e formulários. A largura atual A e a apresentação móvel A foram escolhidas. As exceções e contratos próprios de cada área continuam explícitos.
 
-1. Um painel de conteúdo por vez. Consultas cadastrais, filtros e negociação substituem o conteúdo lateral sem empilhar várias laterais. Empresas retornadas pelo Banco expandem na página, conforme a decisão específica dessa área.
+1. Um painel de conteúdo por vez. Consultas cadastrais, filtros, resultados do Banco e negociação usam a lateral. A navegação interna substitui seu conteúdo.
 2. Cabeçalho fora da rolagem: contexto curto, título e Fechar no primeiro nível. No conteúdo interno, Voltar.
 3. Menu interno nos painéis com várias seções. Tarefas curtas, imagem e renomeação abrem direto. Abas da página, como Buscar/Histórico no Banco, não se tornam abas artificiais dentro do painel.
 4. Corpo com rolagem própria, seções com títulos, bordas discretas e espaçamento previsível.
@@ -80,15 +80,15 @@ Sem interesse tem no máximo três registros elegíveis, ordenados do mais recen
 
 - O histórico fica em uma aba dentro da página Banco de empresas, ao lado de Buscar empresas. Opção A escolhida em 06/11/2026.
 - Cada card principal de busca preserva nome/contexto, fornecedor, data e contagem/situação disponíveis, inclusive em buscas vazias.
-- Ver empresas substitui Ver busca e expande/recolhe as empresas em um acordeão abaixo do card, na própria página, fora da lateral.
-- Cada empresa expandida tem Ver empresa, abrindo os dados cadastrais na lateral comum de três grupos.
+- Em 09/11/2026 o usuário escolheu mostrar os resultados do Banco na lateral, inclusive após uma busca nova. No histórico, Ver empresas abre os resultados salvos do grupo na lateral.
+- Ver empresa mostra os dados cadastrais na mesma lateral. Voltar recupera os resultados e a posição anterior.
 - Filtros usados fica somente no card principal da pesquisa e abre os critérios diretamente na lateral. Não repetir esse botão em cada empresa.
-- Fechar dados ou filtros recupera o mesmo contexto, incluindo pesquisa, filtros, página, rolagem e grupos abertos. Não selecionar empresa automaticamente.
+- Fechar recupera o mesmo contexto, incluindo aba, pesquisa, filtros, página e rolagem. A empresa é selecionada pelo vendedor.
 - Não adicionar paginação ou pesquisa ao histórico de buscas se o consumidor atual não as possui.
-- A abertura de resultados após uma busca continua funcionando, agora na página, sem perder a recuperação do envio original nem repetir consulta paga.
+- A abertura automática de resultados após uma busca conserva o resultado salvo, a recuperação do envio e a conclusão de inclusão pelo mesmo identificador.
 - Não transformar os filtros de busca do Banco nem a central inteira em outro formulário lateral. São páginas atuais.
 - O atendimento completo que hoje possui rota própria não é migrado nesta rodada de desenho; seu formulário continua sendo a fonte do conteúdo e das regras.
-- Essa decisão substitui o menu lateral de Empresas encontradas/Filtros usados proposto na rodada anterior. Os conteúdos, fontes e permissões são preservados.
+- O histórico permanece como aba da página. O card principal abre diretamente os resultados ou os filtros na lateral.
 
 ### Google: critérios e espelhamento
 
