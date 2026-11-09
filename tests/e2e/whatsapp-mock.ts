@@ -19,9 +19,10 @@ export async function iniciarWhatsAppDeTeste(banco: BancoDeTeste) {
     ], { stdio: 'ignore' })
     await banco.sql("INSERT INTO empresa(id,cnpj,razao_social,telefone) VALUES('00000000-0000-4000-8000-000000009991','00000000009991','Cliente WhatsApp Aurora','11988889991')")
     const agora = Math.floor(Date.now() / 1000)
+    const legenda = ['Imagem local de teste', ...Array.from({ length: 26 }, (_, indice) => `Item ${indice + 1} da descrição fictícia da imagem.`)].join('\n')
     const registros = [
       { key: { id: 'texto-aurora', remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, pushName: 'Contato Aurora', messageTimestamp: agora - 60, message: { conversation: 'Podemos conversar sobre o próximo pedido?' } },
-      { key: { id: 'imagem-aurora', remoteJid: '5511988889991@s.whatsapp.net', fromMe: true }, messageTimestamp: agora - 120, message: { imageMessage: { mimetype: 'image/png', caption: 'Imagem local de teste' } } },
+      { key: { id: 'imagem-aurora', remoteJid: '5511988889991@s.whatsapp.net', fromMe: true }, messageTimestamp: agora - 120, message: { imageMessage: { mimetype: 'image/png', caption: legenda } } },
       { key: { id: 'documento-indisponivel', remoteJid: '5511988889991@s.whatsapp.net', fromMe: false }, messageTimestamp: agora - 180, message: { documentMessage: { mimetype: 'application/pdf', fileName: 'pedido.pdf' } } },
       { key: { id: 'texto-boreal', remoteJid: '5511988889992@s.whatsapp.net', fromMe: false }, pushName: 'Contato Boreal', messageTimestamp: agora - 240, message: { conversation: 'Mensagem da segunda conversa.' } },
       { key: { id: 'texto-nome-longo', remoteJid: '5511988889993@s.whatsapp.net', fromMe: false }, pushName: 'Contato com nome muito longo para validar identificação completa sem colidir com horário e ações da conversa', messageTimestamp: agora - 270, message: { conversation: 'Mensagem sintética do contato com nome longo.' } },

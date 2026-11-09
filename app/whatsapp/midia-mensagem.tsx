@@ -110,8 +110,8 @@ function VisualizacaoImagem({ url, legenda, aoFechar }: { url: string; legenda?:
     className={ampliada ? styles.imagemAmpliada : undefined}
     rodape={ampliada ? undefined : <Button ref={botaoAmpliar} type="button" variant="outline" onClick={ampliar}>Ampliar imagem</Button>}
   >
-    <figure ref={figura} className={styles.imagemPainel} tabIndex={ampliada ? 0 : undefined}
-      aria-label={ampliada ? 'Área de visualização ampliada' : undefined}>
+    <figure ref={figura} className={styles.imagemPainel} tabIndex={0}
+      aria-label={ampliada ? 'Área de visualização ampliada' : 'Visualização da imagem'}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt={legenda || 'Imagem da conversa'} />
       {!ampliada && legenda && <figcaption>{legenda}</figcaption>}

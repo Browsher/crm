@@ -34,6 +34,7 @@ test('carrega sob demanda e amplia na mesma lateral, sem nova consulta', async (
   const imagem = corpo.querySelector('img')
   expect(imagem?.getAttribute('src')).toBe('blob:midia')
   expect(corpo.querySelector('figcaption')?.textContent).toBe('Foto do pedido')
+  expect(corpo.querySelector('figure')?.tabIndex).toBe(0)
   const ampliar = painel.querySelector<HTMLButtonElement>('[data-painel-rodape] button')!
   expect(ampliar.textContent).toBe('Ampliar imagem')
   corpo.scrollTop = 128
