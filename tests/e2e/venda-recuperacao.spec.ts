@@ -1,11 +1,12 @@
 import { abrirLeitura } from './paineis-ajuda'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { comAdmin } from '../../src/server/db/admin'
 import { exigirAdminLocal } from './ambiente'
 import { randomUUID } from 'node:crypto'
 import { gerarHash } from '../../src/server/autenticacao/senha'
 import { comoUsuario } from '../../src/server/db/como-usuario'
 async function sql(texto:string,valores:unknown[]=[]){const url=process.env.DATABASE_URL_ADMIN!;exigirAdminLocal(url);return comAdmin(url,c=>c.query(texto,valores))}
+const ficha = (page: Page) => page.locator('[data-painel-lateral]')
 
 const senha='Senha-e2e-2026',hash=gerarHash(senha)
 let cenario:{empresa:string;ator:string;negociacao:string;email:string}
@@ -42,11 +43,11 @@ test('primeira venda com resposta recebida abre ficha após um único recuo da g
  await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
  await expect(page).toHaveURL('/carteira/'+empresa+'?venda=registrada')
  await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0)
- await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
+ await expect(ficha(page)).toContainText('Venda registrada. Confira o histórico')
  expect(await page.evaluate(()=>(window as unknown as {popstates:number}).popstates)).toBe(1)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(1)
  await page.screenshot({path:testInfo.outputPath('primeira-confirmada-tablet-claro.png'),fullPage:true})
- await page.reload();await expect(page).toHaveURL('/carteira/'+empresa+'?venda=registrada');await expect(page.getByRole('heading',{name:'Venda Recuperável',exact:true})).toBeVisible()
+ await page.reload();await expect(page).toHaveURL('/carteira/'+empresa+'?venda=registrada');await expect(ficha(page).getByRole('heading',{name:'Venda Recuperável',exact:true})).toBeVisible()
 })
 
 test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e filtros',async({page},testInfo)=>{
@@ -101,16 +102,15 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  await page.screenshot({path:testInfo.outputPath('recuperacao-funil-vazio-mobile.png'),fullPage:true})
  const confirmar=page.getByRole('button',{name:'Confirmar venda anterior',exact:true});await confirmar.focus();await confirmar.press('Enter')
  await expect(page).toHaveURL(`/carteira/${empresa}?venda=registrada`)
- await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
- await expect(page.getByRole('heading',{name:'Venda Recuperável',exact:true})).toBeVisible()
+ await expect(ficha(page)).toContainText('Venda registrada. Confira o histórico')
+ await expect(ficha(page).getByRole('heading',{name:'Venda Recuperável',exact:true})).toBeVisible()
  expect(posts).toBe(2)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[original.chave])).rows[0].n).toBe(1)
  expect(await page.evaluate(ator=>sessionStorage.getItem('crm:venda:v1:'+ator),ator)).toBeNull()
 
  const contexto=`/carteira/${empresa}?nome=Aurora&retorno=hoje#historico`
  await page.goto(contexto);await page.setViewportSize({width:820,height:900})
- await abrirLeitura(page)
-  await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
+ await ficha(page).getByRole('button',{name:'Registrar venda',exact:true}).click()
  await page.getByLabel('Valor em reais').fill('250,50');await page.getByLabel('Data da venda').fill('2026-01-02');await page.getByLabel('Observação (opcional)').fill('Recompra preservada')
  await page.getByRole('button',{name:'Conferir venda'}).click()
  let recompras=0
@@ -127,7 +127,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  await page.reload();await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0);expect(recompras).toBe(1)
  await page.getByRole('button',{name:'Confirmar venda anterior',exact:true}).click()
  await expect(page).toHaveURL(contexto)
- await expect(page.getByRole('main')).toContainText('Venda registrada.')
+ await expect(ficha(page)).toContainText('Venda registrada.')
  await expect(page.getByRole('button',{name:'Confirmar venda anterior',exact:true})).toHaveCount(0)
  for(const width of [390,820,1280]){
   await page.setViewportSize({width,height:900})
@@ -139,7 +139,7 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(2)
  await expect(page.getByRole('link',{name:'Voltar para a carteira',exact:true})).toHaveAttribute('href','/carteira?nome=Aurora&retorno=hoje')
 })
-test('recompra da Carteira protege o painel lateral durante conferência, descarte e envio lento', async ({ page }) => {
+test('recompra da Carteira protege o painel lateral durante conferência, descarte e envio lento', async ({ page }, testInfo) => {
   test.setTimeout(60_000)
   const { empresa, negociacao, ator, email } = cenario
   const primeira = await comoUsuario(ator, e => e<{ r: string }>(
@@ -158,8 +158,8 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   await expect(page).toHaveURL('/meu-dia')
   await page.goto(contexto)
 
-  const abrir = page.getByRole('button', { name: 'Registrar venda', exact: true })
-  const painel = page.locator('[data-slot="painel-lateral-content"]')
+  const painel = ficha(page)
+  const abrir = painel.getByRole('button', { name: 'Registrar venda', exact: true })
   const central = page.locator('[data-slot="dialog-content"]')
   const valor = painel.getByLabel('Valor em reais')
   const conferir = painel.locator('[data-painel-rodape]').getByRole('button', { name: 'Conferir venda' })
@@ -179,6 +179,10 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   const continuar = central.getByRole('button', { name: 'Continuar editando' })
   await expect(central.getByRole('heading', { name: 'Descartar alterações?' })).toBeVisible()
   await expect(continuar).toBeFocused()
+  const descarteDesktop = (await central.boundingBox())!
+  expect(descarteDesktop.x + descarteDesktop.width / 2).toBeCloseTo(640, 0)
+  expect(descarteDesktop.y + descarteDesktop.height / 2).toBeCloseTo(450, 0)
+  await expect(painel).toHaveCount(1)
   await page.keyboard.press('Escape')
   await expect(painel.getByLabel('Observação (opcional)')).toBeFocused()
   await page.mouse.click(10, 100)
@@ -194,16 +198,38 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   await valor.press('Enter')
   const corrigir = central.getByRole('button', { name: 'Corrigir dados' })
   await expect(corrigir).toBeFocused()
+  await expect(central.getByRole('heading', { name: 'Confirmar venda' })).toBeVisible()
+  await expect(central).toContainText('Venda Recuperável')
   await expect(central).toContainText('Confirmar venda de R$ 250,50 em 02/01/2026?')
   await corrigir.click()
   await expect(valor).toBeFocused()
   await expect(valor).toHaveValue('250,50')
 
+  await conferir.click()
+  await expect(corrigir).toBeFocused()
+  const confirmar = central.getByRole('button', { name: 'Confirmar venda', exact: true })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ colorScheme: 'dark' })
-  expect((await painel.boundingBox())?.width).toBe(390)
-  expect((await conferir.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  expect(await painel.boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 844 })
+  await expect(central).toBeInViewport({ ratio: 1 })
+  await expect(corrigir).toBeFocused()
+  await expect(central).toContainText('Confirmar venda de R$ 250,50 em 02/01/2026?')
+  for (const acao of [corrigir, confirmar]) {
+    await expect(acao).toBeInViewport({ ratio: 1 })
+    expect((await acao.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  }
+  const vendaCelular = (await central.boundingBox())!
+  expect(vendaCelular.x + vendaCelular.width / 2).toBeCloseTo(195, 0)
+  expect(vendaCelular.y + vendaCelular.height / 2).toBeCloseTo(422, 0)
+  expect(await central.evaluate(elemento => elemento.scrollWidth - elemento.clientWidth)).toBe(0)
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+  await page.screenshot({ path: testInfo.outputPath('recompra-confirmacao-390-escuro.png'), animations: 'disabled' })
+  await corrigir.click()
+  await expect(conferir).toBeFocused()
+  expect((await conferir.boundingBox())!.height).toBeGreaterThanOrEqual(44)
   await conferir.click()
+
   let liberar!: () => void
   const respostaLiberada = new Promise<void>(resolve => { liberar = resolve })
   const corpos: string[] = []
@@ -217,7 +243,7 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
     await rota.abort('failed')
   })
   try {
-    await central.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
+    await confirmar.click()
     const registrando = central.getByRole('button', { name: 'Registrando...', exact: true })
     await expect(registrando).toBeDisabled()
     await expect(registrando).toBeFocused()
@@ -241,7 +267,9 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   const original = await page.evaluate(chave => JSON.parse(sessionStorage.getItem(chave)!), armazenamento)
   expect(original).toMatchObject({ alvo: { tipo: 'recompra' }, entrada: { valor: '250,50', data: '2026-01-02', observacao: 'Recompra e retorno preservados' } })
   await central.getByRole('button', { name: 'Fechar mantendo envio' }).click()
-  await expect(painel).toHaveCount(0)
+  await expect(central).toHaveCount(0)
+  await expect(painel).toHaveCount(1)
+  await expect(valor).toHaveCount(0)
   await expect(page).toHaveURL(contexto)
   const recuperar = page.getByRole('button', { name: 'Confirmar venda anterior' })
   await expect(recuperar).toBeFocused()
@@ -256,7 +284,10 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   expect(corpos).toHaveLength(2)
   expect(corpos.every(corpo => corpo.includes(original.chave))).toBe(true)
   expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1', [original.chave])).rows[0].n).toBe(1)
-  await expect(page.getByRole('main')).toContainText('Retornar após venda')
+  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1', [empresa])).rows[0].n).toBe(2)
+  await painel.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await expect(painel).toContainText('Retornar após venda')
+  await expect(painel.locator('time')).toHaveAttribute('datetime', '2030-01-01')
 })
 
 test('recompra perdida na Carteira é recuperada no painel do Funil sem mudar o contexto',async({page})=>{
@@ -270,8 +301,7 @@ test('recompra perdida na Carteira é recuperada no painel do Funil sem mudar o 
  await page.getByRole('button',{name:'Entrar',exact:true}).click()
  await expect(page).toHaveURL('/meu-dia')
  await page.goto('/carteira/'+empresa)
- await abrirLeitura(page)
-  await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
+ await ficha(page).getByRole('button',{name:'Registrar venda',exact:true}).click()
  await page.getByLabel('Valor em reais').fill('33,42')
  await page.getByLabel('Data da venda').fill('2026-01-02')
  await page.getByLabel('Observação (opcional)').fill('Recompra entre rotas')
@@ -350,7 +380,7 @@ test('outra aba confirma a primeira venda e a aba original repete o mesmo comand
 
   await outra.getByRole('button', confirmar).click()
   await expect(outra).toHaveURL(destino)
-  await expect(outra.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
+  await expect(ficha(outra)).toContainText('Venda registrada. Confira o histórico')
   expect(await outra.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBeNull()
   expect(await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBe(pendente)
   expect(envios).toHaveLength(2)
@@ -359,7 +389,7 @@ test('outra aba confirma a primeira venda e a aba original repete o mesmo comand
 
   await page.getByRole('button', confirmar).click()
   await expect(page).toHaveURL(destino)
-  await expect(page.getByRole('main')).toContainText('Venda registrada. Confira o histórico')
+  await expect(ficha(page)).toContainText('Venda registrada. Confira o histórico')
   expect(await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBeNull()
   expect(envios).toHaveLength(3)
   for (const corpo of envios) {

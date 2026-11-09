@@ -1,8 +1,4 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
-import { resolve } from 'node:path'
-const capturas = resolve('.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-5-captures')
-mkdirSync(capturas, { recursive: true })
 import { expect, test, type Page } from '@playwright/test'
 import { comBancoGrupos } from './dados-grupos'
 
@@ -14,7 +10,7 @@ async function entrar(page: Page, apelido = 'redesigne2e') {
   await expect(page).toHaveURL(apelido === 'gestore2e' ? '/gestao' : '/meu-dia')
 }
 
-test('acesso à busca e localização convivem no redesign da Prospecção', async ({ page }) => {
+test('acesso à busca e localização convivem no redesign da Prospecção', async ({ page }, testInfo) => {
   test.setTimeout(60_000)
   await entrar(page)
   await page.goto('/fila')
@@ -32,12 +28,12 @@ test('acesso à busca e localização convivem no redesign da Prospecção', asy
     for (const tema of ['light', 'dark']) {
       await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-      await page.screenshot({ path: resolve(capturas, `busca-cnpj-${width}-${tema}.png`), fullPage: true })
+      await page.screenshot({ path: testInfo.outputPath(`busca-cnpj-${width}-${tema}.png`), fullPage: true })
     }
   }
 })
 
-test('consulta simulada persiste, não repete no refresh e importa dados nas abas', async ({ page, browser }) => {
+test('consulta simulada persiste, não repete no refresh e importa dados nas abas', async ({ page, browser }, testInfo) => {
   test.setTimeout(90_000)
   await entrar(page)
   await page.goto('/fila/buscar')
@@ -95,6 +91,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
     expect((await c.query('SELECT id FROM contato WHERE empresa_id=$1', [empresa.id])).rowCount).toBe(0)
   })
   await page.goto('/carteira/' + empresa.id)
+  await expect(page.locator('[data-painel-lateral]')).toHaveCount(0)
   const dados = page.getByRole('tabpanel', { name: 'Dados da empresa', exact: true })
   await expect(dados.getByRole('heading', { name: 'Dados cadastrais da Casa dos Dados' })).toBeVisible()
   await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
@@ -105,7 +102,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
     for (const tema of ['light', 'dark']) {
       await page.getByLabel('Tema da Carteira').selectOption(tema)
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-      await page.screenshot({ path: resolve(capturas, `ficha-cnpj-${width}-${tema}.png`), fullPage: true })
+      await page.screenshot({ path: testInfo.outputPath(`ficha-cnpj-${width}-${tema}.png`), fullPage: true })
     }
   }
   const contextoGestor = await browser.newContext()
@@ -123,7 +120,7 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
       for (const tema of ['light', 'dark']) {
         await gestor.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
         await expect.poll(() => gestor.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-        await gestor.screenshot({ path: resolve(capturas, `gestao-cnpj-${width}-${tema}.png`), fullPage: true })
+        await gestor.screenshot({ path: testInfo.outputPath(`gestao-cnpj-${width}-${tema}.png`), fullPage: true })
       }
     }
   } finally { await contextoGestor.close() }

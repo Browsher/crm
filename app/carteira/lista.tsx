@@ -72,7 +72,7 @@ export function ListaCarteira({ linhas, filtros = SEM_FILTROS }: { linhas: Empre
               {empresa.proximoPassoData ? <time dateTime={empresa.proximoPassoData}>{dataCivil(empresa.proximoPassoData)}</time> : null}
             </TableCell>
             <TableCell data-label="Retorno"><Badge variant={empresa.situacaoRetorno === 'atrasado' ? 'warning' : empresa.situacaoRetorno === 'hoje' ? 'success' : 'outline'}>{ROTULO_RETORNO[empresa.situacaoRetorno]}</Badge></TableCell>
-            <TableCell data-label="Ações"><Button asChild variant="outline" size="sm"><Link href={urlFicha(empresa.id, filtros)}>Ver cliente</Link></Button></TableCell>
+            <TableCell data-label="Ações"><Button asChild variant="outline" size="sm"><Link href={urlFicha(empresa.id, filtros)} scroll={false}>Ver cliente</Link></Button></TableCell>
         </TableRow>)}</TableBody>
       </Table>
     </>}

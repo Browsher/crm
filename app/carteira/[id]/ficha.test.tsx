@@ -32,8 +32,8 @@ const EMPRESA: EmpresaComigo = {
 }
 
 describe('Ficha', () => {
-  test('cliente arquivado conserva histórico e exige retomar antes de novo trabalho', () => {
-    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={{ ...EMPRESA, situacao: 'sem_interesse' }} cliente contatos={[]} />)
+  test('consulta legada de empresa arquivada conserva histórico e exige retomar antes de novo trabalho', () => {
+    const saida = renderToStaticMarkup(<Ficha usuarioId="teste" empresa={{ ...EMPRESA, situacao: 'sem_interesse' }} contatos={[]} />)
     expect(saida).toContain('Sem interesse')
     expect(saida).toContain('Retome o atendimento antes de registrar novo trabalho.')
     expect(saida).not.toMatch(/<button(?![^>]*disabled)[^>]*>Registrar atendimento/)

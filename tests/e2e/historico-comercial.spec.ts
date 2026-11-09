@@ -9,7 +9,6 @@ import { bancoGruposDoHarness } from './dados-grupos'
 const banco = () => bancoGruposDoHarness()
 const painel = (page: Page) => page.locator('[data-painel-lateral]')
 const card = (page: Page, nome: string) => page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: nome }) })
-const pasta = 'docs/design/2026-11-05-meu-dia'
 const senha = 'Senha-e2e-2026'
 
 async function cenario() {
@@ -41,7 +40,7 @@ async function abrirNegociacao(page: Page, nome: string) {
   await expect(painel(page).getByRole('button', { name: 'Atendimento e próximo passo', exact: true })).toBeVisible()
 }
 
-test('histórico preserva nota longa, autoria ausente, atividade e data da venda; expansão é por filtro e teclado', async ({ page }) => {
+test('histórico preserva nota longa, autoria ausente, atividade e data da venda; expansão é por filtro e teclado', async ({ page }, testInfo) => {
   const { empresas: [a], usuario, email } = await cenario()
   const nota = 'Nota longa autorizada. '.repeat(75).trim()
   await banco().sql(`WITH ator AS MATERIALIZED (SELECT set_config('app.usuario_id',$2,true)) INSERT INTO contato(empresa_id,tipo,nota) SELECT $1,'nao_liguei',$3 FROM ator`, [a.id, usuario.id, nota])
@@ -50,8 +49,8 @@ test('histórico preserva nota longa, autoria ausente, atividade e data da venda
   expect(venda.linhas[0].r).toBe('ok')
   await entrar(page, email)
   await page.goto('/carteira/' + a.id)
-  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
-  const historico = page.getByRole('region', { name: 'Histórico comercial', exact: true })
+  await painel(page).getByRole('button', { name: 'Histórico', exact: true }).click()
+  const historico = painel(page).getByRole('region', { name: 'Histórico comercial', exact: true })
   await expect(historico.locator('details')).toHaveCount(4)
   await expect(historico.locator('details[open]')).toHaveCount(0)
   await expect(historico.getByText('Autor não informado', { exact: true })).toBeVisible()
@@ -68,15 +67,16 @@ test('histórico preserva nota longa, autoria ausente, atividade e data da venda
   await historico.getByRole('button', { name: /^Atendimentos/ }).click()
   await expect(historico.locator('details')).toHaveCount(3)
   await expect(historico.locator('details[open]')).toHaveCount(1)
-  for (const tema of ['light', 'dark']) {
-    await page.getByRole('combobox').selectOption(tema)
+  for (const tema of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: tema })
+    await expect(page.locator('html')).toHaveAttribute('data-theme', tema)
     await historico.getByRole('button', { name: 'Expandir todos', exact: true }).click()
     await expect(historico.locator('details[open]')).toHaveCount(3)
     await expect(historico.getByText('Sem anotação.', { exact: true })).toBeVisible()
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 900 })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: `${pasta}/historico-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
+      await page.screenshot({ path: testInfo.outputPath(`historico-${tema}-${width}.png`), fullPage: true, animations: 'disabled' })
     }
     await historico.getByRole('button', { name: 'Recolher todos', exact: true }).click()
     await expect(historico.locator('details[open]')).toHaveCount(0)
@@ -183,7 +183,7 @@ test('primeira venda iniciada no Meu dia abre a ficha correta da Carteira', asyn
   await painel(page).getByRole('button', { name: 'Conferir venda', exact: true }).click()
   await page.getByRole('button', { name: 'Confirmar venda', exact: true }).click()
   await expect(page).toHaveURL(`/carteira/${a.id}?venda=registrada`)
-  await expect(page.getByRole('heading', { name: a.nome, exact: true })).toBeVisible()
+  await expect(painel(page).getByRole('heading', { name: a.nome, exact: true })).toBeVisible()
   expect(await banco().sql('SELECT valor_centavos::int valor FROM venda WHERE empresa_id=$1', [a.id])).toEqual([{ valor: 10150 }])
 })
 
@@ -231,7 +231,7 @@ test('arquivo perde resposta após commit, recarrega e confirma a mesma chave no
 })
 
 for (const contexto of ['negociacao-b', 'dados-cliente'] as const) {
-test(`venda perdida confirma a mesma chave após reload; replay externo protege Back, links e beforeunload em ${contexto}`, async ({ page }) => {
+test(`venda perdida confirma a mesma chave após reload; replay externo protege Back, links e beforeunload em ${contexto}`, async ({ page }, testInfo) => {
   const { empresas: [a, b], usuario, email } = await cenario()
   await entrar(page, email)
   await abrirNegociacao(page, a.nome)
@@ -297,7 +297,7 @@ test(`venda perdida confirma a mesma chave após reload; replay externo protege 
   expect(envios).toHaveLength(2)
   for (const corpo of envios) expect(corpo).toContain(comando.chave)
   expect(await banco().sql('SELECT chave,valor_centavos::int valor FROM venda WHERE empresa_id=$1', [a.id])).toEqual([{ chave: comando.chave, valor: 9731 }])
-  await page.screenshot({ path: `${pasta}/${contexto === 'negociacao-b' ? 'replay-venda-empresa-b' : 'replay-venda-dados-cliente'}.png`, fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath(`${contexto === 'negociacao-b' ? 'replay-venda-empresa-b' : 'replay-venda-dados-cliente'}.png`), fullPage: true })
 })
 }
 

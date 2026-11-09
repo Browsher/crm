@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
+import type { Contato } from '@/src/features/contato/historico'
+import { RegistrarVisita } from '../../fila/localizar/registrar-visita'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn() }) }))
 vi.mock('@/src/components/crm/tema', () => ({ useTemaCrm: () => 'light' }))
 const acao = vi.hoisted(() => ({ executar: (async () => ({ erro: null, ok: false })) as (...args: unknown[]) => Promise<{ erro: string | null; ok: boolean }> }))
 vi.mock('@/src/features/contato/acao', () => ({ registrarContatoAcao: (anterior: unknown, form: unknown) => acao.executar(anterior, form), prepararContatoAcao: async () => ({ok:true,fase:'negociacao',empresa:{versao:2,situacao:'primeiro_contato'}}) }))
+const registrarVisita = vi.hoisted(() => vi.fn<(empresaId: string) => Promise<{ erro: string | null }>>(async () => ({ erro: null })))
+vi.mock('../../fila/localizar/registrar-visita-acao', () => ({ registrarVisitaAcao: registrarVisita }))
 
 const { Ficha } = await import('./ficha')
 
@@ -26,17 +30,194 @@ afterEach(async () => {
   raiz = null
   host = null
   sessionStorage.clear()
+  history.replaceState(null, '', '/')
+  vi.restoreAllMocks()
+  registrarVisita.mockClear()
 })
 
-async function montar(empresa = EMPRESA) {
+async function renderizar(empresa: EmpresaComigo, cliente: boolean, contatos: Contato[] = [], fundo?: ReactNode, visita?: ReactNode) {
+  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} cliente={cliente} contatos={contatos} fundo={fundo} visita={visita} voltarPara="/carteira?nome=Aurora" />))
+}
+
+async function montar(empresa = EMPRESA, cliente = false, contatos: Contato[] = [], visita?: ReactNode) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} contatos={[]} voltarPara="/carteira?nome=Aurora" />))
+  await renderizar(empresa, cliente, contatos, undefined, visita)
   return host
 }
 
+const contato: Contato = { id: 'contato', tipo: 'acompanhamento', nota: 'Retornar ao cliente', autor: null, proximoPasso: null, proximoPassoData: null, criadoEm: new Date('2026-10-01T12:00:00Z') }
+const venda: Contato = { ...contato, id: 'venda', tipo: 'venda_registrada', nota: 'Compra anterior', venda: { centavos: '12550', data: '2026-10-01' } }
+
+async function clicarNaFicha(nome: string | RegExp, escopo: ParentNode = document) {
+  const botao = [...escopo.querySelectorAll('button')].find(b => typeof nome === 'string' ? b.textContent === nome : nome.test(b.textContent ?? ''))
+  expect(botao).toBeDefined()
+  await act(async () => botao!.click())
+}
+
+describe('Lateral do cliente', () => {
+  test('menu troca níveis de dados no mesmo painel e devolve o foco ao item anterior', async () => {
+    await montar({ ...EMPRESA, situacao: 'cliente', contatoNome: 'Dona Aurora' }, true)
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    expect(lateral).not.toBeNull()
+    const menu = lateral.querySelector('nav')!
+    expect([...menu.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Atendimento e próximo passo', 'Dados da empresa', 'Histórico'])
+    await clicarNaFicha('Dados da empresa', lateral)
+    expect(document.querySelector('[data-painel-lateral]')).toBe(lateral)
+    expect([...lateral.querySelectorAll('nav button')].map(b => b.textContent)).toEqual(['Contato e localização', 'Cadastro e origem', 'Atividades e sócios'])
+    await clicarNaFicha('Contato e localização', lateral)
+    expect(lateral.textContent).toContain('Dona Aurora')
+    await clicarNaFicha('Voltar', lateral)
+    expect(document.activeElement?.textContent).toBe('Contato e localização')
+    await clicarNaFicha('Voltar', lateral)
+    expect(document.activeElement?.textContent).toBe('Dados da empresa')
+  })
+
+  test('histórico mantém o filtro e recebe a tarefa de venda na mesma lateral', async () => {
+    await montar({ ...EMPRESA, situacao: 'cliente' }, true, [contato, venda])
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    expect(lateral).not.toBeNull()
+    await clicarNaFicha('Histórico', lateral)
+    await clicarNaFicha(/^Vendas/, lateral)
+    await clicarNaFicha('Registrar venda', lateral.querySelector('[data-painel-rodape]')!)
+    expect(document.querySelectorAll('[data-painel-lateral]')).toHaveLength(1)
+    expect(document.querySelector('[data-painel-lateral]')).toBe(lateral)
+    expect(lateral.querySelector('input[name=valor]')).not.toBeNull()
+    await clicarNaFicha('Voltar', lateral)
+    expect(lateral.querySelector('button[aria-pressed=true]')?.textContent).toMatch(/^Vendas/)
+    expect(lateral.textContent).toContain('Compra anterior')
+    expect(lateral.textContent).not.toContain('Retornar ao cliente')
+  })
+
+  test('atendimento protege o rascunho com confirmação central e deixa ações no rodapé', async () => {
+    await montar({ ...EMPRESA, situacao: 'cliente' }, true)
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    expect(lateral).not.toBeNull()
+    await clicarNaFicha('Atendimento e próximo passo', lateral)
+    await clicarNaFicha('Registrar atendimento', lateral)
+    const nota = lateral.querySelector('textarea')!
+    expect(nota).toBe(document.activeElement)
+    expect(lateral.querySelector('[data-painel-rodape] button[type=submit]')?.textContent).toBe('Salvar atendimento')
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Rascunho protegido')
+      nota.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    const confirmacao = document.querySelector('[data-slot=dialog-content]')!
+    expect(lateral.contains(confirmacao)).toBe(false)
+    expect(confirmacao.textContent).toContain('Descartar alterações?')
+    await clicarNaFicha('Continuar editando', confirmacao)
+    expect(lateral.querySelector('textarea')).toBe(nota)
+    expect(nota.value).toBe('Rascunho protegido')
+  })
+
+  test('repetir Voltar na confirmação devolve o foco ao controle que abriu o descarte', async () => {
+    await montar({ ...EMPRESA, situacao: 'cliente' }, true)
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    await clicarNaFicha('Atendimento e próximo passo', lateral)
+    await clicarNaFicha('Registrar atendimento', lateral)
+    const nota = lateral.querySelector('textarea')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Rascunho protegido')
+      nota.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect(document.activeElement).toBe(nota)
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(document.activeElement?.textContent).toBe('Continuar editando')
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    await clicarNaFicha('Continuar editando', document.querySelector('[data-slot=dialog-content]')!)
+    await vi.waitFor(() => expect(document.activeElement).toBe(nota))
+    expect(nota.value).toBe('Rascunho protegido')
+  })
+
+  test('cliente em Sem interesse conserva histórico e pode confirmar o envio anterior, sem criar trabalho', async () => {
+    const valor = { tipo: 'acompanhamento', nota: 'Nota pendente', proximoPasso: '', proximoPassoData: '' }
+    sessionStorage.setItem('crm:contato:v1:a', JSON.stringify({ valor, envio: { chave: 'original', versao: 2, valor } }))
+    await montar({ ...EMPRESA, situacao: 'sem_interesse' }, true, [contato])
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    await clicarNaFicha('Histórico', lateral)
+    expect(lateral.textContent).toContain('Retornar ao cliente')
+    await clicarNaFicha('Voltar', lateral)
+    await clicarNaFicha('Atendimento e próximo passo', lateral)
+    expect(lateral.textContent).toContain('Retome o atendimento antes de registrar novo trabalho.')
+    expect([...lateral.querySelectorAll('button')].find(b => b.textContent === 'Registrar atendimento')?.disabled).toBe(true)
+    expect([...lateral.querySelectorAll('button')].some(b => b.textContent === 'Registrar venda')).toBe(false)
+    await clicarNaFicha('Conferir atendimento anterior', lateral)
+    expect(lateral.querySelector('textarea')?.readOnly).toBe(true)
+    expect(lateral.querySelector('[data-painel-rodape] button[type=submit]')?.textContent).toBe('Confirmar envio anterior')
+  })
+})
+
 describe('Ficha no navegador', () => {
+  test('revalida a primeira venda de um prospecto sem edição e mostra a carteira e a recompra', async () => {
+    const tela = await montar()
+    expect(tela.textContent).toContain('Em prospecção')
+    await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>)
+    expect(tela.textContent).toContain('Minha carteira')
+    const lateral = document.querySelector('[data-painel-lateral]')
+    expect(lateral?.textContent).toContain('Registrar venda')
+    expect(tela.textContent).not.toContain('Em prospecção')
+  })
+
+  test('a mesma visita fica montada quando a primeira venda muda a composição', async () => {
+    await montar(EMPRESA, false, [], <RegistrarVisita empresaId={EMPRESA.id} />)
+    expect(registrarVisita).toHaveBeenCalledOnce()
+    await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>, <RegistrarVisita empresaId={EMPRESA.id} />)
+    expect(document.querySelector('[data-painel-lateral]')).not.toBeNull()
+    expect(registrarVisita).toHaveBeenCalledOnce()
+    expect(registrarVisita).toHaveBeenCalledWith(EMPRESA.id)
+  })
+
+  test('conserva a edição legada até retirar a guarda e só então troca para a ficha do cliente', async () => {
+    const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
+    const tela = await montar()
+    await clicarNaFicha('Registrar atendimento', tela)
+    const nota = tela.querySelector('textarea')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(nota, 'Nota anterior à venda')
+      nota.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>)
+    expect(tela.querySelector('textarea')).toBe(nota)
+    expect(nota.value).toBe('Nota anterior à venda')
+    expect(document.querySelector('[data-painel-lateral]')).toBeNull()
+    await clicarNaFicha('Cancelar atendimento', tela)
+    await clicarNaFicha('Descartar e continuar')
+    expect(voltar).toHaveBeenCalledOnce()
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(tela.textContent).toContain('Minha carteira')
+    expect(document.querySelector('[data-painel-lateral]')?.textContent).toContain('Registrar venda')
+  })
+
+  test('mostra uma vez na nova lateral o recibo do atendimento iniciado em prospecção', async () => {
+    vi.spyOn(history, 'back').mockImplementation(() => {})
+    const executarAnterior = acao.executar
+    let confirmar!: (estado: { ok: true; erro: null }) => void
+    const resposta = new Promise<{ ok: true; erro: null }>(resolve => { confirmar = resolve })
+    const executar = vi.fn(() => resposta)
+    acao.executar = executar
+    try {
+      const tela = await montar()
+      await clicarNaFicha('Registrar atendimento', tela)
+      await act(async () => tela.querySelector('form')!.requestSubmit())
+      expect(executar).toHaveBeenCalledOnce()
+
+      await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>)
+      expect(tela.querySelector('form')).not.toBeNull()
+      expect(document.querySelector('[data-painel-lateral]')).toBeNull()
+
+      await act(async () => confirmar({ ok: true, erro: null }))
+      await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+      const lateral = document.querySelector('[data-painel-lateral]')
+      expect(tela.querySelector('form')).toBeNull()
+      expect(lateral).not.toBeNull()
+      const recibos = [...document.querySelectorAll('[role=status]')].filter(p => p.textContent === 'Atendimento registrado.')
+      expect(recibos).toHaveLength(1)
+      expect(lateral?.contains(recibos[0])).toBe(true)
+    } finally { acao.executar = executarAnterior }
+  })
+
   test('arquivada confirma somente o envio desconhecido da aba, sem abrir novo registro', async () => {
     const valor={tipo:'nao_liguei',nota:'Sem resposta',proximoPasso:'Retornar',proximoPassoData:'2030-10-01'}
     const salvo=JSON.stringify({valor,envio:{chave:'original',versao:2,valor}})
@@ -58,6 +239,7 @@ describe('Ficha no navegador', () => {
     expect(document.body.textContent).toContain('Confirme o envio anterior')
     expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
     await clicar('Fechar mantendo rascunho')
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(tela.querySelector('form')).toBeNull()
     expect(sessionStorage.getItem('crm:contato:v1:a')).toBe(salvo)
     vi.restoreAllMocks()
@@ -189,6 +371,7 @@ test('sucesso de contato fecha editor da ficha sem navegar ao Funil',async()=>{
  await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
  expect(tela.querySelector('form')).toBeNull()
  expect(tela.querySelector('h1')!.textContent).toBe('Aurora')
+ expect(tela.textContent).not.toContain('Atendimento registrado.')
  acao.executar=async()=>({erro:null,ok:false})
  vi.restoreAllMocks()
 })

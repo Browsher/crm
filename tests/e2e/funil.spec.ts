@@ -4,7 +4,7 @@ import { Client } from 'pg'
 import { FUNIL_EMPRESA } from './dados-funil'
 import { comBancoGrupos } from './dados-grupos'
 const cartaoAurora=(page:Page)=>page.locator('[draggable]').filter({has:page.getByRole('heading',{name:'Funil Aurora',exact:true})})
-test('Funil protege notas, conserva rascunho e registra primeira venda sem perder retorno',async({page})=>{
+test('Funil protege notas, conserva rascunho e registra primeira venda sem perder retorno',async({page},testInfo)=>{
   test.setTimeout(60_000)
   await page.goto('/login');await page.getByLabel('E-mail').fill('funile2e@teste.local');await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026');await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL('/meu-dia')
   await page.goto('/funil')
@@ -22,7 +22,7 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
     for(const width of [390,820,1280,1920]){
       await page.setViewportSize({width,height:844})
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-      await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-${tema}-${width}.png`,fullPage:true,animations:'disabled'})
+      await page.screenshot({path:testInfo.outputPath(`funil-${tema}-${width}.png`),fullPage:true,animations:'disabled'})
       const cardVisual = cartaoAurora(page)
       await expect(cardVisual).toHaveCSS('border-radius','10px')
       expect((await cardVisual.boundingBox())!.height).toBeLessThan(270)
@@ -35,7 +35,7 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
       const fecharModal=(await modal.getByRole('button',{name:'Voltar',exact:true}).boundingBox())!
       if(width>=1121){const caixa=(await modal.boundingBox())!;expect(caixa.y).toBe(0);expect(caixa.height).toBe(844);expect(caixa.x+caixa.width).toBe(width)}
       expect(tituloModal.x+tituloModal.width<=fecharModal.x||tituloModal.y+tituloModal.height<=fecharModal.y).toBe(true)
-      await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-modal-${tema}-${width}.png`,animations:'disabled'})
+      await page.screenshot({path:testInfo.outputPath(`funil-modal-${tema}-${width}.png`),animations:'disabled'})
       await page.keyboard.press('Escape');await expect(modal.getByRole('button',{name:'Atendimento e próximo passo',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(modal).toHaveCount(0);await expect(cartaoAurora(page).getByRole('button',{name:'Negociação',exact:true})).toBeFocused()
     }
   }
@@ -79,13 +79,14 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   await expect(page.getByLabel('Valor em reais')).toHaveValue('123,45')
   await page.getByLabel('Data da venda').fill('2026-01-01');await page.getByRole('button',{name:'Conferir venda'}).click();await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
   await expect(page).toHaveURL(`/carteira/${FUNIL_EMPRESA}?venda=registrada`)
+  const ficha=page.locator('[data-painel-lateral]')
+  await expect(ficha.getByRole('status')).toContainText('Venda registrada. Confira o histórico')
   await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0);await expect(cartaoAurora(page)).toHaveCount(0)
   await page.goto('/carteira');await expect(page.getByRole('main')).toContainText('Funil Aurora')
   await page.goto(`/carteira/${FUNIL_EMPRESA}`)
-  await page.getByRole('tab',{name:'Histórico',exact:true}).click();await page.getByRole('button',{name:'Expandir todos',exact:true}).click();await expect(page.getByRole('main')).toContainText('Venda registrada')
-  await expect(page.getByRole('main')).toContainText('123,45')
-  await abrirLeitura(page)
-  await page.getByRole('button',{name:'Registrar venda',exact:true}).click()
+  await ficha.getByRole('button',{name:'Histórico',exact:true}).click();await ficha.getByRole('button',{name:'Expandir todos',exact:true}).click();await expect(ficha).toContainText('Venda registrada')
+  await expect(ficha).toContainText('123,45')
+  await ficha.getByRole('button',{name:'Registrar venda',exact:true}).click()
   await page.getByLabel('Valor em reais').fill('250,50')
   await page.getByLabel('Data da venda').fill('2026-01-02')
   await page.getByLabel('Observação (opcional)').fill('Segunda compra')
@@ -95,21 +96,21 @@ test('Funil protege notas, conserva rascunho e registra primeira venda sem perde
   for(const width of [390,1280]){
     await page.setViewportSize({width,height:844})
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
-    await page.screenshot({path:`.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/carteira-venda-${width}.png`,animations:'disabled'})
+    await page.screenshot({path:testInfo.outputPath(`carteira-venda-${width}.png`),animations:'disabled'})
   }
   await page.getByRole('button',{name:'Conferir venda'}).click()
   await page.getByRole('button',{name:'Confirmar venda',exact:true}).click()
   await expect(page.locator('[data-slot="dialog-content"]')).toHaveCount(0)
-  await page.getByRole('tab',{name:'Histórico',exact:true}).click();const expandir=page.getByRole('button',{name:'Expandir todos',exact:true});if(await expandir.count())await expandir.click();await expect(page.getByRole('main')).toContainText('250,50')
-  await expect(page.getByRole('main')).toContainText('Segunda compra')
-  await expect(page.getByRole('main').locator('summary').filter({hasText:'Venda registrada'})).toHaveCount(2)
-  await page.screenshot({path:'.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/carteira-historico-vendas.png',fullPage:true,animations:'disabled'})
+  const expandir=ficha.getByRole('button',{name:'Expandir todos',exact:true});await expandir.click();await expect(ficha).toContainText('250,50')
+  await expect(ficha).toContainText('Segunda compra')
+  await expect(ficha.locator('summary').filter({hasText:'Venda registrada'})).toHaveCount(2)
+  await page.screenshot({path:testInfo.outputPath('carteira-historico-vendas.png'),fullPage:true,animations:'disabled'})
   await page.goto('/meu-dia');await expect(page.getByRole('main')).toContainText('Funil Aurora')
   const c=new Client({connectionString:process.env.DATABASE_URL_ADMIN});await c.connect();try{expect((await c.query('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[FUNIL_EMPRESA])).rows[0].n).toBe(2)}finally{await c.end()}
 })
 
 
-test('negociação de origem indisponível conserva Histórico e bloqueia novas operações por clique e teclado', async ({ page }) => {
+test('negociação de origem indisponível conserva Histórico e bloqueia novas operações por clique e teclado', async ({ page }, testInfo) => {
   const id = '00000000-0000-4000-8000-000000000808'
   const grupos = await comBancoGrupos(async c => (await c.query<{ id: string }>('UPDATE grupo_importacao SET ativo=false WHERE id IN (SELECT grupo_id FROM grupo_importacao_empresa WHERE empresa_id=$1) AND ativo RETURNING id', [id])).rows.map(r => r.id))
   try {
@@ -138,7 +139,7 @@ test('negociação de origem indisponível conserva Histórico e bloqueia novas 
         await expect(painel).not.toContainText('11977778888')
         await expect(painel.locator('form')).toHaveCount(0)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-        await page.screenshot({ path: `docs/design/2026-11-05-meu-dia/indisponivel-${tema}-${width}.png`, animations: 'disabled' })
+        await page.screenshot({ path: testInfo.outputPath(`indisponivel-${tema}-${width}.png`), animations: 'disabled' })
         await painel.getByRole('button', { name: 'Voltar', exact: true }).click()
       }
     }

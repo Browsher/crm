@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
 import { bancoGruposDoHarness } from './dados-grupos'
-import { mkdir } from 'node:fs/promises'
-import { resolve } from 'node:path'
 
 let empresaId: string
 let grupoId: string
@@ -37,7 +35,7 @@ test.beforeAll(async () => {
   await banco.sql('SELECT arquivo_legado_aplicar($1,$2)', [m,'a'.repeat(64)])
 })
 
-test('gestor consulta o arquivo e o histórico; vendedor conserva URLs antigas somente para consulta', async ({ page, browser }) => {
+test('gestor consulta o arquivo e o histórico; vendedor conserva URLs antigas somente para consulta', async ({ page, browser }, testInfo) => {
   await entrar(page,'gestor')
   await page.goto('/empresas?q=Jornada%20arquivo%20sintética')
   await expect(page.getByRole('heading', { name: 'Nenhuma empresa encontrada' })).toBeVisible()
@@ -48,13 +46,11 @@ test('gestor consulta o arquivo e o histórico; vendedor conserva URLs antigas s
   await expect(listasArquivadas.locator('[data-slot="card"]')).toHaveCount(1)
   await expect(listasArquivadas).toContainText('1 empresa')
   await expect(page.getByRole('heading', { name: 'Jornada arquivo sintética', exact: true })).toBeVisible()
-  const capturas = resolve('.superpowers/sdd/limpeza-legado-2026-10-30/capturas')
-  await mkdir(capturas,{ recursive: true })
   for (const width of [390,1280]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(page.getByRole('heading', { name: 'Arquivo de empresas', exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-    await page.screenshot({ path: resolve(capturas,`arquivo-${width}.png`), fullPage: true })
+    await page.screenshot({ path: testInfo.outputPath(`arquivo-${width}.png`), fullPage: true })
   }
   await listasArquivadas.getByRole('link', { name: 'Ver lista', exact: true }).click()
   await expect(page).toHaveURL(url => url.pathname === '/empresas/grupos/' + grupoId)
@@ -73,6 +69,7 @@ test('gestor consulta o arquivo e o histórico; vendedor conserva URLs antigas s
     for (const url of ['/fila/atendimento/'+empresaId,'/carteira/'+empresaId,'/funil?negociacao='+negociacaoId]) {
       await vendedor.goto(url)
       await expect(vendedor.getByRole('main')).toContainText('Contato sintético preservado')
+      if (url.startsWith('/carteira/')) await expect(vendedor.locator('[data-painel-lateral]')).toHaveCount(0)
       await expect(vendedor.getByRole('button', { name: /Registrar atendimento|Retomar atendimento|Registrar venda|Iniciar atendimento/ })).toHaveCount(0)
     }
     await vendedor.goto('/empresas/arquivadas')

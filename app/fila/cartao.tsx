@@ -13,8 +13,9 @@ import { iniciarAtendimentoAcao, retomarAtendimentoAcao } from './atendimento/ac
 import { urlAtendimento } from './localizar/navegacao'
 import { useRetomadaNaConsulta } from './localizar/recuperacao-retomada'
 
-export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false, escopoConsulta }: {
+export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false, escopoConsulta, naFichaCarteira }: {
   empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string; bloquearRetomada?: boolean; escopoConsulta?: string
+  naFichaCarteira?: 'direta' | 'interceptada'
 }) {
   const router = useRouter()
   const retomarNaConsulta = useRetomadaNaConsulta()
@@ -55,7 +56,12 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     ocupado.current = true
     iniciar(async () => {
       try {
-        if ('href' in acao && !salvo) { router.push(destino(acao)); return }
+        if ('href' in acao && !salvo) {
+          const href = destino(acao)
+          if (acao.tipo === 'carteira' && hrefCarteira === href) router.push(href, { scroll: false })
+          else router.push(href)
+          return
+        }
         const comando = salvo ? JSON.parse(salvo) : 'empresaId' in acao ? { id: acao.empresaId, chave: crypto.randomUUID(), versao: acao.versao, tipo: acao.tipo } : null
         if (!comando) return
         sessionStorage.setItem(storage, JSON.stringify(comando))
@@ -78,8 +84,12 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           if (d.tipo === 'atendimento') router.push(urlAtendimento(d.empresaId, filtros))
           if (d.tipo === 'funil') router.push('/funil?negociacao=' + encodeURIComponent(d.negociacaoId))
           if (d.tipo === 'carteira') {
+            if (naFichaCarteira && d.empresaId === empresa.id) { router.refresh(); return }
             const canonico = '/carteira/' + encodeURIComponent(d.empresaId)
-            router.push(hrefCarteira?.startsWith(canonico + '?') ? hrefCarteira : canonico)
+            const href = hrefCarteira?.startsWith(canonico + '?') ? hrefCarteira : canonico
+            if (naFichaCarteira === 'direta') location.assign(href)
+            else if (hrefCarteira === href) router.push(href, { scroll: false })
+            else router.push(href)
           }
           if (d.tipo === 'sem_interesse') router.push(urlPessoal({ ...filtros, disponibilidade: 'sem_interesse' }, 1))
         } catch { setErro('Envio confirmado. Atualize a página para conferir a situação atual.') }

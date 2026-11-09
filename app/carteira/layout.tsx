@@ -3,7 +3,7 @@ import { ShellCrm } from '@/src/components/crm/shell'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import '@/src/styles/ui.css'
 
-export default async function LayoutCarteira({ children }: { children: ReactNode }) {
+export default async function LayoutCarteira({ children, ficha }: { children: ReactNode; ficha?: ReactNode }) {
   const eu = await exigir('vendedor')
-  return <ShellCrm nome={eu.nome} papel={eu.papel} area="carteira">{children}</ShellCrm>
+  return <ShellCrm nome={eu.nome} papel={eu.papel} area="carteira">{children}{ficha}</ShellCrm>
 }

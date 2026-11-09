@@ -124,9 +124,10 @@ test('listas históricas permitem corrigir contexto, renomear e desativar preser
     await vendedor.goto('/carteira')
     await expect(vendedor.getByRole('heading', { name: CARTEIRA, exact: true })).toBeVisible()
     await vendedor.getByRole('link', { name: 'Ver cliente', exact: true }).click()
-    await vendedor.getByRole('tab', { name: 'Histórico', exact: true }).click()
-    await vendedor.getByRole('button', { name: 'Expandir todos', exact: true }).click()
-    await expect(vendedor.getByText('Histórico preservado da jornada', { exact: true })).toBeVisible()
+    const ficha = vendedor.locator('[data-painel-lateral]')
+    await ficha.getByRole('button', { name: 'Histórico', exact: true }).click()
+    await ficha.getByRole('button', { name: 'Expandir todos', exact: true }).click()
+    await expect(ficha.getByText('Histórico preservado da jornada', { exact: true })).toBeVisible()
     await vendedor.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(NOVA)}`)
     await expect(vendedor.getByRole('heading', { name: 'Nenhuma empresa com esses filtros', exact: true })).toBeVisible()
     await vendedor.goto(`/fila/localizar?legado=1&nome=${encodeURIComponent(OVERLAP)}`)
@@ -141,7 +142,7 @@ test('listas históricas permitem corrigir contexto, renomear e desativar preser
   } finally { await contexto.close() }
 })
 
-test('gestão real de grupos conserva reflow desktop e celular nos dois temas com diálogo e página vazia', async ({ page }) => {
+test('gestão real de grupos conserva reflow desktop e celular nos dois temas com diálogo e página vazia', async ({ page }, testInfo) => {
   test.setTimeout(90_000)
   await entrar(page)
   for (const tema of ['light', 'dark']) {
@@ -159,7 +160,7 @@ test('gestão real de grupos conserva reflow desktop e celular nos dois temas co
       expect(linhasDasBadges.length).toBeGreaterThan(0)
       expect(linhasDasBadges.every(linhas => linhas === 1)).toBe(true)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-lista-${tema}-${width}.png`, fullPage: true })
+      await page.screenshot({ path: testInfo.outputPath(`grupos-lista-${tema}-${width}.png`), fullPage: true })
       // Playwright rola o container até o link real, inclusive em 390px.
       await page.getByRole('link', { name: `Ver lista ${GRUPOS[0][1]}`, exact: true }).click()
       await expect(page.getByRole('heading', { name: GRUPOS[0][1], exact: true })).toBeVisible()
@@ -171,7 +172,7 @@ test('gestão real de grupos conserva reflow desktop e celular nos dois temas co
       await expect(resumo(page, 'Reservadas')).toHaveText('1')
       await expect(resumo(page, 'Outros impedimentos')).toHaveText('1')
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-detalhe-${tema}-${width}.png`, fullPage: true })
+      await page.screenshot({ path: testInfo.outputPath(`grupos-detalhe-${tema}-${width}.png`), fullPage: true })
       await expect(page.getByRole('main')).toHaveCSS('padding-left', width <= 820 ? '16px' : '32px')
       const contexto = page.getByRole('region', { name: 'Contexto da lista' })
       await expect(contexto).toHaveCSS('border-radius', '10px')
@@ -189,7 +190,7 @@ test('gestão real de grupos conserva reflow desktop e celular nos dois temas co
       expect(caixa).not.toBeNull()
       expect(caixa!.x).toBeGreaterThanOrEqual(0)
       expect(caixa!.x + caixa!.width).toBeLessThanOrEqual(width)
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-dialogo-${tema}-${width}.png` })
+      await page.screenshot({ path: testInfo.outputPath(`grupos-dialogo-${tema}-${width}.png`) })
       await page.keyboard.press('Escape')
       await expect(dialogo).toHaveCount(0)
       await expect(abrir).toBeFocused()
@@ -200,7 +201,7 @@ test('gestão real de grupos conserva reflow desktop e celular nos dois temas co
       await expect(page.getByRole('heading', { name: 'Nenhuma lista nesta página' })).toHaveCSS('font-size', '16px')
       await expect(page.getByRole('heading', { name: 'Nenhuma lista nesta página' })).toHaveCSS('line-height', '24px')
       await expect(page.getByText('Volte à primeira página para consultar as listas existentes.')).toBeVisible()
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/grupos-vazio-${tema}-${width}.png`, fullPage: true })
+      await page.screenshot({ path: testInfo.outputPath(`grupos-vazio-${tema}-${width}.png`), fullPage: true })
       await page.getByRole('link', { name: 'Voltar à primeira página', exact: true }).click()
       await expect(page.getByRole('table')).toBeVisible()
     }

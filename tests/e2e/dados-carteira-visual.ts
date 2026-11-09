@@ -23,6 +23,7 @@ export async function prepararCarteiraVisual(banco: BancoDeTeste) {
     await banco.sql('INSERT INTO empresa_fila (empresa_id, vendedor_id) VALUES ($1, $2)', [id, dono])
   }
   await banco.sql(`INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) SELECT empresa_id,vendedor_id,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,gen_random_uuid() FROM empresa_fila WHERE empresa_id=ANY($1::uuid[])`,[empresas.map(e=>e[0])])
+  await banco.sql("UPDATE empresa SET contato_nome='Pessoa de contato Aurora' WHERE id=$1", [empresas[0][0]])
   await banco.sql("INSERT INTO empresa(id,cnpj,razao_social,telefone) VALUES('00000000-0000-4000-8000-000000000304','00000000000304','Carteira Visual Prospecto','11999990304')")
   await vincularEmpresaTeste(banco,'00000000-0000-4000-8000-000000000304',vendedor.id,'legado')
   await banco.sql("INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES('00000000-0000-4000-8000-000000000304',$1)",[vendedor.id])
