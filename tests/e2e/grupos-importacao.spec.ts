@@ -91,7 +91,7 @@ test('listas históricas permitem corrigir contexto, renomear e desativar preser
   await expect(page.getByRole('heading', { name: RENOMEADO, exact: true })).toBeVisible()
   const desativar = page.getByRole('button', { name: 'Desativar grupo', exact: true })
   await desativar.click()
-  await expect(page.getByRole('dialog')).toContainText('1 empresas disponíveis deixarão de aparecer')
+  await expect(page.getByRole('dialog')).toContainText('1 empresa disponível neste grupo ficará sem grupo ativo')
   await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click()
   await expect(desativar).toBeFocused()
   await expect(page.getByText('Ativo', { exact: true })).toBeVisible()
@@ -111,7 +111,9 @@ test('listas históricas permitem corrigir contexto, renomear e desativar preser
   await expect(page.getByRole('region', { name: 'Empresas cadastradas' }).getByRole('listitem')).toHaveCount(3)
   const nova = page.getByRole('region', { name: 'Empresas cadastradas' }).getByRole('listitem').filter({ hasText: formatarCnpj(CNPJ_JORNADA_NOVA) })
   await nova.getByRole('button', { name: 'Consulta rápida: Fantasia da planilha', exact: true }).click()
-  await expect(page.getByRole('dialog')).toContainText(NOVA)
+  const consulta = page.getByRole('dialog', { name: 'Ver empresa' })
+  await consulta.getByRole('button', { name: 'Cadastro e origem', exact: true }).click()
+  await expect(consulta).toContainText(NOVA)
   await page.keyboard.press('Escape')
 
   const contexto = await browser.newContext({ baseURL: new URL(page.url()).origin })
@@ -177,7 +179,7 @@ test('gestão real de grupos conserva reflow desktop e celular nos dois temas co
       const abrir = page.getByRole('button', { name: 'Desativar grupo', exact: true })
       await abrir.click()
       const dialogo = page.getByRole('dialog')
-      await expect(dialogo).toContainText('1 empresas disponíveis deixarão de aparecer')
+      await expect(dialogo).toContainText('1 empresa disponível neste grupo ficará sem grupo ativo')
       await expect(page.locator('.ui-dialog-portal')).toHaveAttribute('data-theme', tema)
       for (let i = 0; i < 5; i++) {
         await page.keyboard.press('Tab')

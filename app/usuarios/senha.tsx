@@ -1,19 +1,26 @@
 'use client'
-import { useState } from 'react'
-import { Button } from '@/src/components/ui/button'
+import { useLayoutEffect, useRef, useState } from 'react'
 import styles from './usuarios.module.css'
 
-export function SenhaProvisoria({ senha, nome, concluir }: { senha: string; nome: string; concluir: () => void }) {
+export function useCopiarSenha() {
   const [aviso, setAviso] = useState('')
-  async function copiar() {
+  async function copiar(senha: string) {
     try { await navigator.clipboard.writeText(senha); setAviso('Senha copiada.') }
     catch { setAviso('Não foi possível copiar. Selecione a senha e copie manualmente.') }
   }
+  return { aviso, copiar }
+}
+
+export function SenhaProvisoria({ senha, nome, aviso, focar = false }: { senha: string; nome: string; aviso: string; focar?: boolean }) {
+  const instrucao = useRef<HTMLParagraphElement>(null)
+  useLayoutEffect(() => {
+    if (focar) instrucao.current?.focus({ preventScroll: true })
+  }, [focar])
+
   return <div className={styles.formulario}>
-    <p>Entregue esta senha provisória a <strong>{nome}</strong>.</p>
+    <p ref={instrucao} tabIndex={focar ? -1 : undefined}>Entregue esta senha provisória a <strong>{nome}</strong>.</p>
     <code className={styles.senha}>{senha}</code>
     <p className={styles.muted}>Ao fechar, você não poderá consultar esta senha novamente. A pessoa deverá trocá-la no primeiro acesso.</p>
     <p role="status">{aviso}</p>
-    <div className={styles.acoes}><Button variant="outline" onClick={copiar}>Copiar senha</Button><Button onClick={concluir}>Concluir</Button></div>
   </div>
 }

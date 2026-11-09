@@ -34,10 +34,11 @@ test('desativação abre confirmação com retrato atual, cancelamento e Escape 
   gatilho.focus()
   await clicar('Desativar grupo')
   const dialogo = document.querySelector('[role=dialog]')!
-  expect(dialogo.textContent).toContain('8 empresas')
+  expect(dialogo.getAttribute('data-slot')).toBe('dialog-content')
+  expect(dialogo.textContent).toContain('8 empresas disponíveis neste grupo')
   expect(dialogo.textContent).toContain('retrato atual')
-  expect(dialogo.textContent).toContain('Carteiras e reservas')
-  expect(dialogo.contains(document.activeElement)).toBe(true)
+  expect(dialogo.textContent).toContain('vínculos com vendedores')
+  expect(document.activeElement).toBe(botao('Cancelar'))
   const fechar = document.querySelector<HTMLButtonElement>('button[aria-label="Fechar"]')!
   fechar.focus()
   await act(async () => fechar.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })))
@@ -58,7 +59,10 @@ test('desativação abre confirmação com retrato atual, cancelamento e Escape 
 test('erro fica no diálogo com nome editado e permite tentar de novo; sucesso fecha', async () => {
   await montar()
   await clicar('Renomear')
+  const painel = document.querySelector('[role=dialog][data-painel-lateral]')!
+  expect(painel).not.toBeNull()
   const input = document.querySelector<HTMLInputElement>('input[name=nome]')!
+  expect(painel.querySelector<HTMLButtonElement>('[data-painel-rodape] button[type=submit]')?.form).toBe(input.form)
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Novo nome')
     input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -75,6 +79,38 @@ test('erro fica no diálogo com nome editado e permite tentar de novo; sucesso f
   expect(document.activeElement).toBe(botao('Renomear'))
 })
 
+test('aviso de reativação concluída muda da confirmação para o recibo lateral', async () => {
+  await montar(false)
+  vi.mocked(alterarGrupoAcao).mockResolvedValueOnce({ erro: null, sucesso: true, aviso: 'Gravado. Atualize a lista.' })
+  await clicar('Reativar grupo')
+  await clicar('Confirmar')
+  const recibo = document.querySelector('[role=dialog][data-painel-lateral]')!
+  expect(recibo).not.toBeNull()
+  expect(recibo.contains(document.activeElement)).toBe(true)
+  expect(recibo.querySelector('[role=status]')?.textContent).toContain('Gravado')
+  expect(recibo.querySelector('form')).toBeNull()
+  await clicar('Concluir')
+  expect(document.activeElement).toBe(botao('Reativar grupo'))
+  expect(alterarGrupoAcao).toHaveBeenCalledTimes(1)
+})
+
+test('resposta incerta ao renomear mantém o nome editado e impede outro envio', async () => {
+  await montar()
+  await clicar('Renomear')
+  const input = document.querySelector<HTMLInputElement>('input[name=nome]')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Nome incerto')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  vi.mocked(alterarGrupoAcao).mockRejectedValueOnce(new Error('Resposta perdida'))
+  await clicar('Salvar nome')
+  expect(input.value).toBe('Nome incerto')
+  expect(document.querySelector('[role=alert]')?.textContent).toContain('confira o estado')
+  expect(botao('Salvar nome').disabled).toBe(true)
+  await act(async () => input.form!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+  expect(alterarGrupoAcao).toHaveBeenCalledTimes(1)
+})
+
 test('pendente impede duplo envio e fecha só após resultado; reativar envia ação correta', async () => {
   await montar(false)
   let concluir!: (r: { erro: null; sucesso: true }) => void
@@ -84,6 +120,8 @@ test('pendente impede duplo envio e fecha só após resultado; reativar envia a�
   await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
   expect(botao('Salvando…').disabled).toBe(true)
   expect(botao('Cancelar').disabled).toBe(true)
+  await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) })
+  expect(alterarGrupoAcao).toHaveBeenCalledTimes(1)
   await act(async () => document.querySelector('[role=dialog]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })))
   expect(document.querySelector('[role=dialog]')).not.toBeNull()
   expect(vi.mocked(alterarGrupoAcao).mock.calls[0][1].get('acao')).toBe('reativar')

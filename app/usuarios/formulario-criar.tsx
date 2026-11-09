@@ -1,15 +1,15 @@
 'use client'
-import { startTransition, useActionState, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { startTransition, useActionState, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useDescarteEdicao } from '@/src/components/crm/descarte-edicao'
+import { PainelSobrepostoCrm } from '@/src/components/crm/painel-lateral'
 import { RESULTADO_INCERTO } from '@/src/lib/edicao-administrativa'
 import { Button } from '@/src/components/ui/button'
 import { Choice } from '@/src/components/ui/choice'
 import { Input } from '@/src/components/ui/input'
 import { Alert } from '@/src/components/ui/alert'
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/src/components/ui/dialog'
-import { useTemaCrm } from '@/src/components/crm/tema'
+import { Dialog, DialogTrigger } from '@/src/components/ui/dialog'
 import { criarUsuarioAcao, type EstadoCriar } from './acoes'
-import { SenhaProvisoria } from './senha'
+import { SenhaProvisoria, useCopiarSenha } from './senha'
 import styles from './usuarios.module.css'
 
 const inicial: EstadoCriar = { erro: null, criado: null }
@@ -28,6 +28,8 @@ function Criacao({ fechar, fecharEditorRef }: { fechar: () => void; fecharEditor
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [papel, setPapel] = useState('vendedor')
+  const formularioId = useId()
+  const { aviso: avisoCopia, copiar } = useCopiarSenha()
   const [estado, acao, pendente] = useActionState(async (anterior: EstadoCriar, form: FormData): Promise<EstadoCriar> => {
     return criarUsuarioAcao(anterior, form).catch(() => ({ erro: RESULTADO_INCERTO, criado: null, incerto: true }))
   }, inicial)
@@ -37,12 +39,20 @@ function Criacao({ fechar, fecharEditorRef }: { fechar: () => void; fecharEditor
     fecharEditorRef.current = pedirFechamento
     return () => { fecharEditorRef.current = null }
   })
-  return <DialogContent theme={useTemaCrm()} showCloseButton={!pendente}
-    onEscapeKeyDown={e => { if (pendente) e.preventDefault() }} onPointerDownOutside={e => { if (pendente) e.preventDefault() }}>
-    <DialogHeader><DialogTitle>{estado.criado ? 'Usuário criado' : 'Novo usuário'}</DialogTitle><DialogDescription>Crie o acesso e entregue a senha provisória à pessoa.</DialogDescription></DialogHeader>
+  const criado = estado.criado
+  return <PainelSobrepostoCrm titulo={criado ? 'Usuário criado' : 'Novo usuário'}
+    descricao={criado ? 'Acesso criado com sucesso.' : 'Crie o acesso e entregue a senha provisória à pessoa.'}
+    aoFechar={pedirFechamento} fecharBloqueado={pendente} ocupado={pendente}
+    rodape={criado ? <>
+      <Button type="button" variant="outline" onClick={() => copiar(criado.senhaProvisoria)}>Copiar senha</Button>
+      <Button type="button" onClick={fechar}>Concluir</Button>
+    </> : <>
+      <Button type="button" variant="outline" disabled={pendente} onClick={pedirFechamento}>Cancelar</Button>
+      <Button type="submit" form={formularioId} disabled={pendente || estado.incerto}>{pendente ? 'Criando…' : 'Criar usuário'}</Button>
+    </>}>
     {estado.aviso && <Alert role="status">{estado.aviso}</Alert>}
-    {estado.criado ? <SenhaProvisoria nome={estado.criado.nome} senha={estado.criado.senhaProvisoria} concluir={fechar} /> :
-      <form action={acao} aria-busy={pendente} className={styles.formulario} onSubmit={e => {
+    {criado ? <SenhaProvisoria nome={criado.nome} senha={criado.senhaProvisoria} aviso={avisoCopia} focar /> :
+      <form id={formularioId} action={acao} className={styles.formulario} onSubmit={e => {
         e.preventDefault()
         if (pendente || estado.incerto) return
         const dados = new FormData(e.currentTarget)
@@ -55,8 +65,7 @@ function Criacao({ fechar, fecharEditorRef }: { fechar: () => void; fecharEditor
           <label className={styles.escolha}><Choice type="radio" name="papel" value="gestor" checked={papel === 'gestor'} onChange={() => setPapel('gestor')} /> Gestor</label>
         </div></fieldset>
         {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
-        <DialogFooter><Button type="button" variant="outline" disabled={pendente} onClick={pedirFechamento}>Cancelar</Button><Button type="submit" disabled={pendente || estado.incerto}>{pendente ? 'Criando…' : 'Criar usuário'}</Button></DialogFooter>
       </form>}
     {confirmacao}
-  </DialogContent>
+  </PainelSobrepostoCrm>
 }
