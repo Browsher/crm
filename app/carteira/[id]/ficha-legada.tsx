@@ -37,13 +37,14 @@ function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
   return <LinhaDoTempo contatos={contatos} />
 }
 
-export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPara = '/carteira', dadosCadastrais, aoMudarOcupacao }: {
+export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPara = '/carteira', dadosCadastrais, aoMudarOcupacao, aoConfirmarAtendimento }: {
   empresa: EmpresaComigo
   contatos: Contato[]
   erroHistorico?: boolean
   voltarPara?: string
   dadosCadastrais?: ReactNode
   aoMudarOcupacao: (ocupada: boolean) => void
+  aoConfirmarAtendimento: (mensagem: string) => void
 }) {
   const arquivada = empresa.situacao === 'sem_interesse'
   const acompanhamentoInicial = ['primeiro_contato','em_negociacao','proposta_enviada'].includes(empresa.situacao)
@@ -175,7 +176,22 @@ export function FichaLegada({ empresa, contatos, erroHistorico = false, voltarPa
       </dl></CardContent></Card>
       <Card><CardHeader><CardTitle>Próximo passo</CardTitle></CardHeader><CardContent>{empresa.proximoPasso ? <div className={empresa.vencido ? styles.atrasado : undefined}><p>{empresa.proximoPasso}</p>{empresa.proximoPassoData ? <p>{dataCivil(empresa.proximoPassoData)}{empresa.vencido ? ' · Atrasado' : ''}</p> : null}</div> : <p className={styles.ausente}>Sem próximo passo combinado.</p>}</CardContent></Card>
     </div>} historico={<Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent><Historico contatos={contatos} erro={erroHistorico} /></CardContent></Card>} /></Card>
-    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento"><div className={styles.editorCabecalho}><h2>Registrar atendimento</h2><Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button></div><FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver voltarPara={voltarPara} visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} somenteConfirmacao={arquivada} onPendingChange={mudarPendente} onSaved={() => { setRascunho(rascunhoInicial(acompanhamentoInicial)); removerSentinela(() => { setEditando(false); router.refresh() }) }} /></section> : null}
+    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento">
+      <div className={styles.editorCabecalho}>
+        <h2>Registrar atendimento</h2>
+        <Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button>
+      </div>
+      <FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver voltarPara={voltarPara} visual="fila" rascunho={rascunho}
+        onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} somenteConfirmacao={arquivada} onPendingChange={mudarPendente}
+        onSaved={(_, resultado) => {
+          setRascunho(rascunhoInicial(acompanhamentoInicial))
+          removerSentinela(() => {
+            aoConfirmarAtendimento(resultado.aviso ?? (resultado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.'))
+            setEditando(false)
+            router.refresh()
+          })
+        }} />
+    </section> : null}
     {arquivada && !editando && <FormularioContato empresaId={empresa.id} somenteConfirmacao onPendingChange={mudarPendente} onSaved={() => router.refresh()} />}
     <Dialog open={descarte !== null} onOpenChange={aberto => { if (!aberto && !pendente) setDescarte(null) }}><DialogContent theme={tema} onCloseAutoFocus={evento => {
       if (!origemDescarte.current?.isConnected) return

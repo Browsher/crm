@@ -65,36 +65,45 @@ export function Ficha(props: Props) {
   return <ComposicaoFicha key={props.usuarioId + ':' + props.empresa.id} {...props} />
 }
 
-function ComposicaoFicha({ voltarPara = '/carteira', rotuloVoltar = 'Voltar para a carteira', ...props }: Props) {
+function ComposicaoFicha({ voltarPara = '/carteira', rotuloVoltar = 'Voltar para a carteira', visita, ...props }: Props) {
   const [ocupada, setOcupada] = useState(false)
   const [mensagem, setMensagem] = useState('')
+  const [reciboLegado, setReciboLegado] = useState<string | null>(null)
   const lateralPreferida = Boolean(props.cliente || props.interceptada)
+  const [visitaPronta, setVisitaPronta] = useState(!lateralPreferida)
   const [composicao, setComposicao] = useState({ lateral: lateralPreferida, fundo: props.fundo })
   // Uma revalidação pode mudar a elegibilidade enquanto um editor está
   // aberto. Troque a composição assim que ele liberar a ficha.
   const lateral = ocupada ? composicao.lateral : lateralPreferida
   const fundo = props.fundo ?? composicao.fundo
   if (lateral !== composicao.lateral || fundo !== composicao.fundo) setComposicao({ lateral, fundo })
-  if (lateral) return <>
-    {fundo}
-    <FichaCliente {...props} voltarPara={voltarPara} rotuloVoltar={rotuloVoltar} aoMudarOcupacao={setOcupada}
-      mensagem={mensagem} aoMudarMensagem={setMensagem} />
+  if (!ocupada && reciboLegado !== null) {
+    if (lateral) setMensagem(reciboLegado)
+    setReciboLegado(null)
+  }
+  return <>
+    {lateral ? <>
+      {fundo}
+      <FichaCliente {...props} voltarPara={voltarPara} rotuloVoltar={rotuloVoltar} aoMudarOcupacao={setOcupada}
+        mensagem={mensagem} aoMudarMensagem={setMensagem} aoPrepararVisita={setVisitaPronta} />
+    </> : <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
+      <nav aria-label="Navegação da ficha"><Button asChild variant="outline"><Link href={voltarPara}>{rotuloVoltar}</Link></Button></nav>
+      {props.vendaRegistrada && <p role="status">Venda registrada. Confira o histórico deste cliente.</p>}
+      {mensagem && <p role="status">{mensagem}</p>}
+      <FichaLegada {...props} voltarPara={voltarPara} dadosCadastrais={<DadosCadastrais dados={props.cadastrais ?? null} />}
+        aoMudarOcupacao={setOcupada} aoConfirmarAtendimento={setReciboLegado} />
+    </main>}
+    {visitaPronta && visita}
   </>
-  return <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
-    <nav aria-label="Navegação da ficha"><Button asChild variant="outline"><Link href={voltarPara}>{rotuloVoltar}</Link></Button></nav>
-    {props.vendaRegistrada && <p role="status">Venda registrada. Confira o histórico deste cliente.</p>}
-    {mensagem && <p role="status">{mensagem}</p>}
-    <FichaLegada {...props} voltarPara={voltarPara} dadosCadastrais={<DadosCadastrais dados={props.cadastrais ?? null} />} aoMudarOcupacao={setOcupada} />
-    {props.visita}
-  </main>
 }
 
-function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, interceptada, voltarPara, rotuloVoltar, cadastrais, vendaRegistrada, visita, aoMudarOcupacao, mensagem, aoMudarMensagem }: Props & {
+function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, interceptada, voltarPara, rotuloVoltar, cadastrais, vendaRegistrada, aoMudarOcupacao, mensagem, aoMudarMensagem, aoPrepararVisita }: Props & {
   voltarPara: string
   rotuloVoltar: string
   aoMudarOcupacao: (ocupada: boolean) => void
   mensagem: string
   aoMudarMensagem: (mensagem: string) => void
+  aoPrepararVisita: (pronta: boolean) => void
 }) {
   const router = useRouter()
   const tema = useTemaCrm()
@@ -161,6 +170,9 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
     if (typeof saida === 'function') saida()
   })
   const confirmacao = guarda.pedido ? 'descarte' : conferida ? 'venda' : null
+  useLayoutEffect(() => {
+    if (!guarda.restaurando) aoPrepararVisita(true)
+  }, [aoPrepararVisita, guarda.restaurando])
 
   function mudarNivel(proximo: Nivel, foco?: string) {
     proximoFoco.current = foco ?? null
@@ -280,7 +292,6 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
           if (gatilhoLista?.isConnected) gatilhoLista.focus({ preventScroll: true })
         }}>
         <div className={styles.secaoCliente}>
-          {visita}
           {vendaRegistrada && <p role="status">Venda registrada. Confira o histórico deste cliente.</p>}
           {mensagem && <p role="status">{mensagem}</p>}
           {!confirmacao && alertaVenda}

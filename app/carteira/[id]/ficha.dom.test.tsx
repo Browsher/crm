@@ -5,11 +5,14 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import type { Contato } from '@/src/features/contato/historico'
+import { RegistrarVisita } from '../../fila/localizar/registrar-visita'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn() }) }))
 vi.mock('@/src/components/crm/tema', () => ({ useTemaCrm: () => 'light' }))
 const acao = vi.hoisted(() => ({ executar: (async () => ({ erro: null, ok: false })) as (...args: unknown[]) => Promise<{ erro: string | null; ok: boolean }> }))
 vi.mock('@/src/features/contato/acao', () => ({ registrarContatoAcao: (anterior: unknown, form: unknown) => acao.executar(anterior, form), prepararContatoAcao: async () => ({ok:true,fase:'negociacao',empresa:{versao:2,situacao:'primeiro_contato'}}) }))
+const registrarVisita = vi.hoisted(() => vi.fn<(empresaId: string) => Promise<{ erro: string | null }>>(async () => ({ erro: null })))
+vi.mock('../../fila/localizar/registrar-visita-acao', () => ({ registrarVisitaAcao: registrarVisita }))
 
 const { Ficha } = await import('./ficha')
 
@@ -29,17 +32,18 @@ afterEach(async () => {
   sessionStorage.clear()
   history.replaceState(null, '', '/')
   vi.restoreAllMocks()
+  registrarVisita.mockClear()
 })
 
-async function renderizar(empresa: EmpresaComigo, cliente: boolean, contatos: Contato[] = [], fundo?: ReactNode) {
-  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} cliente={cliente} contatos={contatos} fundo={fundo} voltarPara="/carteira?nome=Aurora" />))
+async function renderizar(empresa: EmpresaComigo, cliente: boolean, contatos: Contato[] = [], fundo?: ReactNode, visita?: ReactNode) {
+  await act(async () => raiz?.render(<Ficha usuarioId="teste" empresa={empresa} cliente={cliente} contatos={contatos} fundo={fundo} visita={visita} voltarPara="/carteira?nome=Aurora" />))
 }
 
-async function montar(empresa = EMPRESA, cliente = false, contatos: Contato[] = []) {
+async function montar(empresa = EMPRESA, cliente = false, contatos: Contato[] = [], visita?: ReactNode) {
   host = document.createElement('div')
   document.body.append(host)
   raiz = createRoot(host)
-  await renderizar(empresa, cliente, contatos)
+  await renderizar(empresa, cliente, contatos, undefined, visita)
   return host
 }
 
@@ -156,6 +160,15 @@ describe('Ficha no navegador', () => {
     expect(tela.textContent).not.toContain('Em prospecção')
   })
 
+  test('a mesma visita fica montada quando a primeira venda muda a composição', async () => {
+    await montar(EMPRESA, false, [], <RegistrarVisita empresaId={EMPRESA.id} />)
+    expect(registrarVisita).toHaveBeenCalledOnce()
+    await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>, <RegistrarVisita empresaId={EMPRESA.id} />)
+    expect(document.querySelector('[data-painel-lateral]')).not.toBeNull()
+    expect(registrarVisita).toHaveBeenCalledOnce()
+    expect(registrarVisita).toHaveBeenCalledWith(EMPRESA.id)
+  })
+
   test('conserva a edição legada até retirar a guarda e só então troca para a ficha do cliente', async () => {
     const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
     const tela = await montar()
@@ -175,6 +188,34 @@ describe('Ficha no navegador', () => {
     await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(tela.textContent).toContain('Minha carteira')
     expect(document.querySelector('[data-painel-lateral]')?.textContent).toContain('Registrar venda')
+  })
+
+  test('mostra uma vez na nova lateral o recibo do atendimento iniciado em prospecção', async () => {
+    vi.spyOn(history, 'back').mockImplementation(() => {})
+    const executarAnterior = acao.executar
+    let confirmar!: (estado: { ok: true; erro: null }) => void
+    const resposta = new Promise<{ ok: true; erro: null }>(resolve => { confirmar = resolve })
+    const executar = vi.fn(() => resposta)
+    acao.executar = executar
+    try {
+      const tela = await montar()
+      await clicarNaFicha('Registrar atendimento', tela)
+      await act(async () => tela.querySelector('form')!.requestSubmit())
+      expect(executar).toHaveBeenCalledOnce()
+
+      await renderizar({ ...EMPRESA, situacao: 'cliente' }, true, [venda], <main>Minha carteira</main>)
+      expect(tela.querySelector('form')).not.toBeNull()
+      expect(document.querySelector('[data-painel-lateral]')).toBeNull()
+
+      await act(async () => confirmar({ ok: true, erro: null }))
+      await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+      const lateral = document.querySelector('[data-painel-lateral]')
+      expect(tela.querySelector('form')).toBeNull()
+      expect(lateral).not.toBeNull()
+      const recibos = [...document.querySelectorAll('[role=status]')].filter(p => p.textContent === 'Atendimento registrado.')
+      expect(recibos).toHaveLength(1)
+      expect(lateral?.contains(recibos[0])).toBe(true)
+    } finally { acao.executar = executarAnterior }
   })
 
   test('arquivada confirma somente o envio desconhecido da aba, sem abrir novo registro', async () => {
@@ -330,6 +371,7 @@ test('sucesso de contato fecha editor da ficha sem navegar ao Funil',async()=>{
  await act(async()=>window.dispatchEvent(new PopStateEvent('popstate')))
  expect(tela.querySelector('form')).toBeNull()
  expect(tela.querySelector('h1')!.textContent).toBe('Aurora')
+ expect(tela.textContent).not.toContain('Atendimento registrado.')
  acao.executar=async()=>({erro:null,ok:false})
  vi.restoreAllMocks()
 })
