@@ -212,7 +212,6 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   expect(await painel.boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 844 })
-  expect((await conferir.boundingBox())?.height).toBeGreaterThanOrEqual(44)
   await expect(central).toBeInViewport({ ratio: 1 })
   await expect(corrigir).toBeFocused()
   await expect(central).toContainText('Confirmar venda de R$ 250,50 em 02/01/2026?')
@@ -226,6 +225,11 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   expect(await central.evaluate(elemento => elemento.scrollWidth - elemento.clientWidth)).toBe(0)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
   await page.screenshot({ path: testInfo.outputPath('recompra-confirmacao-390-escuro.png'), animations: 'disabled' })
+  await corrigir.click()
+  await expect(conferir).toBeFocused()
+  expect((await conferir.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  await conferir.click()
+
   let liberar!: () => void
   const respostaLiberada = new Promise<void>(resolve => { liberar = resolve })
   const corpos: string[] = []
