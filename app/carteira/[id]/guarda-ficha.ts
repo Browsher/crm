@@ -28,12 +28,11 @@ function entradaAnteriorEh(href: string) {
   return entradaAnterior()?.url === new URL(href, location.href).href
 }
 
-export function voltarParaListaAnterior(href: string) {
+export function voltarParaEntradaAnterior(href: string) {
   if (!entradaAnteriorEh(href)) return false
   const destino = new URL(href, location.href).href
-  // Após reload da ficha, a entrada anterior pode apontar para a árvore
-  // interceptada do documento antigo. Recarregue só se o popstate chegar
-  // no documento atual e no destino que acabamos de validar.
+  // O popstate pode recuperar uma árvore antiga ou uma agenda desatualizada.
+  // Recarregue o destino validado se a travessia ocorrer neste documento.
   window.addEventListener('popstate', () => {
     if (location.href === destino) location.reload()
   }, { once: true })

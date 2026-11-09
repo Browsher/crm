@@ -29,7 +29,7 @@ import { transmitirVenda } from '../../venda-envio'
 import { FormularioRecompra } from '../registrar-venda'
 import { DadosCliente, enderecoCliente, GRUPOS_CLIENTE } from './dados-cliente'
 import { FichaLegada } from './ficha-legada'
-import { useGuardaFicha, voltarParaListaAnterior } from './guarda-ficha'
+import { useGuardaFicha, voltarParaEntradaAnterior } from './guarda-ficha'
 import styles from './ficha.module.css'
 
 type Props = {
@@ -165,7 +165,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
     }
     if (saida === 'ficha') {
       if (interceptada) router.back()
-      else if (!voltarPara.startsWith('/carteira') || !voltarParaListaAnterior(voltarPara)) router.replace(voltarPara)
+      else if (!voltarParaEntradaAnterior(voltarPara)) router.replace(voltarPara)
     }
     if (saida === 'navegador') router.back()
     if (typeof saida === 'function') saida()
