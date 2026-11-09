@@ -16,10 +16,10 @@
   border-bottom: 1px solid var(--border);
 }
 .cabecalho > div { min-width: 0; }
-.cabecalho h2 { font-size: 19px; line-height: 1.35; font-weight: 650; overflow-wrap: anywhere; scroll-margin-top: 76px; }
+.painel .cabecalho h2 { font-size: 19px; line-height: 1.35; font-weight: 650; overflow-wrap: anywhere; scroll-margin-top: 76px; }
 .cabecalho h2:focus { outline: none; }
 .cabecalho > button { flex: none; }
-.descricao { color: var(--muted-foreground); font-size: 13px; margin-top: 4px; }
+.painel .cabecalho .descricao { color: var(--muted-foreground); font-size: 13px; margin-top: 4px; }
 .corpo { min-width: 0; padding: 16px 20px 24px; }
 .painel[data-painel-composicao="padrao"] {
   position: fixed;
