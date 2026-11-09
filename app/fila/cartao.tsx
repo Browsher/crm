@@ -55,7 +55,12 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     ocupado.current = true
     iniciar(async () => {
       try {
-        if ('href' in acao && !salvo) { router.push(destino(acao)); return }
+        if ('href' in acao && !salvo) {
+          const href = destino(acao)
+          if (acao.tipo === 'carteira' && hrefCarteira === href) router.push(href, { scroll: false })
+          else router.push(href)
+          return
+        }
         const comando = salvo ? JSON.parse(salvo) : 'empresaId' in acao ? { id: acao.empresaId, chave: crypto.randomUUID(), versao: acao.versao, tipo: acao.tipo } : null
         if (!comando) return
         sessionStorage.setItem(storage, JSON.stringify(comando))
@@ -79,7 +84,9 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           if (d.tipo === 'funil') router.push('/funil?negociacao=' + encodeURIComponent(d.negociacaoId))
           if (d.tipo === 'carteira') {
             const canonico = '/carteira/' + encodeURIComponent(d.empresaId)
-            router.push(hrefCarteira?.startsWith(canonico + '?') ? hrefCarteira : canonico)
+            const href = hrefCarteira?.startsWith(canonico + '?') ? hrefCarteira : canonico
+            if (hrefCarteira === href) router.push(href, { scroll: false })
+            else router.push(href)
           }
           if (d.tipo === 'sem_interesse') router.push(urlPessoal({ ...filtros, disponibilidade: 'sem_interesse' }, 1))
         } catch { setErro('Envio confirmado. Atualize a página para conferir a situação atual.') }

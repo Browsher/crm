@@ -85,7 +85,7 @@ test('abrir carteira conserva filtros locais após confirmar comando desconhecid
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
   iniciar.mockResolvedValueOnce({ok:true,versao:3,repetida:true,leituraDestino:{ok:true,destino:{tipo:'carteira',empresaId:'A'}}});await clicar('Abrir na carteira')
   expect(Object.fromEntries(iniciar.mock.calls[2][0])).toEqual(primeiro)
-  expect(push).toHaveBeenCalledWith(href)
+  expect(push).toHaveBeenCalledWith(href, { scroll: false })
 })
 test('carteira ignora destino externo e conserva destino canônico',async()=>{
   await montar({...empresa,situacao:'cliente'},'https://example.com/fora');await clicar('Abrir na carteira')

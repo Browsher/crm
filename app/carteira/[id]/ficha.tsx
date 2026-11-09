@@ -1,175 +1,363 @@
 'use client'
 
-import type { ReactNode } from 'react'
-
-import { Cartao } from '../../fila/cartao'
-import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
-
-import { useEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { FormularioContato } from '@/src/features/contato/formulario'
-import type { Contato } from '@/src/features/contato/historico'
-import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial, type RascunhoContato } from '@/src/features/contato/rascunho'
-import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
-import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
-import { useTemaCrm } from '@/src/components/crm/tema'
+import Link from 'next/link'
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/src/components/ui/dialog'
-import styles from './ficha.module.css'
-import { RegistrarVenda } from '../registrar-venda'
+import { Dialog, DialogContent } from '@/src/components/ui/dialog'
+import { ConfirmacaoPainelCrm } from '@/src/components/crm/confirmacao-painel'
+import { ContextoResultadoBusca } from '@/src/components/crm/contexto-resultado-busca'
+import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
+import type { GrupoEmpresa } from '@/src/components/crm/empresa-detalhes'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
-import { AbasFicha } from '@/src/components/crm/abas-ficha'
+import { MenuPainelCrm } from '@/src/components/crm/menu-painel'
+import { PainelSobrepostoCrm } from '@/src/components/crm/painel-lateral'
+import { useTemaCrm } from '@/src/components/crm/tema'
+import { FormularioContato } from '@/src/features/contato/formulario'
+import type { Contato } from '@/src/features/contato/historico'
+import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
+import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial } from '@/src/features/contato/rascunho'
+import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
+import { nomeEmpresa } from '@/src/lib/empresa-apresentacao'
+import type { FiltroHistoricoComercial } from '@/src/lib/historico-comercial'
+import { useEnvioVenda } from '@/src/lib/use-envio-venda'
+import { criarComandoVenda, type EntradaVenda, type EstadoVenda } from '@/src/lib/venda-envio'
+import type { DadosCadastrais as DadosCadastraisLidos } from '@/src/server/cnpj-biz/dados'
+import { Cartao } from '../../fila/cartao'
+import { transmitirVenda } from '../../venda-envio'
+import { FormularioRecompra } from '../registrar-venda'
+import { DadosCliente, enderecoCliente, GRUPOS_CLIENTE } from './dados-cliente'
+import { FichaLegada } from './ficha-legada'
+import { useGuardaFicha, voltarParaListaAnterior } from './guarda-ficha'
+import styles from './ficha.module.css'
 
-function endereco(e: EmpresaComigo) {
-  if (e.endereco) return [e.endereco.logradouro, e.endereco.bairro, `${e.endereco.localidade}/${e.endereco.uf}`].filter(Boolean).join(', ')
-  if (e.cep) return `CEP ${e.cep}. Endereço não encontrado na base de CEP.`
-  return 'Localização não cadastrada'
-}
-function dataCivil(valor: string) {
-  const [ano, mes, dia] = valor.split('-')
-  return dia && mes && ano ? `${dia}/${mes}/${ano}` : valor
-}
-function Historico({ contatos, erro }: { contatos: Contato[]; erro: boolean }) {
-  if (erro) return <Alert variant="danger"><AlertTitle>Não foi possível carregar o histórico</AlertTitle><AlertDescription>Tente atualizar a página.</AlertDescription></Alert>
-  if (!contatos.length) return <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma atividade registrada." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />
-  return <LinhaDoTempo contatos={contatos} />
+type Props = {
+  usuarioId: string
+  empresa: EmpresaComigo
+  contatos: Contato[]
+  erroHistorico?: boolean
+  cliente?: boolean
+  interceptada?: boolean
+  voltarPara?: string
+  rotuloVoltar?: string
+  cadastrais?: DadosCadastraisLidos | null
+  vendaRegistrada?: boolean
+  visita?: ReactNode
+  fundo?: ReactNode
 }
 
-export function Ficha({ usuarioId, empresa, contatos, erroHistorico = false, cliente = false, voltarPara = '/carteira', dadosCadastrais }: { usuarioId:string; empresa: EmpresaComigo; contatos: Contato[]; erroHistorico?: boolean; cliente?: boolean; voltarPara?: string; dadosCadastrais?: ReactNode }) {
-  const arquivada = empresa.situacao === 'sem_interesse'
-  const acompanhamentoInicial = cliente || ['primeiro_contato','em_negociacao','proposta_enviada'].includes(empresa.situacao)
+type Leitura = 'menu' | 'passo' | 'dados' | 'historico' | GrupoEmpresa
+type Nivel = Leitura | 'atendimento' | 'venda'
+const SECOES = { passo: 'Atendimento e próximo passo', dados: 'Dados da empresa', historico: 'Histórico' } as const
+const ENTRADA_VAZIA: EntradaVenda = { valor: '', data: '', observacao: '' }
+
+function ehGrupo(nivel: Nivel): nivel is GrupoEmpresa {
+  return nivel === 'contato' || nivel === 'cadastro' || nivel === 'atividades'
+}
+
+function assinarContato(avisar: () => void) {
+  window.addEventListener('crm-contato', avisar)
+  return () => window.removeEventListener('crm-contato', avisar)
+}
+
+export function Ficha(props: Props) {
+  return <ComposicaoFicha key={props.usuarioId + ':' + props.empresa.id} {...props} />
+}
+
+function ComposicaoFicha({ voltarPara = '/carteira', rotuloVoltar = 'Voltar para a carteira', ...props }: Props) {
+  // Uma revalidação pode mudar a elegibilidade durante uma ação. Enquanto
+  // esta empresa permanecer autorizada, conserve o editor que iniciou o envio.
+  const [lateral] = useState(() => props.cliente || props.interceptada)
+  const [fundoInicial] = useState(props.fundo)
+  if (lateral) return <>
+    {props.fundo ?? fundoInicial}
+    <FichaCliente {...props} voltarPara={voltarPara} rotuloVoltar={rotuloVoltar} />
+  </>
+  return <main className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-6 p-6 max-[520px]:p-4">
+    <nav aria-label="Navegação da ficha"><Button asChild variant="outline"><Link href={voltarPara}>{rotuloVoltar}</Link></Button></nav>
+    {props.vendaRegistrada && <p role="status">Venda registrada. Confira o histórico deste cliente.</p>}
+    <FichaLegada {...props} voltarPara={voltarPara} dadosCadastrais={<DadosCadastrais dados={props.cadastrais ?? null} />} />
+    {props.visita}
+  </main>
+}
+
+function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, interceptada, voltarPara, rotuloVoltar, cadastrais, vendaRegistrada, visita }: Props & { voltarPara: string; rotuloVoltar: string }) {
   const router = useRouter()
   const tema = useTemaCrm()
-  const [editando, setEditando] = useState(false)
-  const [rascunho, setRascunho] = useState<RascunhoContato>(() => rascunhoInicial(acompanhamentoInicial))
-  const [pendente, setPendente] = useState(false)
-  const pendenteRef = useRef(false)
-  const [descarte, setDescarte] = useState<'fechar' | 'voltar' | { href: string } | null>(null)
+  const nome = nomeEmpresa(empresa)
+  const prefixo = useId()
+  const formVendaId = prefixo + '-recompra'
+  const [nivel, setNivel] = useState<Nivel>('menu')
+  const [origemTarefa, setOrigemTarefa] = useState<Leitura>('menu')
+  const [origemDados, setOrigemDados] = useState<'menu' | 'passo'>('menu')
+  const [filtro, setFiltro] = useState<FiltroHistoricoComercial>('todos')
+  const [destinoAcoes, setDestinoAcoes] = useState<HTMLDivElement | null>(null)
+  const [mensagem, setMensagem] = useState('')
   const [erroDescarte, setErroDescarte] = useState('')
-  const editor = useRef<HTMLDivElement>(null)
-  const origemDescarte = useRef<HTMLElement | null>(null)
-  const sentinela = useRef<string | null>(null)
-  const removendoSentinela = useRef(false)
-  const depoisDeRemover = useRef<(() => void) | null>(null)
-  const [baseline, setBaseline] = useState(() => rascunhoInicial(acompanhamentoInicial))
-  const alterado = editando && (rascunhoAlterado(rascunho, baseline) || contatoPendente(empresa.id))
+  const [gatilhoLista] = useState(() => {
+    if (!interceptada || typeof document === 'undefined') return null
+    const alvo = document.activeElement
+    return alvo instanceof HTMLElement && alvo.matches('a[href], button') && !alvo.closest('[data-painel-lateral]') ? alvo : null
+  })
+  const tituloSecao = useRef<HTMLHeadingElement>(null)
+  const proximoFoco = useRef<string | null>(null)
+  const editor = useRef<HTMLElement>(null)
+  const neutro = useRef<HTMLButtonElement>(null)
+  const conferirVenda = useRef<HTMLButtonElement>(null)
+  const focoConfirmacao = useRef<HTMLElement | null>(null)
+  const vivo = useRef(true)
+  useEffect(() => { vivo.current = true; return () => { vivo.current = false } }, [])
 
-  function mudarPendente(valor: boolean) {
-    pendenteRef.current = valor
-    // A action roda numa transição. A guarda da página precisa bloquear antes
-    // de aguardar a resposta, inclusive os controles fora do formulário.
-    flushSync(() => setPendente(valor))
+  const arquivada = empresa.situacao === 'sem_interesse'
+  const podeVender = cliente && !arquivada
+  const tarefa = nivel === 'atendimento' || nivel === 'venda'
+  const [rascunho, setRascunho] = useState(() => rascunhoInicial(true))
+  const [baseline, setBaseline] = useState(() => rascunhoInicial(true))
+  const envioContato = useSyncExternalStore(assinarContato, () => contatoPendente(empresa.id), () => false)
+  const contatoAlterado = nivel === 'atendimento' && (envioContato || rascunhoAlterado(rascunho, baseline))
+  const [enviandoContato, setEnviandoContato] = useState(false)
+  const contatoEmVoo = useRef(false)
+  function mudarPendenteContato(valor: boolean) {
+    contatoEmVoo.current = valor
+    // A trava é imediata. O estado visual acompanha a action fora da transição.
+    queueMicrotask(() => { if (vivo.current) setEnviandoContato(valor) })
   }
 
-  function removerSentinela(depois?: () => void) {
-    if (!sentinela.current) { depois?.(); return }
-    sentinela.current = null
-    removendoSentinela.current = true
-    depoisDeRemover.current = depois ?? null
-    history.back()
-  }
-
-  useEffect(() => { if (editando) editor.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus() }, [editando])
-  useEffect(() => {
-    if (!alterado) return
-    const proteger = (evento: BeforeUnloadEvent) => evento.preventDefault()
-    window.addEventListener('beforeunload', proteger)
-    return () => window.removeEventListener('beforeunload', proteger)
-  }, [alterado])
-  useEffect(() => {
-    if ((!alterado && !pendente) || sentinela.current || removendoSentinela.current) return
-    const id = `carteira:${empresa.id}:${Date.now()}`
-    sentinela.current = id
-    history.pushState({ ...history.state, __rascunhoCarteira: id }, '', window.location.href)
-  }, [alterado, empresa.id, pendente])
-  useEffect(() => {
-    if (!alterado && !pendente && sentinela.current) removerSentinela()
-  }, [alterado, pendente])
-  useEffect(() => {
-    const guardar = (evento: MouseEvent) => {
-      const link = (evento.target as Element | null)?.closest<HTMLAnchorElement>('a[href]')
-      if (!link || !editando) return
-      if (pendenteRef.current) { evento.preventDefault(); return }
-      if (!alterado) return
-      const url = new URL(link.href, window.location.href)
-      if (url.origin !== window.location.origin) return
-      evento.preventDefault()
-      origemDescarte.current = link
-      setDescarte({ href: `${url.pathname}${url.search}${url.hash}` })
+  const venda = useEnvioVenda(usuarioId, transmitirVenda)
+  const [entrada, setEntrada] = useState(ENTRADA_VAZIA)
+  const [conferida, setConferida] = useState(false)
+  const [enviandoVenda, setEnviandoVenda] = useState(false)
+  const vendaEmVoo = useRef(false)
+  const vendaPendente = venda.comando?.empresaId === empresa.id ? venda.comando : null
+  const vendaAlterada = nivel === 'venda' && !venda.resultado?.ok && Boolean(vendaPendente || entrada.valor || entrada.data || entrada.observacao)
+  const pendente = enviandoContato || enviandoVenda || venda.pendente
+  const bloqueada = () => contatoEmVoo.current || vendaEmVoo.current || venda.pendente
+  const guarda = useGuardaFicha(contatoAlterado || vendaAlterada, pendente, bloqueada, saida => {
+    setErroDescarte('')
+    if (tarefa) {
+      setEntrada(ENTRADA_VAZIA)
+      setConferida(false)
+      mudarNivel(origemTarefa, prefixo + (nivel === 'atendimento' ? '-atender' : venda.comando ? '-recuperar' : '-vender'))
     }
-    document.addEventListener('click', guardar, true)
-    return () => document.removeEventListener('click', guardar, true)
-  }, [alterado, editando, pendente])
-  useEffect(() => {
-    const guardarVoltar = (evento: PopStateEvent) => {
-      if (removendoSentinela.current) {
-        removendoSentinela.current = false
-        const continuar = depoisDeRemover.current
-        depoisDeRemover.current = null
-        continuar?.()
-        return
+    if (saida === 'ficha') {
+      if (interceptada) router.back()
+      else if (!voltarPara.startsWith('/carteira') || !voltarParaListaAnterior(voltarPara)) router.replace(voltarPara)
+    }
+    if (saida === 'navegador') router.back()
+    if (typeof saida === 'function') saida()
+  })
+  const confirmacao = guarda.pedido ? 'descarte' : conferida ? 'venda' : null
+
+  function mudarNivel(proximo: Nivel, foco?: string) {
+    proximoFoco.current = foco ?? null
+    setNivel(proximo)
+  }
+
+  useLayoutEffect(() => {
+    const titulo = tituloSecao.current
+    const destino = proximoFoco.current ? document.getElementById(proximoFoco.current) : null
+    proximoFoco.current = null
+    const alvo = destino instanceof HTMLElement && !destino.matches(':disabled') ? destino
+      : nivel === 'atendimento' ? editor.current?.querySelector('textarea') ?? titulo : titulo
+    const corpo = alvo?.closest<HTMLElement>('[data-painel-corpo]') ?? titulo?.closest<HTMLElement>('[data-painel-corpo]')
+    if (corpo) corpo.scrollTop = 0
+    alvo?.focus({ preventScroll: true })
+  }, [nivel])
+  useLayoutEffect(() => {
+    if (confirmacao) neutro.current?.focus({ preventScroll: true })
+  }, [confirmacao])
+
+  function voltar() {
+    if (bloqueada()) return
+    if (tarefa) guarda.pedir('tarefa')
+    else if (ehGrupo(nivel)) mudarNivel('dados', prefixo + '-' + nivel)
+    else if (nivel === 'dados') mudarNivel(origemDados, origemDados === 'menu' ? prefixo + '-dados' : undefined)
+    else if (nivel === 'menu') guarda.pedir('ficha')
+    else mudarNivel('menu', prefixo + '-' + nivel)
+  }
+
+  function abrirAtendimento() {
+    const inicial = rascunhoInicial(Boolean(cliente) || ['primeiro_contato', 'em_negociacao', 'proposta_enviada'].includes(empresa.situacao))
+    setBaseline(inicial)
+    setRascunho(inicial)
+    setOrigemTarefa('passo')
+    setMensagem('')
+    mudarNivel('atendimento')
+  }
+
+  function abrirVenda() {
+    if (!podeVender || bloqueada() || !venda.iniciarNovo()) return
+    setMensagem('')
+    setOrigemTarefa(tarefa ? origemTarefa : nivel)
+    mudarNivel('venda')
+  }
+
+  function vendaConfirmada(resultado: Extract<EstadoVenda, { ok: true }>, primeira: boolean) {
+    setMensagem(resultado.aviso ?? 'Venda registrada.')
+    try {
+      if (!primeira) router.refresh()
+      else if (resultado.leituraDestino?.ok) {
+        const href = '/carteira/' + encodeURIComponent(resultado.leituraDestino.destino.empresaId) + '?venda=registrada'
+        // A interceptação também cobre navegações iniciadas numa ficha
+        // direta. Nesse caso entre na rota canônica para desmontar a anterior.
+        if (interceptada) router.replace(href)
+        else location.replace(href)
       }
-      const id = sentinela.current
-      if (!id || (evento.state as { __rascunhoCarteira?: string } | null)?.__rascunhoCarteira === id) return
-      history.pushState({ ...history.state, __rascunhoCarteira: id }, '', window.location.href)
-      if (!pendenteRef.current) {
-        origemDescarte.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-        setDescarte('voltar')
-      }
+      else setMensagem('Venda registrada. Não foi possível abrir a ficha. Abra a Carteira.')
+    } catch {
+      setMensagem('Venda registrada. Atualize a página para conferir o histórico.')
     }
-    window.addEventListener('popstate', guardarVoltar)
-    return () => window.removeEventListener('popstate', guardarVoltar)
-  }, [pendente])
-
-  function pedirFechar() {
-    if (pendenteRef.current) return
-    if (alterado) {
-      origemDescarte.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      setDescarte('fechar')
-      return
-    }
-    removerSentinela(() => setEditando(false))
   }
-  function confirmar(preservar = false) {
-    if (!preservar && !descartarRascunhoContato(empresa.id)) {
+
+  async function enviarVenda(recuperar = false) {
+    if (bloqueada() || !recuperar && (!conferida || !vendaPendente && !podeVender)) return
+    const anterior = recuperar ? venda.comando : vendaPendente
+    const novo = anterior ? undefined : criarComandoVenda(usuarioId, empresa.id, { tipo: 'recompra' }, entrada)
+    vendaEmVoo.current = true
+    setEnviandoVenda(true)
+    try {
+      const resultado = await venda.enviar(novo)
+      if (vivo.current && resultado?.ok) {
+        guarda.concluir(() => vendaConfirmada(resultado, anterior?.alvo.tipo === 'primeira'))
+      }
+    } finally {
+      vendaEmVoo.current = false
+      if (vivo.current) setEnviandoVenda(false)
+    }
+  }
+
+  function fecharConfirmacao() {
+    if (bloqueada()) return
+    if (guarda.pedido) {
+      setErroDescarte('')
+      if (conferida) guarda.foco.current = null
+      guarda.cancelar()
+    } else if (vendaPendente) guarda.concluir('tarefa')
+    else setConferida(false)
+  }
+
+  function descartar(preservar = false) {
+    if (bloqueada()) return
+    if (nivel === 'atendimento' && !preservar && !descartarRascunhoContato(empresa.id)) {
       setErroDescarte('Confirme o envio anterior no atendimento antes de descartar. Você também pode fechar mantendo o rascunho.')
       return
     }
-    const voltar = descarte === 'voltar'
-    const href = descarte && descarte !== 'fechar' && descarte !== 'voltar' ? descarte.href : null
-    if (!preservar) setRascunho(rascunhoInicial(acompanhamentoInicial))
-    setDescarte(null); setErroDescarte(''); setEditando(false)
-    if (voltar) {
-      sentinela.current = null
-      setEditando(false)
-      history.go(-2)
-      return
-    }
-    removerSentinela(() => {
-      setEditando(false)
-      if (href) router.push(href)
-    })
+    guarda.confirmar()
   }
 
-  return <article className={styles.ficha}>
-    <header className={styles.cabecalho}><div><p className={styles.vinculo}>{cliente ? 'Na sua carteira' : 'Em prospecção'}</p><h1>{nomeEmpresa(empresa)}</h1>{empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco(empresa)}</p></div><div className="flex flex-wrap gap-2"><Button onClick={() => { setBaseline(rascunhoInicial(acompanhamentoInicial)); setEditando(true) }} disabled={editando || pendente || arquivada}>Registrar atendimento</Button>{cliente ? <RegistrarVenda usuarioId={usuarioId} empresaId={empresa.id} nome={nomeEmpresa(empresa)} disabled={editando || pendente || arquivada} /> : null}</div></header>
-    {arquivada && <><Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>{empresa.empresa && <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} /></fieldset>}</>}
-    <Card className={styles.colunas}><AbasFicha dados={<div className={styles.esquerda}>
-      {dadosCadastrais}
-      <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent><dl className={styles.dados}>
-        <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Contato não cadastrado'}</dd><dt>Telefone</dt><dd>{empresa.telefone || 'Telefone não cadastrado'}</dd><dt>E-mail</dt><dd>{empresa.email ?? 'E-mail não cadastrado'}</dd><dt>Localização</dt><dd>{endereco(empresa)}</dd><dt>CNPJ</dt><dd>{empresa.cnpj ?? 'Não informado'}</dd><dt>CNAE</dt><dd>{empresa.cnaePrincipal ?? 'CNAE não cadastrado'}</dd>
-      </dl></CardContent></Card>
-      <Card><CardHeader><CardTitle>Próximo passo</CardTitle></CardHeader><CardContent>{empresa.proximoPasso ? <div className={empresa.vencido ? styles.atrasado : undefined}><p>{empresa.proximoPasso}</p>{empresa.proximoPassoData ? <p>{dataCivil(empresa.proximoPassoData)}{empresa.vencido ? ' · Atrasado' : ''}</p> : null}</div> : <p className={styles.ausente}>Sem próximo passo combinado.</p>}</CardContent></Card>
-    </div>} historico={<Card><CardHeader><CardTitle>Histórico</CardTitle></CardHeader><CardContent><Historico contatos={contatos} erro={erroHistorico} /></CardContent></Card>} /></Card>
-    {editando ? <section ref={editor} className={styles.editor} aria-label="Registrar atendimento"><div className={styles.editorCabecalho}><h2>Registrar atendimento</h2><Button type="button" variant="ghost" onClick={pedirFechar} disabled={pendente}>Cancelar atendimento</Button></div><FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver={!cliente} voltarPara={voltarPara} visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente} somenteConfirmacao={arquivada} onPendingChange={mudarPendente} onSaved={() => { setRascunho(rascunhoInicial(acompanhamentoInicial)); removerSentinela(() => { setEditando(false); router.refresh() }) }} /></section> : null}
-    {arquivada && !editando && <FormularioContato empresaId={empresa.id} somenteConfirmacao onPendingChange={mudarPendente} onSaved={() => router.refresh()} />}
-    <Dialog open={descarte !== null} onOpenChange={aberto => { if (!aberto && !pendente) setDescarte(null) }}><DialogContent theme={tema} onCloseAutoFocus={evento => {
-      if (!origemDescarte.current?.isConnected) return
-      evento.preventDefault()
-      origemDescarte.current.focus()
-    }}><DialogHeader><DialogTitle>Descartar as alterações?</DialogTitle><DialogDescription>As anotações deste atendimento ainda não foram registradas.</DialogDescription></DialogHeader>{erroDescarte && <Alert variant="danger">{erroDescarte}</Alert>}<DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button variant="outline" onClick={() => confirmar(true)}>Fechar mantendo rascunho</Button><Button onClick={() => confirmar()}>Descartar e continuar</Button></DialogFooter></DialogContent></Dialog>
-  </article>
+  const alertaVenda = venda.erro && <Alert variant="danger" role="alert">{venda.erro}</Alert>
+  const rodape = nivel === 'atendimento' ? <div ref={setDestinoAcoes} />
+    : nivel === 'venda' ? <>
+      <Button type="button" variant="outline" disabled={pendente || !!confirmacao} onClick={voltar}>Cancelar</Button>
+      <Button ref={conferirVenda} type="submit" form={formVendaId} disabled={pendente || !!confirmacao || !podeVender}>Conferir venda</Button>
+    </> : venda.comando ? <Button id={prefixo + '-recuperar'} variant="outline" disabled={pendente} onClick={() => void enviarVenda(true)}>
+      {pendente ? 'Confirmando venda...' : 'Confirmar venda anterior'}
+    </Button> : podeVender ? <Button id={prefixo + '-vender'} variant="outline" disabled={pendente || venda.bloqueada} onClick={abrirVenda}>Registrar venda</Button>
+      : null
+  const titulo = nivel === 'menu' ? null : nivel === 'atendimento' ? 'Registrar atendimento' : nivel === 'venda' ? 'Registrar venda'
+    : ehGrupo(nivel) ? GRUPOS_CLIENTE[nivel] : SECOES[nivel]
+
+  return <>
+    <Dialog open={!guarda.restaurando}>
+      <PainelSobrepostoCrm titulo={nome} descricao={arquivada ? 'Sem interesse' : cliente ? 'Na sua carteira' : 'Em prospecção'}
+        rotuloFechar={nivel === 'menu' ? 'Fechar' : 'Voltar'} aoFechar={voltar} fecharBloqueado={pendente || !!confirmacao}
+        ocupado={pendente} rodape={rodape} onCloseAutoFocus={evento => {
+          evento.preventDefault()
+          if (gatilhoLista?.isConnected) gatilhoLista.focus({ preventScroll: true })
+        }}>
+        <div className={styles.secaoCliente}>
+          {visita}
+          {vendaRegistrada && <p role="status">Venda registrada. Confira o histórico deste cliente.</p>}
+          {mensagem && <p role="status">{mensagem}</p>}
+          {!confirmacao && alertaVenda}
+          {!tarefa && venda.comando && <section aria-label="Venda pendente">
+            {vendaPendente ? <p>Venda de R$ {vendaPendente.entrada.valor} em {vendaPendente.entrada.data.split('-').reverse().join('/')}. Os dados do envio anterior foram preservados.</p>
+              : <p>Há uma venda anterior para confirmar nesta aba.</p>}
+          </section>}
+          {nivel === 'menu' ? <>
+            <p>{enderecoCliente(empresa)}</p>
+            <MenuPainelCrm rotulo="Seções do cliente" itens={(Object.keys(SECOES) as (keyof typeof SECOES)[]).map(id => ({
+              id: prefixo + '-' + id, titulo: SECOES[id],
+              aoAbrir: () => { if (id === 'dados') setOrigemDados('menu'); mudarNivel(id) },
+            }))} />
+            {!interceptada && <Link className="text-sm underline underline-offset-4" href={voltarPara} onClick={evento => {
+              if (evento.button || evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey) return
+              evento.preventDefault()
+              guarda.pedir('ficha')
+            }}>{rotuloVoltar}</Link>}
+          </> : <section ref={editor} aria-label={titulo ?? undefined} className={styles.secaoCliente}>
+            <h3 ref={tituloSecao} tabIndex={-1}>{titulo}</h3>
+            {nivel === 'passo' && <>
+              <dl className={styles.dados}>
+                <dt>Próximo passo</dt><dd>{empresa.proximoPasso ?? 'Sem próximo passo combinado.'}</dd>
+                <dt>Retorno</dt><dd>{empresa.proximoPassoData
+                  ? <time className={empresa.vencido ? styles.atrasado : undefined} dateTime={empresa.proximoPassoData}>{empresa.proximoPassoData.split('-').reverse().join('/')}{empresa.vencido ? ' · Atrasado' : ''}</time>
+                  : 'Sem retorno agendado.'}</dd>
+              </dl>
+              {arquivada && <>
+                <Alert><AlertTitle>Sem interesse</AlertTitle><AlertDescription>Retome o atendimento antes de registrar novo trabalho. O histórico da empresa continua disponível.</AlertDescription></Alert>
+                {empresa.empresa && <ContextoResultadoBusca.Provider value={{ rodape: null, verEmpresa: () => { setOrigemDados('passo'); mudarNivel('dados') } }}>
+                  <fieldset disabled={pendente} className="min-w-0 border-0 p-0"><Cartao empresa={empresa.empresa} /></fieldset>
+                </ContextoResultadoBusca.Provider>}
+              </>}
+              <Button id={prefixo + '-atender'} disabled={pendente || arquivada} onClick={abrirAtendimento}>Registrar atendimento</Button>
+              {arquivada && envioContato && <Button variant="outline" disabled={pendente} onClick={abrirAtendimento}>Conferir atendimento anterior</Button>}
+            </>}
+            {nivel === 'dados' && <MenuPainelCrm rotulo="Grupos de dados da empresa" itens={(Object.keys(GRUPOS_CLIENTE) as GrupoEmpresa[]).map(id => ({
+              id: prefixo + '-' + id, titulo: GRUPOS_CLIENTE[id], aoAbrir: () => mudarNivel(id),
+            }))} />}
+            {ehGrupo(nivel) && <DadosCliente grupo={nivel} empresa={empresa} cadastrais={cadastrais} />}
+            {nivel === 'historico' && (erroHistorico
+              ? <Alert variant="danger"><AlertTitle>Não foi possível carregar o histórico</AlertTitle><AlertDescription>Tente atualizar a página.</AlertDescription></Alert>
+              : <LinhaDoTempo contatos={contatos} controleFiltro={{ valor: filtro, aoMudar: setFiltro }}
+                conteudoVazio={contatos.length > 0 ? undefined : <EstadoVazio nivelTitulo={3} titulo="Ainda não há uma atividade registrada." descricao="Os atendimentos registrados nesta empresa aparecerão aqui." />} />)}
+            {nivel === 'atendimento' && <FormularioContato empresaId={empresa.id} posse={empresa.posse} comDevolver={!cliente} voltarPara={voltarPara}
+              visual="fila" rascunho={rascunho} onDraftChange={setRascunho} bloqueado={pendente} somenteLeitura={pendente}
+              somenteConfirmacao={arquivada} onPendingChange={mudarPendenteContato} destinoAcoes={destinoAcoes}
+              onCancel={voltar} rotuloSalvar="Salvar atendimento" onSaved={(_, resultado) => {
+                guarda.concluir(() => setMensagem(resultado.aviso ?? (resultado.repetida ? 'Envio anterior confirmado. Dados atualizados.' : 'Atendimento registrado.')))
+              }} />}
+            {nivel === 'venda' && <>
+              <p>A empresa continuará na sua Carteira e o retorno agendado será mantido.</p>
+              {!podeVender && !vendaPendente && <Alert variant="warning">Esta empresa não está disponível para registrar uma venda.</Alert>}
+              <FormularioRecompra id={formVendaId} entrada={entrada} bloqueado={pendente || !!confirmacao || !podeVender} aoMudar={setEntrada} aoConferir={evento => {
+                evento.preventDefault()
+                if (bloqueada() || confirmacao || !podeVender) return
+                focoConfirmacao.current = conferirVenda.current
+                setConferida(true)
+              }} />
+            </>}
+          </section>}
+        </div>
+      </PainelSobrepostoCrm>
+    </Dialog>
+    <Dialog open={!!confirmacao} onOpenChange={aberta => { if (!aberta) fecharConfirmacao() }}>
+      <DialogContent theme={tema} showCloseButton={false} aria-busy={pendente}
+        onOpenAutoFocus={evento => { evento.preventDefault(); neutro.current?.focus({ preventScroll: true }) }}
+        onCloseAutoFocus={evento => {
+          evento.preventDefault()
+          const alvo = guarda.foco.current ?? focoConfirmacao.current
+          guarda.foco.current = null
+          focoConfirmacao.current = null
+          if (alvo?.isConnected && !alvo.matches(':disabled')) alvo.focus({ preventScroll: true })
+        }}>
+        {confirmacao === 'descarte' ? <ConfirmacaoPainelCrm titulo="Descartar alterações?" alvo={<strong>{nome}</strong>}
+          descricao="As informações não salvas serão perdidas." acoes={<>
+            <Button ref={neutro} variant="outline" onClick={fecharConfirmacao}>Continuar editando</Button>
+            {nivel === 'atendimento' && <Button variant="outline" onClick={() => descartar(true)}>Fechar mantendo rascunho</Button>}
+            {nivel === 'venda' && vendaPendente ? <Button onClick={() => descartar(true)}>Fechar mantendo envio</Button> : <Button onClick={() => descartar()}>Descartar</Button>}
+          </>}>{erroDescarte && <Alert variant="danger">{erroDescarte}</Alert>}</ConfirmacaoPainelCrm>
+          : <ConfirmacaoPainelCrm titulo="Confirmar venda" alvo={<strong>{nome}</strong>}
+            descricao={`Confirmar venda de R$ ${entrada.valor} em ${entrada.data.split('-').reverse().join('/')}?`} acoes={<>
+              <Button ref={neutro} variant="outline" aria-disabled={pendente} className="aria-disabled:opacity-50" onClick={fecharConfirmacao}>
+                {vendaPendente ? 'Fechar mantendo envio' : 'Corrigir dados'}
+              </Button>
+              <Button aria-disabled={pendente || !podeVender && !vendaPendente} className="aria-disabled:opacity-50" onClick={() => void enviarVenda()}>
+                {pendente ? 'Registrando...' : 'Confirmar venda'}
+              </Button>
+            </>}>{alertaVenda}</ConfirmacaoPainelCrm>}
+      </DialogContent>
+    </Dialog>
+  </>
 }
