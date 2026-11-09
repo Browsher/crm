@@ -12,6 +12,55 @@ afterEach(async()=>{await act(async()=>root?.unmount());host?.remove();sessionSt
 async function popstate(){await act(async()=>{window.dispatchEvent(new PopStateEvent('popstate'));await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))})}
 async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(x=>x.textContent===nome);expect(b).toBeDefined();await act(async()=>b!.click())}
 async function preencher(name:string,value:string){const input=document.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}))})}
+test('formulário lateral mantém campos montados sob confirmações centrais e restaura o foco', async () => {
+  const voltar = vi.spyOn(history, 'back').mockImplementation(() => {})
+  host = document.createElement('div')
+  document.body.append(host)
+  root = createRoot(host)
+  await act(async () => root!.render(<RegistrarVenda usuarioId="ator" empresaId="empresa" nome="Aurora" />))
+  await clicar('Registrar venda')
+
+  const painel = document.querySelector('[data-painel-lateral]')!
+  expect(painel).not.toBeNull()
+  const form = painel.querySelector('form')!
+  const valor = form.querySelector<HTMLInputElement>('input[name="valor"]')!
+  const rodape = painel.querySelector('[data-painel-rodape]')!
+  const conferir = rodape.querySelector<HTMLButtonElement>('button[type="submit"]')!
+  const cancelar = [...rodape.querySelectorAll('button')].find(botao => botao.textContent === 'Cancelar')!
+  const confirmacao = () => document.querySelector('[data-slot="dialog-content"]')
+  expect(conferir.form).toBe(form)
+  await clicar('Conferir venda')
+  expect(confirmacao()).toBeNull()
+
+  await preencher('valor', '125,50')
+  await preencher('data', '2026-01-01')
+  conferir.focus()
+  await clicar('Conferir venda')
+  expect(confirmacao()?.textContent).toContain('Confirmar venda')
+  expect(painel.contains(confirmacao())).toBe(false)
+  expect(document.activeElement?.textContent).toBe('Corrigir dados')
+  expect(painel.querySelector('form')).toBe(form)
+  await clicar('Corrigir dados')
+  await vi.waitFor(() => expect(document.activeElement).toBe(conferir))
+
+  cancelar.focus()
+  await clicar('Cancelar')
+  expect(confirmacao()?.textContent).toContain('Descartar alterações?')
+  expect(document.activeElement?.textContent).toBe('Continuar editando')
+  expect(painel.querySelector('form')).toBe(form)
+  await clicar('Continuar editando')
+  await vi.waitFor(() => expect(document.activeElement).toBe(cancelar))
+  expect(form.querySelector('input[name="valor"]')).toBe(valor)
+  expect(valor.value).toBe('125,50')
+
+  await clicar('Cancelar')
+  await clicar('Descartar')
+  expect(voltar).toHaveBeenCalledOnce()
+  await popstate()
+  expect(document.querySelector('[data-painel-lateral]')).toBeNull()
+  await vi.waitFor(() => expect(document.activeElement?.textContent).toBe('Registrar venda'))
+  expect(mocks.venda).not.toHaveBeenCalled()
+})
 test('venda pede confirmação, preserva rascunho e repete a mesma chave após falha de rede',async()=>{
   host=document.createElement('div');document.body.append(host);root=createRoot(host)
   await act(async()=>root!.render(<RegistrarVenda usuarioId="ator" empresaId="empresa" nome="Aurora" />))
