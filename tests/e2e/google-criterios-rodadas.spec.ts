@@ -16,7 +16,7 @@ async function entrar(page: Page, email: string) {
   await expect(page).not.toHaveURL(/login/)
 }
 
-test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria privada', async ({ page, request, browser }) => {
+test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria privada', async ({ page, request, browser }, info) => {
   test.setTimeout(150000)
   const banco = bancoGruposDoHarness()
   const vendedor = await criarUsuarioComSenha(banco, 'vendedor', 'criteriosrodadase2e', 'Senha-e2e-2026')
@@ -113,7 +113,7 @@ test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria
     await expect(gestao.getByRole('heading', { name: 'Empresa para ligação 0', exact: true })).toBeVisible()
     await expect(gestao.getByText('Não atende aos critérios selecionados.', { exact: true })).toBeVisible()
     await gestao.evaluate(() => window.scrollTo(0, 0))
-    await gestao.screenshot({ path: '.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-6-captures/google-lotes-auditoria.png', fullPage: true })
+    await gestao.screenshot({ path: info.outputPath('google-lotes-auditoria.png'), fullPage: true })
     await sessaoGestor.close()
   } finally {
     await banco.sql('UPDATE google_agente SET pausado=false WHERE vendedor_id=ANY($1::uuid[])', [pausados.map(p => p.vendedor_id)])

@@ -265,6 +265,33 @@ test.each([
   expect(document.activeElement).toBe(gatilho)
 })
 
+test('Voltar navega internamente enquanto Escape e fundo pedem saída protegida', async () => {
+  const voltar = vi.fn()
+  const sair = vi.fn()
+  const renderizar = (bloqueado: boolean) => act(async () => root?.render(<Dialog open>
+    <PainelSobrepostoCrm titulo="Editor" descricao="Seção" rotuloFechar="Voltar" aoFechar={voltar} aoSair={sair} fecharBloqueado={bloqueado}>Conteúdo</PainelSobrepostoCrm>
+  </Dialog>))
+  host = document.createElement('div')
+  document.body.append(host)
+  root = createRoot(host)
+  await renderizar(true)
+  await aguardarRadix()
+  const painel = document.querySelector('[data-painel-lateral]')!
+  const botao = painel.querySelector<HTMLButtonElement>('header button')!
+  const titulo = painel.querySelector('h2')!
+  await act(async () => { botao.click(); teclarEscape(titulo); clicarFundo(painel) })
+  expect(voltar).not.toHaveBeenCalled()
+  expect(sair).not.toHaveBeenCalled()
+
+  await renderizar(false)
+  await act(async () => botao.click())
+  expect(voltar).toHaveBeenCalledOnce()
+  expect(sair).not.toHaveBeenCalled()
+  await act(async () => { teclarEscape(titulo); clicarFundo(painel) })
+  expect(voltar).toHaveBeenCalledOnce()
+  expect(sair).toHaveBeenCalledTimes(2)
+})
+
 test('a confirmação pedida pelo fundo preserva o editor lateral e recebe Escape primeiro', async () => {
   const pedir = vi.fn()
   function Editor() {

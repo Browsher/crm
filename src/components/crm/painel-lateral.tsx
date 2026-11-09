@@ -61,17 +61,18 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, id, className, ...
 }
 
 type PropsSobreposto = Omit<Props, 'id'> & {
+  aoSair?: () => void
   onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus']
 }
 
-export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
+export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSair, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
   const cabecalho = useRef<HTMLHeadingElement>(null)
   const tema = useTemaCrm()
 
   function pedirFechamento(evento: Event) {
     if (evento.defaultPrevented) return
     evento.preventDefault()
-    if (!moldura.fecharBloqueado) moldura.aoFechar()
+    if (!moldura.fecharBloqueado) (aoSair ?? moldura.aoFechar)()
   }
 
   return <DialogContent lateral theme={tema} showCloseButton={false}
