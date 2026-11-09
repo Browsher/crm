@@ -60,11 +60,11 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, id, className, ...
   </aside>
 }
 
-type PropsSobreposto = Props & {
+type PropsSobreposto = Omit<Props, 'id'> & {
   onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus']
 }
 
-export function PainelSobrepostoCrm({ titulo, descricao, rotulo, id, className, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
+export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
   const cabecalho = useRef<HTMLHeadingElement>(null)
   const tema = useTemaCrm()
 
@@ -76,7 +76,6 @@ export function PainelSobrepostoCrm({ titulo, descricao, rotulo, id, className, 
 
   return <DialogContent lateral theme={tema} showCloseButton={false}
     data-painel-lateral data-painel-composicao="padrao"
-    {...(id ? { id } : {})}
     {...(rotulo ? { 'aria-label': rotulo, 'aria-labelledby': undefined } : {})}
     className={[styles.painel, className].filter(Boolean).join(' ')}
     onOpenAutoFocus={evento => {

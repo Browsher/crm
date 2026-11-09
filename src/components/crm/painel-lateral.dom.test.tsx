@@ -204,9 +204,11 @@ test('diálogo lateral abre com o título focado e o rodapé da moldura comum', 
   host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
+  const atributosDaOrigem = { id: 'editor-da-empresa' }
   await act(async () => root?.render(<TemaCrmContext.Provider value="dark">
     <Dialog open>
-      <PainelSobrepostoCrm titulo="Empresa" descricao="Dados autorizados" aoFechar={() => {}} ocupado rodape={<button>Concluir</button>}>
+      <DialogTrigger asChild><button type="button">Ver empresa</button></DialogTrigger>
+      <PainelSobrepostoCrm {...atributosDaOrigem} titulo="Empresa" descricao="Dados autorizados" aoFechar={() => {}} ocupado rodape={<button>Concluir</button>}>
         <p>Conteúdo</p>
       </PainelSobrepostoCrm>
     </Dialog>
@@ -217,6 +219,7 @@ test('diálogo lateral abre com o título focado e o rodapé da moldura comum', 
   expect(painel.matches('[role="dialog"][data-painel-lateral][data-painel-composicao="padrao"]')).toBe(true)
   expect(painel.classList.contains('ui-dialog-content')).toBe(false)
   expect(painel.closest('[data-theme]')?.getAttribute('data-theme')).toBe('dark')
+  expect(host.querySelector('[data-slot="dialog-trigger"]')?.getAttribute('aria-controls')).toBe(painel.id)
   expect(painel.getAttribute('aria-labelledby')).toBe(titulo.id)
   expect(document.getElementById(painel.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Dados autorizados')
   expect(document.activeElement).toBe(titulo)
