@@ -59,7 +59,7 @@ test('detalhes ignoram resposta atrasada de A depois de selecionar B', async () 
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Ver empresa: Empresa A"]')!.click())
     // Fecha A enquanto a action continua pendente e abre B.
     const painelA = document.querySelector('[data-painel-lateral][role="dialog"]')!
-    const fechar = [...painelA.querySelectorAll('header button')].find(botao => botao.textContent === 'Fechar')!
+    const fechar = [...painelA.querySelectorAll<HTMLButtonElement>('header button')].find(botao => botao.textContent === 'Fechar')!
     await act(async () => fechar.click())
     await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Ver empresa: Empresa B"]')!.click())
     const detalhes = (nome: string) => detalhesSnapshot({ nome_fantasia: nome }, { tipo: 'busca', buscaId: nome, cnpj: '12345678000100' })
