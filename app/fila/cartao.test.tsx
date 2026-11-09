@@ -20,6 +20,26 @@ test('Ver empresa usa diálogo informativo, fechar não inicia nem navega',async
   await montar();await clicar('Ver empresa');expect(host.querySelector('[role=dialog]')).not.toBeNull()
   await clicar('Fechar');expect(iniciar).not.toHaveBeenCalled();expect(push).not.toHaveBeenCalled()
 })
+test('mudar o escopo fecha somente a consulta e preserva o envio pendente do card', async () => {
+  const montarEscopo = async (escopoConsulta: string) => {
+    await act(async () => root.render(<Cartao empresa={empresa} escopoConsulta={escopoConsulta} />))
+  }
+  iniciar.mockRejectedValueOnce(new Error('rede'))
+  await montarEscopo('busca A')
+  await clicar('Iniciar atendimento')
+  const comando = sessionStorage.getItem('crm:acao-empresa:v1:A')
+  expect(comando).not.toBeNull()
+  await clicar('Ver empresa')
+  expect(host.querySelector('[role=dialog]')).not.toBeNull()
+  await montarEscopo('busca B')
+  expect(host.querySelector('[role=dialog]')).toBeNull()
+  expect(host.querySelector('[role=alert]')?.textContent).toContain('confirmar o mesmo envio')
+  expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBe(comando)
+  await montarEscopo('busca A')
+  expect(host.querySelector('[role=dialog]')).toBeNull()
+  await clicar('Ver empresa')
+  expect(host.querySelector('[role=dialog]')).not.toBeNull()
+})
 test('recusa temporária de autorização não abandona chave de início desconhecido',async()=>{
   iniciar.mockRejectedValueOnce(new Error('rede'));await montar();await clicar('Iniciar atendimento')
   const primeiro=Object.fromEntries(iniciar.mock.calls[0][0])

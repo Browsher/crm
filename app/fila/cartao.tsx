@@ -13,11 +13,14 @@ import { iniciarAtendimentoAcao, retomarAtendimentoAcao } from './atendimento/ac
 import { urlAtendimento } from './localizar/navegacao'
 import { useRetomadaNaConsulta } from './localizar/recuperacao-retomada'
 
-export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false }: { empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string; bloquearRetomada?: boolean }) {
+export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false, escopoConsulta }: {
+  empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string; bloquearRetomada?: boolean; escopoConsulta?: string
+}) {
   const router = useRouter()
   const retomarNaConsulta = useRetomadaNaConsulta()
   const resultadoBusca = useContext(ContextoResultadoBusca)
-  const [consulta, setConsulta] = useState<{ referencia: ReferenciaEmpresa; gatilho: HTMLButtonElement } | null>(null)
+  const [consulta, setConsulta] = useState<{ referencia: ReferenciaEmpresa; gatilho: HTMLButtonElement; escopo?: string } | null>(null)
+  if (consulta && consulta.escopo !== escopoConsulta) setConsulta(null)
   const [erro, setErro] = useState('')
   const [confirmarNaConsulta, setConfirmarNaConsulta] = useState(false)
   const [resolvido, setResolvido] = useState(false)
@@ -84,7 +87,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
       finally { ocupado.current = false }
     })
   }
-  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
+  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
     {erro && <p role="alert">{erro}</p>}
     {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}
     {resolvido && <Button variant="outline" onClick={() => {

@@ -53,11 +53,11 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
               <BuscaPainel key={busca.id} nome={busca.nome} rotulo="Ver resultados" abrirInicialmente
                 conteudoInicial={<ConteudoBusca busca={busca} gestor={false} bloqueada={Boolean(limite?.pausado)} resumos={resumosBusca.ok ? resumosBusca.empresas : []} />}
                 carregarAcao={lerDetalheBuscaAcao.bind(null, busca.id)} />
-              <FiltrosBuscaPainel nome={busca.nome}><FiltrosUsadosBusca filtros={busca.filtros} /></FiltrosBuscaPainel>
+              <FiltrosBuscaPainel key={`filtros:${busca.id}`} nome={busca.nome}><FiltrosUsadosBusca filtros={busca.filtros} /></FiltrosBuscaPainel>
             </div>
           </Card>}
           <section id="historico-banco" className="scroll-mt-6"><Card className={styles.painel}>
-            {recentes.ok ? <EmpresasBancoRecentes key={recentes.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.empresas.slice(0, 11)} resumos={resumosRecentes.ok ? resumosRecentes.empresas : []} />
+            {recentes.ok ? <EmpresasBancoRecentes key={recentes.empresas.slice(0, 11).map(e => e.id).join(',')} empresas={recentes.empresas.slice(0, 11)} resumos={resumosRecentes.ok ? resumosRecentes.empresas : []} buscaAtualId={busca?.id} />
               : <p role="alert">Não foi possível carregar suas empresas recentes. Atualize a página para tentar novamente.</p>}
           </Card></section>
         </div>
