@@ -165,7 +165,10 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
     }
     if (saida === 'ficha') {
       if (interceptada) router.back()
-      else if (!voltarParaEntradaAnterior(voltarPara)) router.replace(voltarPara)
+      else {
+        const aoRestaurar = new URL(voltarPara, location.href).pathname === '/meu-dia' ? () => router.refresh() : undefined
+        if (!voltarParaEntradaAnterior(voltarPara, aoRestaurar)) router.replace(voltarPara)
+      }
     }
     if (saida === 'navegador') router.back()
     if (typeof saida === 'function') saida()

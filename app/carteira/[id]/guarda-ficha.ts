@@ -28,13 +28,21 @@ function entradaAnteriorEh(href: string) {
   return entradaAnterior()?.url === new URL(href, location.href).href
 }
 
-export function voltarParaEntradaAnterior(href: string) {
+export function voltarParaEntradaAnterior(href: string, aoRestaurar?: () => void) {
   if (!entradaAnteriorEh(href)) return false
   const destino = new URL(href, location.href).href
   // O popstate pode recuperar uma árvore antiga ou uma agenda desatualizada.
-  // Recarregue o destino validado se a travessia ocorrer neste documento.
+  // Concilie o destino validado se a travessia ocorrer neste documento.
   window.addEventListener('popstate', () => {
-    if (location.href === destino) location.reload()
+    if (location.href !== destino) return
+    if (!aoRestaurar) {
+      location.reload()
+      return
+    }
+    // Deixe o App Router processar a entrada antes de atualizar sua leitura.
+    requestAnimationFrame(() => {
+      if (location.href === destino) aoRestaurar()
+    })
   }, { once: true })
   history.back()
   return true
