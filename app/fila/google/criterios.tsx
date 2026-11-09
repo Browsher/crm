@@ -54,6 +54,7 @@ function EditorCriterios({ dia, valor, leitura, fechar, informarEdicao, cancelar
   const [grupo, setGrupo] = useState<Grupo | null>(null)
   const ultimoGrupo = useRef<Grupo | null>(null)
   const tituloGrupo = useRef<HTMLHeadingElement>(null)
+  const formulario = useRef<HTMLFormElement>(null)
   const [baseline] = useState(() => compararCampos(valor))
   const [c, setC] = useState(() => structuredClone(valor))
   const [erro, setErro] = useState<string | null>(null)
@@ -70,6 +71,17 @@ function EditorCriterios({ dia, valor, leitura, fechar, informarEdicao, cancelar
       document.getElementById(`${formId}-${ultimoGrupo.current}`)?.focus()
     }
   }, [grupo, formId])
+
+  function voltarAoMenu() {
+    // Uma entrada como "-" tem value vazio, mas ainda não é um campo limpo.
+    const incompleto = Array.from(formulario.current?.querySelectorAll<HTMLInputElement>('input[type="number"]') ?? [])
+      .find(campo => campo.validity.badInput)
+    if (incompleto) {
+      incompleto.reportValidity()
+      return
+    }
+    setGrupo(null)
+  }
 
   function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -94,7 +106,7 @@ function EditorCriterios({ dia, valor, leitura, fechar, informarEdicao, cancelar
   const caixas = (k: 'tipos' | 'site' | 'email' | 'telefone', rotulo: string, opcoes: [string, string][]) => <fieldset className={styles.caixas}><legend>{rotulo}</legend>{opcoes.map(([v, nome]) => <label key={v}><Choice type="checkbox" name={k} value={v} checked={(c[k] as string[]).includes(v)} onChange={e => alterar(k, (e.target.checked ? [...c[k], v] : c[k].filter(x => x !== v)) as typeof c[typeof k])} />{nome}</label>)}</fieldset>
   const descricao = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(dia + 'T12:00:00Z'))
   return <PainelSobrepostoCrm titulo="Critérios de busca" descricao={`${descricao}. Todos os critérios são opcionais.`}
-    rotuloFechar={grupo ? 'Voltar' : 'Fechar'} aoFechar={grupo ? () => setGrupo(null) : cancelar} aoSair={cancelar}
+    rotuloFechar={grupo ? 'Voltar' : 'Fechar'} aoFechar={grupo ? voltarAoMenu : cancelar} aoSair={cancelar}
     rodape={leitura ? undefined : <>
       <Button type="button" variant="outline" onClick={cancelar}>Cancelar</Button>
       <Button type="submit" form={formId}>Aplicar critérios</Button>
@@ -102,7 +114,7 @@ function EditorCriterios({ dia, valor, leitura, fechar, informarEdicao, cancelar
     {!grupo && <MenuPainelCrm rotulo="Grupos de critérios" itens={(Object.keys(GRUPOS) as Grupo[]).map(chave => ({
       id: `${formId}-${chave}`, titulo: GRUPOS[chave], aoAbrir: () => setGrupo(chave),
     }))} />}
-    <form id={formId} onSubmit={enviar} className={`${styles.formulario} ${styles.editorCriterios}`}>
+    <form id={formId} ref={formulario} onSubmit={enviar} className={`${styles.formulario} ${styles.editorCriterios}`}>
       {grupo && <h3 ref={tituloGrupo} tabIndex={-1} className={styles.tituloGrupo}>{GRUPOS[grupo]}</h3>}
       {grupo && <fieldset disabled={leitura} aria-label={GRUPOS[grupo]}>
       {grupo === 'empresas' && <>

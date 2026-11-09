@@ -272,6 +272,27 @@ test('critérios Google preservam os grupos, aplicam por botão e Enter e usam a
     await aplicar.click()
     await expect(dialogo.getByRole('alert')).toContainText('até uma casa decimal')
     await expect(nota).toHaveValue('4.35')
+
+    const avaliacoes = dialogo.getByLabel('Mínimo de avaliações', { exact: true })
+    for (const campoNumerico of [nota, avaliacoes]) {
+      await campoNumerico.fill('4')
+      await campoNumerico.press('Control+a')
+      await campoNumerico.press('Minus')
+      const incompleto = () => campoNumerico.evaluate(el => (el as HTMLInputElement).validity.badInput)
+      await expect.poll(incompleto).toBe(true)
+      await expect(campoNumerico).toHaveValue('')
+      await aplicar.click()
+      await expect(campoNumerico).toBeFocused()
+      await voltar.click()
+      await expect(campoNumerico).toBeFocused()
+      await expect.poll(incompleto).toBe(true)
+      await campoNumerico.press('Backspace')
+      await expect.poll(incompleto).toBe(false)
+      await voltar.click()
+      await expect(contatos).toBeFocused()
+      await contatos.click()
+    }
+
     await nota.fill('0')
     await nota.press('Enter')
     await expect(dialogo).toBeHidden()
