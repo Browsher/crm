@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { NOME_REDESIGN } from './dados-redesign'
 
 async function entrar(page: Page, apelido: string, destino: string) {
@@ -21,12 +21,12 @@ async function navegar(page: Page, nome: string) {
   await page.getByRole('navigation', { name: 'Navegação do CRM', exact: true }).getByRole('link', { name: nome, exact: true }).click()
 }
 
-async function capturar(page: Page, nome: string) {
+async function capturar(page: Page, testInfo: TestInfo, nome: string) {
   await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth))).toBe(0)
-  await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-4-captures/redesign-${nome}.png`, fullPage: true, animations: 'disabled' })
+  await page.screenshot({ path: testInfo.outputPath(`redesign-${nome}.png`), fullPage: true, animations: 'disabled' })
 }
 
-test('galeria compartilha shell e tema sem perder rascunho no atendimento: jornada do vendedor', async ({ page }) => {
+test('galeria compartilha shell e tema sem perder rascunho no atendimento: jornada do vendedor', async ({ page }, testInfo) => {
   test.setTimeout(90_000)
   await entrar(page, 'redesigne2e', '/meu-dia')
   await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
@@ -36,7 +36,7 @@ test('galeria compartilha shell e tema sem perder rascunho no atendimento: jorna
       await page.setViewportSize({ width: 1440, height: 900 })
       await page.getByLabel('Tema do Meu dia').selectOption(tema)
       await page.setViewportSize({ width: largura, height: 900 })
-      await capturar(page, `agenda-${largura}-${tema}`)
+      await capturar(page, testInfo, `agenda-${largura}-${tema}`)
     }
   }
   await page.getByRole('button', { name: 'Fechar', exact: true }).click()
@@ -44,18 +44,30 @@ test('galeria compartilha shell e tema sem perder rascunho no atendimento: jorna
   await expect(selecionada).toBeFocused()
   await selecionada.click()
   await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
+  const ficha = page.locator('[data-painel-lateral]')
+  const confirmacao = page.locator('[data-slot="dialog-content"]')
   await expect(page.getByLabel('Tema da Carteira')).toHaveValue('dark')
-  await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
-  await page.getByLabel('Nota', { exact: true }).fill('Rascunho preservado entre abas')
-  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho preservado entre abas')
-  await capturar(page, 'atendimento-mobile-dark')
-  await page.getByRole('button', { name: 'Cancelar atendimento', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click()
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho preservado entre abas')
-  await page.getByRole('button', { name: 'Cancelar atendimento', exact: true }).click()
-  await page.getByRole('button', { name: 'Descartar e continuar', exact: true }).click()
-  await expect(page.getByLabel('Nota', { exact: true })).toHaveCount(0)
+  await ficha.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await ficha.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
+  const nota = ficha.getByLabel('Nota', { exact: true })
+  await nota.fill('Rascunho preservado entre seções')
+  await ficha.getByRole('button', { name: 'Voltar', exact: true }).click()
+  await confirmacao.getByRole('button', { name: 'Continuar editando', exact: true }).click()
+  await expect(nota).toHaveValue('Rascunho preservado entre seções')
+  await capturar(page, testInfo, 'atendimento-mobile-dark')
+  await ficha.getByRole('button', { name: 'Cancelar', exact: true }).click()
+  await confirmacao.getByRole('button', { name: 'Continuar editando', exact: true }).click()
+  await expect(nota).toHaveValue('Rascunho preservado entre seções')
+  await ficha.getByRole('button', { name: 'Cancelar', exact: true }).click()
+  await confirmacao.getByRole('button', { name: 'Descartar', exact: true }).click()
+  await expect(nota).toHaveCount(0)
+  await ficha.getByRole('button', { name: 'Voltar', exact: true }).click()
+  await ficha.getByRole('button', { name: 'Histórico', exact: true }).click()
+  await expect(ficha.getByRole('region', { name: 'Histórico comercial', exact: true })).toBeVisible()
+  await ficha.getByRole('button', { name: 'Voltar', exact: true }).click()
+  await ficha.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(page).toHaveURL('/meu-dia')
+  await expect(ficha).toHaveCount(0)
   await navegar(page, 'Funil')
   await expect(page.getByLabel('Tema do Funil')).toHaveValue('dark')
   const negociacao = page.locator('article[draggable]').filter({ has: page.getByRole('heading', { name: 'Redesign Negociação', exact: true }) }).getByRole('button', { name: 'Negociação', exact: true })
@@ -70,44 +82,46 @@ test('galeria compartilha shell e tema sem perder rascunho no atendimento: jorna
   await expect(page.getByLabel('Tema da Carteira')).toHaveValue('dark')
   const filtros = new URL(page.url()).search
   await page.getByRole('link', { name: 'Ver cliente', exact: true }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(NOME_REDESIGN)
-  await page.getByRole('link', { name: /Voltar.*carteira/i }).click()
+  await expect(ficha.getByRole('heading', { name: NOME_REDESIGN, exact: true })).toBeVisible()
+  await ficha.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(page).toHaveURL('/carteira' + filtros)
+  await expect(ficha).toHaveCount(0)
   expect(new URL(page.url()).searchParams.get('nome')).toBe(new URLSearchParams(filtros).get('nome'))
   await navegar(page, 'Prospecção')
   await expect(page.getByRole('heading', { name: 'Prospecção', exact: true })).toBeVisible()
-  await capturar(page, 'prospeccao-mobile-dark')
+  await capturar(page, testInfo, 'prospeccao-mobile-dark')
   await page.getByRole('button', { name: 'Menu do CRM' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Sair', exact: true }).click()
   await expect(page).toHaveURL('/login')
 })
 
-test('jornada do gestor mantém navegação, grupos ativos e portal escuro', async ({ page }) => {
+test('jornada do gestor mantém navegação, grupos ativos e portal escuro', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await entrar(page, 'gestore2e', '/gestao')
   await page.getByLabel('Tema da Gestão').selectOption('dark')
-  await capturar(page, 'gestao-desktop-dark')
+  await capturar(page, testInfo, 'gestao-desktop-dark')
   await navegar(page, 'Empresas')
   await expect(page.getByLabel('Tema de Empresas')).toHaveValue('dark')
-  await capturar(page, 'empresas-desktop-dark')
+  await capturar(page, testInfo, 'empresas-desktop-dark')
   await navegar(page, 'Listas')
   const nav = page.getByRole('navigation', { name: 'Navegação do CRM' })
   await expect(nav.locator('[aria-current=page]')).toHaveCount(1)
   await expect(nav.locator('[aria-current=page]')).toHaveAttribute('href', '/empresas/grupos')
-  await capturar(page, 'grupos-desktop-dark')
+  await capturar(page, testInfo, 'grupos-desktop-dark')
   await navegar(page, 'Usuários')
   const abrir = page.getByRole('button', { name: 'Novo usuário', exact: true })
   await abrir.click()
   await expect(page.locator('.ui-dialog-portal')).toHaveAttribute('data-theme', 'dark')
   await page.keyboard.press('Escape')
   await expect(abrir).toBeFocused()
-  await capturar(page, 'usuarios-desktop-dark')
+  await capturar(page, testInfo, 'usuarios-desktop-dark')
   await expect(nav.getByRole('link', { name: 'Design system', exact: true })).toHaveCount(0)
   await page.goto('/design')
   await page.getByLabel('Tema do design system').selectOption('dark')
   await expect(page.getByLabel('Tema do design system')).toHaveValue('dark')
   await expect(nav.locator('[aria-current=page]')).toHaveCount(0)
   await expect(page.getByRole('table', { name: 'Empresas de demonstração' })).toBeVisible()
-  await capturar(page, 'galeria-desktop-dark')
+  await capturar(page, testInfo, 'galeria-desktop-dark')
   await navegar(page, 'Usuários')
   await expect(page.getByLabel('Tema de Usuários')).toHaveValue('dark')
   await expect(page.getByRole('button', { name: 'Novo usuário', exact: true })).toHaveCSS('min-height', '40px')
@@ -115,14 +129,14 @@ test('jornada do gestor mantém navegação, grupos ativos e portal escuro', asy
   await expect(page.getByLabel('Tema do WhatsApp')).toHaveValue('dark')
   await page.getByRole('link', { name: 'Configurar vendedores' }).click()
   await expect(page.getByRole('heading', { name: 'Configurar vendedores' })).toBeVisible()
-  await capturar(page, 'whatsapp-configuracao-desktop-dark')
+  await capturar(page, testInfo, 'whatsapp-configuracao-desktop-dark')
 })
 
-test('acesso e senha provisória seguem o tema do dispositivo em 390px', async ({ page }) => {
+test('acesso e senha provisória seguem o tema do dispositivo em 390px', async ({ page }, testInfo) => {
   test.setTimeout(90_000)
   const capturarAcesso = async (nome: string) => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-8-captures/${nome}.png`, fullPage: true, animations: 'disabled' })
+    await page.screenshot({ path: testInfo.outputPath(`${nome}.png`), fullPage: true, animations: 'disabled' })
   }
   for (const largura of [1440, 1280, 1100, 820, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
@@ -254,33 +268,36 @@ test('botão destrutivo mantém contraste de texto nos dois temas e hover', asyn
 })
 
 
-test('tarefa 9: atendimento conserva rascunho, campos e geometria nos dois temas', async ({ page }) => {
+test('tarefa 9: atendimento conserva rascunho, campos e geometria nos dois temas', async ({ page }, testInfo) => {
   test.setTimeout(120_000)
   await entrar(page, 'redesigne2e', '/meu-dia')
   await expect(page.getByLabel('Nome', { exact: true }).locator('xpath=ancestor::form')).toContainText('Filtrar')
   const filtros = page.getByRole('group', { name: 'Filtrar retornos' })
   await expect(filtros).toHaveCSS('border-radius', '8px')
   await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
-  await expect(page.locator('[data-painel-lateral]')).toHaveCount(1)
+  const ficha = page.locator('[data-painel-lateral]')
+  await expect(ficha).toHaveCount(1)
   await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
-  await page.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
-  const nota = page.getByLabel('Nota', { exact: true })
+  await ficha.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await ficha.getByRole('button', { name: 'Registrar atendimento', exact: true }).click()
+  const nota = ficha.getByLabel('Nota', { exact: true })
+  const cancelar = ficha.locator('[data-painel-rodape]').getByRole('button', { name: 'Cancelar', exact: true })
   const longa = 'Rascunho que deve sobreviver ' + 'anotação longa sem perda '.repeat(45)
   await nota.fill(longa)
-  await page.getByRole('tab', { name: 'Histórico', exact: true }).click()
-  await page.getByRole('button', { name: 'Cancelar atendimento', exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Cancelar', exact: true }).click()
+  await cancelar.click()
+  await page.locator('[data-slot="dialog-content"]').getByRole('button', { name: 'Continuar editando', exact: true }).click()
   await expect(nota).toHaveValue(longa)
-  await expect(page.getByRole('button', { name: 'Cancelar atendimento', exact: true })).toBeFocused()
-  const editor = page.getByRole('region', { name: 'Registrar atendimento', exact: true })
+  await expect(cancelar).toBeFocused()
+  const editor = ficha.getByRole('region', { name: 'Registrar atendimento', exact: true })
+  const titulo = editor.getByRole('heading', { name: 'Registrar atendimento', exact: true })
   for (const width of [1920, 1280, 1100, 1000, 820, 600, 390]) {
     await page.setViewportSize({ width, height: 1000 })
-    for (const tema of ['light', 'dark']) {
-      await page.getByLabel('Tema da Carteira').selectOption(tema)
-      await expect(editor).toHaveCSS('border-radius', '10px')
-      await expect(editor).toHaveCSS('padding', width <= 820 ? '20px' : '24px')
-      await expect(editor.getByRole('heading', { name: 'Registrar atendimento' })).toHaveCSS('font-size', '18px')
-      await expect(editor.getByRole('heading', { name: 'Registrar atendimento' })).toHaveCSS('line-height', '26px')
+    for (const tema of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: tema })
+      await expect(page.locator('html')).toHaveAttribute('data-theme', tema)
+      await expect(ficha).toHaveCount(1)
+      await expect(titulo).toHaveCSS('font-size', '16px')
+      await expect(titulo).toHaveCSS('line-height', '24px')
       await expect(nota).toHaveCSS('border-radius', '6px')
       await expect(nota).toHaveCSS('min-height', '96px')
       await expect(nota).toHaveCSS('font-size', width <= 820 ? '16px' : '14px')
@@ -291,24 +308,25 @@ test('tarefa 9: atendimento conserva rascunho, campos e geometria nos dois temas
         expect(box.x + box.width).toBeLessThanOrEqual(pai.x + pai.width + 1)
         expect(box.height).toBeGreaterThanOrEqual(width <= 820 ? 44 : 40)
       }
-      const titulo = (await editor.getByRole('heading').boundingBox())!
-      const cancelar = (await editor.getByRole('button', { name: 'Cancelar atendimento' }).boundingBox())!
-      expect(titulo.x + titulo.width <= cancelar.x || titulo.y + titulo.height <= cancelar.y).toBe(true)
-      const cabecalho = page.getByRole('article').locator(':scope > header')
+      const caixaTitulo = (await titulo.boundingBox())!
+      const caixaCancelar = (await cancelar.boundingBox())!
+      expect(caixaTitulo.y + caixaTitulo.height).toBeLessThanOrEqual(caixaCancelar.y)
+      expect(caixaCancelar.height).toBeGreaterThanOrEqual(width <= 820 ? 44 : 40)
+      const cabecalho = ficha.locator('header')
       const caixaCabecalho = (await cabecalho.boundingBox())!
       for (const grupo of await cabecalho.locator(':scope > div').all()) {
         const caixaGrupo = (await grupo.boundingBox())!
         expect(caixaGrupo.x + caixaGrupo.width).toBeLessThanOrEqual(caixaCabecalho.x + caixaCabecalho.width + 1)
       }
       await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth)), { message: `Transbordamento na ficha: ${width}px, ${tema}` }).toBe(0)
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/atendimento-${width}-${tema}.png`, fullPage: true, animations: 'disabled' })
+      await page.screenshot({ path: testInfo.outputPath(`atendimento-${width}-${tema}.png`), animations: 'disabled' })
     }
   }
   await expect(nota).toHaveValue(longa)
 })
 
 
-test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ browser }) => {
+test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ browser }, testInfo) => {
   const contexto = await browser.newContext({ hasTouch: true, viewport: { width: 1280, height: 1000 } })
   const page = await contexto.newPage()
   try {
@@ -316,12 +334,15 @@ test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ b
     await expect(page.getByLabel('Nome', { exact: true })).toHaveCSS('font-size', '16px')
     await page.getByTestId('lista-meu-dia').getByRole('listitem').filter({ has: page.locator('strong', { hasText: NOME_REDESIGN }) }).getByRole('button', { name: 'Abrir retorno', exact: true }).click()
     await page.getByRole('link', { name: 'Atendimento', exact: true }).click()
-    const voltar = page.getByRole('navigation', { name: 'Navegação da ficha' }).getByRole('link')
-    const caixaVoltar = (await voltar.boundingBox())!
+    const ficha = page.locator('[data-painel-lateral]')
+    const voltar = ficha.getByRole('link', { name: 'Voltar para o Meu dia', exact: true })
+    const fechar = ficha.getByRole('button', { name: 'Fechar', exact: true })
+    await expect(fechar).toBeVisible()
+    const caixaVoltar = (await fechar.boundingBox())!
     expect(caixaVoltar.height).toBeGreaterThanOrEqual(44)
     expect(caixaVoltar.width).toBeGreaterThanOrEqual(44)
     await expect(voltar).toHaveAttribute('href', '/meu-dia')
-    await page.screenshot({ path: '.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/revisao-voltar-toque-1280.png', animations: 'disabled' })
+    await page.screenshot({ path: testInfo.outputPath('revisao-voltar-toque-1280.png'), animations: 'disabled' })
     await page.goto('/funil')
     const empresa = page.locator('[data-slot=card]').filter({ has: page.getByRole('heading', { name: 'Redesign Negociação', exact: true }) })
     const card = empresa.getByRole('button', { name: 'Negociação', exact: true })
@@ -344,7 +365,7 @@ test('tarefa 9: toque em 1280px mantém campos e avanço por botão', async ({ b
       await expect(page.getByLabel('Valor em reais')).toHaveCSS('font-size', '16px')
       await expect(page.getByLabel('Valor em reais')).toHaveCSS('min-height', '44px')
       await page.getByLabel('Observação (opcional)').fill('Nota de venda longa '.repeat(60))
-      await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-9-captures/funil-toque-1280-${tema}.png`, animations: 'disabled' })
+      await page.screenshot({ path: testInfo.outputPath(`funil-toque-1280-${tema}.png`), animations: 'disabled' })
       await page.keyboard.press('Escape')
       await page.getByRole('button', { name: 'Descartar', exact: true }).click()
       await page.keyboard.press('Escape')
