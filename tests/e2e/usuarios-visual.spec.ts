@@ -118,8 +118,14 @@ test('perfil do vendedor usa cards e hierarquia de seção do design system', as
   await page.goto('/usuarios?busca=redesigne2e')
   const linha = page.locator('tbody tr').filter({ hasText: 'redesigne2e@teste.local' })
   await linha.getByRole('link', { name: /Ver perfil/ }).click()
-  await expect(page.getByRole('heading', { name: 'Empresas do vendedor', exact: true })).toHaveCSS('font-size', '18px')
-  await expect(page.getByRole('region', { name: 'Empresas do vendedor', exact: true }).first()).toHaveCSS('border-radius', '10px')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const empresas = page.getByRole('navigation', { name: 'Consultas do perfil' }).getByRole('button', { name: /^Empresas/ })
+  await empresas.click()
+  const painel = page.getByRole('dialog', { name: 'Empresas do vendedor', exact: true })
+  await expect(painel.getByRole('heading', { name: 'Empresas do vendedor', exact: true })).toHaveCSS('font-size', '19px')
+  await expect(painel.getByRole('article').first()).toHaveCSS('border-radius', '10px')
+  await painel.getByRole('button', { name: 'Fechar' }).click()
+  await expect(empresas).toBeFocused()
   for (const largura of [1440, 1280, 1100, 820, 390]) {
     await page.setViewportSize({ width: largura, height: 900 })
     for (const tema of ['light', 'dark']) {
