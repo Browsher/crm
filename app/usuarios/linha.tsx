@@ -60,16 +60,17 @@ export function ConfirmarAcao({ usuario, tipo, fechar, informarPendencia, devolv
     mudar_papel: usuario.papel === 'gestor' ? 'Esta pessoa perderá o acesso à administração.' : 'Esta pessoa poderá administrar usuários e empresas.',
     desativar: 'Esta pessoa perderá o acesso ao CRM. Você poderá reativá-la depois.', reativar: 'Esta pessoa poderá voltar a acessar o CRM.',
   }
+  const envioBloqueado = pendente || estado.incerto || estado.concluido
   return <DialogContent theme={tema} showCloseButton={!pendente}
     onOpenAutoFocus={e => { e.preventDefault(); cancelar.current?.focus() }}
     onCloseAutoFocus={e => { e.preventDefault(); if (!entregou.current) devolverFoco() }}
     onEscapeKeyDown={e => { if (pendente) e.preventDefault() }} onInteractOutside={e => { if (pendente) e.preventDefault() }}>
     <DialogHeader><DialogTitle>{ROTULO[tipo](usuario)}: {usuario.nome}</DialogTitle><DialogDescription>{descricao[tipo]}</DialogDescription></DialogHeader>
-    <form action={acao} aria-busy={pendente} className={styles.formulario} onSubmit={e => { if (pendente || estado.incerto) e.preventDefault() }}>
+    <form action={acao} aria-busy={pendente} className={styles.formulario} onSubmit={e => { if (envioBloqueado) e.preventDefault() }}>
       <input type="hidden" name="id" value={usuario.id} /><input type="hidden" name="acao" value={tipo} />
       {tipo === 'mudar_papel' && <input type="hidden" name="papel" value={usuario.papel === 'gestor' ? 'vendedor' : 'gestor'} />}
       {estado.erro && <Alert variant="danger">{estado.erro}</Alert>}
-      <DialogFooter><Button ref={cancelar} type="button" variant="outline" disabled={pendente} onClick={fechar}>Cancelar</Button><Button type="submit" disabled={pendente || estado.incerto}>{pendente ? 'Confirmando…' : 'Confirmar'}</Button></DialogFooter>
+      <DialogFooter><Button ref={cancelar} type="button" variant="outline" disabled={pendente} onClick={fechar}>Cancelar</Button><Button type="submit" disabled={envioBloqueado}>{pendente ? 'Confirmando…' : 'Confirmar'}</Button></DialogFooter>
     </form>
   </DialogContent>
 }
