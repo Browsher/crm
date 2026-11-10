@@ -72,7 +72,7 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial}:Props) {
     <section aria-labelledby="minhas-empresas-titulo" aria-busy={pendente} className={styles.resultados}>
       <header className={styles.cabecalho}><div><h2 id="minhas-empresas-titulo">Todas as minhas empresas</h2><p>{filtros.disponibilidade==='sem_interesse'?'Sem interesse · ':''}{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
       {dados.empresas.length===0?<EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa com esses filtros" descricao="Edite os filtros ou busque novas empresas na Prospecção." acao={{rotulo:'Editar filtros',aoAcionar:()=>setRecolhido(false),variante:'outline'}}/>:<ul className={styles.cartoes}>{dados.empresas.map(e=><li key={e.id}>
-        <Cartao empresa={e} filtros={filtros} bloquearRetomada={bloquearRetomada} />
+        <Cartao empresa={e} filtros={filtros} bloquearRetomada={bloquearRetomada} consultaRecolhida={recolhido} />
       </li>)}</ul>}
       {(pagina>1||pagina*20<dados.total)&&<nav aria-label="Páginas das minhas empresas" className={styles.paginacao}>{pagina>1&&<Button asChild variant="outline"><Link href={urlPessoal(filtros,pagina-1,true)}>Página anterior</Link></Button>}<span>Página {pagina}</span>{pagina*20<dados.total&&<Button asChild variant="outline"><Link href={urlPessoal(filtros,pagina+1,true)}>Próxima página</Link></Button>}</nav>}
     </section>

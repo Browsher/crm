@@ -10,12 +10,13 @@ import type { AcaoEmpresa, ReferenciaEmpresa, ResumoEmpresa } from '@/src/lib/em
 import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 import { textoDoMotivo } from '@/src/features/contato/mensagens'
 import { iniciarAtendimentoAcao, retomarAtendimentoAcao } from './atendimento/acoes'
-import { urlAtendimento } from './localizar/navegacao'
+import { idGatilhoAtendimento, urlAtendimento, urlAtendimentoLateral } from './localizar/navegacao'
 import { useRetomadaNaConsulta } from './localizar/recuperacao-retomada'
 
-export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false, escopoConsulta, naFichaCarteira }: {
+export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada = false, escopoConsulta, naFichaCarteira, consultaRecolhida }: {
   empresa: ResumoEmpresa; filtros?: FiltrosPessoais; hrefCarteira?: string; bloquearRetomada?: boolean; escopoConsulta?: string
   naFichaCarteira?: 'direta' | 'interceptada'
+  consultaRecolhida?: boolean
 }) {
   const router = useRouter()
   const retomarNaConsulta = useRetomadaNaConsulta()
@@ -57,6 +58,10 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     iniciar(async () => {
       try {
         if ('href' in acao && !salvo) {
+          if (acao.tipo === 'continuar' && empresa.id && consultaRecolhida !== undefined) {
+            router.push(urlAtendimentoLateral(empresa.id, filtros, consultaRecolhida), { scroll: false })
+            return
+          }
           const href = destino(acao)
           if (acao.tipo === 'carteira' && hrefCarteira === href) router.push(href, { scroll: false })
           else router.push(href)
@@ -97,7 +102,8 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
       finally { ocupado.current = false }
     })
   }
-  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
+  const idAcao = consultaRecolhida !== undefined && empresa.situacao === 'atendimento' && empresa.id ? idGatilhoAtendimento(empresa.id) : undefined
+  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} idAcao={idAcao} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
     {erro && <p role="alert">{erro}</p>}
     {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}
     {resolvido && <Button variant="outline" onClick={() => {

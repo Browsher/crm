@@ -29,6 +29,21 @@ async function conferirTamanhos(page: Page, testInfo: TestInfo, tela: string) {
       await expect.poll(() => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - window.innerWidth)), {
         message: `Transbordamento na Carteira: ${tela}, ${tema}, ${width}px`,
       }).toBe(0)
+      if (tela === 'cards') {
+        const cards = page.getByRole('region', { name: 'Clientes', exact: true }).getByRole('article')
+        await expect(cards).toHaveCount(2)
+        const primeiro = (await cards.first().boundingBox())!
+        const segundo = (await cards.last().boundingBox())!
+        expect(segundo.width).toBeCloseTo(primeiro.width, 1)
+        if (width <= 820) {
+          expect(segundo.x).toBe(primeiro.x)
+          expect(segundo.y).toBeGreaterThan(primeiro.y + primeiro.height)
+        } else {
+          expect(segundo.x).toBeGreaterThan(primeiro.x + primeiro.width)
+          expect(segundo.y).toBe(primeiro.y)
+          expect(segundo.height).toBe(primeiro.height)
+        }
+      }
       if (tela === 'ficha') {
         const painel = ficha(page)
         await expect(painel).toHaveCount(1)
@@ -64,7 +79,7 @@ async function voltarNoNavegador(page: Page) {
   }))
 }
 
-test('Carteira conserva lista, filtros, rolagem e foco pelos dois gatilhos da ficha', async ({ page }, testInfo) => {
+test('Carteira exibe cards responsivos e conserva lista, filtros, rolagem e foco ao abrir a ficha', async ({ page }, testInfo) => {
   test.setTimeout(90_000)
   await entrar(page)
   await expect(page.getByRole('link', { name: 'Ver cliente', exact: true })).toHaveCount(2)
@@ -72,6 +87,10 @@ test('Carteira conserva lista, filtros, rolagem e foco pelos dois gatilhos da fi
   await expect(page.getByText(/^Nota inicial Aurora /)).toBeVisible()
   await expect(page.getByText('Nota inicial Boreal', { exact: true })).toBeVisible()
   await expect(page.getByRole('main')).not.toContainText('Carteira Visual Privada')
+  const clientes = page.getByRole('region', { name: 'Clientes', exact: true })
+  await expect(clientes.getByRole('article').first()).toHaveAccessibleName('Carteira Visual Aurora')
+  await expect(clientes.getByRole('article').last()).toHaveAccessibleName('Carteira Visual Boreal')
+  await expect(clientes.getByRole('button')).toHaveCount(0)
   await conferirTamanhos(page, testInfo, 'cards')
 
   await page.getByLabel('Nome', { exact: true }).fill('Aurora')
@@ -82,11 +101,11 @@ test('Carteira conserva lista, filtros, rolagem e foco pelos dois gatilhos da fi
   await expect(page.getByRole('main')).toContainText('1 de 2 empresas')
   const filtros = new URL(page.url()).search
   const main = page.locator('main')
-  const linha = main.locator('tbody tr')
+  const cartao = main.locator('[data-slot="card"][role="article"]')
   // A lista filtrada tem um único registro. Cria espaço para rolar e marca a
-  // própria linha para detectar se a lista for remontada sob a ficha.
+  // própria empresa para detectar se a lista for remontada sob a ficha.
   await main.evaluate(elemento => { elemento.style.paddingBottom = '850px' })
-  await linha.evaluate(elemento => { elemento.setAttribute('data-lista-e2e', 'preservada') })
+  await cartao.evaluate(elemento => { elemento.setAttribute('data-lista-e2e', 'preservada') })
   const abrir = page.getByRole('link', { name: 'Ver cliente', exact: true })
   await abrir.focus()
   await page.evaluate(() => window.scrollTo(0, 100))
@@ -98,29 +117,14 @@ test('Carteira conserva lista, filtros, rolagem e foco pelos dois gatilhos da fi
   await expect(painel).toHaveCount(1)
   await expect(painel.getByRole('heading', { name: 'Carteira Visual Aurora', exact: true })).toBeVisible()
   await expect(page).toHaveURL(aurora + filtros)
-  await expect(linha).toHaveAttribute('data-lista-e2e', 'preservada')
+  await expect(cartao).toHaveAttribute('data-lista-e2e', 'preservada')
   await fechar.click()
   await expect(page).toHaveURL('/carteira' + filtros)
   await expect(abrir).toBeFocused()
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(rolagem)
-  await expect(linha).toHaveAttribute('data-lista-e2e', 'preservada')
+  await expect(cartao).toHaveAttribute('data-lista-e2e', 'preservada')
 
-  const cartao = page.getByRole('button', { name: 'Abrir na carteira', exact: true })
-  await cartao.evaluate(elemento => elemento.scrollIntoView({ block: 'center' }))
-  await expect(cartao).toBeInViewport({ ratio: 1 })
-  const rolagemCartao = await page.evaluate(() => scrollY)
-  expect(rolagemCartao).toBeGreaterThan(0)
-  await cartao.click()
-  await expect(page).toHaveURL(aurora + filtros)
-  await expect(painel).toHaveCount(1)
-  await expect(linha).toHaveAttribute('data-lista-e2e', 'preservada')
-  await fechar.click()
-  await expect(page).toHaveURL('/carteira' + filtros)
-  await expect(cartao).toBeFocused()
-  await expect.poll(() => page.evaluate(() => scrollY)).toBe(rolagemCartao)
-  await expect(linha).toHaveAttribute('data-lista-e2e', 'preservada')
-
-  await cartao.click()
+  await abrir.click()
   await painel.getByRole('button', { name: 'Histórico', exact: true }).click()
   await painel.getByRole('button', { name: 'Expandir todos', exact: true }).click()
   await expect(painel.getByText(`Nota inicial Aurora ${'x'.repeat(300)}`, { exact: true })).toBeVisible()
@@ -128,8 +132,8 @@ test('Carteira conserva lista, filtros, rolagem e foco pelos dois gatilhos da fi
   await painel.getByRole('button', { name: 'Voltar', exact: true }).click()
   await fechar.click()
   await expect(page).toHaveURL(`/carteira${filtros}`)
-  await expect(cartao).toBeFocused()
-  await expect(linha).toHaveAttribute('data-lista-e2e', 'preservada')
+  await expect(abrir).toBeFocused()
+  await expect(cartao).toHaveAttribute('data-lista-e2e', 'preservada')
   expect(new URL(page.url()).searchParams.get('nome')).toBe('Aurora')
   await expect(page.getByLabel('Nome', { exact: true })).toHaveValue('Aurora')
   await expect(page.getByLabel('UF', { exact: true })).toHaveValue('SP')
@@ -233,7 +237,7 @@ test('ficha de prospecção preserva rascunho e erro, confirma descarte, atualiz
 
 test('Voltar do navegador pede confirmação e cancelar mantém o rascunho', async ({ page }) => {
   await entrar(page)
-  await page.getByRole('row').filter({ has: page.getByRole('heading', { name: 'Carteira Visual Aurora', exact: true }) })
+  await page.getByRole('article', { name: 'Carteira Visual Aurora', exact: true })
     .getByRole('link', { name: 'Ver cliente', exact: true }).click()
   await expect(page).toHaveURL(/\/carteira\/[0-9a-f-]+$/)
   const fichaUrl = page.url()
@@ -300,8 +304,7 @@ test('recarregar a ficha conserva o endereço canônico e permite recuperar o ra
 
 test('ficha conserva a seção de origem e separa dados, histórico e rascunho ao trocar de cliente', async ({ page }) => {
   await entrar(page)
-  const abrirCliente = (nome: string) => page.getByRole('row')
-    .filter({ has: page.getByRole('heading', { name: nome, exact: true }) })
+  const abrirCliente = (nome: string) => page.getByRole('article', { name: nome, exact: true })
     .getByRole('link', { name: 'Ver cliente', exact: true })
   await abrirCliente('Carteira Visual Aurora').click()
   const painel = ficha(page)
@@ -484,12 +487,19 @@ test('cliente arquivado continua na carteira com histórico e retoma antes de no
   await expect(page.getByRole('main')).toContainText('1 de 2 empresas')
   await expect(page.getByRole('main')).toContainText('Sem interesse')
   await expect(page.getByRole('main')).toContainText('Sem agendamento')
-  await page.getByRole('button',{name:'Ver empresa: Carteira Visual Boreal',exact:true}).click()
-  await expect(page.getByRole('dialog')).toContainText('Carteira Visual Boreal')
-  await page.keyboard.press('Escape')
-  await page.getByRole('button',{name:'Retomar atendimento',exact:true}).click()
+  await page.getByRole('link', { name: 'Ver cliente', exact: true }).click()
   await expect(page).toHaveURL(ficha + '?nome=Boreal')
   await expect(painel.getByRole('heading', { name: 'Carteira Visual Boreal', exact: true })).toBeVisible()
+  await painel.getByRole('button', { name: 'Dados da empresa', exact: true }).click()
+  await painel.getByRole('button', { name: 'Cadastro e origem', exact: true }).click()
+  await expect(painel.getByRole('region', { name: 'Cadastro e origem', exact: true })).toContainText('Carteira Visual Boreal')
+  const voltar = painel.getByRole('button', { name: 'Voltar', exact: true })
+  await voltar.click()
+  await voltar.click()
+  await painel.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
+  await painel.getByRole('button', { name: 'Retomar atendimento', exact: true }).click()
+  await expect(painel.getByRole('button', { name: 'Registrar atendimento', exact: true })).toBeEnabled()
+  await voltar.click()
   await painel.getByRole('button', { name: 'Fechar', exact: true }).click()
   await expect(page).toHaveURL('/carteira?nome=Boreal')
   await page.getByRole('link', { name: 'Ver cliente', exact: true }).click()

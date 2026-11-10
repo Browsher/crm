@@ -27,6 +27,15 @@ export function urlAtendimento(empresaId: string, filtros: FiltrosPessoais): str
   return urlPessoal(filtros, Number(filtros.pagina || 1)).replace('/fila/localizar', `/fila/atendimento/${encodeURIComponent(empresaId)}`)
 }
 
+export function urlAtendimentoLateral(empresaId: string, filtros: FiltrosPessoais, recolhido: boolean): string {
+  return urlPessoal(filtros, Number(filtros.pagina || 1), recolhido)
+    .replace('/fila/localizar', `/fila/localizar/atendimento/${encodeURIComponent(empresaId)}`)
+}
+
+export function idGatilhoAtendimento(empresaId: string): string {
+  return 'continuar-atendimento-' + empresaId
+}
+
 export function urlConsulta(filtros: Filtros, pagina: number): string {
   const params = new URLSearchParams()
   for (const campo of ['nome', 'cnae', 'uf', 'cidade', 'bairro'] as const) {

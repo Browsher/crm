@@ -230,7 +230,7 @@ test('filtro sem resultado oferece recuperação no Card e conserva rota da fich
 })
 
 
-test('Carteira usa painel em Card, registros a 600px e aviso semântico de filtros inválidos', async ({ page }) => {
+test('Carteira usa filtros em Card e aviso semântico de filtros inválidos', async ({ page }) => {
   await entrar(page, 'designsystemvazioe2e')
   await page.goto('/carteira?uf=INVALIDA')
   const aviso = page.getByRole('main').getByRole('alert')
@@ -247,7 +247,7 @@ test('Carteira usa painel em Card, registros a 600px e aviso semântico de filtr
 })
 
 
-test('registros da Carteira preservam leitura, ações e medidas da referência em cada quebra', async ({ page }) => {
+test('cards da Carteira preservam leitura, ação e medidas do design system em cada quebra', async ({ page }) => {
   test.setTimeout(90_000)
   const banco = bancoGruposDoHarness()
   const nomeLongo = 'EmpresaSinteticaComNomeMuitoLongoSemEspacos'.repeat(5)
@@ -261,9 +261,13 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
     await expect(page).toHaveURL('/meu-dia')
     await page.goto('/carteira')
-    const tabela = page.getByRole('table', { name: 'Clientes da sua carteira' })
-    const linha = page.getByRole('row').filter({ has: page.getByRole('heading', { name: nomeLongo, exact: true }) })
-    await expect(tabela.getByRole('columnheader')).toHaveCount(6)
+    const clientes = page.getByRole('region', { name: 'Clientes', exact: true })
+    const card = clientes.getByRole('article', { name: nomeLongo, exact: true })
+    const cardReferencia = referencia.locator('[data-component="empty-state"]').first()
+    await expect(clientes.getByRole('article')).toHaveCount(2)
+    await expect(card).toHaveAttribute('data-slot', 'card')
+    await expect(card.locator('dt')).toHaveText(['Última atividade', 'Próximo passo'])
+    await expect(card.getByRole('link')).toHaveCount(1)
     for (const tema of ['light', 'dark']) {
       await page.getByRole('combobox', { name: /Tema/ }).selectOption(tema)
       await referencia.locator('html').evaluate((elemento, valor) => elemento.setAttribute('data-theme', valor), tema)
@@ -274,21 +278,16 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
         await expect(tituloSecao).toHaveCSS('font-size', '18px')
         await expect(tituloSecao).toHaveCSS('line-height', '26px')
         await expect(tituloSecao).toHaveCSS('font-weight', '600')
-        await expect(tabela).toHaveCSS('display', width <= 600 ? 'block' : 'table')
-        await expect(linha).toHaveCSS('display', width <= 600 ? 'grid' : 'table-row')
-        if (width > 600) await expect(linha.getByRole('cell').first()).toHaveCSS('padding-top', '16px')
-        if (width <= 600) {
-          expect(await linha.getByRole('cell').nth(1).evaluate(elemento => getComputedStyle(elemento, '::before').content)).toBe('"Contato principal"')
-          expect(await linha.getByRole('cell').last().evaluate(elemento => getComputedStyle(elemento, '::before').content)).toBe('"Ações"')
-        }
-        await expect(linha).toContainText('Contato principal não informado')
-        const badges = linha.locator('[data-slot="badge"]')
+        await expect(card).toHaveCSS('border-radius', await cardReferencia.evaluate(elemento => getComputedStyle(elemento).borderRadius))
+        await expect(card.getByRole('heading')).toHaveCSS('overflow-wrap', 'anywhere')
+        await expect(card.locator('[data-slot="card-footer"]')).toContainText('Contato principal não informado')
+        const badges = card.locator('[data-slot="badge"]')
         const badgeReferencia = referencia.locator('.badge-success').first()
-        // A tipografia e o raio vêm da referência aprovada; células seguem os 16px do inventário.
+        // A tipografia e o raio das situações seguem a referência aprovada.
         for (const propriedade of ['font-size', 'line-height', 'border-radius']) {
           for (const badge of await badges.all()) await expect(badge).toHaveCSS(propriedade, await badgeReferencia.evaluate((elemento, chave) => getComputedStyle(elemento).getPropertyValue(chave), propriedade))
         }
-        const acao = linha.getByRole('link', { name: 'Ver cliente', exact: true })
+        const acao = card.getByRole('link', { name: 'Ver cliente', exact: true })
         await acao.focus()
         await acao.press('Tab')
         await page.keyboard.press('Shift+Tab')
@@ -300,7 +299,7 @@ test('registros da Carteira preservam leitura, ações e medidas da referência 
         const painel = page.locator('form [data-slot="card"]')
         await expect(painel).toHaveCSS('padding-top', await referencia.locator('.table-toolbar').evaluate(elemento => getComputedStyle(elemento).paddingTop))
         await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }))
-        await referencia.locator('#tabelas').screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-3-captures/referencia-${tema}-${width}.png`, animations: 'disabled' })
+        await cardReferencia.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-3-captures/referencia-${tema}-${width}.png`, animations: 'disabled' })
         await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-3-captures/registros-${tema}-${width}.png`, fullPage: true, animations: 'disabled' })
       }
     }

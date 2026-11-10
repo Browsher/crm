@@ -41,17 +41,19 @@ test('nicho limpa o bairro anterior ao consultar opções dependentes',async()=>
   expect(push.mock.calls[0][0]).not.toContain('endereco=')
 })
 
-test('perfil e continuação preservam filtros pessoais e a página da consulta',async()=>{
+test('continuação abre a rota lateral sem perder filtros, página ou rolagem da consulta',async()=>{
   const filtros={origem:'google',nicho:'Brinquedos',pagina:'2'}
   const empresa:EmpresaPessoal={id:'00000000-0000-4000-8000-000000000123',nome:'Minha empresa',cnpj:null,cnae:null,cep:null,porte:null,abertura:null,bairro:null,cidade:null,uf:null,origens:['google'],nichos:['Brinquedos'],regioes:[],entrada:'2026-10-23T12:00:00Z',situacao:'atendimento',referencia:{tipo:'cadastro',empresaId:'00000000-0000-4000-8000-000000000123'},versao:2,atividade:null,recebidaEm:null,negociacaoId:null}
-  const div=await montar(filtros,[empresa])
+  const div=await montar(filtros,[empresa],true)
   const continuar=[...div.querySelectorAll('button')].find(b=>b.textContent==='Continuar atendimento')!
   await act(async()=>continuar.click())
   const url=new URL(push.mock.calls[0][0],'http://localhost')
-  expect(url.pathname).toBe('/fila/atendimento/'+empresa.id)
+  expect(url.pathname).toBe('/fila/localizar/atendimento/'+empresa.id)
+  expect(push).toHaveBeenCalledWith(expect.any(String), { scroll: false })
   expect(url.searchParams.get('origem')).toBe('google')
   expect(url.searchParams.get('pagina')).toBe('2')
   expect(url.searchParams.get('nicho')).toBe('Brinquedos')
+  expect(url.searchParams.get('pesquisado')).toBe('1')
   expect(url.searchParams.has('grupo')).toBe(false)
 })
 

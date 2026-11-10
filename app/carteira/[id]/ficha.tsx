@@ -29,7 +29,7 @@ import { transmitirVenda } from '../../venda-envio'
 import { FormularioRecompra } from '../registrar-venda'
 import { DadosCliente, enderecoCliente, GRUPOS_CLIENTE } from './dados-cliente'
 import { FichaLegada } from './ficha-legada'
-import { useGuardaFicha, voltarParaEntradaAnterior } from './guarda-ficha'
+import { useGuardaPainelEdicao, voltarParaEntradaAnterior } from '@/src/components/crm/guarda-painel-edicao'
 import styles from './ficha.module.css'
 
 type Props = {
@@ -156,7 +156,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   const pendente = enviandoContato || enviandoVenda || venda.pendente
   useLayoutEffect(() => { aoMudarOcupacao(tarefa || pendente) }, [aoMudarOcupacao, tarefa, pendente])
   const bloqueada = () => contatoEmVoo.current || vendaEmVoo.current || venda.pendente
-  const guarda = useGuardaFicha(contatoAlterado || vendaAlterada, pendente, bloqueada, saida => {
+  const guarda = useGuardaPainelEdicao(contatoAlterado || vendaAlterada, pendente, bloqueada, saida => {
     setErroDescarte('')
     if (tarefa) {
       setEntrada(ENTRADA_VAZIA)

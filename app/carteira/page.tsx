@@ -5,7 +5,7 @@ import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { textoDoMotivo } from '@/src/features/fila/mensagens'
 import { exigir } from '@/src/server/autenticacao/guarda'
 import { FiltrosForm } from './filtros-form'
-import { lerFiltrosCarteira } from './filtros'
+import { lerFiltrosCarteira, localizacaoCarteira } from './filtros'
 import { ListaCarteira } from './lista'
 import styles from './carteira.module.css'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
@@ -25,7 +25,7 @@ export default async function PaginaCarteira({ searchParams }: Props) {
       <Button asChild variant="outline"><Link href="/carteira">Limpar filtros</Link></Button>
     </Alert> : <>
       <FiltrosForm filtros={leitura.filtros}
-        ufs={r.carteira.flatMap(empresa => empresa.endereco ? [empresa.endereco.uf] : [])} />
+        ufs={r.carteira.map(empresa => localizacaoCarteira(empresa).uf).filter(uf => uf !== null)} />
       <ListaCarteira linhas={r.carteira} filtros={leitura.filtros} />
     </>}
   </main>

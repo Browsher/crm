@@ -7,14 +7,29 @@ export const ATENDIMENTO_ALHEIO = '00000000-0000-4000-8000-000000009753'
 export const ATENDIMENTO_FONTE = '00000000-0000-4000-8000-000000009754'
 export const BUSCA_ATENDIMENTO = '00000000-0000-4000-8000-000000009755'
 export const GOOGLE_ATENDIMENTO = '00000000-0000-4000-8000-000000009756'
+export const ATENDIMENTO_LATERAL = '00000000-0000-4000-8000-000000009757'
+export const ATENDIMENTO_LATERAL_ARQUIVO = '00000000-0000-4000-8000-000000009758'
+export const ATENDIMENTO_LATERAL_FUNIL = '00000000-0000-4000-8000-000000009759'
+export const ATENDIMENTO_LATERAL_SEM_NAVIGATION = '00000000-0000-4000-8000-000000009760'
 export async function prepararAtendimentoDireto(banco: BancoDeTeste): Promise<void> {
   const eu = await criarUsuarioComSenha(banco, 'vendedor', 'diretoe2e', 'Senha-e2e-2026', { pendente: false })
   const outro = await criarUsuarioComSenha(banco, 'vendedor', 'diretooutroe2e', 'Senha-e2e-2026', { pendente: false })
-  for (const [id,nome,dono] of [[ATENDIMENTO_A,'Direto Aurora',eu.id],[ATENDIMENTO_B,'Direto Brisa',eu.id],[ATENDIMENTO_ALHEIO,'Direto Privada',outro.id]]) {
+  const empresasDiretas = [
+    [ATENDIMENTO_A,'Direto Aurora',eu.id],
+    [ATENDIMENTO_B,'Direto Brisa',eu.id],
+    [ATENDIMENTO_ALHEIO,'Direto Privada',outro.id],
+    [ATENDIMENTO_LATERAL,'Direto Lateral',eu.id],
+    [ATENDIMENTO_LATERAL_ARQUIVO,'Direto para arquivo',eu.id],
+    [ATENDIMENTO_LATERAL_FUNIL,'Direto para negociação',eu.id],
+    [ATENDIMENTO_LATERAL_SEM_NAVIGATION,'Direto sem API de navegação',eu.id],
+  ]
+  for (const [id,nome,dono] of empresasDiretas) {
     await banco.sql("INSERT INTO empresa(id,razao_social,telefone) VALUES($1,$2,'11988887777')", [id,nome])
     await vincularEmpresaTeste(banco,id,dono,'legado')
     await vincularGrupoAtivo(banco,[id])
   }
+  await banco.sql('UPDATE empresa_vinculo SET iniciada_em=now() WHERE empresa_id=ANY($1::uuid[])',
+    [[ATENDIMENTO_LATERAL, ATENDIMENTO_LATERAL_ARQUIVO, ATENDIMENTO_LATERAL_FUNIL, ATENDIMENTO_LATERAL_SEM_NAVIGATION]])
   await banco.sql("INSERT INTO empresa(id,cnpj,razao_social,telefone) VALUES($1,'00000000009754','Direto Fontes','11988887776')",[ATENDIMENTO_FONTE])
   await vincularEmpresaTeste(banco,ATENDIMENTO_FONTE,eu.id,'banco')
   await vincularGrupoAtivo(banco,[ATENDIMENTO_FONTE])
