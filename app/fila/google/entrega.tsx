@@ -4,6 +4,7 @@ import { Badge } from '@/src/components/ui/badge'
 import { EstadoVazio } from '@/src/components/crm/estado-vazio'
 import { Card } from '@/src/components/ui/card'
 import { Button } from '@/src/components/ui/button'
+import { LinkFichaEmpresa } from '@/app/empresas/[id]/link-ficha'
 import { ESTADOS_GOOGLE, type PlanoGoogle, type ResultadoGoogle, type ExecucaoGoogle, type LoteGoogle } from '@/src/features/google/tipos'
 import { normalizarCriterios } from '@/src/lib/google/criterios'
 import { ProspectarGoogle } from './prospectar'
@@ -66,7 +67,7 @@ export function DetalheEntrega({ plano, resultados, recibo, execucao = null, lot
         <dl className={styles.resumo}><div><dt>Telefone</dt><dd>{texto(r.dados.telefone) || 'Sem telefone informado'}</dd></div><div><dt>Verificação do contato</dt><dd>{(r.canais_verificados ?? []).includes('whatsapp') || (!r.lote_id && r.dados.validado === true) ? 'WhatsApp confirmado' : (r.canais_verificados ?? []).includes('fixo') ? 'Formato de telefone fixo conferido' : 'Não verificado'}</dd></div><div><dt>CNPJ</dt><dd>{texto(r.dados.cnpj) || 'Não informado'}</dd></div>
           <div><dt>Email</dt><dd>{texto(r.dados.email) || 'Não informado'}</dd></div><div><dt>Atendimento após entrega</dt><dd>{r.trabalhada ? 'Registrado' : 'Sem atendimento registrado'}</dd></div></dl>
         {r.motivo && <p className={styles.ajuda}>{r.motivo}</p>}
-        <div className={styles.acoes}>{gestor && r.empresa_id ? <Button asChild variant="outline"><Link href={navegacao?.enderecoFicha(r.empresa_id) ?? `/empresas/${r.empresa_id}`}>Ver ficha e histórico</Link></Button>
+        <div className={styles.acoes}>{gestor && r.empresa_id ? <Button asChild variant="outline"><LinkFichaEmpresa href={navegacao?.enderecoFicha(r.empresa_id) ?? `/empresas/${r.empresa_id}`}>Ver ficha e histórico</LinkFichaEmpresa></Button>
           : null}</div>
         {gestor && <details><summary className={styles.botaoResumo}>Conferir dados da origem</summary><pre className={styles.dadosBrutos}>{JSON.stringify(r.dados, null, 2)}</pre></details>}
       </Card>)}

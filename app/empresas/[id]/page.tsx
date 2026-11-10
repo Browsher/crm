@@ -1,90 +1,25 @@
-import { rotuloSituacao } from '@/src/lib/empresa-visual'
-import { lerRetornoGestor, serializarRetornoGestor, urlColetaGestor, urlRetornoGestor, type OrigemFichaGestor } from '@/src/lib/retorno-gestor'
-import { DadosCadastrais } from '@/src/components/crm/dados-cadastrais'
-import { lerDadosCadastrais } from '@/src/server/cnpj-biz/dados'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
-import { lerPerfilEmpresa } from '@/src/features/empresas/perfil'
-import { lerHistorico } from '@/src/features/contato/historico'
-import { LinhaDoTempo } from '@/src/features/contato/linha-do-tempo'
-import { formatarCnpj, formatarTelefone } from '@/src/features/empresas/formato'
-import { aplicarFiltrosEmpresas, enderecoEmpresas, lerConsulta } from '@/src/features/empresas/consulta'
-import { lerFiltrosEmpresas } from '@/src/features/empresas/filtros'
-import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card'
-import { Badge } from '@/src/components/ui/badge'
-import { Alert } from '@/src/components/ui/alert'
-import styles from './perfil.module.css'
-import { AbasFicha } from '@/src/components/crm/abas-ficha'
-import { repositorioGoogle } from '@/src/features/google/repositorio'
-import { HistoricoGoogleEmpresa } from '@/src/components/crm/historico-google'
 import { Button } from '@/src/components/ui/button'
-import { SociosGestor } from '../socios-gestor'
-
-const horario = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' })
-function dataCivil(data: string) { return data.split('-').reverse().join('/') }
+import { ConteudoFicha, IdentificacaoFicha } from './ficha'
+import { lerFichaEmpresa } from './ficha-leitura'
+import { navegacaoFicha, type ConsultaFicha } from './ficha-navegacao'
+import styles from './perfil.module.css'
 
 export default async function PaginaPerfil({ params, searchParams }: {
   params: Promise<{ id: string }>
-  searchParams?: Promise<Record<string, string | string[] | undefined>>
+  searchParams?: Promise<ConsultaFicha>
 }) {
   const eu = await exigir('gestor')
   const { id } = await params
-  const empresa = await lerPerfilEmpresa(eu.usuarioId, id)
-  if (!empresa) notFound()
-  const query = await searchParams ?? {}
-  const filtros = lerFiltrosEmpresas(query)
-  const retorno = lerRetornoGestor(query.retorno)
-  const origem = retorno?.tipo === 'empresas' || retorno?.tipo === 'arquivo' || retorno?.tipo === 'grupo' || retorno?.tipo === 'coleta' || retorno?.tipo === 'whatsapp' ? retorno : undefined
-  const consulta = lerConsulta(query)
-  const arquivada = empresa.situacao === 'arquivada'
-  const destinoPadrao = arquivada ? '/empresas/arquivadas' : filtros.ok ? enderecoEmpresas(aplicarFiltrosEmpresas(consulta, filtros.filtros)) : '/empresas'
-  const voltar = origem ? urlRetornoGestor(origem) : destinoPadrao
-  const rotuloVolta = origem?.tipo === 'grupo' ? 'Voltar para a lista' : origem?.tipo === 'coleta' ? 'Voltar para a coleta'
-    : origem?.tipo === 'whatsapp' ? 'Voltar ao WhatsApp'
-      : origem?.tipo === 'arquivo' || (!origem && arquivada) ? 'Voltar ao arquivo' : 'Voltar para empresas'
-  const origemPadrao: OrigemFichaGestor | undefined = arquivada ? { tipo: 'arquivo', q: '', pagina: 1, gruposPagina: 1 }
-    : filtros.ok ? {
-      tipo: 'empresas', q: consulta.termo, pagina: consulta.pagina, cnae: filtros.filtros.cnae ?? undefined,
-      uf: filtros.filtros.uf ?? undefined, cidade: filtros.filtros.cidade ?? undefined, bairro: filtros.filtros.bairro ?? undefined,
-    } : undefined
-  const origemHistorico = origem ?? (origemPadrao && serializarRetornoGestor(origemPadrao) ? origemPadrao : undefined)
-  const enderecoColeta = (pedidoId: string) => urlColetaGestor(pedidoId, 1, { tipo: 'ficha', id, aba: 'historico', origem: origemHistorico })
-  const [historico, cadastrais, coletas] = await Promise.all([lerHistorico(eu.usuarioId, id), lerDadosCadastrais(eu.usuarioId, id), repositorioGoogle(eu.usuarioId).historicoEmpresa(id)])
-  const endereco = empresa.cidade ? [empresa.logradouro, empresa.bairro, `${empresa.cidade}/${empresa.uf}`].filter(Boolean).join(', ')
-    : empresa.cep ? `CEP ${empresa.cep}. Endereço não encontrado na base de CEP.` : 'Localização não cadastrada'
+  const ficha = await lerFichaEmpresa(eu.usuarioId, id)
+  if (!ficha) notFound()
+  const { voltar, origem, rotuloVolta, origemHistorico, abaInicial } = navegacaoFicha(ficha.empresa.situacao === 'arquivada', await searchParams ?? {})
+
   return <main className={styles.pagina}>
     <Button asChild variant="outline"><Link href={voltar} prefetch={origem?.tipo === 'whatsapp' ? false : undefined} className={styles.voltar}>{rotuloVolta}</Link></Button>
-    <header className={styles.cabecalho}><div><p>Ficha da empresa</p><h1>{empresa.nome}</h1>
-      {empresa.razaoSocial && <p>{empresa.nomeFantasia ?? 'Nome fantasia não cadastrado'}</p>}<p>{endereco}</p></div>
-      <Badge variant="outline">{rotuloSituacao(empresa.situacao)}</Badge></header>
-    {empresa.situacao === 'arquivada' && <Alert role="note">Arquivo histórico, somente consulta. Retornos cancelados na agenda ativa. Os dados e as datas originais permanecem no histórico.</Alert>}
-    <div className={styles.colunas}><AbasFicha abaInicial={query.aba === 'historico' ? 'historico' : 'dados'} dados={<div className={styles.detalhes}>
-      <Card><CardHeader><CardTitle>Dados da empresa</CardTitle></CardHeader><CardContent>
-        <dl className={styles.dados}>
-          <dt>CNPJ</dt><dd>{formatarCnpj(empresa.cnpj)}</dd>
-          <dt>Contato</dt><dd>{empresa.contatoNome ?? 'Não informado'}</dd>
-          <dt>Telefone</dt><dd>{formatarTelefone(empresa.telefone)}</dd>
-          <dt>E-mail</dt><dd>{empresa.email ?? 'Não informado'}</dd>
-          <dt>CNAE</dt><dd>{empresa.cnae ?? 'Não informado'}</dd>
-          <dt>CEP</dt><dd>{empresa.cep ?? 'Não informado'}</dd>
-        </dl>
-      </CardContent></Card>
-      <DadosCadastrais dados={cadastrais} />
-      <SociosGestor empresaId={id}/>
-      <Card><CardHeader><CardTitle>Acompanhamento</CardTitle></CardHeader><CardContent>
-        <dl className={styles.dados}>
-          <dt>Vendedor responsável</dt><dd>{empresa.responsavel ?? 'Sem vendedor responsável'}{empresa.responsavel && !empresa.responsavelAtivo ? <Badge variant="warning">Desativado</Badge> : null}</dd>
-          <dt>Próximo passo</dt><dd>{empresa.proximoPasso ?? 'Não registrado'}</dd>
-          <dt>Próximo retorno</dt><dd>{empresa.retorno ? dataCivil(empresa.retorno) : 'Sem retorno agendado'}</dd>
-        </dl>
-      </CardContent></Card>
-      <Card><CardHeader><CardTitle>Grupos de origem</CardTitle></CardHeader><CardContent>
-        {empresa.grupos.length ? <ul className={styles.grupos}>{empresa.grupos.map(g => <li key={g.id}><span>{g.nome}</span><Badge variant={g.ativo ? 'success' : 'outline'}>{g.ativo ? 'Ativo' : 'Desativado'}</Badge></li>)}</ul> : <p>Nenhum grupo vinculado.</p>}
-      </CardContent></Card>
-    </div>} historico={<><HistoricoGoogleEmpresa coletas={coletas} enderecoColeta={enderecoColeta} />{empresa.arquivo && <Card><CardHeader><CardTitle>Arquivamento e negociações</CardTitle></CardHeader><CardContent><p>Arquivada em {horario.format(new Date(empresa.arquivo.arquivadaEm))}.</p><ul>{empresa.arquivo.negociacoes.map(n => <li key={n.id}>{rotuloSituacao(n.etapa as 'primeiro_contato' | 'em_negociacao' | 'proposta_enviada')} · {n.vendedor ?? 'Autor preservado'} · {n.encerramento === 'arquivamento_legado' ? 'Encerrada por arquivamento da base antiga' : n.encerramento}{n.encerradaEm ? ` em ${horario.format(new Date(n.encerradaEm))}` : ''}</li>)}</ul></CardContent></Card>}<Card><CardHeader><CardTitle>Histórico de atendimentos</CardTitle></CardHeader><CardContent>
-      {!historico.ok ? <Alert variant="danger">Não foi possível carregar o histórico. Atualize a página para tentar novamente.</Alert> : !historico.contatos.length ? <p>Nenhum atendimento registrado.</p> :
-        <LinhaDoTempo contatos={historico.contatos} />}
-    </CardContent></Card></>} /></div>
+    <header><IdentificacaoFicha empresa={ficha.empresa}><p>Ficha da empresa</p><h1>{ficha.empresa.nome}</h1></IdentificacaoFicha></header>
+    <ConteudoFicha ficha={ficha} abaInicial={abaInicial} origemHistorico={origemHistorico} />
   </main>
 }

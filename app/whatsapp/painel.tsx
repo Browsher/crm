@@ -10,7 +10,7 @@ import { telefoneDoJid } from '@/src/lib/whatsapp-identificacao'
 import { MidiaMensagem } from './midia-mensagem'
 import { VisaoGeralWhatsApp } from './visao-geral'
 import { calcularIndicadores } from '@/src/lib/whatsapp-indicadores'
-import Link from 'next/link'
+import { LinkFichaEmpresa } from '@/app/empresas/[id]/link-ficha'
 import { rotuloCadastro, type CadastroWhatsApp } from '@/src/lib/whatsapp-empresa'
 import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
@@ -316,7 +316,7 @@ export function PainelWhatsApp({ retorno, piloto, mensagens, limiteHistorico, te
     </div>
     <div className={styles.chat}>
       {!conversaAtual ? <div className={styles.semResultado} role="status"><Button variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><EstadoVazio titulo={intencao ? 'Conversa anterior' : retorno ? 'Nenhuma conversa selecionada' : 'Nenhuma conversa neste filtro'} descricao={intencao ? 'Volte à lista para escolher outra conversa.' : retorno ? 'Escolha uma conversa na lista para ler as mensagens.' : 'Escolha outro filtro para consultar as conversas carregadas.'} /></div> : <>
-      <header className={styles.chatCabecalho}><Button type="button" variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{ficha && <Button asChild variant="outline" className={styles.fichaCompacta}><Link href={ficha}>Abrir ficha da empresa</Link></Button>}<Badge variant="outline" className={styles.leitura}>Somente visualização</Badge></header>
+      <header className={styles.chatCabecalho}><Button type="button" variant="ghost" className={styles.voltarMovel} onClick={voltarParaConversas}>Voltar para conversas</Button><span className={styles.avatar} aria-hidden="true">{iniciais(conversaAtual.nome)}</span><div><h2>{conversaAtual.nome}</h2><p>{conversaAtual.telefone ?? 'Número não disponibilizado pela integração'}</p>{conversaAtual.vendedor && <p>{conversaAtual.vendedor}</p>}<EtiquetaCadastro cadastro={conversaAtual.cadastro} /></div>{ficha && <Button asChild variant="outline" className={styles.fichaCompacta}><LinkFichaEmpresa href={ficha}>Abrir ficha da empresa</LinkFichaEmpresa></Button>}<Badge variant="outline" className={styles.leitura}>Somente visualização</Badge></header>
       <ol ref={rolagem} className={styles.mensagens} aria-label="Mensagens da conversa" tabIndex={0} onWheel={e => {
         if (e.deltaY < 0 && e.currentTarget.scrollTop < 60 && !erro) void carregar()
       }} onScroll={e => {
@@ -333,7 +333,7 @@ export function PainelWhatsApp({ retorno, piloto, mensagens, limiteHistorico, te
       </li>)}</ol>
       </>}
     </div>
-    {conversaAtual && <aside className={styles.contexto} aria-label="Contexto da empresa"><h2>Contexto da empresa</h2>{conversaAtual.cadastro?.estado === 'encontrada' ? <><h3>{conversaAtual.cadastro.empresa.nome}</h3><EtiquetaCadastro cadastro={conversaAtual.cadastro} />{ficha && <Button asChild variant="outline"><Link href={ficha}>Abrir ficha da empresa</Link></Button>}</> : <p>{rotuloCadastro(conversaAtual.cadastro)}</p>}<dl><dt>Contato</dt><dd>{conversaAtual.nome}</dd><dt>Telefone</dt><dd>{conversaAtual.telefone ?? 'Não disponibilizado pela integração'}</dd><dt>Vendedor</dt><dd>{conversaAtual.vendedor ?? 'Origem não identificada'}</dd></dl><p>Somente visualização. As conversas são atualizadas automaticamente.</p></aside>}
+    {conversaAtual && <aside className={styles.contexto} aria-label="Contexto da empresa"><h2>Contexto da empresa</h2>{conversaAtual.cadastro?.estado === 'encontrada' ? <><h3>{conversaAtual.cadastro.empresa.nome}</h3><EtiquetaCadastro cadastro={conversaAtual.cadastro} />{ficha && <Button asChild variant="outline"><LinkFichaEmpresa href={ficha}>Abrir ficha da empresa</LinkFichaEmpresa></Button>}</> : <p>{rotuloCadastro(conversaAtual.cadastro)}</p>}<dl><dt>Contato</dt><dd>{conversaAtual.nome}</dd><dt>Telefone</dt><dd>{conversaAtual.telefone ?? 'Não disponibilizado pela integração'}</dd><dt>Vendedor</dt><dd>{conversaAtual.vendedor ?? 'Origem não identificada'}</dd></dl><p>Somente visualização. As conversas são atualizadas automaticamente.</p></aside>}
   </section>}
   <div className={styles.historico}>
     <span aria-live="polite">{dados.acumuladas.length} mensagens carregadas</span>
