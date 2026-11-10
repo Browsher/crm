@@ -16,6 +16,7 @@ import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 
 
 import { useRetomadaBloqueada } from './recuperacao-retomada'
+import { ID_TITULO_RESULTADOS } from './navegacao'
 import styles from './pessoal.module.css'
 
 type Props={filtros:FiltrosPessoais;dados:ConsultaAtendimentoPessoal;recolhido:boolean}
@@ -69,8 +70,8 @@ export function LocalizarPessoal({filtros,dados,recolhido:inicial}:Props) {
       </section>
       </div></PainelFiltros>
     </form>
-    <section aria-labelledby="minhas-empresas-titulo" aria-busy={pendente} className={styles.resultados}>
-      <header className={styles.cabecalho}><div><h2 id="minhas-empresas-titulo">Todas as minhas empresas</h2><p>{filtros.disponibilidade==='sem_interesse'?'Sem interesse · ':''}{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
+    <section aria-labelledby={ID_TITULO_RESULTADOS} aria-busy={pendente} className={styles.resultados}>
+      <header className={styles.cabecalho}><div><h2 id={ID_TITULO_RESULTADOS} tabIndex={-1}>Todas as minhas empresas</h2><p>{filtros.disponibilidade==='sem_interesse'?'Sem interesse · ':''}{origem}</p></div><p role="status">{dados.total} {dados.total===1?'empresa':'empresas'}</p></header>
       {dados.empresas.length===0?<EstadoVazio nivelTitulo={3} titulo="Nenhuma empresa com esses filtros" descricao="Edite os filtros ou busque novas empresas na Prospecção." acao={{rotulo:'Editar filtros',aoAcionar:()=>setRecolhido(false),variante:'outline'}}/>:<ul className={styles.cartoes}>{dados.empresas.map(e=><li key={e.id}>
         <Cartao empresa={e} filtros={filtros} bloquearRetomada={bloquearRetomada} consultaRecolhida={recolhido} />
       </li>)}</ul>}

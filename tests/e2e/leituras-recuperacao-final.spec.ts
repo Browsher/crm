@@ -140,7 +140,7 @@ for (const tipo of ['arquivar', 'retomar'] as const) test(`${tipo}: resposta per
   await sql('UPDATE empresa_vinculo SET vendedor_id=$2 WHERE empresa_id=$1', [c.empresa, c.eu])
   await page.getByRole('button', { name: confirmar, exact: true }).click()
   if (arquivar) await expect(status).toContainText('Envio anterior confirmado')
-  else await expect(page).toHaveURL(url => url.pathname === '/fila/atendimento/' + c.empresa && url.searchParams.get('nome') === nome)
+  else await expect(page).toHaveURL(url => url.pathname === '/fila/localizar/atendimento/' + c.empresa && url.searchParams.get('nome') === nome)
   expect(envios).toHaveLength(3)
   for (const corpo of envios) expect(corpo).toContain(chave)
   expect(await page.evaluate(k => sessionStorage.getItem(k), storage)).toBeNull()

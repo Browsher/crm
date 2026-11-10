@@ -55,7 +55,7 @@ test('vínculo atravessa contato, agenda, arquivo, retomada e vendas; aba antiga
   const historia = (await sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).rows
   await page.goto('/fila/sem-interesse')
   await page.getByRole('button', { name: 'Retomar atendimento', exact: true }).click()
-  await expect(page).toHaveURL(url => url.pathname === '/fila/atendimento/' + empresa)
+  await expect(page).toHaveURL(url => url.pathname === '/fila/localizar/atendimento/' + empresa)
   expect(await banco.sql('SELECT agenda_contato_id,arquivada_em FROM empresa_vinculo WHERE empresa_id=$1', [empresa]))
     .toEqual([{ agenda_contato_id: null, arquivada_em: null }])
   expect((await sql('SELECT * FROM contato WHERE empresa_id=$1', [empresa])).rows).toEqual(historia)

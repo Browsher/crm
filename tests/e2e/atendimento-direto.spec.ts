@@ -3,7 +3,7 @@ import { comAdmin } from '../../src/server/db/admin'
 import { exigirAdminLocal } from './ambiente'
 import {
   ATENDIMENTO_A as A, ATENDIMENTO_B as B, ATENDIMENTO_ALHEIO as ALHEIO, ATENDIMENTO_FONTE as FONTE,
-  ATENDIMENTO_LATERAL, ATENDIMENTO_LATERAL_ARQUIVO, ATENDIMENTO_LATERAL_FUNIL, ATENDIMENTO_LATERAL_SEM_NAVIGATION,
+  ATENDIMENTO_LATERAL, ATENDIMENTO_LATERAL_ARQUIVO, ATENDIMENTO_LATERAL_BANCO, ATENDIMENTO_LATERAL_FUNIL, ATENDIMENTO_LATERAL_SEM_NAVIGATION,
   BUSCA_ATENDIMENTO, GOOGLE_ATENDIMENTO,
 } from './dados-atendimento'
 async function sql(texto: string, valores: unknown[] = []) {
@@ -11,6 +11,47 @@ async function sql(texto: string, valores: unknown[] = []) {
   exigirAdminLocal(url)
   return comAdmin(url, c => c.query(texto,valores))
 }
+
+test('Banco de empresas abre o início na lateral e volta à consulta com foco', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/meu-dia')
+  await page.goto('/fila')
+  await page.getByRole('combobox', { name: 'Origem das empresas' }).selectOption('banco')
+  await page.getByRole('button', { name: 'Localizar empresas', exact: true }).click()
+  await expect(page).toHaveURL('/fila/localizar?origem=banco')
+  await page.getByRole('button', { name: 'Mais filtros', exact: true }).click()
+  const nome = 'Início pelo Banco E2E'
+  await page.getByRole('searchbox', { name: 'Nome da empresa', exact: true }).fill(nome)
+  await page.getByRole('button', { name: 'Pesquisar empresas', exact: true }).click()
+  const consulta = '/fila/localizar?' + new URLSearchParams({ origem: 'banco', nome, pagina: '1', pesquisado: '1' })
+  await expect(page).toHaveURL(consulta)
+  const iniciar = page.getByRole('button', { name: 'Iniciar atendimento', exact: true })
+  await iniciar.focus()
+  await page.keyboard.press('Enter')
+  const painel = page.getByRole('dialog', { name: nome, exact: true })
+  await expect(painel.getByRole('heading', { name: nome, exact: true })).toBeVisible()
+  await expect(page).toHaveURL(consulta.replace('/fila/localizar', '/fila/localizar/atendimento/' + ATENDIMENTO_LATERAL_BANCO))
+  await expect(painel.getByLabel('Nota', { exact: true })).toBeVisible()
+  await painel.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(page).toHaveURL(consulta)
+  await expect(painel).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Editar filtros', exact: true })).toBeVisible()
+  const continuar = page.getByRole('button', { name: 'Continuar atendimento', exact: true })
+  await expect(continuar).toBeFocused()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await continuar.click()
+  await expect(painel).toBeVisible()
+  expect(await painel.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+  await page.goBack()
+  await expect(page).toHaveURL(consulta)
+  await expect(painel).toHaveCount(0)
+  await expect(continuar).toBeFocused()
+  expect((await sql('SELECT operacao FROM empresa_atendimento_operacao WHERE empresa_id=$1', [ATENDIMENTO_LATERAL_BANCO])).rows).toEqual([{ operacao: 'iniciar' }])
+})
 
 test('atendimento lateral protege envio lento e recupera a resposta perdida após reload', async ({page}) => {
   await page.goto('/login')
@@ -147,11 +188,14 @@ test('jornada explícita preserva notas, confirma resposta perdida e recusa aba 
   await page.keyboard.press('Escape')
   const card = page.locator('[data-slot=card]').filter({has:page.getByRole('heading',{name:'Direto Aurora',exact:true})})
   await card.getByRole('button',{name:'Iniciar atendimento',exact:true}).click()
-  await expect(page).toHaveURL(new RegExp('/fila/atendimento/'+A))
+  await expect(page).toHaveURL(new RegExp('/fila/localizar/atendimento/'+A))
   expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[A])).rowCount).toBe(0)
   expect((await sql('SELECT id FROM negociacao WHERE empresa_id=$1',[A])).rowCount).toBe(0)
   await sql("UPDATE empresa_vinculo SET iniciada_em=now()-interval '2 hours' WHERE empresa_id=$1",[A])
   await page.getByLabel('Nota',{exact:true}).fill('Nota Aurora preservada')
+  await page.getByRole('button',{name:'Fechar',exact:true}).click()
+  await page.getByRole('button',{name:'Fechar mantendo rascunho',exact:true}).click()
+  await expect(page).toHaveURL('/fila/localizar?grupo=bookmark-antigo')
   await page.goto('/fila/atendimento/'+B)
   await page.getByRole('button',{name:'Iniciar atendimento',exact:true}).click()
   await page.getByLabel('Nota',{exact:true}).fill('Nota Brisa preservada')

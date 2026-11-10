@@ -1,6 +1,8 @@
 import type { Filtros } from '@/src/features/prospeccao/tipos'
 import { CAMPOS_PESSOAIS, lerFiltrosPessoais, urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 
+export const ID_TITULO_RESULTADOS = 'minhas-empresas-titulo'
+
 export function lerConsultaPessoal(params: Record<string, string | string[] | undefined>, semInteresse = false): ReturnType<typeof lerFiltrosPessoais> {
   let bruto: unknown = Object.fromEntries(CAMPOS_PESSOAIS.filter(k => params[k] !== undefined).map(k => [k, params[k]]))
   if (params.pessoal !== undefined) {

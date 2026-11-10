@@ -7,7 +7,8 @@ import type { EmpresaComigo } from '@/src/lib/agenda-atendimento'
 import type { Contato } from '@/src/features/contato/historico'
 import { RegistrarVisita } from '../../fila/localizar/registrar-visita'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn() }) }))
+const substituirRota = vi.hoisted(() => vi.fn())
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), back: vi.fn(), refresh: vi.fn(), replace: substituirRota }) }))
 vi.mock('@/src/components/crm/tema', () => ({ useTemaCrm: () => 'light' }))
 const acao = vi.hoisted(() => ({ executar: (async () => ({ erro: null, ok: false })) as (...args: unknown[]) => Promise<{ erro: string | null; ok: boolean }> }))
 vi.mock('@/src/features/contato/acao', () => ({ registrarContatoAcao: (anterior: unknown, form: unknown) => acao.executar(anterior, form), prepararContatoAcao: async () => ({ok:true,fase:'negociacao',empresa:{versao:2,situacao:'primeiro_contato'}}) }))
@@ -33,6 +34,7 @@ afterEach(async () => {
   history.replaceState(null, '', '/')
   vi.restoreAllMocks()
   registrarVisita.mockClear()
+  substituirRota.mockClear()
 })
 
 async function renderizar(empresa: EmpresaComigo, cliente: boolean, contatos: Contato[] = [], fundo?: ReactNode, visita?: ReactNode) {
@@ -57,6 +59,14 @@ async function clicarNaFicha(nome: string | RegExp, escopo: ParentNode = documen
 }
 
 describe('Lateral do cliente', () => {
+  test('na ficha direta, Fechar volta à Carteira filtrada sem repetir o link no painel', async () => {
+    await montar({ ...EMPRESA, situacao: 'cliente' }, true)
+    const lateral = document.querySelector('[data-painel-lateral]')!
+    expect(lateral.querySelector('a[href="/carteira?nome=Aurora"]')).toBeNull()
+    await clicarNaFicha('Fechar', lateral)
+    expect(substituirRota).toHaveBeenCalledWith('/carteira?nome=Aurora')
+  })
+
   test('menu troca níveis de dados no mesmo painel e devolve o foco ao item anterior', async () => {
     await montar({ ...EMPRESA, situacao: 'cliente', contatoNome: 'Dona Aurora' }, true)
     const lateral = document.querySelector('[data-painel-lateral]')!

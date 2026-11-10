@@ -11,6 +11,7 @@ export const ATENDIMENTO_LATERAL = '00000000-0000-4000-8000-000000009757'
 export const ATENDIMENTO_LATERAL_ARQUIVO = '00000000-0000-4000-8000-000000009758'
 export const ATENDIMENTO_LATERAL_FUNIL = '00000000-0000-4000-8000-000000009759'
 export const ATENDIMENTO_LATERAL_SEM_NAVIGATION = '00000000-0000-4000-8000-000000009760'
+export const ATENDIMENTO_LATERAL_BANCO = '00000000-0000-4000-8000-000000009761'
 export async function prepararAtendimentoDireto(banco: BancoDeTeste): Promise<void> {
   const eu = await criarUsuarioComSenha(banco, 'vendedor', 'diretoe2e', 'Senha-e2e-2026', { pendente: false })
   const outro = await criarUsuarioComSenha(banco, 'vendedor', 'diretooutroe2e', 'Senha-e2e-2026', { pendente: false })
@@ -33,6 +34,8 @@ export async function prepararAtendimentoDireto(banco: BancoDeTeste): Promise<vo
   await banco.sql("INSERT INTO empresa(id,cnpj,razao_social,telefone) VALUES($1,'00000000009754','Direto Fontes','11988887776')",[ATENDIMENTO_FONTE])
   await vincularEmpresaTeste(banco,ATENDIMENTO_FONTE,eu.id,'banco')
   await vincularGrupoAtivo(banco,[ATENDIMENTO_FONTE])
+  await banco.sql("INSERT INTO empresa(id,razao_social,telefone) VALUES($1,'Início pelo Banco E2E','11988887775')",[ATENDIMENTO_LATERAL_BANCO])
+  await vincularEmpresaTeste(banco,ATENDIMENTO_LATERAL_BANCO,eu.id,'banco')
   const empresas = [{cnpj:'00000000009754',razao_social:'Direto Fontes',telefone:'11988887776',bairro:'Centro',cidade:'São Paulo',uf:'SP',telefones:[]},{cnpj:'00000000009755',razao_social:'Snapshot sem vínculo',telefone:null,telefones:[]}]
   await banco.sql("INSERT INTO busca_empresa(id,usuario_id,nome,filtros,quantidade,estado,empresas,inclusao_automatica_concluida) VALUES($1,$2,'Busca fontes','{\"quantidade\":2}',2,'concluida',$3,true)",[BUSCA_ATENDIMENTO,eu.id,JSON.stringify(empresas)])
   await banco.sql("INSERT INTO google_planejamento(id,vendedor_id,dia,nicho,bairro,cidade,uf,estado) VALUES($1,$2,'2026-10-29','Fontes','Centro','São Paulo','SP','concluido')",[GOOGLE_ATENDIMENTO,eu.id])

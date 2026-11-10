@@ -137,7 +137,9 @@ test('vendas perdidas sobrevivem reload, confirmam uma vez e conservam destino e
  expect(recompras).toBe(2)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1',[recompra.chave])).rows[0].n).toBe(1)
  expect((await sql('SELECT count(*)::int AS n FROM venda WHERE empresa_id=$1',[empresa])).rows[0].n).toBe(2)
- await expect(page.getByRole('link',{name:'Voltar para a carteira',exact:true})).toHaveAttribute('href','/carteira?nome=Aurora&retorno=hoje')
+ await expect(ficha(page).getByRole('link', { name: 'Voltar para a carteira', exact: true })).toHaveCount(0)
+ await ficha(page).getByRole('button', { name: 'Fechar', exact: true }).click()
+ await expect(page).toHaveURL('/carteira?nome=Aurora&retorno=hoje')
 })
 test('recompra da Carteira protege o painel lateral durante conferência, descarte e envio lento', async ({ page }, testInfo) => {
   test.setTimeout(60_000)
@@ -280,7 +282,7 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   await expect(page.getByRole('status').filter({ hasText: 'Venda registrada.' })).toBeVisible()
   expect(await page.evaluate(chave => sessionStorage.getItem(chave), armazenamento)).toBeNull()
   await expect(page).toHaveURL(contexto)
-  await expect(page.getByRole('link', { name: 'Voltar para a carteira', exact: true })).toHaveAttribute('href', '/carteira?nome=Aurora&retorno=hoje')
+  await expect(painel.getByRole('link', { name: 'Voltar para a carteira', exact: true })).toHaveCount(0)
   expect(corpos).toHaveLength(2)
   expect(corpos.every(corpo => corpo.includes(original.chave))).toBe(true)
   expect((await sql('SELECT count(*)::int AS n FROM venda WHERE chave=$1', [original.chave])).rows[0].n).toBe(1)
@@ -288,6 +290,9 @@ test('recompra da Carteira protege o painel lateral durante conferência, descar
   await painel.getByRole('button', { name: 'Atendimento e próximo passo', exact: true }).click()
   await expect(painel).toContainText('Retornar após venda')
   await expect(painel.locator('time')).toHaveAttribute('datetime', '2030-01-01')
+  await painel.getByRole('button', { name: 'Voltar', exact: true }).click()
+  await painel.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(page).toHaveURL('/carteira?nome=Aurora&retorno=hoje')
 })
 
 test('recompra perdida na Carteira é recuperada no painel do Funil sem mudar o contexto',async({page})=>{
