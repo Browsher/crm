@@ -7,8 +7,9 @@ const card=(page:Page,nome:string)=>page.locator('[data-slot=card]').filter({has
 test('atendimento direto mantém rascunho e reflow nos dois temas',async({page})=>{
  await entrar(page,'visuale2e');await page.goto('/fila/localizar?cnae=8888888')
  await card(page,'Visual E2E A').getByRole('button',{name:'Iniciar atendimento',exact:true}).click()
- await expect(page).toHaveURL(/\/fila\/atendimento\//)
- const atendimento=page.url()
+ await expect(page).toHaveURL(/\/fila\/localizar\/atendimento\//)
+ const atendimento=page.url().replace('/fila/localizar/atendimento/','/fila/atendimento/')
+ await page.goto(atendimento)
  await page.getByLabel('Nota',{exact:true}).fill('Rascunho da interface nova')
  for(const tema of ['light','dark']) {
   await page.getByRole('combobox',{name:/Tema/}).selectOption(tema)

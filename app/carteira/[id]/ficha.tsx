@@ -110,6 +110,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
   const nome = nomeEmpresa(empresa)
   const prefixo = useId()
   const formVendaId = prefixo + '-recompra'
+  const voltaAoMeuDia = voltarPara.split('?', 1)[0] === '/meu-dia'
   const [nivel, setNivel] = useState<Nivel>('menu')
   const [origemTarefa, setOrigemTarefa] = useState<Leitura>('menu')
   const [origemDados, setOrigemDados] = useState<'menu' | 'passo'>('menu')
@@ -166,7 +167,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
     if (saida === 'ficha') {
       if (interceptada) router.back()
       else {
-        const aoRestaurar = new URL(voltarPara, location.href).pathname === '/meu-dia' ? () => router.refresh() : undefined
+        const aoRestaurar = voltaAoMeuDia ? () => router.refresh() : undefined
         if (!voltarParaEntradaAnterior(voltarPara, aoRestaurar)) router.replace(voltarPara)
       }
     }
@@ -313,7 +314,7 @@ function FichaCliente({ usuarioId, empresa, contatos, erroHistorico, cliente, in
               id: prefixo + '-' + id, titulo: SECOES[id],
               aoAbrir: () => { if (id === 'dados') setOrigemDados('menu'); mudarNivel(id) },
             }))} />
-            {!interceptada && <Link className="text-sm underline underline-offset-4" href={voltarPara} onClick={evento => {
+            {!interceptada && voltaAoMeuDia && <Link className="text-sm underline underline-offset-4" href={voltarPara} onClick={evento => {
               if (evento.button || evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey) return
               evento.preventDefault()
               guarda.pedir('ficha')

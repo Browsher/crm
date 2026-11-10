@@ -25,13 +25,19 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   if (consulta && consulta.escopo !== escopoConsulta) setConsulta(null)
   const [erro, setErro] = useState('')
   const [confirmarNaConsulta, setConfirmarNaConsulta] = useState(false)
-  const [resolvido, setResolvido] = useState(false)
+  const [resolvido, setResolvido] = useState<boolean | { versaoAtendimento: number }>(false)
+  if (typeof resolvido === 'object' && empresa.versao !== null && empresa.versao >= resolvido.versaoAtendimento) {
+    setResolvido(false)
+  }
   const [pendente, iniciar] = useTransition()
   const ocupado = useRef(false)
   const chaveResolvida = useRef<string | null>(null)
   const storage = 'crm:acao-empresa:v1:' + empresa.id
+  function abrirAtendimento(id: string) {
+    if (consultaRecolhida === undefined) router.push(urlAtendimento(id, filtros))
+    else router.push(urlAtendimentoLateral(id, filtros, consultaRecolhida), { scroll: false })
+  }
   function destino(acao: Extract<AcaoEmpresa, { href: string }>) {
-    if (acao.tipo === 'continuar' && empresa.id) return urlAtendimento(empresa.id, filtros)
     if (acao.tipo === 'carteira' && hrefCarteira?.startsWith(acao.href + '?')) return hrefCarteira
     return acao.href
   }
@@ -44,7 +50,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
       // O comando transmitido tem precedência sobre a ação do snapshot atual.
       // Identificados só podem sair pelo controlador autenticado da consulta.
       if (c && typeof c === 'object' && 'usuarioId' in c) {
-        if (retomarNaConsulta?.({ empresaId: empresa.id ?? '' }, filtros)) return
+        if (retomarNaConsulta?.({ empresaId: empresa.id ?? '' }, filtros, consultaRecolhida)) return
         if (!retomarNaConsulta || ('tipo' in c && c.tipo === 'retomar')) {
           setConfirmarNaConsulta(true)
           setErro('Há um envio identificado pendente. Abra Localizar empresas para conferir e confirmar a retomada.')
@@ -53,13 +59,13 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
       }
     } catch { setErro('Não foi possível recuperar o envio anterior. Confira o armazenamento desta aba.'); return }
     if (bloquearRetomada && acao.tipo === 'retomar') return
-    if (acao.tipo === 'retomar' && retomarNaConsulta?.(acao, filtros)) return
+    if (acao.tipo === 'retomar' && retomarNaConsulta?.(acao, filtros, consultaRecolhida)) return
     ocupado.current = true
     iniciar(async () => {
       try {
         if ('href' in acao && !salvo) {
-          if (acao.tipo === 'continuar' && empresa.id && consultaRecolhida !== undefined) {
-            router.push(urlAtendimentoLateral(empresa.id, filtros, consultaRecolhida), { scroll: false })
+          if (acao.tipo === 'continuar' && empresa.id) {
+            abrirAtendimento(empresa.id)
             return
           }
           const href = destino(acao)
@@ -86,7 +92,13 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           if (!leitura?.ok || leitura.destino.tipo === 'indisponivel') { router.refresh(); return }
           const d = leitura.destino
           setErro(r.aviso ?? '')
-          if (d.tipo === 'atendimento') router.push(urlAtendimento(d.empresaId, filtros))
+          if (d.tipo === 'atendimento') {
+            abrirAtendimento(d.empresaId)
+            // O card fica montado sob a lateral. Libere-o quando a lista mostrar a versão confirmada.
+            if (consultaRecolhida !== undefined && d.empresaId === empresa.id && !r.aviso) {
+              setResolvido({ versaoAtendimento: r.versao })
+            }
+          }
           if (d.tipo === 'funil') router.push('/funil?negociacao=' + encodeURIComponent(d.negociacaoId))
           if (d.tipo === 'carteira') {
             if (naFichaCarteira && d.empresaId === empresa.id) { router.refresh(); return }
@@ -102,7 +114,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
       finally { ocupado.current = false }
     })
   }
-  const idAcao = consultaRecolhida !== undefined && empresa.situacao === 'atendimento' && empresa.id ? idGatilhoAtendimento(empresa.id) : undefined
+  const idAcao = consultaRecolhida !== undefined && empresa.id ? idGatilhoAtendimento(empresa.id) : undefined
   return <div aria-busy={pendente}><CardEmpresa empresa={empresa} idAcao={idAcao} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
     {erro && <p role="alert">{erro}</p>}
     {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}

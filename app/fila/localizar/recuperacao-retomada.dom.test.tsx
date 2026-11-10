@@ -18,8 +18,8 @@ const comando={id:'desaparecida',versao:4,chave:'original'}
 const filtros={disponibilidade:'sem_interesse',nome:'Aurora',cnpj:'12345678901234',nicho:'Luz',endereco:'Centro',pagina:'3'}
 const dados:ConsultaAtendimentoPessoal={empresas:[],total:0,nichos:[],bairros:[]}
 let root:ReturnType<typeof createRoot>,host:HTMLDivElement
-function tela(usuarioId='eu',comEmpresa=false,situacao:'sem_interesse'|'a_contatar'|'atendimento'='sem_interesse',consulta:FiltrosPessoais=filtros){return <RecuperacaoRetomada usuarioId={usuarioId} filtros={consulta}><LocalizarPessoal filtros={consulta} recolhido={false} dados={comEmpresa?{...dados,empresas:[{id:'outra',referencia:{tipo:'cadastro',empresaId:'outra'},nome:'Outra empresa',cnpj:null,cnae:null,atividade:null,recebidaEm:null,negociacaoId:null,versao:5,situacao,origens:['banco'],bairro:null,cidade:null,uf:null,cep:null,porte:null,abertura:null,nichos:[],regioes:[],entrada:''}],total:1}:dados}/></RecuperacaoRetomada>}
-async function montar(comEmpresa=false){host=document.createElement('div');document.body.append(host);root=createRoot(host);await act(async()=>root.render(tela('eu',comEmpresa)))}
+function tela(usuarioId='eu',comEmpresa=false,situacao:'sem_interesse'|'a_contatar'|'atendimento'='sem_interesse',consulta:FiltrosPessoais=filtros,recolhido=false){return <RecuperacaoRetomada usuarioId={usuarioId} filtros={consulta} consultaRecolhida={recolhido}><LocalizarPessoal filtros={consulta} recolhido={recolhido} dados={comEmpresa?{...dados,empresas:[{id:'outra',referencia:{tipo:'cadastro',empresaId:'outra'},nome:'Outra empresa',cnpj:null,cnae:null,atividade:null,recebidaEm:null,negociacaoId:null,versao:5,situacao,origens:['banco'],bairro:null,cidade:null,uf:null,cep:null,porte:null,abertura:null,nichos:[],regioes:[],entrada:''}],total:1}:dados}/></RecuperacaoRetomada>}
+async function montar(comEmpresa=false,recolhido=false){host=document.createElement('div');document.body.append(host);root=createRoot(host);await act(async()=>root.render(tela('eu',comEmpresa,'sem_interesse',filtros,recolhido)))}
 async function clicar(nome:string){const b=[...host.querySelectorAll('button')].find(b=>b.textContent===nome);expect(b).toBeDefined();await act(async()=>b!.click())}
 beforeEach(()=>{vi.resetAllMocks();sessionStorage.clear()})
 afterEach(async()=>{if(root)await act(async()=>root.unmount());host?.remove();sessionStorage.clear();vi.restoreAllMocks()})
@@ -32,8 +32,18 @@ test('comando legado é recuperado fora da grade vazia e após reload, sem repla
  vi.mocked(retomarAtendimentoAcao).mockResolvedValue({ok:true,versao:5,repetida:true,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'desaparecida'}}})
  await clicar('Confirmar retomada anterior')
  expect(Object.fromEntries(vi.mocked(retomarAtendimentoAcao).mock.calls[0][0])).toEqual({id:comando.id,versao:'4',chave:comando.chave})
- expect(push).toHaveBeenCalledWith('/fila/atendimento/desaparecida?nicho=Luz&endereco=Centro&nome=Aurora&cnpj=12345678901234&disponibilidade=sem_interesse&pagina=3')
+ expect(push).toHaveBeenCalledWith('/fila/localizar/atendimento/desaparecida?nicho=Luz&endereco=Centro&nome=Aurora&cnpj=12345678901234&disponibilidade=sem_interesse&pagina=3', { scroll: false })
  expect(sessionStorage.getItem(storage)).toBeNull()
+})
+test('retomada do card abre lateral com o estado atual dos filtros e não deixa a consulta bloqueada', async () => {
+ await montar(true, true)
+ // O estado dos filtros pode mudar localmente antes de o vendedor clicar no card.
+ await clicar('Editar filtros')
+ vi.mocked(retomarAtendimentoAcao).mockResolvedValue({ok:true,versao:6,repetida:false,leituraDestino:{ok:true,destino:{tipo:'atendimento',empresaId:'outra'}}})
+ await clicar('Retomar atendimento')
+ expect(push).toHaveBeenCalledWith('/fila/localizar/atendimento/outra?nicho=Luz&endereco=Centro&nome=Aurora&cnpj=12345678901234&disponibilidade=sem_interesse&pagina=3', { scroll: false })
+ expect(host.textContent).not.toContain('Atualizar empresas')
+ expect(sessionStorage.getItem('crm:acao-empresa:v1:outra')).toBeNull()
 })
 test.each(['rede','sem_permissao','nao_encontrada'] as const)('resultado incerto %s conserva comando e bloqueia novas retomadas; consulta segue livre',async motivo=>{
  sessionStorage.setItem(storage,JSON.stringify(comando));await montar(true)

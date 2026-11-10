@@ -74,6 +74,31 @@ test('resposta de início perdida é confirmada mesmo quando a leitura já mostr
   expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(primeiro)
   expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
 })
+test('Localizar abre o atendimento lateral após confirmar o início perdido e conserva o gatilho na lista', async () => {
+  const filtros = { origem: 'banco', nome: 'Aurora', pagina: '2' } as const
+  const renderizar = async (e: ResumoEmpresa) => {
+    await act(async () => root.render(<Cartao empresa={e} filtros={filtros} consultaRecolhida />))
+  }
+  const lateral = '/fila/localizar/atendimento/A?origem=banco&nome=Aurora&pagina=2&pesquisado=1'
+  iniciar.mockRejectedValueOnce(new Error('rede'))
+  await renderizar(empresa)
+  const gatilho = [...host.querySelectorAll('button')].find(b => b.textContent === 'Iniciar atendimento')!
+  await clicar('Iniciar atendimento')
+  const comando = Object.fromEntries(iniciar.mock.calls[0][0])
+  expect(push).not.toHaveBeenCalled()
+
+  await renderizar({ ...empresa, situacao: 'atendimento', versao: 3 })
+  iniciar.mockResolvedValueOnce({ ok: true, versao: 3, repetida: true, leituraDestino: { ok: true, destino: { tipo: 'atendimento', empresaId: 'A' } } })
+  await clicar('Continuar atendimento')
+  expect(Object.fromEntries(iniciar.mock.calls[1][0])).toEqual(comando)
+  expect(push).toHaveBeenLastCalledWith(lateral, { scroll: false })
+  expect(gatilho).toBe(document.getElementById('continuar-atendimento-A'))
+  expect(sessionStorage.getItem('crm:acao-empresa:v1:A')).toBeNull()
+
+  await clicar('Continuar atendimento')
+  expect(push).toHaveBeenCalledTimes(2)
+  expect(iniciar).toHaveBeenCalledTimes(2)
+})
 test('abrir carteira conserva filtros locais após confirmar comando desconhecido',async()=>{
   iniciar.mockRejectedValueOnce(new Error('rede'))
   await montar({...empresa,situacao:'sem_interesse'});await clicar('Retomar atendimento')

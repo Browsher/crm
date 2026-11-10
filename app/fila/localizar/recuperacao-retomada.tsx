@@ -6,13 +6,13 @@ import { Button } from '@/src/components/ui/button'
 import { textoDoMotivo } from '@/src/features/contato/mensagens'
 import { urlPessoal, type FiltrosPessoais } from '@/src/lib/prospeccao-pessoal'
 import { retomarAtendimentoAcao } from '../atendimento/acoes'
-import { urlAtendimento } from './navegacao'
+import { urlAtendimento, urlAtendimentoLateral } from './navegacao'
 
 type Comando = { id: string; versao: number; chave: string }
 type Envio = { storage: string; comando: Comando; registro: string }
 type Intencao = { empresaId: string; versao?: number }
-type RetomarNaConsulta = (intencao: Intencao, filtros: FiltrosPessoais) => boolean
-type Props = { usuarioId: string; filtros: FiltrosPessoais; children: ReactNode }
+type RetomarNaConsulta = (intencao: Intencao, filtros: FiltrosPessoais, recolhido?: boolean) => boolean
+type Props = { usuarioId: string; filtros: FiltrosPessoais; consultaRecolhida?: boolean; children: ReactNode }
 const BloqueioRetomada = createContext(false)
 const RetomadaNaConsulta = createContext<RetomarNaConsulta | null>(null)
 const PREFIXO_MODERNO = 'crm:acao-empresa:v1:'
@@ -47,7 +47,7 @@ function lerEnvios(usuarioId: string): Envio[] {
   return envios
 }
 export function RecuperacaoRetomada(props: Props) { return <RecuperacaoUsuario key={props.usuarioId} {...props} /> }
-function RecuperacaoUsuario({ usuarioId, filtros, children }: Props) {
+function RecuperacaoUsuario({ usuarioId, filtros, consultaRecolhida, children }: Props) {
   const [estado, setEstado] = useState<'carregando' | 'livre' | 'incerto' | 'confirmado'>('carregando')
   const [envio, setEnvio] = useState<Envio | null>(null)
   const [mensagem, setMensagem] = useState('')
@@ -85,7 +85,7 @@ function RecuperacaoUsuario({ usuarioId, filtros, children }: Props) {
     if (atual) sessionStorage.removeItem(e.storage)
     return !conferirRestantes()
   }
-  function executar(e: Envio, contexto: FiltrosPessoais) {
+  function executar(e: Envio, contexto: FiltrosPessoais, recolhido = consultaRecolhida) {
     if (ocupado.current) return
     ocupado.current = true
     setEnvio(e); setEstado('incerto'); setMensagem('Confirmando retomada...')
@@ -114,7 +114,13 @@ function RecuperacaoUsuario({ usuarioId, filtros, children }: Props) {
           if (!r.ok) { setEstado('livre'); setEnvio(null); return }
           if (!r.leituraDestino.ok || r.leituraDestino.destino.tipo === 'indisponivel') { router.refresh(); return }
           const d = r.leituraDestino.destino
-          if (d.tipo === 'atendimento') router.push(urlAtendimento(d.empresaId, contexto))
+          if (d.tipo === 'atendimento') {
+            if (recolhido === undefined) router.push(urlAtendimento(d.empresaId, contexto))
+            else {
+              router.push(urlAtendimentoLateral(d.empresaId, contexto, recolhido), { scroll: false })
+              if (!r.aviso) { setEnvio(null); setEstado('livre'); setMensagem('') }
+            }
+          }
           if (d.tipo === 'funil') router.push('/funil?negociacao=' + encodeURIComponent(d.negociacaoId))
           if (d.tipo === 'carteira') router.push('/carteira/' + encodeURIComponent(d.empresaId))
           if (d.tipo === 'sem_interesse') router.push(urlPessoal({ ...contexto, disponibilidade: 'sem_interesse' }, 1))
@@ -123,7 +129,7 @@ function RecuperacaoUsuario({ usuarioId, filtros, children }: Props) {
       finally { ocupado.current = false }
     })
   }
-  function retomarNaConsulta(intencao: Intencao, contexto: FiltrosPessoais): boolean {
+  function retomarNaConsulta(intencao: Intencao, contexto: FiltrosPessoais, recolhido?: boolean): boolean {
     if (ocupado.current || estado !== 'livre') return true
     try {
       const storage = PREFIXO_MODERNO + intencao.empresaId
@@ -151,7 +157,7 @@ function RecuperacaoUsuario({ usuarioId, filtros, children }: Props) {
       const comando = { id: intencao.empresaId, versao: intencao.versao, chave: crypto.randomUUID(), tipo: 'retomar', usuarioId }
       const registro = JSON.stringify(comando)
       sessionStorage.setItem(storage, registro)
-      executar({ storage, comando, registro }, contexto)
+      executar({ storage, comando, registro }, contexto, recolhido)
     } catch { setMensagem('Não foi possível preparar a retomada. Confira o armazenamento desta aba antes de tentar novamente.') }
     return true
   }

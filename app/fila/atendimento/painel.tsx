@@ -14,7 +14,7 @@ import { useTemaCrm } from '@/src/components/crm/tema'
 import { contatoPendente, descartarRascunhoContato, rascunhoAlterado } from '@/src/features/contato/rascunho'
 import { rotuloSituacao } from '@/src/lib/empresa-visual'
 import { Formulario, type PropsFormulario } from '../formulario'
-import { idGatilhoAtendimento } from '../localizar/navegacao'
+import { ID_TITULO_RESULTADOS, idGatilhoAtendimento } from '../localizar/navegacao'
 import { useRascunhos } from '../rascunhos'
 
 function assinarEnvio(avisar: () => void) {
@@ -88,7 +88,11 @@ export function PainelAtendimento({ empresaId, ...dados }: Omit<PropsFormulario,
         aoFechar={voltar} rotuloFechar={dadosAbertos ? 'Voltar' : 'Fechar'} fecharBloqueado={pendente || Boolean(guarda.pedido)}
         ocupado={pendente} rodape={dadosAbertos ? null : <div ref={setDestinoAcoes} />} onCloseAutoFocus={evento => {
           evento.preventDefault()
-          document.getElementById(idGatilhoAtendimento(empresaId))?.focus({ preventScroll: true })
+          const gatilho = document.getElementById(idGatilhoAtendimento(empresaId))
+          const alvo = gatilho instanceof HTMLButtonElement && !gatilho.disabled
+            ? gatilho
+            : document.getElementById(ID_TITULO_RESULTADOS)
+          alvo?.focus({ preventScroll: true })
         }}>
         <div hidden={dadosAbertos}>
           <Button ref={abrirDados} type="button" variant="outline" className="mb-4" disabled={pendente}
