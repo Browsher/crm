@@ -10,7 +10,7 @@ import { criteriosVazios } from './lib/google/criterios'
 import { lerComando } from './server/google/protocolo'
 import { coordenar, type ServicosPool } from '../scripts/google/coordenar.mts'
 import { executarPedido } from '../scripts/google/fluxo.mts'
-import type { Posicao, SolicitacaoDrive, ComprovanteDrive, DependenciasFluxo, MotorId } from '../scripts/google/coordenador-tipos.mts'
+import type { Posicao, SolicitacaoDrive, ComprovanteDrive, DependenciasFluxo, Journal, MotorId } from '../scripts/google/coordenador-tipos.mts'
 const executar=promisify(execFile)
 const candidatas=(n:number)=>Array.from({length:n},(_,i)=>({google_place_id:'place-'+i,nome_fantasia:'Loja '+i,telefone:null,cnpj:null}))
 async function fixture(coletas:Record<string,unknown>[][],aceitar:number[]=[],perderEntrega=false,perderReserva=false,perderConclusao=false,motor:MotorId='01',falharReservaEm=1,bairro='Brás'){
@@ -246,45 +246,48 @@ test('conclusao confirmada no servidor limpa intencao local apos resposta perdid
   expect(f.chamadas.filter(c=>c.startsWith('coletar:'))).toEqual(['coletar:1'])
  }finally{await f.limpar()}
 },90000)
-test('pool real conserva tres pipelines e recibos com uma falha isolada', async () => {
+test('coordenador retoma fluxos anteriores em ordem e conserva os recibos após falha', async () => {
   const fixtures = await Promise.all((['01', '02', '03'] as const).map(m => fixture([candidatas(2)], [2], false, false, false, m)))
-  let soltar!: () => void, avisar!: () => void, entradas = 0
-  const barreira = new Promise<void>(r => { soltar = r })
-  const tres = new Promise<void>(r => { avisar = r })
-  const feitos = new Set<MotorId>()
+  const posicoes = fixtures.map(f => f.posicao)
+  let journal: Journal = { versao: 1, ciclo_id: randomUUID(), dono: { pid: 8, inicio: 'old' }, posicoes, admissaoSuspensa: false }
+  const executados: MotorId[] = [], reivindicados: MotorId[] = []
+  let falhar = true
   const deps: ServicosPool = {
     excluir: async () => ({ liberar: async () => {} }), dono: async () => ({ pid: 1, inicio: 'fixture' }),
-    ler: async () => null, salvar: async () => {},
+    ler: async () => journal, salvar: async j => { journal = structuredClone(j) },
     medir: async () => ({ ok: true, disponivelMiB: 7000, instante: new Date().toISOString() }),
     conferir: async () => true, evento: () => {}, intervaloMs: 0,
-    proximo: async m => { if (feitos.has(m)) return null; feitos.add(m); return fixtures[Number(m)-1].posicao },
+    proximo: async m => { reivindicados.push(m); return null },
     executar: (p, gate, persistir) => {
+      executados.push(p.motor)
       const f = fixtures[Number(p.motor)-1], original = f.deps.comando
       return executarPedido(p, { ...f.deps, admitirColeta: gate, persistir,
         comando: async (programa, args) => {
-          if (programa === 'python' && args.includes('coletar')) {
-            if (++entradas === 3) avisar()
-            await barreira
-            if (p.motor === '02') throw new Error('Falha isolada de coleta')
-          }
+          if (falhar && p.motor === '02' && programa === 'python' && args.includes('coletar')) throw new Error('Falha isolada de coleta')
           return original(programa, args)
         }
       })
     },
   }
   try {
-    const run = coordenar('rodar', deps)
-    await tres
-    expect(entradas).toBe(3)
-    soltar()
-    const j = await run
-    expect(j.posicoes.filter(p => p.etapa === 'concluido')).toHaveLength(2)
-    expect(j.posicoes[1].etapa).toBe('pendente')
+    const parcial = await coordenar('retomar', deps)
+    expect(executados).toEqual(['01', '02'])
+    expect(reivindicados).toEqual([])
+    expect(parcial.posicoes[0].etapa).toBe('concluido')
+    expect(parcial.posicoes[1].etapa).toBe('pendente')
+    expect(parcial.posicoes[2]).toEqual(posicoes[2])
     expect(fixtures[1].entregas).toHaveLength(0)
-    expect(fixtures[0].arquivos[0].associacao.vinculo.motor).toBe('01')
-    expect(fixtures[2].arquivos[0].associacao.vinculo.motor).toBe('03')
-    expect(fixtures[0].arquivos[0].lote_id).not.toBe(fixtures[2].arquivos[0].lote_id)
-  } finally { soltar(); await Promise.all(fixtures.map(f => f.limpar())) }
+    expect(fixtures[2].chamadas).toHaveLength(0)
+
+    falhar = false
+    const concluido = await coordenar('retomar', deps)
+    expect(executados).toEqual(['01', '02', '02', '03'])
+    expect(reivindicados).toEqual(['01'])
+    expect(concluido.posicoes.map(p => p.etapa)).toEqual(['concluido', 'concluido', 'concluido'])
+    expect(concluido.posicoes.map(p => p.associacao)).toEqual(posicoes.map(p => p.associacao))
+    expect(fixtures.map(f => f.arquivos[0].associacao.vinculo.motor)).toEqual(['01', '02', '03'])
+    expect(new Set(fixtures.map(f => f.arquivos[0].lote_id)).size).toBe(3)
+  } finally { await Promise.all(fixtures.map(f => f.limpar())) }
 }, 90000)
 
 

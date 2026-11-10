@@ -26,52 +26,80 @@ function fixture() {
   }
   return { deps, get claims() { return claims }, get liberado() { return liberado }, get journal() { return journal }, set journal(j: Journal | null) { journal = j } }
 }
-test('tres coletas entram antes de liberar a primeira', async () => {
-  const f = fixture(), tres = sinal(), soltar = sinal()
-  let entradas = 0, ativas = 0, maximo = 0
-  f.deps.executar = async (p, gate, persistir) => {
-    expect(await gate({ ...p, coleta: 1 })).toBe(true)
-    entradas++; ativas++; maximo = Math.max(maximo, ativas)
-    if (entradas === 3) tres.resolver()
-    await soltar.promessa
-    ativas--
-    const final: Posicao = { ...p, etapa: p.motor === '02' ? 'pendente' : 'concluido', motivo: p.motor === '02' ? 'verificar_pendente' : null }
-    await persistir(final)
-    return final
+test('conclui cada vendedor antes de reivindicar o proximo e usa apenas o motor 01', async () => {
+  const f = fixture(), primeiroAtivo = sinal(), concluirPrimeiro = sinal()
+  const reivindicados: MotorId[] = [], concluidos: Associacao[] = []
+  const estadoAntesDaReivindicacao: (Posicao | undefined)[] = []
+  const pedidos = [vincular('01'), vincular('01'), vincular('01')]
+  f.deps.proximo = async motor => {
+    const pedido = pedidos[reivindicados.length]
+    estadoAntesDaReivindicacao.push(f.journal?.posicoes[0])
+    reivindicados.push(motor)
+    return pedido ? { ...pedido, motor } : null
   }
-  const run = coordenar('rodar', f.deps)
-  await tres.promessa
-  expect(entradas).toBe(3)
-  expect(maximo).toBe(3)
-  expect(f.liberado).toBe(false)
-  soltar.resolver()
-  const resultado = await run
-  expect(resultado.posicoes.filter(p => p.etapa === 'concluido')).toHaveLength(2)
-  expect(resultado.posicoes.filter(p => p.etapa === 'pendente')).toHaveLength(1)
-  expect(f.claims).toBe(5)
+  f.deps.executar = async (p, gate) => {
+    if (p.associacao!.vinculo.pedido_id === pedidos[0].associacao!.vinculo.pedido_id) {
+      primeiroAtivo.resolver()
+      await concluirPrimeiro.promessa
+    }
+    if (await gate({ ...p, coleta: 1 })) concluidos.push(p.associacao!)
+    return { ...p, etapa: 'concluido' }
+  }
+  const execucao = coordenar('rodar', f.deps)
+  try {
+    await primeiroAtivo.promessa
+    expect(reivindicados).toEqual(['01'])
+    expect(concluidos).toHaveLength(0)
+    expect(f.liberado).toBe(false)
+  } finally {
+    concluirPrimeiro.resolver()
+    await execucao
+  }
+  const resultado = await execucao
+  expect(reivindicados).toEqual(['01', '01', '01', '01'])
+  expect(concluidos).toEqual(pedidos.map(p => p.associacao))
+  expect(estadoAntesDaReivindicacao).toEqual([vazio('01'), ...pedidos.map(p => ({ ...p, etapa: 'concluido' }))])
+  expect(resultado.posicoes[0]).toMatchObject({ etapa: 'concluido', associacao: pedidos[2].associacao })
+  expect(resultado.posicoes.slice(1)).toEqual([vazio('02'), vazio('03')])
   expect(f.liberado).toBe(true)
 })
-test('5631 MiB impede reivindicar e executar qualquer pedido', async () => {
+test('2560 MiB permite reivindicar e conferir apenas o motor do pedido', async () => {
+  const f = fixture(), conferidos: MotorId[] = []
+  f.deps.medir = async () => ram(2560)
+  f.deps.conferir = async (...motores: MotorId[]) => { conferidos.push(...motores); return true }
+  f.deps.executar = async (p, gate) => {
+    if (await gate({ ...p, coleta: 1 })) return { ...p, etapa: 'concluido' }
+    return { ...p, etapa: 'pendente' }
+  }
+  const j = await coordenar('rodar', f.deps)
+  expect(f.claims).toBe(2)
+  expect(conferidos).toEqual(['01', '01', '01'])
+  expect(j.posicoes[0].etapa).toBe('concluido')
+})
+test.each([2559, 511])('%i MiB impede reivindicar e executar qualquer pedido', async memoria => {
   const f = fixture()
-  f.deps.medir = async () => ram(5631)
+  f.deps.medir = async () => ram(memoria)
   const j = await coordenar('rodar', f.deps)
   expect(f.claims).toBe(0)
   expect(j.admissaoSuspensa).toBe(true)
 })
-test('queda critica preserva iniciados e impede rodada seguinte', async () => {
-  const f = fixture(), iniciados = sinal()
-  let entradas = 0, medicao = 7000
+test.each([2559, 511])('queda para %i MiB impede outra coleta do mesmo vendedor e conserva a pendencia', async memoria => {
+  const f = fixture()
+  let medicao = 7000
+  const admitidas: boolean[] = []
   f.deps.medir = async () => ram(medicao)
   f.deps.executar = async (p, gate) => {
-    expect(await gate({ ...p, coleta: 1 })).toBe(true)
-    if (++entradas === 3) { medicao = 511; iniciados.resolver() }
-    await iniciados.promessa
-    expect(await gate({ ...p, coleta: 2 })).toBe(false)
+    admitidas.push(await gate({ ...p, coleta: 1 }))
+    medicao = memoria
+    admitidas.push(await gate({ ...p, coleta: 2 }))
     return { ...p, coleta: 1, etapa: 'pendente', motivo: 'coletar_pendente' }
   }
   const j = await coordenar('rodar', f.deps)
+  expect(admitidas).toEqual([true, false])
+  expect(f.claims).toBe(1)
   expect(j.admissaoSuspensa).toBe(true)
-  expect(j.posicoes.every(p => p.coleta === 1 && p.associacao)).toBe(true)
+  expect(j.posicoes[0]).toMatchObject({ coleta: 1, etapa: 'pendente', motivo: 'coletar_pendente' })
+  expect(j.posicoes.slice(1)).toEqual([vazio('02'), vazio('03')])
 })
 test('retoma pendencia antes de reivindicar e nao reinicia identidade', async () => {
   const f = fixture(), p = { ...vincular('01'), etapa: 'pendente' as const, coleta: 1 }
@@ -125,9 +153,9 @@ test('canal encerrado recusa novas esperas sem perder a intenção', async () =>
   expect(resultado).toBe('recusado')
 })
 test('retomada sem job precisa conferir infraestrutura antes da nova coleta', async () => {
-  const f = fixture(), p = vincular('01')
-  f.journal = { versao: 1, ciclo_id: randomUUID(), dono: { pid: 8, inicio: 'old' }, posicoes: [p, vazio('02'), vazio('03')], admissaoSuspensa: false }
-  f.deps.conferir = async () => false
+  const f = fixture(), p = vincular('02'), conferidos: MotorId[] = []
+  f.journal = { versao: 1, ciclo_id: randomUUID(), dono: { pid: 8, inicio: 'old' }, posicoes: [vazio('01'), p, vazio('03')], admissaoSuspensa: false }
+  f.deps.conferir = async (...motores: MotorId[]) => { conferidos.push(...motores); return false }
   let admitido: boolean | undefined
   f.deps.executar = async (p, gate) => {
     admitido = await gate({ ...p, coleta: 1 })
@@ -135,26 +163,33 @@ test('retomada sem job precisa conferir infraestrutura antes da nova coleta', as
   }
   const j = await coordenar('retomar', f.deps)
   expect(admitido).toBe(false)
+  expect(conferidos).toEqual(['02'])
+  expect(f.claims).toBe(0)
   expect(j.admissaoSuspensa).toBe(true)
 })
 
-
-test('posicao atrasada no Drive nao herda permissao para onda futura com pouca RAM', async () => {
-  const f = fixture(), liberarDrive = sinal()
-  let memoria = 7000, atrasoAdmitido: boolean | undefined
-  f.deps.medir = async () => ram(memoria)
-  f.deps.proximo = async m => m === '03' ? null : (f.journal?.posicoes.some(p => p.motor === m && p.associacao) ? null : { ...vincular(m), coleta: 1, etapa: m === '02' ? 'arquivar' : 'retomar' })
-  f.deps.executar = async (p, gate) => {
-    if (p.motor === '02') {
-      await liberarDrive.promessa
-      atrasoAdmitido = await gate({ ...p, coleta: 2 })
-      return { ...p, etapa: 'pendente' }
-    }
-    await gate({ ...p, coleta: 2 })
-    memoria = 1000
-    liberarDrive.resolver()
+test('retoma journal anterior em sequencia e preserva os outros vendedores se um ficar pendente', async () => {
+  const f = fixture(), ativos: Posicao[] = [], retomados: Posicao[] = []
+  const posicoes = [vincular('01'), vincular('02'), vincular('03')]
+  f.journal = { versao: 1, ciclo_id: randomUUID(), dono: { pid: 8, inicio: 'old' }, posicoes, admissaoSuspensa: false }
+  f.deps.executar = async p => {
+    ativos.push(p)
+    return { ...p, etapa: p.motor === '02' ? 'pendente' : 'concluido' }
+  }
+  const parcial = await coordenar('retomar', f.deps)
+  expect(ativos).toEqual(posicoes.slice(0, 2))
+  expect(parcial.posicoes[2]).toEqual(posicoes[2])
+  expect(f.claims).toBe(0)
+  f.deps.proximo = async motor => {
+    expect(motor).toBe('01')
+    expect(retomados).toEqual(parcial.posicoes.slice(1))
+    return null
+  }
+  f.deps.executar = async p => {
+    retomados.push(p)
     return { ...p, etapa: 'concluido' }
   }
-  await coordenar('rodar', f.deps)
-  expect(atrasoAdmitido).toBe(false)
+  const completo = await coordenar('retomar', f.deps)
+  expect(completo.posicoes.map(p => p.etapa)).toEqual(['concluido', 'concluido', 'concluido'])
+  expect(completo.posicoes.map(p => p.associacao)).toEqual(posicoes.map(p => p.associacao))
 })

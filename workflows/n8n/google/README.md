@@ -158,5 +158,5 @@ nenhuma variável global associa respostas de vendedores. Teste do grafo real
 cobre respostas fora de ordem, uma falha e critérios neutros sem HTTP. Os 17
 nós do ramo da planilha e suas conexões permanecem preservados.
 
-O coordenador local agenda os três motores; o n8n não recebe outro gatilho
-de horário nem precisa de workflow por vendedor. Ver [rotina do coordenador](../../../docs/operacao/agente-google-rotina.md).
+O coordenador local executa um vendedor por vez. Um só workflow n8n atende
+os pedidos no mesmo agendamento. Ver [rotina do coordenador](../../../docs/operacao/agente-google-rotina.md).

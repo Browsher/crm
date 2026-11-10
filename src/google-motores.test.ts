@@ -32,7 +32,7 @@ test.each(['origem','dados','imagem','porta','id'])('registro recusa %s divergen
   } finally { await rm(pasta,{recursive:true,force:true}) }
 })
 
-async function preparar(cenario: 'normal'|'conflito'|'ocupado'|'aspas') {
+async function executarMotores(cenario: 'normal'|'conflito'|'ocupado'|'aspas'|'retomada', motor?: '01'|'02') {
   const pasta=await mkdtemp(join(tmpdir(),'crm-docker-fixture-'))
   const fixture=join(pasta,'fixture.ps1')
   const log=join(pasta,'comandos.jsonl')
@@ -48,7 +48,8 @@ function docker {
   if($partes[0] -eq 'create') { $global:crmFixtureCriados[$partes[2]]=$true; 'novo'; return }
   if($partes[0] -eq 'inspect') {
     $nome=$partes[1]
-    if($nome -ne 'gmaps-mooca-prospeccao' -and !$global:crmFixtureCriados.ContainsKey($nome)) { $global:LASTEXITCODE=1; Write-Error 'fixture: container ausente'; return }
+    $motorPresente=if($env:FIXTURE_CENARIO -eq 'retomada'){'gmaps-crm-motor-02'}else{'gmaps-mooca-prospeccao'}
+    if($nome -ne $motorPresente -and !$global:crmFixtureCriados.ContainsKey($nome)) { $global:LASTEXITCODE=1; Write-Error 'fixture: container ausente'; return }
     $posicao=if($nome -eq 'gmaps-mooca-prospeccao'){'01'}elseif($nome -eq 'gmaps-crm-motor-02'){'02'}else{'03'}
     $porta=if($posicao -eq '01'){'8087'}elseif($posicao -eq '02'){'8088'}else{'8089'}
     $volume=if($posicao -eq '01'){'mooca-prospeccao_gmaps_data'}else{'crm_google_motor'+$posicao+'_data'}
@@ -62,6 +63,10 @@ function docker {
   'ok'
 }
 function Invoke-RestMethod { param($Uri,$Method,$TimeoutSec); if($env:FIXTURE_CENARIO -eq 'ocupado') { return @(@{Status='working'}) }; return @() }
+if($env:FIXTURE_MOTOR) {
+  & $env:FIXTURE_SCRIPT -Acao Conferir -Motor $env:FIXTURE_MOTOR
+  exit $LASTEXITCODE
+}
 & $env:FIXTURE_SCRIPT -Acao Preparar
 & $env:FIXTURE_SCRIPT -Acao Preparar
 `
@@ -69,14 +74,14 @@ function Invoke-RestMethod { param($Uri,$Method,$TimeoutSec); if($env:FIXTURE_CE
   try {
     let falhou=false
     let erro=''
-    try { await executar(powershell,['-NoProfile','-NonInteractive','-File',fixture],{env:{...process.env,FIXTURE_SCRIPT:resolve('scripts/google/motores.ps1'),FIXTURE_LOG:log,FIXTURE_CENARIO:cenario},timeout:25000}) } catch (e) { falhou=true; erro=String((e as {stderr?:string}).stderr || e) }
+    try { await executar(powershell,['-NoProfile','-NonInteractive','-File',fixture],{env:{...process.env,FIXTURE_SCRIPT:resolve('scripts/google/motores.ps1'),FIXTURE_LOG:log,FIXTURE_CENARIO:cenario,FIXTURE_MOTOR:motor??''},timeout:25000}) } catch (e) { falhou=true; erro=String((e as {stderr?:string}).stderr || e) }
     const comandos=(await readFile(log,'utf8').catch(()=>'' )).trim().split(/\r?\n/).filter(Boolean).map(l=>JSON.parse(l) as string[])
     return {falhou,comandos,erro}
   } finally { await rm(pasta,{recursive:true,force:true}) }
 }
 
 test('preparacao idempotente cria somente motores 02 e 03 sem remover recursos',async()=>{
-  const {falhou,comandos,erro}=await preparar('normal')
+  const {falhou,comandos,erro}=await executarMotores('normal')
   expect(falhou,erro).toBe(false)
   expect(comandos.filter(c=>c[0]==='create').map(c=>c[2])).toEqual(['gmaps-crm-motor-02','gmaps-crm-motor-03'])
   expect(comandos.some(c=>['rm','remove','prune','kill'].includes(c[0]))).toBe(false)
@@ -84,17 +89,27 @@ test('preparacao idempotente cria somente motores 02 e 03 sem remover recursos',
 },60000)
 
 test('container divergente interrompe preparacao antes de criar ou apagar',async()=>{
-  const {falhou,comandos}=await preparar('conflito')
+  const {falhou,comandos}=await executarMotores('conflito')
   expect(falhou).toBe(true)
   expect(comandos.some(c=>['create','update','rm'].includes(c[0]))).toBe(false)
 },30000)
 test('motor original com job ativo impede criar motores e alterar limites',async()=>{
-  const {falhou,comandos}=await preparar('ocupado')
+  const {falhou,comandos}=await executarMotores('ocupado')
   expect(falhou).toBe(true)
   expect(comandos.some(c=>['create','update','rm'].includes(c[0]))).toBe(false)
 },30000)
 
 test('cache pode ser conferido no PowerShell 5 sem aspas de shell aninhadas',async()=>{
-  const {falhou,erro}=await preparar('aspas')
+  const {falhou,erro}=await executarMotores('aspas')
   expect(falhou,erro).toBe(false)
+},30000)
+
+test.each([
+  ['normal', '01', 'gmaps-mooca-prospeccao'],
+  ['retomada', '02', 'gmaps-crm-motor-02'],
+] as const)('conferência %s depende apenas do motor %s e não altera containers',async(cenario,motor,nome)=>{
+  const {falhou,comandos,erro}=await executarMotores(cenario,motor)
+  expect(falhou,erro).toBe(false)
+  expect(new Set(comandos.filter(c=>['inspect','exec'].includes(c[0])).map(c=>c[1]))).toEqual(new Set([nome]))
+  expect(comandos.some(c=>['create','start','stop','update','rm'].includes(c[0]))).toBe(false)
 },30000)

@@ -13,13 +13,15 @@ const uuid=(v:unknown)=>typeof v==='string'&&/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9
 const chaves=(v:Record<string,unknown>,campos:string[])=>Object.keys(v).sort().join(',')===[...campos].sort().join(',')
 const erroJournal=()=>new Error('Journal divergente. Preserve o estado para reconciliação.')
 export type ConsultaProcesso={ok:true;processo:{pid:number;inicio:string}|null}|{ok:false}
+const RAM_CRITICA_MIB = 512
+const RAM_MINIMA_MOTOR_MIB = 2048 + RAM_CRITICA_MIB
 
-export function admitirOnda(m:MedicaoRam):{ok:true}|{ok:false;motivo:'ram_insuficiente'|'medicao_indisponivel'} {
+export function admitirColeta(m:MedicaoRam):{ok:true}|{ok:false;motivo:'ram_insuficiente'|'medicao_indisponivel'} {
   if(!m.ok||!Number.isFinite(m.disponivelMiB)||m.disponivelMiB<0)return {ok:false,motivo:'medicao_indisponivel'}
-  return m.disponivelMiB>=5632?{ok:true}:{ok:false,motivo:'ram_insuficiente'}
+  return m.disponivelMiB>=RAM_MINIMA_MOTOR_MIB?{ok:true}:{ok:false,motivo:'ram_insuficiente'}
 }
 export function aplicarMedicao(j:Journal,m:MedicaoRam):Journal {
-  return {...j,admissaoSuspensa:j.admissaoSuspensa||!m.ok||!Number.isFinite(m.disponivelMiB)||m.disponivelMiB<512}
+  return {...j,admissaoSuspensa:j.admissaoSuspensa||!m.ok||!Number.isFinite(m.disponivelMiB)||m.disponivelMiB<RAM_CRITICA_MIB}
 }
 function validarJournal(valor:unknown,pasta:string):asserts valor is Journal {
   if(!objeto(valor)||!chaves(valor,['versao','ciclo_id','dono','posicoes','admissaoSuspensa'])||valor.versao!==1||!uuid(valor.ciclo_id)||typeof valor.admissaoSuspensa!=='boolean'||!objeto(valor.dono)||!chaves(valor.dono,['pid','inicio'])||!Number.isSafeInteger(valor.dono.pid)||Number(valor.dono.pid)<1||typeof valor.dono.inicio!=='string'||!/^[a-z0-9:.+_-]{1,128}$/i.test(valor.dono.inicio)||!Array.isArray(valor.posicoes)||valor.posicoes.length!==3)throw erroJournal()

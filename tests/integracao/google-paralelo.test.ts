@@ -48,6 +48,23 @@ test('admite tres vendedores e recusa a quarta reivindicacao concorrente', async
   for (let i = 0; i < respostas.length; i++) if (respostas[i].pedido) expect((await reivindicar(executores[i])).pedido).toEqual(respostas[i].pedido)
 })
 
+test('o mesmo executor conclui tres vendedores sem abrir outra execucao antes de terminar', async () => {
+  const ids: string[] = []
+  for (const vendedor of vendedores.slice(0, 3)) ids.push(await plano(vendedor))
+  const executor = executores[0]
+  const concluidos: string[] = []
+  for (let i = 0; i < ids.length; i++) {
+    const { pedido } = await reivindicar(executor)
+    expect(pedido).not.toBeNull()
+    expect(await reivindicar(executor)).toMatchObject({ pedido })
+    expect(await banco.sql('SELECT pedido_id FROM google_execucao WHERE concluido_em IS NULL')).toEqual([{ pedido_id: pedido!.id }])
+    await chamar(gestor, 'SELECT google_agente_concluir($1,$2,$3)', [pedido!.id, executor, 'sem_resultados'])
+    concluidos.push(pedido!.id)
+  }
+  expect(concluidos.sort()).toEqual(ids.sort())
+  expect(await reivindicar(executor)).toEqual({ pedido: null })
+})
+
 test('retomada e privada e falha de uma posicao nao bloqueia outros vendedores', async () => {
   for (const vendedor of vendedores) await plano(vendedor)
   const a = (await reivindicar(executores[0])).pedido!

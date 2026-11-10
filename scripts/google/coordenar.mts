@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline'
 import { promisify } from 'node:util'
 import { isDeepStrictEqual } from 'node:util'
 import { conferirComprovante, conferirSolicitacao, lerJson, salvarImutavel } from './arquivos.mts'
-import { admitirOnda, aplicarMedicao, confinarCaminho, inspecionarProcesso, lerJournal, medirRam, obterExclusao, salvarJournal } from './coordenador-estado.mts'
+import { admitirColeta, aplicarMedicao, confinarCaminho, inspecionarProcesso, lerJournal, medirRam, obterExclusao, salvarJournal } from './coordenador-estado.mts'
 import { executarPedido } from './fluxo.mts'
 import { carregarMotores } from './motores.mts'
 import type { ComprovanteDrive, Journal, MedicaoRam, MotorId, Posicao, SolicitacaoDrive } from './coordenador-tipos.mts'
@@ -21,11 +21,10 @@ export type ServicosPool = {
   ler(): Promise<Journal | null>
   salvar(j: Journal): Promise<void>
   medir(): Promise<MedicaoRam>
-  conferir(): Promise<boolean>
+  conferir(m: MotorId): Promise<boolean>
   proximo(m: MotorId): Promise<Posicao | null>
   executar(p: Posicao, admitir: Gate, persistir: Persistir): Promise<Posicao>
   evento(e: Evento): void
-  aguardarColetas?(): Promise<void>
   intervaloMs?: number
 }
 const ids: MotorId[] = ['01', '02', '03']
@@ -40,14 +39,14 @@ export async function coordenar(acao: 'rodar' | 'retomar', d: ServicosPool): Pro
   try {
     const anterior = await d.ler()
     if (acao === 'rodar' && anterior?.posicoes.some(pendente)) throw falha()
-    const j: Journal = acao === 'retomar' && anterior ? { ...anterior, dono: await d.dono(), admissaoSuspensa: false } :
+    const j: Journal = acao === 'retomar' && anterior ? {
+      ...anterior, dono: await d.dono(), admissaoSuspensa: false,
+      posicoes: ids.map(motor => anterior.posicoes.find(p => p.motor === motor)!),
+    } :
       { versao: 1, ciclo_id: randomUUID(), dono: await d.dono(), posicoes: ids.map(vazia), admissaoSuspensa: false }
     let fila = Promise.resolve()
-    const mudancas = new Set<() => void>()
-    const avisarMudanca = () => { for (const r of mudancas) r(); mudancas.clear() }
-    const esperarMudanca = () => new Promise<void>(r => { mudancas.add(r) })
     const salvar = () => { const copia = structuredClone(j); fila = fila.then(() => d.salvar(copia)); return fila }
-    const persistir: Persistir = async p => { j.posicoes[ids.indexOf(p.motor)] = structuredClone(p); avisarMudanca(); await salvar() }
+    const persistir: Persistir = async p => { j.posicoes[ids.indexOf(p.motor)] = structuredClone(p); await salvar() }
     const avisar = (motivo: string) => d.evento({ evento: 'bloqueio', motivo })
     const medir = async () => {
       const m = await d.medir()
@@ -66,69 +65,44 @@ export async function coordenar(acao: 'rodar' | 'retomar', d: ServicosPool): Pro
         monitor = medir().catch(() => { j.admissaoSuspensa = true; avisar('journal_pendente') }).finally(() => { medindo = false })
       }, d.intervaloMs ?? 5000)
     }
-    const grants = new Set<string>()
-    const prontas = new Map<string, Posicao>()
-    let admissao = Promise.resolve()
-    const chave = (p: Posicao, coleta = p.coleta) => identidade(p) + ':' + coleta
-    const admitir: Gate = p => {
-      prontas.set(chave(p), p)
-      j.posicoes[ids.indexOf(p.motor)] = { ...p, etapa: 'coletar' }
-      avisarMudanca()
-      const executar = async () => {
-        if (j.admissaoSuspensa) return false
-        if (grants.has(chave(p))) { grants.delete(chave(p)); prontas.delete(chave(p)); return true }
-        // Initial pipelines reach the first collection barrier before a wave is admitted.
-        while (j.posicoes.some(outro => pendente(outro) && outro.coleta === 0 && outro.etapa === 'retomar')) await esperarMudanca()
-        await d.aguardarColetas?.()
-        if (j.admissaoSuspensa) return false
-        const m = await medir()
-        const r = admitirOnda(m)
-        if (r.ok && !await d.conferir()) { j.admissaoSuspensa = true; avisar('motores_indisponiveis'); await salvar(); return false }
-        if (!r.ok) { j.admissaoSuspensa = true; avisar(r.motivo); await salvar(); return false }
-        // Only actual waiting requests belong to this wave, never a future collection in Drive/verification.
-        for (const k of prontas.keys()) grants.add(k)
-        grants.delete(chave(p))
-        prontas.delete(chave(p))
-        return true
+    const suspender = async (motivo: string) => {
+      if (!j.admissaoSuspensa) {
+        j.admissaoSuspensa = true
+        avisar(motivo)
+        await salvar()
       }
-      const resposta = admissao.then(executar)
-      admissao = resposta.then(() => {}, () => {})
-      return resposta
+      return false
     }
+    const admitirMotor = async (motor: MotorId): Promise<boolean> => {
+      if (j.admissaoSuspensa) return false
+      const r = admitirColeta(await medir())
+      if (!r.ok) return suspender(r.motivo)
+      if (j.admissaoSuspensa) return false
+      if (!await d.conferir(motor)) return suspender('motores_indisponiveis')
+      return !j.admissaoSuspensa
+    }
+
     const tentadas = new Set<string>()
-    let retomarPrimeiro = j.posicoes.some(pendente)
     for (let volta = 0; volta < 100; volta++) {
-      if (!retomarPrimeiro && !j.admissaoSuspensa) {
-        const r = admitirOnda(await medir())
-        if (!r.ok) { j.admissaoSuspensa = true; avisar(r.motivo); await salvar() }
-        else if (!await d.conferir()) { j.admissaoSuspensa = true; avisar('motores_indisponiveis'); await salvar() }
-        else {
-          for (const m of ids) {
-            if (j.posicoes.some(p => pendente(p) && p.associacao?.contrato === 1)) break
-            const atual = j.posicoes[ids.indexOf(m)]
-            if (pendente(atual)) continue
-            const novo = await d.proximo(m)
-            if (!novo) { if (m === '01' && !j.posicoes.some(pendente)) break; continue }
-            if (novo.motor !== m || !novo.associacao || !novo.contexto) throw falha()
-            if (novo.associacao.contrato === 1 && m !== '01') throw falha()
-            if (j.posicoes.some(p => pendente(p) && p.associacao?.vinculo.vendedor_id === novo.associacao!.vinculo.vendedor_id)) throw falha()
-            await persistir(novo)
-          }
-        }
+      let p = j.posicoes.find(pendente)
+      if (!p) {
+        if (!await admitirMotor('01')) break
+        const novo = await d.proximo('01')
+        if (!novo) break
+        if (novo.motor !== '01' || !novo.associacao || !novo.contexto) throw falha()
+        await persistir(novo)
+        p = novo
       }
-      retomarPrimeiro = false
-      const executar = j.posicoes.filter(p => pendente(p) && !tentadas.has(identidade(p)!))
-      if (!executar.length) break
-      for (const p of executar) tentadas.add(identidade(p)!)
-      await Promise.allSettled(executar.map(async p => {
-        let final: Posicao
-        try { final = await d.executar(structuredClone(p), admitir, persistir) }
-        catch { final = { ...j.posicoes[ids.indexOf(p.motor)], etapa: 'pendente', motivo: 'fluxo_pendente' } }
-        await persistir(final)
-        d.evento({ evento: 'resultado', posicao: final })
-      }))
-      // Never start another contract while a legacy execution is waiting for its runbook.
-      if (j.posicoes.some(p => pendente(p) && p.associacao?.contrato === 1)) break
+
+      const id = identidade(p)!
+      if (tentadas.has(id)) break
+      tentadas.add(id)
+      let final: Posicao
+      try { final = await d.executar(structuredClone(p), coleta => admitirMotor(coleta.motor), persistir) }
+      catch { final = { ...j.posicoes[ids.indexOf(p.motor)], etapa: 'pendente', motivo: 'fluxo_pendente' } }
+      await persistir(final)
+      d.evento({ evento: 'resultado', posicao: final })
+      if (final.etapa !== 'concluido') break
     }
     await fila
     return structuredClone(j)
@@ -202,21 +176,17 @@ async function main() {
   const emitir = (e: Evento) => process.stdout.write(JSON.stringify(e) + '\n')
   const canal = new CanalArquivos(resolve(pasta, 'coordenador'), emitir)
   const entrada = createInterface({ input: process.stdin, crlfDelay: Infinity })
-  let encerrado = false, journalAtual: Journal | null = null, coletas = 0
+  let encerrado = false, journalAtual: Journal | null = null
   const conhecidos = new Map<MotorId, string>()
   const gravacoes: Promise<void>[] = []
-  const livres = new Set<() => void>()
   entrada.on('line', linha => {
     try { void canal.confirmar(JSON.parse(linha)).catch(() => emitir({ evento: 'confirmacao_recusada' })) }
     catch { emitir({ evento: 'confirmacao_recusada' }) }
   })
   entrada.on('close', () => { encerrado = true; if (journalAtual) journalAtual.admissaoSuspensa = true; canal.interromper() })
   const comando = async (programa: 'node' | 'python', args: readonly string[]) => {
-    const coletando = programa === 'python' && args.some(a => a.endsWith('/coletar.py')) && args.includes('coletar')
-    if (coletando) coletas++
     try { return (await nativo(programa === 'node' ? process.execPath : 'python', [...args], { windowsHide: true, maxBuffer: 32 * 1024 * 1024, env: process.env })).stdout }
     catch { throw new Error('Subprocesso pendente. Preserve os arquivos e consulte o diagnóstico da etapa.') }
-    finally { if (coletando && --coletas === 0) { for (const f of livres) f(); livres.clear() } }
   }
   try {
     const j = await coordenar(acao as 'rodar' | 'retomar', {
@@ -224,8 +194,12 @@ async function main() {
       dono: async () => { const p = await inspecionarProcesso(process.pid); if (!p.ok || !p.processo) throw falha(); return p.processo },
       ler: async () => { const j = await lerJournal(pasta); for (const p of j?.posicoes ?? []) if (p.associacao) conhecidos.set(p.motor, p.associacao.vinculo.executor); return j }, salvar: async j => { journalAtual = j; await salvarJournal(pasta, j) },
       medir: async () => encerrado ? { ok: false, motivo: 'medicao_indisponivel' } : medirRam(),
-      conferir: async () => {
-        try { const r = await nativo('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', 'scripts/google/motores.ps1', '-Acao', 'Conferir'], { windowsHide: true }); return JSON.parse(r.stdout).ok === true } catch { return false }
+      conferir: async motor => {
+        if (encerrado) return false
+        try {
+          const r = await nativo('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', 'scripts/google/motores.ps1', '-Acao', 'Conferir', '-Motor', motor], { windowsHide: true })
+          return !encerrado && JSON.parse(r.stdout).ok === true
+        } catch { return false }
       },
       evento: e => {
         emitir(e)
@@ -235,12 +209,12 @@ async function main() {
           if (id) gravacoes.push(salvarImutavel(resolve(pasta, 'coordenador', 'resultados', id + '-' + randomUUID() + '.json'), JSON.stringify(p, null, 2)))
         }
       },
-      aguardarColetas: () => coletas ? new Promise<void>(r => { livres.add(r) }) : Promise.resolve(),
       proximo: async m => {
         if (encerrado) return null
         const dir = pastaMotor(m)
         await mkdir(dir, { recursive: true })
         if (conhecidos.has(m) && (await lerJson(resolve(dir, 'executor.json'))).id !== conhecidos.get(m)) throw falha()
+        if (encerrado) return null
         const r = JSON.parse(await comando('node', ['--import', 'tsx', 'scripts/google/agente.mts', 'proximo', '--pasta', dir]))
         if (!r.pedido) { if (r.sincronizar || r.ocupado) emitir({ evento: 'aguardar', motor: m, motivo: r.sincronizar ? 'sincronizacao' : 'ocupado' }); return null }
         const p = r.pedido
