@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { Banknote, FileText, Phone } from 'lucide-react'
 import { filtrarEventosHistorico, type EventoHistoricoComercial, type FiltroHistoricoComercial } from '@/src/lib/historico-comercial'
 import { Button } from '@/src/components/ui/button'
@@ -14,6 +14,7 @@ type Props = {
   // usam evento.empresa apenas como identidade e podem fornecer um UUID.
   mostrarEmpresa?: boolean
   controleFiltro?: { valor: FiltroHistoricoComercial; aoMudar: (valor: FiltroHistoricoComercial) => void }
+  controleExpansao?: { valor: Set<string>; aoMudar: Dispatch<SetStateAction<Set<string>>> }
   conteudoVazio?: ReactNode
 }
 const filtros: { valor: FiltroHistoricoComercial; rotulo: string }[] = [
@@ -28,16 +29,18 @@ function identidade(evento: EventoHistoricoComercial) {
   return JSON.stringify([evento.empresa, evento.id])
 }
 
-export function HistoricoComercial({ eventos, rotulo = 'Histórico comercial', mostrarEmpresa = false, controleFiltro, conteudoVazio }: Props) {
+export function HistoricoComercial({ eventos, rotulo = 'Histórico comercial', ...props }: Props) {
   // A identidade reinicia também em A → B → A, sem reutilizar a expansão anterior.
   const chave = JSON.stringify([rotulo, eventos.map(evento => [evento.empresa, evento.id])])
-  return <ListaHistorico key={chave} eventos={eventos} rotulo={rotulo} mostrarEmpresa={mostrarEmpresa} controleFiltro={controleFiltro} conteudoVazio={conteudoVazio} />
+  return <ListaHistorico key={chave} eventos={eventos} rotulo={rotulo} {...props} />
 }
 
-function ListaHistorico({ eventos, rotulo, mostrarEmpresa, controleFiltro, conteudoVazio }: Props) {
+function ListaHistorico({ eventos, rotulo, mostrarEmpresa, controleFiltro, controleExpansao, conteudoVazio }: Props) {
   const [filtroInterno, setFiltro] = useState<FiltroHistoricoComercial>('todos')
   const filtro = controleFiltro?.valor ?? filtroInterno
-  const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set())
+  const [expandidosInternos, setExpandidosInternos] = useState(() => new Set<string>())
+  const expandidos = controleExpansao?.valor ?? expandidosInternos
+  const setExpandidos = controleExpansao?.aoMudar ?? setExpandidosInternos
   const visiveis = filtrarEventosHistorico(eventos, filtro)
   const todosExpandidos = visiveis.length > 0 && visiveis.every(evento => expandidos.has(identidade(evento)))
 
