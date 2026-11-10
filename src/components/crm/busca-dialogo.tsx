@@ -182,7 +182,7 @@ export function BuscaPainel({ nome, carregarAcao, carregarAtendimentoAcao, abrir
       </div>} /> : <PainelSobrepostoCrm
       titulo={empresa ? 'Ver empresa' : atendimento ? 'Atendimento' : nome}
       descricao={empresa ? 'Dados salvos da empresa selecionada.' : atendimento ? 'Atendimento da empresa selecionada.' : 'Confira as empresas desta busca.'}
-      aoFechar={voltarOuFechar} rotuloFechar={foraDosResultados ? 'Voltar' : 'Fechar'} fecharBloqueado={inclusaoPendente || comandoPendente}
+      aoFechar={voltarOuFechar} rotuloFechar={foraDosResultados ? 'Voltar' : 'Fechar'} fecharBloqueado={comandoPendente || (inclusaoPendente && !empresa)}
       ocupado={carregando || carregandoAtendimento || inclusaoPendente || comandoPendente}
       onOpenAutoFocus={evento => { if (restaurarResultado()) evento.preventDefault() }}
       onCloseAutoFocus={evento => { if (abertoAtual.current) evento.preventDefault() }}
