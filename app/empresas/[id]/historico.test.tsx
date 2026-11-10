@@ -8,7 +8,7 @@ vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: async () => ({ usua
 vi.mock('@/src/features/empresas/perfil', () => ({ lerPerfilEmpresa: mocks.perfil }))
 vi.mock('@/src/features/contato/historico', () => ({ lerHistorico: mocks.historico }))
 vi.mock('@/src/features/google/repositorio', () => ({ repositorioGoogle: () => ({ historicoEmpresa: async () => [{ pedidoId: 'p', dia: '2026-10-01', vendedor: 'Coleta autorizada', nicho: 'Iluminação', situacao: 'entregue' }] }) }))
-vi.mock('../socios-gestor', () => ({ SociosGestor: () => null }))
+vi.mock('../socios-gestor', () => ({ lerSociosGestor: () => [] }))
 const nota = 'Conversa integral do gestor.\n'.repeat(50)
 const contato: Contato = { id: 'c', tipo: 'tipo legado', nota, autor: null,
   criadoEm: new Date('2026-11-05T01:30:00Z'), proximoPasso: 'Passo histórico', proximoPassoData: '2026-10-01' }

@@ -107,8 +107,9 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
       await page.screenshot({ path: `.superpowers/sdd/2026-10-27-padronizacao-elementos-crm/task-7-captures/empresa-linha-longa-${tema}-${width}.png` })
     }
   }
-  // A ficha conserva filtros aplicados e pode não ter sócios enriquecidos.
-  await tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha completa', exact: true }).click()
+  // O endereço direto permanece disponível com filtros e pode não ter sócios enriquecidos.
+  const hrefFicha = await tabela.getByRole('listitem').filter({ has: page.getByRole('heading', { name: NOME_LONGO, exact: true }) }).getByRole('link', { name: 'Ficha completa', exact: true }).getAttribute('href')
+  await page.goto(hrefFicha!)
   await expect(page.getByRole('heading', { name: NOME_LONGO, exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dados dos sócios e representantes', exact: true })).toHaveCount(0)
   for (const tema of ['light', 'dark']) {
@@ -152,6 +153,18 @@ test('Empresas conserva filtros e reflow com dados longos', async ({ page, brows
   expect(Object.fromEntries(params)).toEqual({ q: 'Filtros E2E', cnae: '4742300', uf: 'MG', cidade: '3106200', bairro: 'Savassi', pagina: '2' })
   await expect(page.getByLabel('Buscar empresas', { exact: true })).toHaveValue('Filtros E2E')
   await expect(cnae).toHaveValue('4742300')
+  await expect(bairro).toHaveValue('Savassi')
+
+  const recorteDaPaginaDois = page.url()
+  const abrirFicha = tabela.getByRole('link', { name: 'Ficha completa', exact: true })
+  await abrirFicha.click()
+  const ficha = page.getByRole('dialog', { name: 'Filtros E2E Empresa 51', exact: true })
+  await expect(ficha).toHaveAttribute('data-slot', 'painel-lateral-content')
+  await ficha.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(abrirFicha).toBeFocused()
+  await expect(page).toHaveURL(recorteDaPaginaDois)
+  await expect(estado).toHaveValue('MG')
+  await expect(cidade).toHaveValue('3106200')
   await expect(bairro).toHaveValue('Savassi')
 
   for (const tema of ['light', 'dark']) {

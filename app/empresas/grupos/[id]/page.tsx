@@ -12,6 +12,7 @@ import { dataGrupo, PaginacaoGrupos, SituacaoGrupo } from '../apresentacao'
 import { MetadadosGrupo } from '../metadados'
 import { ControlesGrupo } from '../controles'
 import { Button } from '@/src/components/ui/button'
+import { LinkFichaEmpresa } from '../../[id]/link-ficha'
 import styles from '../grupos.module.css'
 
 const SITUACOES: Record<EmpresaGrupo['situacao'], string> = {
@@ -52,7 +53,7 @@ export default async function DetalheGrupo({ params, searchParams }: Props) {
       <div className={styles.rolagem} tabIndex={0} role="region" aria-label="Empresas da lista"><Table className={`${styles.tabela} crm-registros`}>
         <TableHeader><TableRow><TableHead scope="col">Empresa</TableHead><TableHead scope="col">Atendimento</TableHead><TableHead scope="col">Outras listas</TableHead></TableRow></TableHeader>
         <TableBody>{r.empresas.map(e => <TableRow key={e.id}>
-          <TableCell data-label="Empresa"><Link className="underline" href={urlFichaGestor(e.id, contexto)}><strong>{nomeEmpresa(e)}</strong></Link><span className={styles.secundario}>{e.cnpj ?? 'Não informado'}</span></TableCell>
+          <TableCell data-label="Empresa"><LinkFichaEmpresa className="underline" href={urlFichaGestor(e.id, contexto)}><strong>{nomeEmpresa(e)}</strong></LinkFichaEmpresa><span className={styles.secundario}>{e.cnpj ?? 'Não informado'}</span></TableCell>
           <TableCell data-label="Atendimento"><Badge variant={e.situacao === 'disponivel' ? 'success' : 'outline'}>{SITUACOES[e.situacao]}</Badge>
             {e.responsavel && <span className={styles.secundario}>{e.responsavel}{e.responsavelAtivo === false ? ' (inativo)' : ''}</span>}
             {e.situacao === 'reservada' && <span className={styles.secundario}>{e.reservadoPor}{e.reservadoAte ? ` até ${new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(e.reservadoAte))}` : ''}</span>}

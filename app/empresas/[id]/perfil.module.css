@@ -4,9 +4,11 @@
 .cabecalho > div { min-width: 0; }
 .cabecalho h1 { margin: 8px 0; overflow-wrap: anywhere; }
 .cabecalho p, .dados dt { color: var(--muted-foreground); }
+.cabecalho p { overflow-wrap: anywhere; }
 .colunas { min-width: 0; }
 .detalhes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
 .detalhes > :last-child { grid-column: 1 / -1; }
+.detalhesLateral { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .dados { display: grid; grid-template-columns: minmax(90px, .7fr) minmax(0, 1fr); gap: 12px 16px; font-size: 14px; line-height: 21px; }
 .dados dd, .grupos span { overflow-wrap: anywhere; }
 .dados dd > span { margin-left: 8px; }
