@@ -2,7 +2,7 @@
 
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Dialog, DialogTrigger } from '@/src/components/ui/dialog'
-import { PainelAtendimento, type DadosPainelAtendimento } from '@/app/fila/atendimento/painel'
+import { PainelAtendimento, type LeituraPainelAtendimento } from '@/app/fila/atendimento/painel'
 import { Button } from '@/src/components/ui/button'
 import { Alert } from '@/src/components/ui/alert'
 import type { ReferenciaEmpresa } from '@/src/lib/empresa-visual'
@@ -13,9 +13,8 @@ import { PainelSobrepostoCrm } from './painel-lateral'
 import styles from './busca-dialogo.module.css'
 
 type Resultado = { ok: true; conteudo: ReactNode } | { ok: false; erro: string }
-type LeituraAtendimento = { ok: true; dados: DadosPainelAtendimento } | { ok: false; erro: string }
 type Props = { nome: string; carregarAcao: () => Promise<Resultado>; abrirInicialmente?: boolean; conteudoInicial?: ReactNode; rotulo?: string;
-  carregarAtendimentoAcao?: (empresaId: string) => Promise<LeituraAtendimento> }
+  carregarAtendimentoAcao?: (empresaId: string) => Promise<LeituraPainelAtendimento> }
 export function BuscaPainel({ nome, carregarAcao, carregarAtendimentoAcao, abrirInicialmente = false, conteudoInicial, rotulo = 'Ver empresas' }: Props) {
   const [aberto, setAberto] = useState(abrirInicialmente)
   const [conteudo, setConteudo] = useState<ReactNode>(conteudoInicial ?? null)
@@ -27,7 +26,7 @@ export function BuscaPainel({ nome, carregarAcao, carregarAtendimentoAcao, abrir
   const [rodape, setRodape] = useState<HTMLDivElement | null>(null)
   const [inclusaoPendente, setInclusaoPendente] = useState(false)
   const [comandoPendente, setComandoPendente] = useState(false)
-  const [atendimento, setAtendimento] = useState<{ empresaId: string; leitura?: LeituraAtendimento } | null>(null)
+  const [atendimento, setAtendimento] = useState<{ empresaId: string; leitura?: LeituraPainelAtendimento } | null>(null)
   const [atualizacaoAtendimento, setAtualizacaoAtendimento] = useState<{ erro: string } | 'carregando' | null>(null)
   const prefixoAcao = useId() + '-atendimento-'
   const abertoAtual = useRef(abrirInicialmente)
@@ -107,7 +106,7 @@ export function BuscaPainel({ nome, carregarAcao, carregarAtendimentoAcao, abrir
     const atual = ++pedidoAtendimento.current
     if (atualizar) setAtualizacaoAtendimento('carregando')
     else setAtendimento({ empresaId })
-    let leitura: LeituraAtendimento
+    let leitura: LeituraPainelAtendimento
     try {
       leitura = await carregarAtendimentoAcao(empresaId)
     } catch {

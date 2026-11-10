@@ -104,10 +104,22 @@ test('falha ao abrir permite repetir apenas a leitura e falha ao voltar conserva
   expect(m.iniciar).toHaveBeenCalledOnce()
 })
 
-test('resultados imediatos seguem abrindo a página de atendimento', async () => {
-  await montar(vi.fn().mockResolvedValue(resultados(empresa)))
+test('resultados imediatos abrem o atendimento no mesmo painel e retornam à lista', async () => {
+  const salvo = resultados(empresa)
+  const carregar = vi.fn().mockResolvedValue(salvo)
+  const lerAtendimento = vi.fn().mockResolvedValue({ ok: true, dados })
+  await act(async () => root.render(<BuscaPainel nome="Lojas SP" rotulo="Ver resultados" abrirInicialmente
+    conteudoInicial={salvo.conteudo} carregarAcao={carregar} carregarAtendimentoAcao={lerAtendimento} />))
+  corpo().scrollTop = 180
   await clicar('Continuar atendimento')
-  expect(m.push).toHaveBeenCalledExactlyOnceWith('/fila/atendimento/empresa?origem=banco&pagina=1')
+  expect(titulo()).toBe('Loja Aurora')
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect(m.push).not.toHaveBeenCalled()
+  await clicar('Fechar')
+  expect(titulo()).toBe('Lojas SP')
+  expect(corpo().scrollTop).toBe(180)
+  expect(document.activeElement).toBe(botao('Continuar atendimento'))
+  expect(carregar).toHaveBeenCalledOnce()
 })
 
 test('enquanto confirma o início, outro comando do painel não disputa a seleção', async () => {

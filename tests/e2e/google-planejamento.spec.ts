@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { criarUsuarioComSenha } from '../integracao/ajuda'
+import { vincularEmpresaTeste } from '../integracao/atendimento-fixtures'
 import { bancoGruposDoHarness, comBancoGrupos } from './dados-grupos'
 import { GOOGLE_EMPRESA_DEMO, GOOGLE_PEDIDO_DEMO, GOOGLE_PEDIDO_OUTRO, GOOGLE_TOKEN_E2E, reciboGoogleFixture } from './dados-google'
 import { criteriosVazios } from '../../src/lib/google/criterios'
@@ -182,10 +183,14 @@ test('API do agente publica um lote validado e reutiliza o retorno sem nova entr
   expect(await (await request.post('/api/agente/google', { headers, data: publicacao })).json()).toEqual({ resultado: 'repetida' })
   await entrar(page, 'googleapie2e')
   await page.goto('/fila/google/' + id)
+  const origem = page.url()
   await expect(page.getByRole('heading', { name: 'Papelaria validada API (fictícia)', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Iniciar atendimento', exact: true }).click()
-  await expect(page).toHaveURL(/\/fila\/atendimento\/[0-9a-f-]{36}/)
-  await expect(page.getByText('Papelaria validada API (fictícia)', { exact: true }).first()).toBeVisible()
+  const editor = page.getByRole('dialog', { name: 'Papelaria validada API (fictícia)', exact: true })
+  await expect(editor.getByLabel('Nota', { exact: true })).toBeVisible({ timeout: 8_000 })
+  await editor.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Continuar atendimento', exact: true })).toBeFocused()
+  await expect(page).toHaveURL(origem)
 })
 
 test('critérios Google preservam os grupos, aplicam por botão e Enter e usam a largura lateral', async ({ browser, request, baseURL }, info) => {
@@ -361,6 +366,11 @@ test('Empresas recebidas conserva a semana ao paginar o histórico e voltar', as
   await banco.sql(`INSERT INTO google_resultado(planejamento_id,indice,dados,situacao)
     SELECT $1, i, jsonb_build_object('nome_fantasia', 'Papelaria fictícia ' || i), 'entregue'
     FROM generate_series(1,51) i`, [pedido])
+  const empresaId = randomUUID()
+  await banco.sql("INSERT INTO empresa(id,razao_social,telefone) VALUES($1,'Papelaria fictícia 51','11999991651')", [empresaId])
+  await vincularEmpresaTeste(banco, empresaId, usuario.id, 'google')
+  await banco.sql('UPDATE google_resultado SET empresa_id=$1 WHERE planejamento_id=$2 AND indice=51', [empresaId, pedido])
+  await page.setViewportSize({ width: 390, height: 844 })
   await entrar(page, 'googlehistoricoe2e')
   await page.goto('/fila/google?semana=' + semana)
   await page.getByRole('link', { name: 'Empresas recebidas', exact: true }).click()
@@ -374,6 +384,57 @@ test('Empresas recebidas conserva a semana ao paginar o histórico e voltar', as
   await page.getByRole('link', { name: 'Próxima página', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Papelaria fictícia 51', exact: true })).toBeVisible()
   await expect(page).toHaveURL('/fila/google/' + pedido + '?semana=' + semana + '&pagina=2')
+  const origem = page.url()
+  await page.getByRole('button', { name: 'Iniciar atendimento', exact: true }).click()
+  const editor = page.getByRole('dialog', { name: 'Papelaria fictícia 51', exact: true })
+  await expect(editor.getByLabel('Nota', { exact: true })).toBeVisible({ timeout: 8_000 })
+  expect(await editor.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+  await page.keyboard.press('Escape')
+  await expect(editor).toBeHidden()
+  const continuar = page.getByRole('button', { name: 'Continuar atendimento', exact: true })
+  await expect(continuar).toBeFocused()
+  await expect(page).toHaveURL(origem)
+
+  await continuar.click()
+  await editor.getByLabel('Liguei, não falei com ninguém', { exact: true }).check()
+  const nota = editor.getByLabel('Nota', { exact: true })
+  await nota.fill('Contato fictício após entrega paginada')
+  page.once('dialog', dialog => dialog.accept())
+  await page.reload()
+  await expect(page).toHaveURL(origem)
+  await continuar.click()
+  await expect(nota).toHaveValue('Contato fictício após entrega paginada')
+  await expect(editor.getByLabel('Liguei, não falei com ninguém', { exact: true })).toBeChecked()
+
+  let perdeuResposta = false
+  await page.route('**/fila/google/**', async rota => {
+    const requisicao = rota.request()
+    if (perdeuResposta || requisicao.method() !== 'POST' || !requisicao.postData()?.includes(empresaId)) return rota.continue()
+    perdeuResposta = true
+    await rota.fetch()
+    await rota.abort('failed')
+  })
+  await editor.getByRole('button', { name: 'Registrar', exact: true }).click()
+  await expect(editor.getByRole('alert')).toContainText('Não foi possível confirmar o envio')
+  expect(perdeuResposta).toBe(true)
+  await page.unroute('**/fila/google/**')
+  const chaveDoEnvio = () => page.evaluate(id => JSON.parse(sessionStorage.getItem('crm:contato:v1:' + id) ?? 'null')?.envio?.chave, empresaId)
+  const chave = await chaveDoEnvio()
+  expect(chave).toBeTruthy()
+  const contatos = () => banco.sql<{ total: number }>('SELECT count(*)::int AS total FROM contato WHERE empresa_id=$1', [empresaId])
+  expect(await contatos()).toEqual([{ total: 1 }])
+
+  page.once('dialog', dialog => dialog.accept())
+  await page.reload()
+  await expect(page).toHaveURL(origem)
+  await continuar.click()
+  await expect(nota).toHaveValue('Contato fictício após entrega paginada')
+  expect(await chaveDoEnvio()).toBe(chave)
+  await editor.getByRole('button', { name: 'Confirmar envio anterior', exact: true }).click()
+  await expect(editor.getByText('Envio anterior confirmado. Dados atualizados.', { exact: true })).toBeVisible()
+  expect(await contatos()).toEqual([{ total: 1 }])
+  await editor.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(continuar).toBeFocused()
   await page.reload()
   await page.getByRole('link', { name: 'Voltar para empresas recebidas', exact: true }).click()
   await expect(page).toHaveURL('/fila/google?semana=' + semana + '&aba=entregas')
@@ -389,10 +450,13 @@ test('Back nativo e links internos protegem edição semanal e rascunho de crit�
   await entrar(page, 'redesigne2e')
   await page.goto('/fila')
   await page.getByRole('link', { name: 'Planejar buscas', exact: true }).click()
-  await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
-  await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
-  await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
-  await page.getByRole('link', { name: 'Próxima semana', exact: true }).click()
+  const proximaSemana = page.getByRole('link', { name: 'Próxima semana', exact: true })
+  for (let i = 0; i < 4; i++) {
+    const destino = await proximaSemana.getAttribute('href')
+    expect(destino).toBeTruthy()
+    await proximaSemana.click()
+    await expect(page).toHaveURL(destino!)
+  }
   await expect(page).toHaveURL(planejamento)
   const anterior = await page.getByRole('link', { name: 'Semana anterior', exact: true }).getAttribute('href')
   await page.setViewportSize({ width: 390, height: 844 })

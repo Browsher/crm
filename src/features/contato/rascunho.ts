@@ -1,4 +1,4 @@
-import type { TipoContato } from './tipos'
+import { TIPOS_CONTATO, type TipoContato } from './tipos'
 
 export type RascunhoContato = {
   tipo: TipoContato
@@ -16,6 +16,22 @@ export function rascunhoAlterado(rascunho: RascunhoContato, inicial = rascunhoIn
 }
 
 export type EnvioContato = { chave: string; versao: number; valor: RascunhoContato; resolvido?: boolean }
+
+export function lerSessaoContato(empresaId: string) {
+  try { return sessionStorage.getItem('crm:contato:v1:' + empresaId) ?? '{}' } catch { return '!erro' }
+}
+
+export function decodificarSessaoContato(bruto: string | null): { valor?: RascunhoContato; envio?: EnvioContato | null; erro?: boolean } {
+  if (bruto === null) return {}
+  try {
+    const dados = JSON.parse(bruto)
+    if (!dados || typeof dados !== 'object') return { erro: true }
+    if (dados.valor && (!TIPOS_CONTATO.includes(dados.valor.tipo) || ['nota','proximoPasso','proximoPassoData'].some(k => typeof dados.valor[k] !== 'string'))) return { erro: true }
+    if (dados.envio && (!dados.envio.chave || !Number.isInteger(dados.envio.versao) || !dados.envio.valor)) return { erro: true }
+    return dados
+  } catch { return { erro: true } }
+}
+
 export function descartarRascunhoContato(empresaId: string): boolean {
   try {
     const chave = 'crm:contato:v1:' + empresaId

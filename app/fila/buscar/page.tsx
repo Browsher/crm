@@ -9,7 +9,7 @@ import { lerResumosEmpresas, lerResumosBusca } from '@/src/server/atendimento/co
 import { FormularioBusca } from './formulario'
 import { BuscaPainel, FiltrosBuscaPainel } from '@/src/components/crm/busca-dialogo'
 import { ConteudoBusca, FiltrosUsadosBusca } from '../../empresas/busca/conteudo'
-import { lerDetalheBuscaAcao } from '../../empresas/busca/detalhe-acao'
+import { lerAtendimentoBuscaAcao, lerDetalheBuscaAcao } from '../../empresas/busca/detalhe-acao'
 import { CabecalhoPagina } from '@/src/components/crm/cabecalho-pagina'
 import { Button } from '@/src/components/ui/button'
 import { Card } from '@/src/components/ui/card'
@@ -52,7 +52,8 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
             <div className="flex flex-wrap gap-2">
               <BuscaPainel key={busca.id} nome={busca.nome} rotulo="Ver resultados" abrirInicialmente
                 conteudoInicial={<ConteudoBusca busca={busca} gestor={false} bloqueada={Boolean(limite?.pausado)} resumos={resumosBusca.ok ? resumosBusca.empresas : []} />}
-                carregarAcao={lerDetalheBuscaAcao.bind(null, busca.id)} />
+                carregarAcao={lerDetalheBuscaAcao.bind(null, busca.id, true)}
+                carregarAtendimentoAcao={lerAtendimentoBuscaAcao.bind(null, busca.id)} />
               <FiltrosBuscaPainel key={`filtros:${busca.id}`} nome={busca.nome}><FiltrosUsadosBusca filtros={busca.filtros} /></FiltrosBuscaPainel>
             </div>
           </Card>}

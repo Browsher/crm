@@ -11,7 +11,7 @@ import type { GrupoEmpresa } from '@/src/components/crm/empresa-detalhes'
 import { PainelSobrepostoCrm } from '@/src/components/crm/painel-lateral'
 import { useGuardaPainelEdicao } from '@/src/components/crm/guarda-painel-edicao'
 import { useTemaCrm } from '@/src/components/crm/tema'
-import { contatoPendente, descartarRascunhoContato, rascunhoAlterado } from '@/src/features/contato/rascunho'
+import { contatoPendente, decodificarSessaoContato, descartarRascunhoContato, lerSessaoContato, rascunhoAlterado } from '@/src/features/contato/rascunho'
 import { rotuloSituacao } from '@/src/lib/empresa-visual'
 import { Formulario, type PropsFormulario } from '../formulario'
 import { ID_TITULO_RESULTADOS, idGatilhoAtendimento } from '../localizar/navegacao'
@@ -23,18 +23,19 @@ function assinarEnvio(avisar: () => void) {
 }
 
 export type DadosPainelAtendimento = Omit<PropsFormulario, 'lateral'> & { empresaId: string }
+export type LeituraPainelAtendimento = { ok: true; dados: DadosPainelAtendimento } | { ok: false; erro: string }
 
 // Com aoVoltar, a raiz do diálogo já pertence à busca.
-export function PainelAtendimento({ empresaId, aoVoltar, aoAtualizar, avisoAtualizacao, ...dados }: DadosPainelAtendimento & {
-  aoVoltar?: () => void; aoAtualizar?: () => void; avisoAtualizacao?: ReactNode
+export function PainelAtendimento({ empresaId, aoVoltar, aoAtualizar, avisoAtualizacao, aoRestaurarFoco, ...dados }: DadosPainelAtendimento & {
+  aoVoltar?: () => void; aoAtualizar?: () => void; avisoAtualizacao?: ReactNode; aoRestaurarFoco?: () => void
 }) {
   const router = useRouter()
   const tema = useTemaCrm()
   const rascunhos = useRascunhos()
   const [destinoAcoes, setDestinoAcoes] = useState<HTMLDivElement | null>(null)
   const [alterado, setAlterado] = useState(() => {
-    const anterior = rascunhos.entradas[empresaId]
-    return anterior ? rascunhoAlterado(anterior.valor) : false
+    const anterior = decodificarSessaoContato(lerSessaoContato(empresaId)).valor ?? rascunhos.entradas[empresaId]?.valor
+    return anterior ? rascunhoAlterado(anterior) : false
   })
   const [pendente, setPendente] = useState(false)
   const [erroDescarte, setErroDescarte] = useState('')
@@ -92,7 +93,7 @@ export function PainelAtendimento({ empresaId, aoVoltar, aoAtualizar, avisoAtual
         aoFechar={voltar} rotuloFechar={dadosAbertos ? 'Voltar' : 'Fechar'} fecharBloqueado={pendente || Boolean(guarda.pedido)}
         ocupado={pendente} rodape={dadosAbertos ? null : <div ref={setDestinoAcoes} />} onCloseAutoFocus={evento => {
           evento.preventDefault()
-          if (aoVoltar) return
+          if (aoVoltar) { aoRestaurarFoco?.(); return }
           const gatilho = document.getElementById(idGatilhoAtendimento(empresaId))
           const alvo = gatilho instanceof HTMLButtonElement && !gatilho.disabled
             ? gatilho

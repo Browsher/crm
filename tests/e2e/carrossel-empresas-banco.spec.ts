@@ -32,6 +32,7 @@ test.beforeAll(async()=>{
    const b=(await c.query(`INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,grupo_id,empresas,criado_em) VALUES($1,$2,$3,1,'concluida',$4,$5,now()+$6*interval '1 minute') RETURNING id`,[i===13?outro.id:eu.id,i===12?grupo:`Busca ${i} (fictícia)`,JSON.stringify(filtros),g,JSON.stringify([dados(cnpj,titulo,100+i)]),i])).rows[0].id
    if(i<13)registros.push(b+':'+cnpj)
   }
+  await c.query("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial) VALUES($1,$2,'banco')",[empresas[10],eu.id])
   await c.query('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)',[empresas[12],eu.id])
   await c.query('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave) VALUES($1,$2,CURRENT_DATE,100,gen_random_uuid())',[empresas[12],eu.id])
   const candidatas=Array.from({length:5},(_,i)=>dados(String(84200000000000+i),i===0?nome:`Empresa encontrada ${i} (fictícia)`,i))
@@ -99,6 +100,48 @@ test('Últimas buscas usa card comum e detalhe salvo exato sem aquisição ou in
  await expect(secao.getByRole('button',{name:'Próximas empresas',exact:true})).toBeDisabled()
  await secao.getByRole('link',{name:'Ver todas as empresas',exact:true}).click()
  await expect(page).toHaveURL('/fila/localizar?origem=banco');expect(erros).toEqual([])
+})
+
+test('Últimas buscas abre atendimento e volta à mesma página do carrossel', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await entrar(page)
+  const recentes = page.getByRole('region', { name: 'Últimas buscas', exact: true })
+  const proxima = recentes.getByRole('button', { name: 'Próximas empresas', exact: true })
+  await proxima.click()
+  await proxima.click()
+  const nome = 'Empresa recente 10 (fictícia)'
+  const card = recentes.locator('[data-slot=card]').filter({ has: page.getByRole('heading', { name: nome, exact: true }) })
+  const origem = page.url()
+  const contador = 'Página 3 de 4'
+  await expect(recentes.getByRole('status')).toHaveText(contador)
+  const iniciar = card.getByRole('button', { name: 'Iniciar atendimento', exact: true })
+  await iniciar.scrollIntoViewIfNeeded({ timeout: 8_000 })
+  const rolagem = await page.evaluate(() => window.scrollY)
+  await iniciar.click()
+  const editor = page.getByRole('dialog', { name: nome, exact: true })
+  const nota = editor.getByLabel('Nota', { exact: true })
+  await expect(nota).toBeVisible({ timeout: 8_000 })
+  await expect(page.locator('[data-painel-lateral]:visible')).toHaveCount(1)
+  expect(await editor.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+  await nota.fill('Rascunho fictício no carrossel')
+  await editor.getByRole('button', { name: 'Fechar', exact: true }).click()
+  const descarte = page.getByRole('dialog', { name: 'Descartar alterações?', exact: true })
+  await descarte.getByRole('button', { name: 'Continuar editando', exact: true }).click()
+  await expect(nota).toHaveValue('Rascunho fictício no carrossel')
+  await editor.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await descarte.getByRole('button', { name: 'Descartar alterações', exact: true }).click()
+  await expect(editor).toBeHidden()
+  await expect(card.getByRole('button', { name: 'Continuar atendimento', exact: true })).toBeFocused()
+  await expect(recentes.getByRole('status')).toHaveText(contador)
+  await expect(page).toHaveURL(origem)
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(rolagem)
+
+  const item = recentes.locator('ul > li').filter({ has: page.getByRole('heading', { name: nome, exact: true }) })
+  await item.getByRole('link', { name: 'Ver busca', exact: true }).click()
+  const busca = page.getByRole('dialog', { name: 'Busca 10 (fictícia)', exact: true })
+  await busca.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(recentes.getByRole('status')).toHaveText(contador)
+  await expect(card.getByRole('heading', { name: nome, exact: true })).toBeVisible()
 })
 
 test('sem resultados não cria cards fictícios e conserva o histórico completo',async({page})=>{

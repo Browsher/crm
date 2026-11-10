@@ -5,9 +5,9 @@ import { exigir } from '@/src/server/autenticacao/guarda'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { ConteudoBusca } from './conteudo'
 import { lerDetalhesEmpresa } from '@/src/server/empresas/detalhes'
-import { lerAtendimento, lerResumosBusca } from '@/src/server/atendimento/consulta'
-import { lerHistorico } from '@/src/features/contato/historico'
-import type { DadosPainelAtendimento } from '@/app/fila/atendimento/painel'
+import { lerResumosBusca } from '@/src/server/atendimento/consulta'
+import { FALHA_LEITURA_ATENDIMENTO, lerDadosPainelAtendimento } from '@/app/fila/atendimento/conteudo'
+import type { LeituraPainelAtendimento } from '@/app/fila/atendimento/painel'
 import type { ReferenciaEmpresa } from '@/src/lib/empresa-visual'
 import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
 
@@ -28,20 +28,15 @@ export async function lerDetalheBuscaAcao(id: string, historicoVendedor = false)
   }
 }
 
-export async function lerAtendimentoBuscaAcao(buscaId: string, empresaId: string): Promise<{ ok: true; dados: DadosPainelAtendimento } | { ok: false; erro: string }> {
+export async function lerAtendimentoBuscaAcao(buscaId: string, empresaId: string): Promise<LeituraPainelAtendimento> {
   const eu = await exigir('vendedor')
-  const indisponivel = { ok: false as const, erro: 'Esta empresa não está disponível para atendimento nesta busca.' }
-  const falha = { ok: false as const, erro: 'Não foi possível carregar o atendimento. Tente novamente.' }
+  const indisponivel = 'Esta empresa não está disponível para atendimento nesta busca.'
   try {
     const resumos = await lerResumosBusca(eu.usuarioId, buscaId)
-    if (!resumos.ok) return falha
-    if (!resumos.empresas.some(e => e.id === empresaId)) return indisponivel
-    const atendimento = await lerAtendimento(eu.usuarioId, empresaId)
-    if (!atendimento.ok) return indisponivel
-    const historico = await lerHistorico(eu.usuarioId, empresaId)
-    if (!historico.ok) return falha
-    return { ok: true, dados: { empresaId, empresa: atendimento.empresa, fase: atendimento.fase, contatos: historico.contatos, filtros: { origem: 'banco' } } }
-  } catch { return falha }
+    if (!resumos.ok) return FALHA_LEITURA_ATENDIMENTO
+    if (!resumos.empresas.some(e => e.id === empresaId)) return { ok: false, erro: indisponivel }
+    return await lerDadosPainelAtendimento(eu.usuarioId, empresaId, { origem: 'banco' }, indisponivel)
+  } catch { return FALHA_LEITURA_ATENDIMENTO }
 }
 
 export async function lerEmpresaBuscaAcao(id: string, cnpj: string): Promise<{ ok: true; conteudo: ReactNode } | { ok: false; erro: string }> {

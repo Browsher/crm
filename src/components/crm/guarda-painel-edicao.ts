@@ -73,7 +73,10 @@ function marcaAtual(): Marca | null {
 export function useGuardaPainelEdicao(alterada: boolean, pendente: boolean, bloqueada: () => boolean, aoSair: (saida: Saida) => void) {
   const [pedido, setPedido] = useState<Saida | null>(null)
   const pedidoAtivo = useRef(false)
-  const [restaurando, setRestaurando] = useState(() => typeof window !== 'undefined' && !!navegacaoDoNavegador()?.currentEntry && !!marcaAtual())
+  // Um editor reaberto com rascunho ou envio pendente adota a marca em armar().
+  // Só uma tarefa limpa espera a retirada da entrada de edição antiga.
+  const [restaurando, setRestaurando] = useState(() => !alterada && !pendente
+    && typeof window !== 'undefined' && !!navegacaoDoNavegador()?.currentEntry && !!marcaAtual())
   const foco = useRef<HTMLElement | null>(null)
   const atual = useRef({ alterada, pendente, bloqueada, aoSair })
   const sentinela = useRef<Marca | null>(null)
