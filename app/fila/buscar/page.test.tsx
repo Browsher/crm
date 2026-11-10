@@ -1,12 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test, vi } from 'vitest'
-const mocks = vi.hoisted(()=>({ler:vi.fn().mockResolvedValue({ok:true,dados:{empresas:[]}}),recentes:vi.fn(),repo:{empresasRecentes:vi.fn(),meuLimite:vi.fn().mockResolvedValue({limite_diario:100,usado:0,pausado:false}),listar:vi.fn().mockResolvedValue([]),ler:vi.fn().mockResolvedValue(null)}}))
+const mocks = vi.hoisted(()=>({ler:vi.fn().mockResolvedValue({ok:true,dados:{empresas:[]}}),recentes:vi.fn(),painel:vi.fn(),atendimento:vi.fn(),repo:{empresasRecentes:vi.fn(),meuLimite:vi.fn().mockResolvedValue({limite_diario:100,usado:0,pausado:false}),listar:vi.fn().mockResolvedValue([]),ler:vi.fn().mockResolvedValue(null)}}))
 vi.mock('@/src/server/autenticacao/guarda',()=>({exigir:vi.fn().mockResolvedValue({usuarioId:'vendedor-certo'})}))
 vi.mock('@/src/features/busca-empresas/repositorio',()=>({repositorioBusca:()=>mocks.repo}))
 vi.mock('@/src/server/prospeccao-pessoal',()=>({lerEmpresasPessoais:mocks.ler}))
 vi.mock('./empresas-recentes',()=>({EmpresasBancoRecentes:(props:unknown)=>{mocks.recentes(props);return <section>Empresas recentes</section>}}))
 vi.mock('./formulario',()=>({FormularioBusca:()=> <form/>}))
 vi.mock('../google/page',()=>({default:()=> <main>Google</main>}))
+vi.mock('@/src/components/crm/busca-dialogo',()=>({BuscaPainel:(props:unknown)=>{mocks.painel(props);return <section>Resultado salvo</section>},FiltrosBuscaPainel:()=>null}))
+vi.mock('../../empresas/busca/detalhe-acao',()=>({lerDetalheBuscaAcao:vi.fn(),lerAtendimentoBuscaAcao:mocks.atendimento}))
 vi.mock('@/src/server/atendimento/consulta',()=>({lerResumosEmpresas:async()=>({ok:true,empresas:[]}),lerResumosBusca:async()=>({ok:true,empresas:[]})}))
 import PaginaBuscar from './page'
 
@@ -40,4 +42,16 @@ test('histórico fica em aba própria da página do carrossel',async()=>{
  expect(html).toContain('role="tab"')
  expect(html).toContain('Histórico de buscas')
  expect(html).not.toContain('Ver histórico de buscas')
+})
+
+test('resultado novo limita o editor lateral às empresas da busca salva',async()=>{
+ mocks.repo.empresasRecentes.mockResolvedValueOnce([])
+ mocks.repo.ler.mockResolvedValueOnce({id:'busca-nova',nome:'Busca nova',filtros:{quantidade:2},empresas:[]})
+ renderToStaticMarkup(await PaginaBuscar({searchParams:Promise.resolve({busca:'busca-nova'})}))
+ const props=mocks.painel.mock.lastCall?.[0]
+ expect(props?.abrirInicialmente).toBe(true)
+ expect(props?.rotulo).toBe('Ver resultados')
+ expect(props?.carregarAtendimentoAcao).toBeTypeOf('function')
+ await props.carregarAtendimentoAcao('empresa')
+ expect(mocks.atendimento).toHaveBeenCalledWith('busca-nova','empresa')
 })

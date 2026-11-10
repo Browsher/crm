@@ -124,6 +124,27 @@ test('consulta simulada persiste, não repete no refresh e importa dados nas aba
       }
     }
   } finally { await contextoGestor.close() }
+
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/fila/buscar?busca=' + buscaId)
+  const origem = page.url()
+  const card = popup.locator('[data-slot=card]').filter({ has: page.getByRole('heading', { name: 'Luminárias Horizonte fictícia', exact: true }) })
+  const iniciar = card.getByRole('button', { name: 'Iniciar atendimento', exact: true })
+  await iniciar.scrollIntoViewIfNeeded({ timeout: 8_000 })
+  const corpo = popup.locator('[data-painel-corpo]')
+  const rolagem = await corpo.evaluate(el => el.scrollTop)
+  await iniciar.click()
+  const editor = page.getByRole('dialog', { name: 'Luminárias Horizonte fictícia', exact: true })
+  await expect(editor.getByLabel('Nota', { exact: true })).toBeVisible({ timeout: 8_000 })
+  await expect(page.locator('[data-painel-lateral]:visible')).toHaveCount(1)
+  await expect(page).toHaveURL(origem)
+  expect(await editor.boundingBox()).toMatchObject({ x: 920, width: 520 })
+  await editor.getByRole('button', { name: 'Fechar', exact: true }).click()
+  const continuar = card.getByRole('button', { name: 'Continuar atendimento', exact: true })
+  await expect(continuar).toBeFocused()
+  await expect.poll(() => corpo.evaluate(el => el.scrollTop)).toBe(rolagem)
+  await expect(page).toHaveURL(origem)
+  expect(await chamadas()).toBe(chamadasDepois)
 })
 
 

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { prepararContatoAcao, registrarContatoAcao, type EstadoContato } from './acao'
 import { ROTULO, TIPOS_CONTATO, type TipoContato } from './tipos'
-import { limparContatoConfirmado, prepararEnvio, rascunhoInicial, type EnvioContato, type RascunhoContato } from './rascunho'
+import { decodificarSessaoContato, lerSessaoContato, limparContatoConfirmado, prepararEnvio, rascunhoInicial, type EnvioContato, type RascunhoContato } from './rascunho'
 import { Button } from '@/src/components/ui/button'
 import { Choice } from '@/src/components/ui/choice'
 import { Input } from '@/src/components/ui/input'
@@ -28,19 +28,6 @@ function assinarSessao(avisar: () => void) {
   window.addEventListener('crm-contato', avisar)
   return () => window.removeEventListener('crm-contato', avisar)
 }
-function lerSessao(chave: string) {
-  try { return sessionStorage.getItem(chave) ?? '{}' } catch { return '!erro' }
-}
-function decodificarSessao(bruto: string | null): { valor?: RascunhoContato; envio?: EnvioContato | null; erro?: boolean } {
-  if (bruto === null) return {}
-  try {
-    const dados = JSON.parse(bruto)
-    if (!dados || typeof dados !== 'object') return { erro: true }
-    if (dados.valor && (!TIPOS_CONTATO.includes(dados.valor.tipo) || ['nota','proximoPasso','proximoPassoData'].some(k => typeof dados.valor[k] !== 'string'))) return { erro: true }
-    if (dados.envio && (!dados.envio.chave || !Number.isInteger(dados.envio.versao) || !dados.envio.valor)) return { erro: true }
-    return dados
-  } catch { return { erro: true } }
-}
 // A chave e a entrada ficam na sessão da aba ANTES da chamada. Recarregar a página
 // não transforma uma resposta perdida em outro comando nem sincroniza uma aba antiga.
 export function FormularioContato(props: Props) { return <EditorContato key={props.empresaId} {...props} /> }
@@ -50,9 +37,9 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
   const chaveStorage = 'crm:contato:v1:' + empresaId
   const [interno, setInterno] = useState<RascunhoContato>(() => ({ ...rascunhoInicial(false), tipo: tipoInicial ?? 'nao_liguei' }))
   const [preparado, setPreparado] = useState<{ versao: number; fase: NonNullable<Props['fase']> } | null>(() => versao && fase ? { versao, fase } : null)
-  const snapshot = useSyncExternalStore(assinarSessao, () => lerSessao(chaveStorage), () => null)
+  const snapshot = useSyncExternalStore(assinarSessao, () => lerSessaoContato(empresaId), () => null)
   const [confirmado, setConfirmado] = useState<string | null>(null)
-  const sessao = decodificarSessao(snapshot)
+  const sessao = decodificarSessaoContato(snapshot)
   const sessaoConfirmada = Boolean(sessao.envio && sessao.envio.chave === confirmado)
   const envio = sessaoConfirmada ? null : sessao.envio ?? null
   const [confirmacaoAnterior, setConfirmacaoAnterior] = useState(somenteConfirmacao)
@@ -69,7 +56,7 @@ function EditorContato({ empresaId, tipoInicial, versao, fase, somenteConfirmaca
   useEffect(() => {
     if (notificado.current === snapshot) return
     notificado.current = snapshot
-    const restaurado = decodificarSessao(snapshot).valor
+    const restaurado = decodificarSessaoContato(snapshot).valor
     if (restaurado) onDraftChange?.(restaurado)
   }, [snapshot, onDraftChange])
   useEffect(() => {

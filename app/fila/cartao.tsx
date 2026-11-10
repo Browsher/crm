@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { useContext, useRef, useState, useTransition } from 'react'
+import { useContext, useId, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { CardEmpresa } from '@/src/components/crm/card-empresa'
 import { EmpresaDialogo } from '@/src/components/crm/empresa-dialogo'
+import { ContextoAtendimentoLista } from '@/src/components/crm/contexto-atendimento'
 import { ContextoResultadoBusca } from '@/src/components/crm/contexto-resultado-busca'
 import { Button } from '@/src/components/ui/button'
 import type { AcaoEmpresa, ReferenciaEmpresa, ResumoEmpresa } from '@/src/lib/empresa-visual'
@@ -21,7 +22,9 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   const router = useRouter()
   const retomarNaConsulta = useRetomadaNaConsulta()
   const resultadoBusca = useContext(ContextoResultadoBusca)
-  const atendimentoNaBusca = resultadoBusca?.atendimento
+  const atendimentoNaLista = useContext(ContextoAtendimentoLista)
+  const atendimentoLateral = resultadoBusca?.atendimento ?? atendimentoNaLista
+  const idCartao = useId()
   const [consulta, setConsulta] = useState<{ referencia: ReferenciaEmpresa; gatilho: HTMLButtonElement; escopo?: string } | null>(null)
   if (consulta && consulta.escopo !== escopoConsulta) setConsulta(null)
   const [erro, setErro] = useState('')
@@ -34,14 +37,14 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   const ocupado = useRef(false)
   const chaveResolvida = useRef<string | null>(null)
   const storage = 'crm:acao-empresa:v1:' + empresa.id
-  const idAcao = empresa.id && atendimentoNaBusca ? atendimentoNaBusca.prefixoAcao + empresa.id
+  const idAcao = empresa.id && atendimentoLateral ? atendimentoLateral.prefixoAcao + empresa.id + (atendimentoNaLista ? idCartao : '')
     : consultaRecolhida !== undefined && empresa.id ? idGatilhoAtendimento(empresa.id) : undefined
   function atualizar() {
-    if (atendimentoNaBusca) atendimentoNaBusca.atualizar()
+    if (atendimentoLateral) atendimentoLateral.atualizar()
     else router.refresh()
   }
   function abrirAtendimento(id: string) {
-    if (atendimentoNaBusca && idAcao) atendimentoNaBusca.abrir(id, idAcao)
+    if (atendimentoLateral && idAcao) atendimentoLateral.abrir(id, idAcao)
     else if (consultaRecolhida === undefined) router.push(urlAtendimento(id, filtros))
     else router.push(urlAtendimentoLateral(id, filtros, consultaRecolhida), { scroll: false })
   }
@@ -50,7 +53,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     return acao.href
   }
   function acionar(acao: AcaoEmpresa) {
-    if (ocupado.current || resolvido || atendimentoNaBusca?.bloqueado) return
+    if (ocupado.current || resolvido || atendimentoLateral?.bloqueado) return
     let salvo: string | null
     try {
       salvo = sessionStorage.getItem(storage)
@@ -68,8 +71,8 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     } catch { setErro('Não foi possível recuperar o envio anterior. Confira o armazenamento desta aba.'); return }
     if (bloquearRetomada && acao.tipo === 'retomar') return
     if (acao.tipo === 'retomar' && retomarNaConsulta?.(acao, filtros, consultaRecolhida)) return
-    const comandoNaBusca = atendimentoNaBusca?.travarComando()
-    if (atendimentoNaBusca && !comandoNaBusca) return
+    const comandoLateral = idAcao ? atendimentoLateral?.travarComando(idAcao) : undefined
+    if (atendimentoLateral && !comandoLateral) return
     ocupado.current = true
     iniciar(async () => {
       try {
@@ -98,7 +101,14 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           const atual = sessionStorage.getItem(storage)
           if (atual && JSON.parse(atual).chave !== comando.chave) return
           sessionStorage.removeItem(storage)
-          if (comandoNaBusca && !comandoNaBusca.estaAtivo()) return
+          if (comandoLateral && !comandoLateral.estaAtivo()) {
+            if (atendimentoNaLista && comando.id === empresa.id && !r.aviso) {
+              setResolvido({ versaoAtendimento: r.versao })
+              setErro('')
+              atualizar()
+            }
+            return
+          }
           const leitura = r.leituraDestino
           if (!leitura?.ok || leitura.destino.tipo === 'indisponivel') { atualizar(); return }
           const d = leitura.destino
@@ -106,7 +116,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           if (d.tipo === 'atendimento') {
             abrirAtendimento(d.empresaId)
             // O card fica montado sob a lateral. Libere-o quando a lista mostrar a versão confirmada.
-            if ((consultaRecolhida !== undefined || atendimentoNaBusca) && d.empresaId === empresa.id && !r.aviso) {
+            if ((consultaRecolhida !== undefined || atendimentoLateral) && d.empresaId === empresa.id && !r.aviso) {
               setResolvido({ versaoAtendimento: r.versao })
             }
           }
@@ -122,13 +132,13 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           if (d.tipo === 'sem_interesse') router.push(urlPessoal({ ...filtros, disponibilidade: 'sem_interesse' }, 1))
         } catch { setErro('Envio confirmado. Atualize a página para conferir a situação atual.') }
       } catch { setErro('Não foi possível confirmar. Tente novamente para confirmar o mesmo envio.') }
-      finally { ocupado.current = false; comandoNaBusca?.liberar() }
+      finally { ocupado.current = false; comandoLateral?.liberar() }
     })
   }
-  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} idAcao={idAcao} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={atendimentoNaBusca?.bloqueado || (bloquearRetomada && empresa.situacao === 'sem_interesse')} consultaBloqueada={atendimentoNaBusca?.consultaBloqueada} />
+  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} idAcao={idAcao} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={atendimentoLateral?.bloqueado || (bloquearRetomada && empresa.situacao === 'sem_interesse')} consultaBloqueada={atendimentoLateral?.consultaBloqueada} />
     {erro && <p role="alert">{erro}</p>}
     {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}
-    {resolvido && <Button variant="outline" disabled={atendimentoNaBusca?.bloqueado} onClick={() => {
+    {resolvido && <Button variant="outline" disabled={atendimentoLateral?.bloqueado} onClick={() => {
       try {
         const salvo = sessionStorage.getItem(storage)
         if (salvo && JSON.parse(salvo).chave === chaveResolvida.current) sessionStorage.removeItem(storage)
