@@ -13,6 +13,7 @@ import { FormularioContato } from '@/src/features/contato/formulario'
 import { contatoPendente, descartarRascunhoContato, rascunhoAlterado, rascunhoInicial } from '@/src/features/contato/rascunho'
 import type { NegociacaoDetalhe } from '@/src/features/funil/consulta'
 import { proximaEtapa } from '@/src/lib/comercial'
+import { dataCivilSaoPaulo } from '@/src/lib/agenda-periodos'
 import { HistoricoComercial } from '@/src/components/crm/historico-comercial'
 import { filtrarEventosHistorico, type FiltroHistoricoComercial, type EventoHistoricoComercial } from '@/src/lib/historico-comercial'
 import { ROTULO, type TipoContato } from '@/src/features/contato/tipos'
@@ -31,6 +32,8 @@ type Leitura = 'menu' | 'passo' | 'historico'
 type Modo = Leitura | 'venda' | 'atendimento'
 type PedidoDescarte = { destino: 'fechar' | Leitura | 'voltar' | 'arquivo' | 'venda'; origem?: Leitura; depois?: () => void }
 type ConfirmacaoVenda = Extract<EstadoVenda, { ok: true }>
+
+const DATA_VENDA_VAZIA = { inicial: '', atual: '' }
 
 export type PedirFecharNegociacao = (depois?: () => void) => void
 
@@ -90,7 +93,9 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
   const [erroLeitura, setErroLeitura] = useState(false)
   const [erroTelefone, setErroTelefone] = useState(false)
   const [fechandoVenda,setFechandoVenda]=useState(false)
-  const [valor,setValor]=useState(''),[data,setData]=useState(''),[nota,setNota]=useState('')
+  const [valor,setValor]=useState(''),[nota,setNota]=useState('')
+  const [dataVenda, setDataVenda] = useState(DATA_VENDA_VAZIA)
+  const data = dataVenda.atual
   const [confirmado,setConfirmado]=useState(false),[descarte,setDescarte]=useState<PedidoDescarte|null>(null)
   const [pendente,setPendente]=useState(false),[telefone,setTelefone]=useState<string|null>(null),[buscandoTelefone,setBuscandoTelefone]=useState(false)
   const [indisponivel,setIndisponivel]=useState(false)
@@ -120,7 +125,8 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     history.back()
   },[])
   const [baseline]=useState(()=>rascunhoInicial(true))
-  const dirty=!fechandoVenda&&!!(valor||data||nota||rascunhoAlterado(rascunho,baseline)||contatoAlterado(sessao))
+  const vendaAlterada = Boolean(valor || nota) || data !== dataVenda.inicial
+  const dirty = !fechandoVenda && (vendaAlterada || rascunhoAlterado(rascunho, baseline) || contatoAlterado(sessao))
   const dirtyRef=useRef(dirty)
   // O replay pode nascer em outro consumidor do mesmo ator, sem pendência local.
   const vendaPendenteRef = useRef(venda.pendente)
@@ -207,7 +213,16 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     pedidoTelefone.current++
     setBuscandoTelefone(false)
     setErroTelefone(false)
+    setDataVenda(DATA_VENDA_VAZIA)
     setModo(destino)
+  }
+
+  function abrirVendaNova(origem: Leitura) {
+    if (!venda.iniciarNovo()) return
+    const hoje = dataCivilSaoPaulo(new Date())
+    setDataVenda({ inicial: hoje, atual: hoje })
+    setOrigemTarefa(origem)
+    setModo('venda')
   }
 
   function pedir(destino: 'fechar' | Leitura | 'arquivo' | 'venda', depois?: () => void) {
@@ -232,7 +247,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
         focoDescarte.current = document.activeElement as HTMLElement | null
         setDescarte(atual => atual ?? { destino, depois, origem })
       } else if (destino === 'arquivo') depois?.()
-      else if (destino === 'venda') { if (venda.iniciarNovo()) { setOrigemTarefa(origem ?? 'passo'); setModo('venda') } }
+      else if (destino === 'venda') abrirVendaNova(origem)
       else voltarALeitura(destino)
     })
   }
@@ -263,7 +278,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     const { destino, depois, origem } = descarte
     setDescarte(null)
     setValor('')
-    setData('')
+    setDataVenda(DATA_VENDA_VAZIA)
     setNota('')
     setConfirmado(false)
     if (!preservar) setRascunho(rascunhoInicial(true))
@@ -276,7 +291,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
     if (destino === 'fechar') concluir(undefined, undefined, depois)
     else removerSentinela(() => {
       if (destino === 'arquivo') depois?.()
-      else if (destino === 'venda') { if (venda.iniciarNovo()) { setOrigemTarefa(origem ?? 'passo'); setModo('venda') } }
+      else if (destino === 'venda') abrirVendaNova(origem ?? 'passo')
       else voltarALeitura(destino)
     })
   }
@@ -440,7 +455,7 @@ export function PainelNegociacao({ id, usuarioId, fechar, fecharRef, aoPedirArqu
             <p>A empresa sairá do Funil e ficará na sua Carteira. O retorno agendado será mantido.</p>
             <fieldset disabled={pendente || confirmado} className={styles.secao}>
               <label>Valor em reais<Input inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} required placeholder="0,00" /></label>
-              <label>Data da venda<Input type="date" value={data} onChange={e => setData(e.target.value)} required /></label>
+              <label>Data da venda<Input type="date" value={data} onChange={e => setDataVenda({ ...dataVenda, atual: e.target.value })} required /></label>
               <label>Observação (opcional)<Textarea value={nota} onChange={e => setNota(e.target.value)} maxLength={2000} /></label>
             </fieldset>
             <p className={styles.muted}>Nesta versão, vendas não podem ser editadas nem excluídas. Confira os dados antes de confirmar.</p>

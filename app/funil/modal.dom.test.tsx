@@ -32,7 +32,7 @@ async function montar(id='a', props: Partial<ComponentProps<typeof PainelNegocia
 async function popstate(){await act(async()=>{window.dispatchEvent(new PopStateEvent('popstate'));await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))})}
 async function clicar(nome:string){const b=[...document.querySelectorAll('button')].find(e=>(e.textContent===nome||e.getAttribute('aria-label')===nome)&&!e.closest('[hidden]'));expect(b, nome).toBeTruthy();await act(async()=>{b!.focus();b!.click()})}
 async function escapar(){await act(async()=>document.activeElement?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true})))}
-async function escrever(valor:string){const e=document.querySelector('input')!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(e,valor);e.dispatchEvent(new Event('input',{bubbles:true}))})}
+async function escrever(valor:string, seletor = 'input'){const e=document.querySelector<HTMLInputElement>(seletor)!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(e,valor);e.dispatchEvent(new Event('input',{bubbles:true}))})}
 
 
 test('negociação mantém dados cadastrais no painel da empresa e abre sem modal', async () => {
@@ -275,6 +275,38 @@ test('resposta tardia após desmontagem não apresenta dados em outra abertura',
   await montar('b');await act(async()=>liberar(detalhe))
   expect(document.body.textContent).toContain('Boreal');expect(document.body.textContent).not.toContain('Aurora')
 })
+
+test('primeira venda usa o dia de São Paulo a cada abertura e permite cancelar sem edição', async () => {
+  vi.mocked(detalheAcao).mockResolvedValue(detalhe)
+  const armar = vi.spyOn(history, 'pushState')
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    vi.setSystemTime(new Date('2026-11-06T02:59:59.999Z'))
+    await montar()
+    await abrirVenda()
+    const campoData = () => host.querySelector<HTMLInputElement>('input[type="date"]')
+    expect(campoData()?.value).toBe('2026-11-05')
+
+    vi.setSystemTime(new Date('2026-11-06T03:00:00.000Z'))
+    expect(campoData()?.value).toBe('2026-11-05')
+    await clicar('Cancelar')
+    expect(campoData()).toBeNull()
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.activeElement?.textContent).toBe('Registrar venda')
+    expect(armar).not.toHaveBeenCalled()
+
+    await clicar('Registrar venda')
+    expect(campoData()?.value).toBe('2026-11-06')
+    await escrever('2026-11-04', 'input[type="date"]')
+    await clicar('Cancelar')
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Descartar alterações?')
+    await clicar('Continuar editando')
+    expect(campoData()?.value).toBe('2026-11-04')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 test('rascunho sobrevive ao Escape e erro de venda; envio bloqueia fechamento',async()=>{
   vi.mocked(detalheAcao).mockResolvedValue(detalhe)
   vi.spyOn(history,'back').mockImplementation(()=>{})
@@ -420,10 +452,13 @@ test('Voltar ao resumo durante retirada reavalia edição antes do popstate e re
 test('venda desconhecida congela correção e descarte e oferece fechar mantendo envio',async()=>{
  vi.mocked(detalheAcao).mockResolvedValue(detalhe);vi.spyOn(history,'back').mockImplementation(()=>{})
  await montar();await abrirVenda();await escrever('33,40')
+ await escrever('2026-11-05', 'input[type="date"]')
  await act(async()=>document.querySelector('form')!.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})))
+ expect(document.querySelector('[role="dialog"]')?.textContent).toContain('05/11/2026')
  vi.mocked(vendaAcao).mockRejectedValueOnce(Error('rede'));await clicar('Confirmar venda')
  const salvo=sessionStorage.getItem('crm:venda:v1:teste')
  expect(salvo).toContain('33,40')
+ expect(lerComandoVenda('teste')?.entrada.data).toBe('2026-11-05')
  expect([...document.querySelectorAll('button')].some(b=>b.textContent==='Corrigir dados')).toBe(false)
  expect(document.body.textContent).toContain('Fechar mantendo envio')
  await act(async()=>{await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))})

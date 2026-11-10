@@ -1,12 +1,139 @@
 import { expect, test } from '@playwright/test'
 import { comAdmin } from '../../src/server/db/admin'
 import { exigirAdminLocal } from './ambiente'
-import { ATENDIMENTO_A as A, ATENDIMENTO_B as B, ATENDIMENTO_ALHEIO as ALHEIO, ATENDIMENTO_FONTE as FONTE, BUSCA_ATENDIMENTO, GOOGLE_ATENDIMENTO } from './dados-atendimento'
+import {
+  ATENDIMENTO_A as A, ATENDIMENTO_B as B, ATENDIMENTO_ALHEIO as ALHEIO, ATENDIMENTO_FONTE as FONTE,
+  ATENDIMENTO_LATERAL, ATENDIMENTO_LATERAL_ARQUIVO, ATENDIMENTO_LATERAL_FUNIL, ATENDIMENTO_LATERAL_SEM_NAVIGATION,
+  BUSCA_ATENDIMENTO, GOOGLE_ATENDIMENTO,
+} from './dados-atendimento'
 async function sql(texto: string, valores: unknown[] = []) {
   const url = process.env.DATABASE_URL_ADMIN!
   exigirAdminLocal(url)
   return comAdmin(url, c => c.query(texto,valores))
 }
+
+test('atendimento lateral protege envio lento e recupera a resposta perdida após reload', async ({page}) => {
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
+  await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026')
+  await page.getByRole('button',{name:'Entrar',exact:true}).click()
+  await expect(page).toHaveURL('/meu-dia')
+  const busca='/fila/localizar?nome=Direto+Lateral&pagina=1&pesquisado=1'
+  await page.goto(busca)
+  await page.getByRole('button',{name:'Continuar atendimento',exact:true}).click()
+  const painel=page.locator('[data-painel-lateral]')
+  await expect(painel.getByRole('heading',{name:'Direto Lateral',exact:true})).toBeVisible()
+  await painel.getByLabel('Nota',{exact:true}).fill('Atendimento lateral enviado uma vez')
+  await painel.getByLabel('Liguei, não falei com ninguém',{exact:true}).check()
+
+  let liberar!:()=>void
+  const espera=new Promise<void>(resolver=>{liberar=resolver})
+  let interceptado=false
+  await page.route('**/fila/localizar/atendimento/'+ATENDIMENTO_LATERAL+'*',async route=>{
+    if (route.request().method()!=='POST'||interceptado) return route.continue()
+    interceptado=true
+    await espera
+    await route.fetch()
+    await route.abort('failed')
+  })
+  try {
+    await painel.getByRole('button',{name:'Registrar',exact:true}).click()
+    await expect.poll(()=>interceptado).toBe(true)
+    await expect(painel.getByRole('button',{name:'Fechar',exact:true})).toBeDisabled()
+    await page.keyboard.press('Escape')
+    await expect(painel).toBeVisible()
+    await expect(page.getByRole('dialog',{name:'Fechar com envio pendente?'})).toHaveCount(0)
+  } finally { liberar() }
+  await expect(painel.getByRole('alert')).toContainText('Não foi possível confirmar o envio')
+  expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[ATENDIMENTO_LATERAL])).rowCount).toBe(1)
+  const chaveAntes=await page.evaluate(id=>JSON.parse(sessionStorage.getItem('crm:contato:v1:'+id)??'null')?.envio?.chave,ATENDIMENTO_LATERAL)
+  expect(chaveAntes).toBeTruthy()
+
+  await painel.getByRole('button',{name:'Fechar',exact:true}).click()
+  const manter=page.getByRole('dialog',{name:'Fechar com envio pendente?'})
+  await expect(manter.getByRole('button',{name:'Descartar alterações'})).toHaveCount(0)
+  await manter.getByRole('button',{name:'Fechar mantendo envio'}).click()
+  await expect(page).toHaveURL(busca)
+  await page.getByRole('button',{name:'Continuar atendimento',exact:true}).click()
+  await expect(painel.getByRole('button',{name:'Confirmar envio anterior',exact:true})).toBeVisible()
+
+  page.once('dialog',dialog=>dialog.accept())
+  await page.reload()
+  await expect(page).toHaveURL('/fila/atendimento/'+ATENDIMENTO_LATERAL+'?nome=Direto+Lateral&pagina=1')
+  await expect(page.getByLabel('Nota',{exact:true})).toHaveValue('Atendimento lateral enviado uma vez')
+  expect(await page.evaluate(id=>JSON.parse(sessionStorage.getItem('crm:contato:v1:'+id)??'null')?.envio?.chave,ATENDIMENTO_LATERAL)).toBe(chaveAntes)
+  await page.getByRole('button',{name:'Confirmar envio anterior',exact:true}).click()
+  await expect(page.getByText('Envio anterior confirmado. Dados atualizados.')).toBeVisible()
+  expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[ATENDIMENTO_LATERAL])).rowCount).toBe(1)
+  await page.goBack()
+  await expect(page).toHaveURL(busca)
+  await expect(painel).toHaveCount(0)
+  await expect(page.getByRole('button',{name:'Continuar atendimento',exact:true})).toBeVisible()
+})
+
+for (const [id,nome,tipo,rotulo] of [
+  [ATENDIMENTO_LATERAL_ARQUIVO,'Direto para arquivo','sem_interesse','Falei, não tem interesse'],
+  [ATENDIMENTO_LATERAL_FUNIL,'Direto para negociação','interessado','Falei, tem interesse'],
+] as const) {
+  test('atendimento lateral registra uma vez e abre destino '+tipo, async ({page}) => {
+    await page.goto('/login')
+    await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
+    await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026')
+    await page.getByRole('button',{name:'Entrar',exact:true}).click()
+    await expect(page).toHaveURL('/meu-dia')
+    const busca=new URLSearchParams({nome,disponibilidade:'comigo',pagina:'1',pesquisado:'1'})
+    await page.goto('/fila/localizar?'+busca)
+    await page.getByRole('button',{name:'Continuar atendimento',exact:true}).click()
+    const painel=page.locator('[data-painel-lateral]')
+    await expect(painel.getByRole('heading',{name:nome,exact:true})).toBeVisible()
+    await painel.getByLabel(rotulo,{exact:true}).check()
+    await painel.getByLabel('Nota',{exact:true}).fill('Resultado confirmado na lateral')
+    await painel.getByRole('button',{name:'Registrar',exact:true}).click()
+
+    if (tipo==='sem_interesse') {
+      await expect(page).toHaveURL(url=>url.pathname==='/fila/localizar'&&url.searchParams.get('nome')===nome
+        &&url.searchParams.get('disponibilidade')==='sem_interesse'&&url.searchParams.get('pagina')==='1')
+      await expect(page.getByRole('heading',{name:nome,exact:true})).toBeVisible()
+      await expect(painel).toHaveCount(0)
+    } else {
+      await expect(page).toHaveURL(url=>url.pathname==='/funil'&&url.searchParams.has('negociacao'))
+      const negociacoes=await sql('SELECT id FROM negociacao WHERE empresa_id=$1 AND encerrada_em IS NULL',[id])
+      expect(negociacoes.rowCount).toBe(1)
+      await expect(page).toHaveURL('/funil?negociacao='+negociacoes.rows[0].id)
+      await expect(painel.getByRole('heading',{name:nome,exact:true})).toBeVisible()
+    }
+    expect((await sql('SELECT tipo,nota FROM contato WHERE empresa_id=$1',[id])).rows).toEqual([{tipo,nota:'Resultado confirmado na lateral'}])
+    expect(await page.evaluate(alvo=>sessionStorage.getItem('crm:contato:v1:'+alvo),id)).toBeNull()
+  })
+}
+
+test('atendimento lateral fecha em um clique após salvar sem a API Navigation',async({page})=>{
+  await page.addInitScript(()=>Object.defineProperty(window,'navigation',{configurable:true,value:undefined}))
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
+  await page.getByLabel('Senha',{exact:true}).fill('Senha-e2e-2026')
+  await page.getByRole('button',{name:'Entrar',exact:true}).click()
+  await expect(page).toHaveURL('/meu-dia')
+  const nome='Direto sem API de navegação'
+  const busca='/fila/localizar?'+new URLSearchParams({nome,pagina:'1',pesquisado:'1'})
+  await page.goto(busca)
+  const continuar=page.getByRole('button',{name:'Continuar atendimento',exact:true})
+  await continuar.click()
+  const painel=page.locator('[data-painel-lateral]')
+  await expect(painel.getByRole('heading',{name:nome,exact:true})).toBeVisible()
+  await painel.getByLabel('Liguei, não falei com ninguém',{exact:true}).check()
+  await painel.getByLabel('Nota',{exact:true}).fill('Contato sem API Navigation')
+  const registrar=painel.getByRole('button',{name:'Registrar',exact:true})
+  await registrar.click()
+  await expect(painel.getByText('Atendimento registrado.',{exact:true})).toBeVisible()
+  await expect(registrar).toBeEnabled()
+  expect((await sql('SELECT id FROM contato WHERE empresa_id=$1',[ATENDIMENTO_LATERAL_SEM_NAVIGATION])).rowCount).toBe(1)
+  await painel.getByRole('button',{name:'Fechar',exact:true}).click()
+  await expect(page).toHaveURL(busca)
+  await expect(painel).toHaveCount(0)
+  await expect(continuar).toBeFocused()
+})
+
 test('jornada explícita preserva notas, confirma resposta perdida e recusa aba antiga', async ({ page, context }) => {
   await page.goto('/login')
   await page.getByLabel('E-mail').fill('diretoe2e@teste.local')

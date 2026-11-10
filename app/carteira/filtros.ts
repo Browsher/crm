@@ -37,13 +37,19 @@ function textoComparavel(valor: string): string {
   return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
 }
 
+export function localizacaoCarteira(empresa: EmpresaComigo) {
+  if (empresa.endereco) return { cidade: empresa.endereco.localidade, uf: empresa.endereco.uf }
+  const uf = empresa.empresa?.uf?.trim().toUpperCase() ?? ''
+  return { cidade: empresa.empresa?.cidade ?? null, uf: UFS.has(uf) ? uf : null }
+}
+
 export function filtrarCarteira(linhas: EmpresaComigo[], filtros: FiltrosCarteira): EmpresaComigo[] {
   const nome = textoComparavel(filtros.nome)
   return linhas
     .filter(linha => {
       const nomes = textoComparavel(`${linha.razaoSocial ?? ''} ${linha.nomeFantasia ?? ''}`)
       if (nome && !nomes.includes(nome)) return false
-      if (filtros.uf && linha.endereco?.uf !== filtros.uf) return false
+      if (filtros.uf && localizacaoCarteira(linha).uf !== filtros.uf) return false
       if (filtros.retorno && linha.situacaoRetorno !== filtros.retorno) return false
       return true
     })

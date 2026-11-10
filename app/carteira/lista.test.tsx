@@ -31,12 +31,30 @@ const ENDERECO_SP = {
 }
 
 describe('ListaCarteira', () => {
-  test('com empresas, monta tabela com as próximas ações reais e sem compra fictícia', () => {
-    const saida = renderToStaticMarkup(<ListaCarteira linhas={[UMA]} />)
-    expect(saida).toContain('<table')
+  test('com empresas, apresenta um card com uma única entrada para a ficha', () => {
+    const cliente: EmpresaComigo = {
+      ...UMA, situacao: 'cliente', cep: '13000001',
+      empresa: {
+        referencia: { tipo: 'cadastro', empresaId: UMA.id }, id: UMA.id,
+        nome: UMA.razaoSocial!, cnpj: UMA.cnpj, cnae: null, atividade: null,
+        bairro: null, cidade: 'Jundiaí', uf: 'SP', origens: ['banco'], recebidaEm: null,
+        situacao: 'cliente', versao: 1, negociacaoId: null,
+      },
+    }
+    const saida = renderToStaticMarkup(<ListaCarteira linhas={[cliente]} />)
+    expect(saida).toContain('data-slot="card"')
+    expect(saida).toContain('role="article"')
+    expect(saida).not.toContain('<table')
     expect(saida).toContain('Aurora Comercio LTDA')
-    expect(saida).toContain('Ver cliente')
+    expect(saida).toContain('Jundiaí, SP')
+    expect(saida).not.toContain('Localização não encontrada')
+    const filtrada = renderToStaticMarkup(<ListaCarteira linhas={[cliente]} filtros={{ nome: '', uf: 'SP', retorno: '' }} />)
+    expect(filtrada).toContain('Jundiaí, SP')
+    expect(saida).toContain('Última atividade')
     expect(saida).toContain('Próximo passo')
+    expect(saida.match(/>Ver cliente<\/a>/g)).toHaveLength(1)
+    expect(saida).not.toContain('Abrir na carteira')
+    expect(saida).not.toContain('Ver empresa')
     expect(saida).not.toContain('Última compra')
   })
 
@@ -147,15 +165,22 @@ test('ficha com consulta recusada apresenta aviso de erro e conserva a mensagem'
   expect(saida).not.toContain('Sua carteira está vazia')
 })
 
-test('registros mantêm caption, cabeçalhos e rótulos de todas as células no celular', () => {
+test('card conserva cabeçalho, rótulos das informações e rodapé', () => {
   const saida = renderToStaticMarkup(<ListaCarteira linhas={[{ ...UMA, razaoSocial: 'Nome muito longo '.repeat(30) }]} />)
-  expect(saida).toContain('<caption')
-  expect(saida).toContain('Clientes da sua carteira')
-  expect(saida.match(/scope="col"/g)).toHaveLength(6)
-  for (const rotulo of ['Empresa', 'Contato principal', 'Última atividade', 'Próximo passo', 'Retorno', 'Ações']) {
-    expect(saida).toContain(`data-label="${rotulo}"`)
-  }
+  expect(saida).toContain('data-slot="card-header"')
+  expect(saida).toContain('data-slot="card-content"')
+  expect(saida).toContain('data-slot="card-footer"')
+  expect(saida).toContain('<dt>Última atividade</dt>')
+  expect(saida).toContain('<dt>Próximo passo</dt>')
   expect(saida).toContain('Contato principal não informado')
   expect(saida).toContain('Localização não informada')
   expect(saida).toContain('Ver cliente')
+})
+
+test('cliente sem interesse continua identificado e acessível pela ficha', () => {
+  const saida = renderToStaticMarkup(<ListaCarteira linhas={[{ ...UMA, situacao: 'sem_interesse' }]} />)
+  expect(saida).toContain('Sem interesse')
+  expect(saida).toContain('Sem agendamento')
+  expect(saida).toContain(`href="/carteira/${UMA.id}"`)
+  expect(saida).not.toContain('Retomar atendimento')
 })

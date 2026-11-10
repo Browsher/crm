@@ -1,7 +1,7 @@
 'use client'
 
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useGuardaNavegacaoEdicao } from '@/src/components/crm/descarte-edicao'
+import { useGuardaNavegacaoEdicao } from './descarte-edicao'
 
 type Saida = 'tarefa' | 'ficha' | 'navegador' | (() => void)
 type Marca = { href: string; id: string }
@@ -68,9 +68,9 @@ function marcaAtual(): Marca | null {
   } catch { return null }
 }
 
-// Um único editor ocupa a ficha. A entrada sentinela repete somente a URL
-// atual, com a árvore do App Router, e é retirada antes de sair da ficha.
-export function useGuardaFicha(alterada: boolean, pendente: boolean, bloqueada: () => boolean, aoSair: (saida: Saida) => void) {
+// Um único editor ocupa o painel. A entrada sentinela repete somente a URL
+// atual, com a árvore do App Router, e é retirada antes de sair do painel.
+export function useGuardaPainelEdicao(alterada: boolean, pendente: boolean, bloqueada: () => boolean, aoSair: (saida: Saida) => void) {
   const [pedido, setPedido] = useState<Saida | null>(null)
   const pedidoAtivo = useRef(false)
   const [restaurando, setRestaurando] = useState(() => typeof window !== 'undefined' && !!navegacaoDoNavegador()?.currentEntry && !!marcaAtual())

@@ -6,14 +6,35 @@
 .cabecalhoResultados h2 { font-size:18px; line-height:26px; font-weight:600; }
 .contagem { margin:0; color:var(--ui-muted-foreground); font-size:.875rem; }
 .aviso { margin:0; color:var(--ui-muted-foreground); }
-.tabela { min-width:760px; }
-.tabela td { vertical-align:top; }
-.tabela h3 { font-size:14px; font-weight:600; }
-.tabela td p + p, .tabela td h3 + p { margin-top:4px; }
-.tabela td:first-child p, .tabela time { color:var(--muted-foreground); font-size:12px; }
-.tabela time { display:block; margin-top:4px; font-variant-numeric:tabular-nums; }
-.tabela th:first-child { width:24%; }
-.tabela th:last-child { width:144px; }
+.clientes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.cliente {
+  --card-padding:18px;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  gap:12px;
+  min-width:0;
+  padding-block:16px;
+  overflow-wrap:anywhere;
+}
+.clienteCabecalho { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.clienteCabecalho > div:first-child { min-width:0; }
+.clienteCabecalho h3 { font-size:16px; line-height:22px; font-weight:600; }
+.situacoes { display:flex; flex:0 0 auto; flex-direction:column; align-items:flex-end; gap:4px; }
+.metadado { display:block; margin-top:4px; color:var(--muted-foreground); font-size:12px; font-variant-numeric:tabular-nums; }
+.clienteDetalhes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; border-top:1px solid var(--border); padding-top:12px; }
+.clienteDetalhes dt { margin-bottom:4px; color:var(--muted-foreground); font-size:12px; }
+.proximoPasso { font-weight:600; }
+.clienteRodape {
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:8px 12px;
+  margin-inline:var(--card-padding);
+  border-top:1px solid var(--border);
+  padding:12px 0 0;
+}
+.clienteRodape a { margin-left:auto; }
+.contato { color:var(--muted-foreground); font-size:12px; }
+.contato strong { color:var(--foreground); }
+@media (max-width:820px) { .clientes { grid-template-columns:minmax(0,1fr); } }
 @media (max-width:760px) { .pagina { padding:1.25rem; } }
 @media (max-width:420px) { .pagina { padding:1rem; } }
-@media (max-width:600px) { .tabela { min-width:0; } }
