@@ -1,10 +1,11 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-const m = vi.hoisted(() => ({ exigir: vi.fn(), repo: vi.fn(), ler: vi.fn(), limite: vi.fn(), detalhes: vi.fn() }))
+const m = vi.hoisted(() => ({ exigir: vi.fn(), repo: vi.fn(), ler: vi.fn(), limite: vi.fn(), detalhes: vi.fn(), resumos: vi.fn(), atendimento: vi.fn(), historico: vi.fn() }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: m.exigir }))
 vi.mock('@/src/features/busca-empresas/repositorio', () => ({ repositorioBusca: m.repo }))
 vi.mock('@/src/server/empresas/detalhes', () => ({ lerDetalhesEmpresa: m.detalhes }))
-vi.mock('@/src/server/atendimento/consulta', () => ({ lerResumosBusca: vi.fn(async () => ({ok:true,empresas:[]})) }))
-import { lerDetalheBuscaAcao, lerEmpresaBuscaAcao, lerDetalhesEmpresaAcao } from './detalhe-acao'
+vi.mock('@/src/server/atendimento/consulta', () => ({ lerResumosBusca: m.resumos, lerAtendimento: m.atendimento }))
+vi.mock('@/src/features/contato/historico', () => ({ lerHistorico: m.historico }))
+import { lerAtendimentoBuscaAcao, lerDetalheBuscaAcao, lerEmpresaBuscaAcao, lerDetalhesEmpresaAcao } from './detalhe-acao'
 import { EmpresaDetalhes } from '@/src/components/crm/empresa-detalhes'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { isValidElement } from 'react'
@@ -16,6 +17,7 @@ beforeEach(() => {
   m.repo.mockReturnValue({ ler: m.ler, meuLimite: m.limite })
   m.ler.mockResolvedValue({ id: 'busca', empresas: [] } as unknown as BuscaSalva)
   m.limite.mockResolvedValue({ pausado: true })
+  m.resumos.mockResolvedValue({ ok: true, empresas: [] })
 })
 test('exige sessão válida antes de qualquer leitura', async () => {
   m.exigir.mockRejectedValue(new Error('sessão necessária'))
@@ -77,4 +79,32 @@ test('adapter de empresa preserva a guarda antes de tratar falhas de leitura',as
  m.exigir.mockRejectedValue(new Error('sessão necessária'))
  await expect(lerEmpresaBuscaAcao('busca','99887766000105')).rejects.toThrow('sessão necessária')
  expect(m.detalhes).not.toHaveBeenCalled()
+})
+
+test('atendimento exige sessão de vendedor antes de consultar a associação', async () => {
+  m.exigir.mockRejectedValueOnce(new Error('sessão necessária'))
+  await expect(lerAtendimentoBuscaAcao('busca', 'empresa')).rejects.toThrow('sessão necessária')
+  expect(m.exigir).toHaveBeenCalledWith('vendedor')
+  expect(m.resumos).not.toHaveBeenCalled()
+})
+
+test('atendimento só expõe a empresa que pertence à busca salva e tem vínculo do vendedor', async () => {
+  m.resumos.mockResolvedValueOnce({ ok: true, empresas: [{ id: 'outra' }] })
+  expect(await lerAtendimentoBuscaAcao('busca', 'empresa')).toMatchObject({ ok: false })
+  expect(m.resumos).toHaveBeenCalledWith('da-sessao', 'busca')
+  expect(m.atendimento).not.toHaveBeenCalled()
+  expect(m.historico).not.toHaveBeenCalled()
+})
+
+test('atendimento lê o editor e histórico pelo vendedor e mantém falha de histórico como erro recuperável', async () => {
+  const empresa = { id: 'empresa' }
+  m.resumos.mockResolvedValue({ ok: true, empresas: [empresa] })
+  m.atendimento.mockResolvedValue({ ok: true, empresa, fase: 'inicial' })
+  m.historico.mockResolvedValueOnce({ ok: true, contatos: [{ id: 'contato' }] }).mockRejectedValueOnce(new Error('detalhe privado'))
+  expect(await lerAtendimentoBuscaAcao('busca', 'empresa')).toEqual({ ok: true, dados: {
+    empresaId: 'empresa', empresa, fase: 'inicial', contatos: [{ id: 'contato' }], filtros: { origem: 'banco' },
+  } })
+  expect(m.atendimento).toHaveBeenCalledWith('da-sessao', 'empresa')
+  expect(m.historico).toHaveBeenCalledWith('da-sessao', 'empresa')
+  expect(await lerAtendimentoBuscaAcao('busca', 'empresa')).toEqual({ ok: false, erro: 'Não foi possível carregar o atendimento. Tente novamente.' })
 })

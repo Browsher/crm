@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { Alert } from '@/src/components/ui/alert'
 import { Button } from '@/src/components/ui/button'
@@ -22,7 +22,12 @@ function assinarEnvio(avisar: () => void) {
   return () => window.removeEventListener('crm-contato', avisar)
 }
 
-export function PainelAtendimento({ empresaId, ...dados }: Omit<PropsFormulario, 'lateral'> & { empresaId: string }) {
+export type DadosPainelAtendimento = Omit<PropsFormulario, 'lateral'> & { empresaId: string }
+
+// Com aoVoltar, a raiz do diálogo já pertence à busca.
+export function PainelAtendimento({ empresaId, aoVoltar, aoAtualizar, avisoAtualizacao, ...dados }: DadosPainelAtendimento & {
+  aoVoltar?: () => void; aoAtualizar?: () => void; avisoAtualizacao?: ReactNode
+}) {
   const router = useRouter()
   const tema = useTemaCrm()
   const rascunhos = useRascunhos()
@@ -43,6 +48,7 @@ export function PainelAtendimento({ empresaId, ...dados }: Omit<PropsFormulario,
   const envioPendente = useSyncExternalStore(assinarEnvio, () => contatoPendente(empresaId), () => false)
   const guarda = useGuardaPainelEdicao(alterado || envioPendente, pendente, () => envioEmVoo.current, saida => {
     if (typeof saida === 'function') saida()
+    else if (aoVoltar) aoVoltar()
     else router.back()
   })
 
@@ -82,12 +88,11 @@ export function PainelAtendimento({ empresaId, ...dados }: Omit<PropsFormulario,
     guarda.confirmar()
   }
 
-  return <>
-    <Dialog open={!guarda.restaurando}>
-      <PainelSobrepostoCrm titulo={dados.empresa.nome} descricao={rotuloSituacao(dados.empresa.situacao)}
+  const editor = !guarda.restaurando && <PainelSobrepostoCrm titulo={dados.empresa.nome} descricao={rotuloSituacao(dados.empresa.situacao)}
         aoFechar={voltar} rotuloFechar={dadosAbertos ? 'Voltar' : 'Fechar'} fecharBloqueado={pendente || Boolean(guarda.pedido)}
         ocupado={pendente} rodape={dadosAbertos ? null : <div ref={setDestinoAcoes} />} onCloseAutoFocus={evento => {
           evento.preventDefault()
+          if (aoVoltar) return
           const gatilho = document.getElementById(idGatilhoAtendimento(empresaId))
           const alvo = gatilho instanceof HTMLButtonElement && !gatilho.disabled
             ? gatilho
@@ -101,12 +106,15 @@ export function PainelAtendimento({ empresaId, ...dados }: Omit<PropsFormulario,
               rolagemEditor.current = evento.currentTarget.closest('[data-painel-corpo]')?.scrollTop ?? 0
               setDadosAbertos(true)
             }}>Dados da empresa</Button>
+          {avisoAtualizacao}
+          {aoVoltar && !envioPendente && dados.empresa.situacao === 'a_contatar' && <Alert>Volte aos resultados e escolha Iniciar atendimento para registrar um contato.</Alert>}
           <Formulario {...dados} lateral={{
             destinoAcoes,
             aoEditar: valor => setAlterado(rascunhoAlterado(valor)),
             aoSalvar: navegar => {
               setAlterado(false)
               if (navegar) guarda.concluir(navegar)
+              else aoAtualizar?.()
             },
             aoMudarEnvio: mudarEnvio,
             aoCancelar: () => guarda.pedir('ficha'),
@@ -117,7 +125,9 @@ export function PainelAtendimento({ empresaId, ...dados }: Omit<PropsFormulario,
           <ConteudoConsultaEmpresa referencia={dados.empresa.referencia} grupo={grupo} aoAbrir={setGrupo} />
         </section>}
       </PainelSobrepostoCrm>
-    </Dialog>
+
+  return <>
+    {aoVoltar ? editor : <Dialog open={!guarda.restaurando}>{editor}</Dialog>}
     <Dialog open={Boolean(guarda.pedido)} onOpenChange={aberto => { if (!aberto) cancelarDescarte() }}>
       <DialogContent theme={tema} showCloseButton={false}
         onOpenAutoFocus={evento => { evento.preventDefault(); neutro.current?.focus() }}

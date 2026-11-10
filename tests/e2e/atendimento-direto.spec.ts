@@ -3,6 +3,7 @@ import { comAdmin } from '../../src/server/db/admin'
 import { exigirAdminLocal } from './ambiente'
 import {
   ATENDIMENTO_A as A, ATENDIMENTO_B as B, ATENDIMENTO_ALHEIO as ALHEIO, ATENDIMENTO_FONTE as FONTE,
+  ATENDIMENTO_HISTORICO_BANCO,
   ATENDIMENTO_LATERAL, ATENDIMENTO_LATERAL_ARQUIVO, ATENDIMENTO_LATERAL_BANCO, ATENDIMENTO_LATERAL_FUNIL, ATENDIMENTO_LATERAL_SEM_NAVIGATION,
   BUSCA_ATENDIMENTO, GOOGLE_ATENDIMENTO,
 } from './dados-atendimento'
@@ -11,6 +12,92 @@ async function sql(texto: string, valores: unknown[] = []) {
   exigirAdminLocal(url)
   return comAdmin(url, c => c.query(texto,valores))
 }
+
+test('histórico do Banco abre atendimento na lateral e devolve à busca certa', async ({ page }) => {
+  test.setTimeout(60_000)
+  const { nome, iniciada, nova, arquivada } = ATENDIMENTO_HISTORICO_BANCO
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/login')
+  await page.getByLabel('E-mail').fill('diretoe2e@teste.local')
+  await page.getByLabel('Senha', { exact: true }).fill('Senha-e2e-2026')
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await expect(page).toHaveURL('/meu-dia')
+  await page.goto('/fila/buscar?fonte=banco')
+  const historico = page.getByRole('tab', { name: 'Histórico de buscas', exact: true })
+  await historico.click()
+  await page.getByRole('button', { name: `Ver empresas: ${nome}`, exact: true }).click()
+  const busca = page.getByRole('dialog', { name: nome, exact: true })
+  const paineis = page.locator('[data-painel-lateral]:visible')
+  const corpo = busca.locator('[data-painel-corpo]')
+  const acao = (empresa: string, rotulo: string) => busca.locator('[data-slot=card]')
+    .filter({ has: page.getByRole('heading', { name: empresa, exact: true }) })
+    .getByRole('button', { name: rotulo, exact: true })
+  const editor = (empresa: string) => page.getByRole('dialog', { name: empresa, exact: true })
+  const continuar = acao(iniciada.nome, 'Continuar atendimento')
+  await continuar.scrollIntoViewIfNeeded()
+  const rolagem = await corpo.evaluate(el => el.scrollTop)
+  expect(rolagem).toBeGreaterThan(0)
+  await continuar.click()
+  const desktop = editor(iniciada.nome)
+  await expect(desktop.getByLabel('Nota', { exact: true })).toBeVisible()
+  await expect(paineis).toHaveCount(1)
+  await expect(page).toHaveURL('/fila/buscar?fonte=banco')
+  expect(await desktop.boundingBox()).toMatchObject({ x: 920, width: 520 })
+
+  await desktop.getByLabel('Nota', { exact: true }).fill('Rascunho temporário no histórico')
+  await page.keyboard.press('Escape')
+  const descarte = page.getByRole('dialog', { name: 'Descartar alterações?', exact: true })
+  await descarte.getByRole('button', { name: 'Continuar editando', exact: true }).click()
+  await expect(desktop.getByLabel('Nota', { exact: true })).toHaveValue('Rascunho temporário no histórico')
+  await desktop.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await descarte.getByRole('button', { name: 'Descartar alterações', exact: true }).click()
+  await expect(continuar).toBeFocused()
+  await expect.poll(() => corpo.evaluate(el => el.scrollTop)).toBe(rolagem)
+
+  await continuar.click()
+  await expect(desktop.getByLabel('Nota', { exact: true })).toHaveValue('')
+  await desktop.getByLabel('Liguei, não falei com ninguém', { exact: true }).check()
+  const notaRegistrada = 'Tentativa registrada a partir da busca salva'
+  await desktop.getByLabel('Nota', { exact: true }).fill(notaRegistrada)
+  await desktop.getByRole('button', { name: 'Registrar', exact: true }).click()
+  const linhaDoTempo = desktop.getByRole('region', { name: 'Histórico comercial', exact: true })
+  await linhaDoTempo.getByRole('button', { name: 'Expandir todos', exact: true }).click()
+  await expect(linhaDoTempo.getByText(notaRegistrada, { exact: true })).toBeVisible()
+  await desktop.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(continuar).toBeFocused()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const [empresa, rotulo, operacao] of [[nova, 'Iniciar atendimento', 'iniciar'], [arquivada, 'Retomar atendimento', 'retomar']] as const) {
+    if (operacao === 'iniciar') {
+      let respostaPerdida = false
+      await page.route('**/fila/buscar*', async rota => {
+        const pedido = rota.request()
+        if (respostaPerdida || pedido.method() !== 'POST' || !pedido.postData()?.includes(empresa.id)) return rota.continue()
+        respostaPerdida = true
+        await rota.fetch()
+        await rota.abort('failed')
+      })
+      await acao(empresa.nome, rotulo).click()
+      await expect(busca.getByRole('alert')).toContainText('Não foi possível confirmar')
+      expect(respostaPerdida).toBe(true)
+      await page.unroute('**/fila/buscar*')
+    }
+    await acao(empresa.nome, rotulo).click()
+    const movel = editor(empresa.nome)
+    await expect(movel.getByLabel('Nota', { exact: true })).toBeVisible()
+    await expect(paineis).toHaveCount(1)
+    expect(await movel.boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 })
+    await movel.getByRole('button', { name: 'Fechar', exact: true }).click()
+    await expect(acao(empresa.nome, 'Continuar atendimento')).toBeFocused()
+    expect((await sql('SELECT operacao FROM empresa_atendimento_operacao WHERE empresa_id=$1 AND operacao=$2', [empresa.id, operacao])).rows).toEqual([{ operacao }])
+  }
+  await busca.getByRole('button', { name: 'Fechar', exact: true }).click()
+  await expect(paineis).toHaveCount(0)
+  await expect(historico).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL('/fila/buscar?fonte=banco')
+  expect((await sql('SELECT empresa_id, nota FROM contato WHERE empresa_id = ANY($1::uuid[])', [[iniciada.id, nova.id, arquivada.id]])).rows)
+    .toEqual([{ empresa_id: iniciada.id, nota: notaRegistrada }])
+})
 
 test('Banco de empresas abre o início na lateral e volta à consulta com foco', async ({ page }) => {
   await page.goto('/login')
