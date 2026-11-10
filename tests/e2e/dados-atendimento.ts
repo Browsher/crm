@@ -53,7 +53,7 @@ export async function prepararAtendimentoDireto(banco: BancoDeTeste): Promise<vo
     if (empresa !== nova) await banco.sql('UPDATE empresa_vinculo SET iniciada_em=now() WHERE empresa_id=$1', [empresa.id])
     if (empresa === arquivada) await banco.comoUsuario(eu.id, sql => sql('SELECT empresa_sem_interesse_definir($1,$2,$3,NULL)', [empresa.id, randomUUID(), versao]))
   }
-  await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas,inclusao_automatica_concluida) VALUES($1,$2,'{\"quantidade\":3}',3,'concluida',$3,true)",
+  await banco.sql("INSERT INTO busca_empresa(usuario_id,nome,filtros,quantidade,estado,empresas,inclusao_automatica_concluida,criado_em) VALUES($1,$2,'{\"quantidade\":3}',3,'concluida',$3,true,now()-interval '1 day')",
     [eu.id, nome, JSON.stringify(empresasHistorico.map(empresa => ({ cnpj: empresa.cnpj, razao_social: empresa.nome, telefone: '11981239762', telefones: [] })))])
   await banco.sql("INSERT INTO google_planejamento(id,vendedor_id,dia,nicho,bairro,cidade,uf,estado) VALUES($1,$2,'2026-10-29','Fontes','Centro','São Paulo','SP','concluido')",[GOOGLE_ATENDIMENTO,eu.id])
   await banco.sql("INSERT INTO google_resultado(planejamento_id,indice,empresa_id,dados,situacao,entregue_em) VALUES($1,1,$2,$3,'entregue',now())",[GOOGLE_ATENDIMENTO,ATENDIMENTO_FONTE,JSON.stringify(empresas[0])])
