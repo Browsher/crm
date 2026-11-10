@@ -62,10 +62,11 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, id, className, ...
 
 type PropsSobreposto = Omit<Props, 'id'> & {
   aoSair?: () => void
+  onOpenAutoFocus?: ComponentProps<typeof DialogContent>['onOpenAutoFocus']
   onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus']
 }
 
-export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSair, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
+export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSair, onOpenAutoFocus, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
   const cabecalho = useRef<HTMLHeadingElement>(null)
   const tema = useTemaCrm()
 
@@ -80,6 +81,8 @@ export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSa
     {...(rotulo ? { 'aria-label': rotulo, 'aria-labelledby': undefined } : {})}
     className={[styles.painel, className].filter(Boolean).join(' ')}
     onOpenAutoFocus={evento => {
+      onOpenAutoFocus?.(evento)
+      if (evento.defaultPrevented) return
       evento.preventDefault()
       cabecalho.current?.focus({ preventScroll: true })
     }}

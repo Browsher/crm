@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState, useContext, useId } from 'react'
+import { useActionState, useContext, useId, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { BuscaSalva } from '@/src/features/busca-empresas/tipos'
 import { Cartao } from '../cartao'
@@ -16,16 +16,20 @@ const inicial: EstadoImportarBusca = { erro: null, grupoId: null, inseridas: 0, 
 export function ResultadosBusca({ busca, bloqueada, resumos = [] }: { busca: BuscaSalva; bloqueada: boolean; resumos?: ResumoEmpresa[] }) {
   const [estado, acao, pendente] = useActionState(concluirInclusaoAcao, inicial)
   const contexto = useContext(ContextoResultadoBusca)
+  const registrarInclusao = contexto?.atendimento?.registrarInclusao
+  useLayoutEffect(() => { registrarInclusao?.(pendente) }, [registrarInclusao, pendente])
   const id = useId()
   const atuais = estado.resumos ?? resumos
   const grupo = estado.grupoId ?? busca.grupo_id
   const concluida = estado.concluido || busca.inclusao_automatica_concluida
   const retomar = !concluida && busca.empresas.some(e => e.telefone && !e.bloqueada_por_repeticao)
   const acoes = <>
-    {retomar && <Button type="submit" form={id} disabled={bloqueada || pendente}>{pendente ? 'Incluindo empresas…' : 'Concluir inclusão'}</Button>}
+    {retomar && <Button type="submit" form={id} disabled={bloqueada || pendente || contexto?.atendimento?.bloqueado}>{pendente ? 'Incluindo empresas…' : 'Concluir inclusão'}</Button>}
     {grupo && <Button variant="outline" asChild><Link href="/fila/localizar?origem=banco">Localizar minhas empresas</Link></Button>}
   </>
-  return <form id={id} action={acao} className={styles.resultado}>
+  return <form id={id} action={acao} className={styles.resultado} onSubmit={evento => {
+    if (contexto?.atendimento?.bloqueado) evento.preventDefault()
+  }}>
     <input type="hidden" name="busca" value={busca.id} />
     {estado.erro && <Alert variant="danger" role="alert">{estado.erro}</Alert>}
     {estado.aviso && <Alert role="status">{estado.aviso}</Alert>}

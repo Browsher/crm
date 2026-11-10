@@ -21,6 +21,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   const router = useRouter()
   const retomarNaConsulta = useRetomadaNaConsulta()
   const resultadoBusca = useContext(ContextoResultadoBusca)
+  const atendimentoNaBusca = resultadoBusca?.atendimento
   const [consulta, setConsulta] = useState<{ referencia: ReferenciaEmpresa; gatilho: HTMLButtonElement; escopo?: string } | null>(null)
   if (consulta && consulta.escopo !== escopoConsulta) setConsulta(null)
   const [erro, setErro] = useState('')
@@ -33,8 +34,15 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
   const ocupado = useRef(false)
   const chaveResolvida = useRef<string | null>(null)
   const storage = 'crm:acao-empresa:v1:' + empresa.id
+  const idAcao = empresa.id && atendimentoNaBusca ? atendimentoNaBusca.prefixoAcao + empresa.id
+    : consultaRecolhida !== undefined && empresa.id ? idGatilhoAtendimento(empresa.id) : undefined
+  function atualizar() {
+    if (atendimentoNaBusca) atendimentoNaBusca.atualizar()
+    else router.refresh()
+  }
   function abrirAtendimento(id: string) {
-    if (consultaRecolhida === undefined) router.push(urlAtendimento(id, filtros))
+    if (atendimentoNaBusca && idAcao) atendimentoNaBusca.abrir(id, idAcao)
+    else if (consultaRecolhida === undefined) router.push(urlAtendimento(id, filtros))
     else router.push(urlAtendimentoLateral(id, filtros, consultaRecolhida), { scroll: false })
   }
   function destino(acao: Extract<AcaoEmpresa, { href: string }>) {
@@ -42,7 +50,7 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     return acao.href
   }
   function acionar(acao: AcaoEmpresa) {
-    if (ocupado.current || resolvido) return
+    if (ocupado.current || resolvido || atendimentoNaBusca?.bloqueado) return
     let salvo: string | null
     try {
       salvo = sessionStorage.getItem(storage)
@@ -60,6 +68,8 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
     } catch { setErro('Não foi possível recuperar o envio anterior. Confira o armazenamento desta aba.'); return }
     if (bloquearRetomada && acao.tipo === 'retomar') return
     if (acao.tipo === 'retomar' && retomarNaConsulta?.(acao, filtros, consultaRecolhida)) return
+    const comandoNaBusca = atendimentoNaBusca?.travarComando()
+    if (atendimentoNaBusca && !comandoNaBusca) return
     ocupado.current = true
     iniciar(async () => {
       try {
@@ -88,14 +98,15 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           const atual = sessionStorage.getItem(storage)
           if (atual && JSON.parse(atual).chave !== comando.chave) return
           sessionStorage.removeItem(storage)
+          if (comandoNaBusca && !comandoNaBusca.estaAtivo()) return
           const leitura = r.leituraDestino
-          if (!leitura?.ok || leitura.destino.tipo === 'indisponivel') { router.refresh(); return }
+          if (!leitura?.ok || leitura.destino.tipo === 'indisponivel') { atualizar(); return }
           const d = leitura.destino
           setErro(r.aviso ?? '')
           if (d.tipo === 'atendimento') {
             abrirAtendimento(d.empresaId)
             // O card fica montado sob a lateral. Libere-o quando a lista mostrar a versão confirmada.
-            if (consultaRecolhida !== undefined && d.empresaId === empresa.id && !r.aviso) {
+            if ((consultaRecolhida !== undefined || atendimentoNaBusca) && d.empresaId === empresa.id && !r.aviso) {
               setResolvido({ versaoAtendimento: r.versao })
             }
           }
@@ -111,18 +122,17 @@ export function Cartao({ empresa, filtros = {}, hrefCarteira, bloquearRetomada =
           if (d.tipo === 'sem_interesse') router.push(urlPessoal({ ...filtros, disponibilidade: 'sem_interesse' }, 1))
         } catch { setErro('Envio confirmado. Atualize a página para conferir a situação atual.') }
       } catch { setErro('Não foi possível confirmar. Tente novamente para confirmar o mesmo envio.') }
-      finally { ocupado.current = false }
+      finally { ocupado.current = false; comandoNaBusca?.liberar() }
     })
   }
-  const idAcao = consultaRecolhida !== undefined && empresa.id ? idGatilhoAtendimento(empresa.id) : undefined
-  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} idAcao={idAcao} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={bloquearRetomada && empresa.situacao === 'sem_interesse'} />
+  return <div aria-busy={pendente}><CardEmpresa empresa={empresa} idAcao={idAcao} aoVer={resultadoBusca?.verEmpresa ?? ((referencia, gatilho) => setConsulta({ referencia, gatilho, escopo: escopoConsulta }))} aoAcionar={acionar} acaoBloqueada={atendimentoNaBusca?.bloqueado || (bloquearRetomada && empresa.situacao === 'sem_interesse')} consultaBloqueada={atendimentoNaBusca?.consultaBloqueada} />
     {erro && <p role="alert">{erro}</p>}
     {confirmarNaConsulta && <Button asChild variant="outline"><Link href={urlPessoal(filtros, Number(filtros.pagina || 1))}>Confirmar em Localizar empresas</Link></Button>}
-    {resolvido && <Button variant="outline" onClick={() => {
+    {resolvido && <Button variant="outline" disabled={atendimentoNaBusca?.bloqueado} onClick={() => {
       try {
         const salvo = sessionStorage.getItem(storage)
         if (salvo && JSON.parse(salvo).chave === chaveResolvida.current) sessionStorage.removeItem(storage)
-        setResolvido(false); setErro(''); router.refresh()
+        setResolvido(false); setErro(''); atualizar()
       } catch { setErro('Envio resolvido. Atualize a página para conferir as anotações desta aba.') }
     }}>Atualizar empresa</Button>}
     {consulta && <EmpresaDialogo referencia={consulta.referencia} origem={consulta.gatilho} aoFechar={() => setConsulta(null)} />}
