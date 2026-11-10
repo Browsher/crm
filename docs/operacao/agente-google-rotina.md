@@ -2,7 +2,9 @@
 
 Execute no checkout revisado C:\Users\ADM\.codex\worktrees\crm-redesign\crm. Leia docs/operacao/agente-google-crm.md, workflows/n8n/google/README.md e a skill google-maps-scraper. A rotina existente roda segunda a sexta às 17h, America/Sao_Paulo; sexta prepara segunda. O servidor escolhe os planos, os vendedores e congela a revisão. Cada vendedor preenche o próprio plano. Dia Não definido não roda; bairro vazio cobre a cidade inteira. Não preencha planos pelos vendedores.
 
-Use um único coordenador determinístico para os três motores. Não dispare subagentes ou comandos avulsos de coleta/reivindicação para V2. Os motores 01, 02 e 03 preservam suas pastas e executores. Não altere o motor original, volumes, jobs, banco, credenciais ou agendamento para contornar um bloqueio. Enriquecimento social continua desligado.
+Use um único coordenador, com um vendedor por vez. Pedidos novos usam o motor 01. Os motores 02 e 03 só são necessários para retomar pedidos que já estejam vinculados a eles. Preserve as pastas, volumes, jobs e executores dos três motores. Use o coordenador para coletar e reivindicar pedidos V2. Enriquecimento social continua desligado.
+
+Antes de usar esse modo no agendamento, confirme que o checkout operacional contém a versão integrada e concilie as execuções abertas no CRM com o journal, inclusive nos motores 02 e 03. Uma reivindicação anterior cuja resposta se perdeu pode existir no CRM antes de aparecer no journal. O motor que vai trabalhar precisa estar ligado. Para conferir apenas o motor 01, execute `powershell -NoProfile -File scripts/google/motores.ps1 -Acao Conferir -Motor 01`. A conferência não dispara coleta.
 
 Leia o journal privado em .google-agente/coordenador/journal.json. Se houver posição pendente, use retomar; caso contrário, rodar. Execute com terminal interativo mantendo stdin aberto:
 
@@ -12,7 +14,7 @@ node --env-file=.env.google-agente.local --import tsx scripts/google/coordenar.m
 
 Troque somente rodar por retomar quando necessário. O arquivo privado carrega a origem do CRM e os tokens somente no processo. Nunca imprima seus valores. O coordenador segura a exclusão inclusive enquanto aguarda o Drive. Não termine esse processo para atender outro vendedor. Não crie outro executor para escapar de uma pendência.
 
-O coordenador reivindica até três vendedores e executa os pipelines independentemente. Antes de cada nova onda exige 5.632 MiB disponíveis no Windows. Se faltar RAM, reporte que é necessário liberar ou aumentar RAM; preserve a fila. Não feche programas, não reduza a simultaneidade para contornar a regra, não remova jobs. Abaixo de 512 MiB ou com medição indisponível, novas admissões ficam suspensas e o trabalho iniciado é preservado.
+O coordenador termina a entrega de um vendedor antes de reivindicar o seguinte. Se uma posição continuar pendente, encerra o ciclo e conserva o mesmo pedido para `retomar`. Antes de reivindicar ou de iniciar uma coleta nova exige 2.560 MiB disponíveis no Windows. Se faltar RAM, reporte a medição e preserve a fila. Abaixo de 512 MiB durante a execução ou com medição indisponível, novas admissões ficam suspensas e o trabalho iniciado é preservado.
 
 Cada vendedor tem meta de até 50 entregues, até três lotes de 50 e até 150 candidatas distintas analisadas. O pipeline consome o pool antes de coletar novamente e para se não houver novidades. Sem critérios adicionais, o resultado neutro é local e faz zero HTTP de verificação. Os demais critérios usam o mesmo workflow autenticado: campos diferentes combinam E e alternativas do mesmo campo combinam OU. Produtos, tipo de empresa e observações continuam pendentes do qualificador; nunca fabricar evidências. Consultar registro WhatsApp não envia mensagens. Não usar o disparador legado para V2.
 
@@ -32,10 +34,10 @@ Envie por stdin um único JSON com pasta:{id,name,parents} e arquivos:[{id,name,
 
 Só após o helper confirmar, envie ao stdin do coordenador a linha:
 {acao:"confirmar_arquivo",solicitacao_id:<UUID-do-manifesto>,comprovante:<caminho-absoluto-do-comprovante>}.
-Use JSON válido com chaves entre aspas. Solicitações podem chegar fora de ordem; associe cada uma pelo próprio UUID. Confirmação cruzada, duplicada ou antiga é recusada. Em queda entre upload e confirmação, mantenha a intenção e reencontre os mesmos arquivos. O coordenador reutiliza comprovantes locais confirmados e reconcilia a mesma publicação sem nova coleta.
+Use JSON válido com chaves entre aspas. Associe cada solicitação pelo próprio UUID, inclusive na retomada. Confirmação cruzada, duplicada ou antiga é recusada. Em queda entre upload e confirmação, mantenha a intenção e reencontre os mesmos arquivos. O coordenador reutiliza comprovantes locais confirmados e reconcilia a mesma publicação sem nova coleta.
 
 Para V1, somente o motor 01 pode operar e nenhuma V2 inicia enquanto houver V1 pendente. Se aparecer legado_pendente, preserve as identidades e use exclusivamente o runbook V1 já existente; não invente revisão/hash/execução V2 nem converta recibos. Depois retome o mesmo coordenador.
 
-Ao terminar, confira os resultados privados por execução e consulte o progresso pela ação consultar com o executor/pedido da posição, sem usar proximo para ler contagens. Relate por vendedor: data, região, revisão, coletas, lotes, candidatas distintas, entregues, repetidas/recusadas conforme respostas reais, motivo e links confirmados da pasta/arquivos. Não estime contagens ausentes. Preserve cadastro manual, carteira, posse, reserva e dados CNPJ.biz.
+Ao terminar, use cada evento `resultado` do ciclo e os arquivos privados por execução para conferir todos os vendedores. A posição 01 no journal é reutilizada e mostra apenas o último pedido desse motor. Use `consultar` com o executor e o pedido de cada resultado para conferir o progresso. Relate data, região, revisão, coletas, lotes, candidatas distintas, entregues, repetidas ou recusadas conforme as respostas reais, motivo e links confirmados da pasta e dos arquivos. Preserve cadastro manual, carteira, posse, reserva e dados CNPJ.biz.
 
 Fique em silêncio quando não houver trabalho, quando o estado estiver inalterado ou quando só houver reconfirmação de algo concluído. Avise entrega nova, falha nova ou ação necessária. Para alertas repetidos, compare motivo e identidades com o último aviso privado; variação pequena de RAM não é novidade. Computador, Codex e Docker precisam permanecer ligados.

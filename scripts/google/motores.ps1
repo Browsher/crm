@@ -1,9 +1,11 @@
 param(
   [ValidateSet('Conferir','Preparar')][string]$Acao='Conferir',
-  [string]$Registro=(Join-Path $PSScriptRoot 'motores.json')
+  [string]$Registro=(Join-Path $PSScriptRoot 'motores.json'),
+  [Alias('Motor')][ValidateSet('01','02','03')][string]$MotorId
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
+if($MotorId -and $Acao -ne 'Conferir') { throw 'A escolha de motor vale somente para Conferir.' }
 function Chamar-Docker {
   param([string[]]$Partes,[switch]$AceitarAusente)
   $preferenciaAnterior=$ErrorActionPreference
@@ -50,10 +52,11 @@ try {
   $textoRegistro=& node --import tsx (Join-Path $PSScriptRoot 'motores.mts') ([IO.Path]::GetFullPath($Registro))
   if($LASTEXITCODE -ne 0) { throw 'Registro não validado. Nada foi preparado.' }
   $config=ConvertFrom-Json -InputObject ($textoRegistro -join "`n")
+  $motoresAlvo=@($config.motores | Where-Object { !$MotorId -or $_.id -eq $MotorId })
   $imagem=@(ConvertFrom-Json -InputObject (Chamar-Docker -Partes @('image','inspect',$config.imagem)))[0]
   if(!(Chamar-Docker -Partes @('volume','inspect',$config.volumeCache) -AceitarAusente)) { throw 'Cache original ausente. Não recriar nem substituir o volume.' }
   $existentes=@{}
-  foreach($motor in $config.motores) {
+  foreach($motor in $motoresAlvo) {
     $container=Ler-Container -Nome $motor.container
     if($null -ne $container) {
       Conferir-Estrutura -Motor $motor -Container $container -ImagemId $imagem.Id -Cache $config.volumeCache
@@ -61,7 +64,7 @@ try {
       if($motor.id -ne '01' -and !(Recursos-Corretos -Container $container -Recursos $config.recursos)) { throw ('Limites divergentes: '+$motor.container) }
     }
   }
-  if(!$existentes.ContainsKey('01')) { throw 'Motor original ausente. Não será recriado.' }
+  if(!$MotorId -and !$existentes.ContainsKey('01')) { throw 'Motor original ausente. Não será recriado.' }
   if($Acao -eq 'Preparar') {
     if(!$existentes['01'].State.Running) { throw 'Inicie o motor original para conferir os jobs antes da preparação.' }
     $jobs=Invoke-RestMethod -Method Get -Uri ($config.motores[0].origem+'/api/v1/jobs') -TimeoutSec 5
@@ -84,7 +87,7 @@ try {
     }
   }
   $resumo=@()
-  foreach($motor in $config.motores) {
+  foreach($motor in $motoresAlvo) {
     $container=Ler-Container -Nome $motor.container
     $pronto=$false
     if($null -ne $container) {

@@ -38,6 +38,13 @@ pedidos vencidos que não começaram ficam no histórico como não executados.
 O coordenador usa a rotina existente e atende os agentes em fila, sem criar
 um novo agendamento por vendedor.
 
+O modo sequencial usa o motor 01 para pedidos novos e conclui a entrega de
+um vendedor antes de pedir a próxima. A checagem exige 2.560 MiB livres no
+Windows para reivindicar um pedido ou iniciar uma coleta nova. Pendências
+anteriores preservam motor e executor. Se uma pendência persistir, o ciclo
+termina para retomada. O checkout usado pelo agendamento deve conter a versão
+integrada. Ver [rotina do coordenador](agente-google-rotina.md).
+
 A empresa pertence à base central. A primeira entrega cria exclusividade
 permanente de distribuição, separada da carteira e da reserva temporária.
 Outros vendedores não recebem nem reservam essa empresa, inclusive por
@@ -569,7 +576,7 @@ novas são serializadas e separadas por pelo menos 16 segundos, conforme a
 Esse intervalo limita somente a localização, mantendo as coletas simultâneas.
 O cache e os locks ficam no estado privado, sem versionar coordenadas.
 
-## Coordenador paralelo e retomada
+## Coordenador paralelo e retomada antes do modo sequencial
 
 A entrada única é scripts/google/coordenar.mts rodar|retomar, carregada com
 .env.google-agente.local. O agente atende somente as solicitações de Drive;

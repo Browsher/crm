@@ -7,7 +7,7 @@ import { createServer } from 'node:net'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { expect, test } from 'vitest'
-import { admitirOnda, aplicarMedicao, lerJournal, salvarJournal, obterExclusao } from '../scripts/google/coordenador-estado.mts'
+import { admitirColeta, aplicarMedicao, lerJournal, salvarJournal, obterExclusao } from '../scripts/google/coordenador-estado.mts'
 import type { Journal } from '../scripts/google/coordenador-tipos.mts'
 const executar=promisify(execFile)
 const journal = (): Journal => ({versao:1,ciclo_id:randomUUID(),dono:{pid:12345,inicio:'inicio-anterior'},admissaoSuspensa:false,posicoes:[
@@ -17,11 +17,11 @@ const journal = (): Journal => ({versao:1,ciclo_id:randomUUID(),dono:{pid:12345,
 ]})
 async function portaLivre(){ const s=createServer();await new Promise<void>(r=>s.listen(0,'127.0.0.1',r));const p=(s.address() as {port:number}).port;await new Promise<void>(r=>s.close(()=>r()));return p }
 
-test('5632 MiB e o limiar sem fallback sequencial',()=>{
- expect(admitirOnda({ok:true,disponivelMiB:5631,instante:'2026-10-26T20:00:00Z'})).toEqual({ok:false,motivo:'ram_insuficiente'})
- expect(admitirOnda({ok:true,disponivelMiB:5632,instante:'2026-10-26T20:00:00Z'})).toEqual({ok:true})
- expect(admitirOnda({ok:false,motivo:'medicao_indisponivel'})).toEqual({ok:false,motivo:'medicao_indisponivel'})
- expect(admitirOnda({ok:true,disponivelMiB:Number.NaN,instante:'2026-10-26T20:00:00Z'}).ok).toBe(false)
+test('2560 MiB é o limiar para um motor com margem no host',()=>{
+ expect(admitirColeta({ok:true,disponivelMiB:2559,instante:'2026-10-26T20:00:00Z'})).toEqual({ok:false,motivo:'ram_insuficiente'})
+ expect(admitirColeta({ok:true,disponivelMiB:2560,instante:'2026-10-26T20:00:00Z'})).toEqual({ok:true})
+ expect(admitirColeta({ok:false,motivo:'medicao_indisponivel'})).toEqual({ok:false,motivo:'medicao_indisponivel'})
+ expect(admitirColeta({ok:true,disponivelMiB:Number.NaN,instante:'2026-10-26T20:00:00Z'}).ok).toBe(false)
 })
 test('RAM critica suspende admissao sem modificar nenhuma posicao iniciada',()=>{
  const original=journal()
