@@ -15,6 +15,10 @@ test('campos ausentes ou vazios mantêm os dados do rascunho', () => {
 })
 
 test('uma região sugerida sem bairro aplica a cidade inteira', () => {
-  expect(aplicarSugestaoAoPlano(plano, sugestao, { cidade: 'Campinas', uf: 'SP' }))
+  expect(aplicarSugestaoAoPlano(plano, sugestao, [{ cidade: 'Campinas', estado: 'SP', bairros: [] }]))
     .toMatchObject({ cidade: 'Campinas', uf: 'SP', bairro: '' })
+})
+
+test('aplicar uma localização removida limpa os campos da região do dia', () => {
+  expect(aplicarSugestaoAoPlano(plano, sugestao, [])).toMatchObject({ cidade: '', uf: '', bairro: '' })
 })

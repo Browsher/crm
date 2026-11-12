@@ -8,8 +8,8 @@ import { NativeSelect } from '@/src/components/ui/native-select'
 import { Button } from '@/src/components/ui/button'
 import { Alert } from '@/src/components/ui/alert'
 import { bancoInicial, sugerirNomeBanco, ESTADOS_BR, PORTES_BANCO, SITUACOES_BANCO, CONTATOS_BANCO, type FiltrosBanco } from '@/src/lib/banco-empresas'
-import type { RegiaoSugerida } from '@/src/lib/assistente-ia'
-import { camposSugeridosBanco, regiaoSugeridaBanco, type SugestaoBanco } from '@/src/lib/assistente-ia-banco'
+import type { RegiaoAssistente } from '@/src/lib/assistente-ia'
+import { camposSugeridosBanco, type SugestaoBanco } from '@/src/lib/assistente-ia-banco'
 import { buscarEmpresasAcao, type EstadoBusca } from './acoes'
 import { AssistenteIaBanco } from './assistente-ia'
 import styles from './banco.module.css'
@@ -51,20 +51,20 @@ function OperacaoBusca({bloqueado,restante,chaveInicial,assistenteIaDisponivel=f
   const [nome,setNome]=useState('Empresas · Brasil')
   const [quantidade,setQuantidade]=useState(String(Math.max(1,Math.min(20,restante))))
   const [pagina,setPagina]=useState('1')
-  const [regioes,setRegioes]=useState<{estado:string;cidade:string;bairros:string[]}[]>([{estado:'',cidade:'',bairros:[]}])
+  const [regioes,setRegioes]=useState<RegiaoAssistente[]>([{estado:'',cidade:'',bairros:[]}])
   function mudar<K extends keyof FiltrosBanco>(campo:K,valor:FiltrosBanco[K]) {setF(v=>({...v,[campo]:valor}))}
   const completos={...f,regioes:regioes.filter(r=>r.estado||r.cidade||r.bairros.length)}
   function regiao(indice:number,campo:'estado'|'cidade'|'bairros',valor:string|string[]) {setRegioes(v=>v.map((r,i)=>i===indice?{...r,[campo]:valor,...(campo==='estado'?{cidade:'',bairros:[]}:campo==='cidade'?{bairros:[]}: {})}:r))}
-  function aplicarSugestao(sugestao: SugestaoBanco, regiao?: RegiaoSugerida) {
+  function aplicarSugestao(sugestao: SugestaoBanco, regioesAplicadas?: RegiaoAssistente[]) {
     setF(atual => ({ ...atual, ...camposSugeridosBanco(sugestao) }))
-    if (regiao) setRegioes([regiaoSugeridaBanco(regiao)])
+    if (regioesAplicadas) setRegioes(regioesAplicadas.length ? regioesAplicadas : [{ estado: '', cidade: '', bairros: [] }])
   }
   const travado=bloqueado||pendente
   return <form action={acao} className={styles.formulario}>
     <input type="hidden" name="chave" value={chave}/><input type="hidden" name="avancados" value={JSON.stringify(completos)}/>
     {estado.erro&&<Alert variant="danger">{estado.erro}</Alert>}
     <div className={styles.assistente}>
-      <AssistenteIaBanco disponivel={assistenteIaDisponivel} bloqueado={travado} aoAplicar={aplicarSugestao} />
+      <AssistenteIaBanco disponivel={assistenteIaDisponivel} bloqueado={travado} regioesAtuais={completos.regioes} aoAplicar={aplicarSugestao} />
     </div>
     <GrupoFiltro titulo="Atividade e nome" descricao="Escolha o segmento e como identificar as empresas." primeiro>
       <fieldset disabled={travado}><div className={styles.grade}>

@@ -91,11 +91,21 @@ try {
   sheets = await iniciarSheetsDeTeste()
   whatsapp = await iniciarWhatsAppDeTeste(banco)
   const ambiente = ambienteDoServidor(process.env, banco.urlApp)
+  const assistenteSimulado = process.argv.includes('--assistente')
+  ambiente.CRM_E2E_ASSISTENTE = assistenteSimulado ? '1' : '0'
   Object.assign(ambiente, { GOOGLE_AGENTE_TOKEN: GOOGLE_TOKEN_E2E, GOOGLE_AGENTE_USUARIO_ID: google.gestorId })
   Object.assign(ambiente, { GOOGLE_PLANILHA_ID:'planilha-somente-e2e',GOOGLE_PLANILHA_ABA_ID:'123',GOOGLE_PLANILHA_CLIENT_EMAIL:sheets.email,GOOGLE_PLANILHA_PRIVATE_KEY:sheets.chave,GOOGLE_PLANILHA_MOCK_URL:sheets.url })
   Object.assign(ambiente, { EVOLUTION_API_URL: whatsapp.url, EVOLUTION_API_KEY: 'chave-apenas-e2e', EVOLUTION_INSTANCE_NAME: 'instancia-e2e', NODE_EXTRA_CA_CERTS: whatsapp.certificado })
   Object.assign(ambiente, { CNPJ_BIZ_API_KEY: 'chave-apenas-e2e', CASA_DOS_DADOS_API_KEY: 'chave-apenas-e2e', CNPJ_BIZ_MOCK_URL: cnpj.url })
-  const servidor = iniciar(['--import', pathToFileURL(resolve('scripts/e2e/cnpj-biz-preload.mjs')).href, '--import',pathToFileURL(resolve('scripts/e2e/google-planilha-preload.mjs')).href,'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(porta)], ambiente)
+  const preloads = ['cnpj-biz', 'google-planilha']
+  if (assistenteSimulado) {
+    Object.assign(ambiente, { CRM_GOOGLE_IA_ATIVA: '1', CRM_BANCO_IA_ATIVA: '1', ANTHROPIC_API_KEY: 'chave-apenas-e2e' })
+    preloads.push('assistente-ia')
+  }
+  const servidor = iniciar([
+    ...preloads.flatMap(nome => ['--import', pathToFileURL(resolve(`scripts/e2e/${nome}-preload.mjs`)).href]),
+    'node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(porta),
+  ], ambiente)
   let erroServidor: Error | undefined
   servidor.on('error', (erro) => { erroServidor = erro })
   const prazo = Date.now() + 30_000
@@ -116,7 +126,10 @@ try {
   // banco temporário como admin, fora do app. `DATABASE_URL_ADMIN` some do
   // ambiente do servidor (`ambienteDoServidor`) de propósito; aqui ela volta
   // só para o processo do Playwright, que roda local e nunca é o app servido.
-  await executar(['node_modules/@playwright/test/cli.js', 'test', ...process.argv.slice(2).filter(arg => arg !== '--sem-build')], { ...ambiente, CRM_E2E_PORT: String(porta), DATABASE_URL_ADMIN: banco.urlAdmin })
+  const opcoes = process.argv.slice(2).filter(arg => arg !== '--sem-build' && arg !== '--assistente')
+  await executar([
+    'node_modules/@playwright/test/cli.js', 'test', ...(assistenteSimulado ? ['assistente-sku.spec.ts'] : []), ...opcoes,
+  ], { ...ambiente, CRM_E2E_PORT: String(porta), DATABASE_URL_ADMIN: banco.urlAdmin })
 } catch (erro) {
   console.error(erro instanceof Error ? erro.message : erro)
   process.exitCode = 1

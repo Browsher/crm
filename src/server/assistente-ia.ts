@@ -1,12 +1,11 @@
 import { z } from 'zod'
 import { ESTADOS_BR } from '@/src/lib/banco-empresas'
-import { LIMITE_DESCRICAO_IA, type PublicoSugerido, type ResultadoAssistente, type SugestoesBusca } from '@/src/lib/assistente-ia'
+import type { PublicoSugerido, ResultadoAssistente, SugestoesBusca } from '@/src/lib/assistente-ia'
 
 type Origem = 'google' | 'banco'
 const MODELO_PADRAO = 'claude-haiku-5-5'
 const EM_BREVE = { ok: false, motivo: 'O assistente de filtros estará disponível em breve.' } as const
 const INDISPONIVEL = { ok: false, motivo: 'O assistente está indisponível no momento. Você pode preencher os critérios manualmente.' } as const
-const SEM_SUGESTOES = { ok: false, motivo: 'Informe o produto que você quer vender para receber sugestões de público.' } as const
 
 function configuracao(origem: Origem) {
   const chave = process.env.ANTHROPIC_API_KEY?.trim()
@@ -36,7 +35,7 @@ export function esquemaSugestoes<T extends PublicoSugerido>(publico: z.ZodType<T
   })
 }
 
-export const camposPublico = { titulo: textoCurto(90), descricao: textoCurto(160) }
+export const camposPublico = { titulo: textoCurto(90), descricao: textoCurto(160), perfil: textoCurto(50).optional() }
 
 const mensagemSchema = z.object({
   stop_reason: z.literal('end_turn'),
@@ -73,16 +72,14 @@ const INSTRUCOES_COMUNS = [
 
 export async function sugerirPublicos<T extends PublicoSugerido>(
   origem: Origem,
-  descricao: string,
+  mensagemVendedor: string,
   schema: z.ZodType<SugestoesBusca<T>>,
   instrucoes: readonly string[],
   chavePublico: (publico: T) => string,
+  descricaoRegiao?: string,
 ): Promise<ResultadoAssistente<T>> {
   const config = configuracao(origem)
   if (!config) return EM_BREVE
-  if (typeof descricao !== 'string' || descricao.length > LIMITE_DESCRICAO_IA || !descricao.trim()) {
-    return { ok: false, motivo: 'Descreva o produto em até 600 caracteres.' }
-  }
 
   try {
     const formato = z.toJSONSchema(schema, { io: 'input' })
@@ -94,7 +91,7 @@ export async function sugerirPublicos<T extends PublicoSugerido>(
         model: config.modelo,
         max_tokens: 1200,
         system: [...INSTRUCOES_COMUNS, ...instrucoes].join('\n'),
-        messages: [{ role: 'user', content: descricao.trim() }],
+        messages: [{ role: 'user', content: mensagemVendedor }],
         ...(config.modelo === MODELO_PADRAO && { thinking: { type: 'disabled' } }),
         output_config: { effort: 'low', format: { type: 'json_schema', schema: formato } },
       }),
@@ -109,8 +106,6 @@ export async function sugerirPublicos<T extends PublicoSugerido>(
     if (!texto) return INDISPONIVEL
     const dados = schema.safeParse(JSON.parse(texto))
     if (!dados.success) return INDISPONIVEL
-    if (!dados.data.sugestoes.length) return SEM_SUGESTOES
-
     const vistos = new Set<string>()
     const sugestoes = dados.data.sugestoes.filter(publico => {
       const chave = normalizarTexto(chavePublico(publico))
@@ -119,7 +114,7 @@ export async function sugerirPublicos<T extends PublicoSugerido>(
       return true
     })
     const regiao = dados.data.regiao
-    return { ok: true, valor: { sugestoes, ...(regiao && regiaoCitavel(regiao, descricao) && { regiao }) } }
+    return { ok: true, valor: { sugestoes, ...(regiao && descricaoRegiao && regiaoCitavel(regiao, descricaoRegiao) && { regiao }) } }
   } catch {
     return INDISPONIVEL
   }
