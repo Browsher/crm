@@ -2,6 +2,7 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import type { SugestaoBanco } from '@/src/lib/assistente-ia-banco'
 import { FormularioBusca } from './formulario'
 const { buscarEmpresasAcao, sugerirFiltrosBancoAcao } = vi.hoisted(() => ({
   buscarEmpresasAcao: vi.fn(), sugerirFiltrosBancoAcao: vi.fn(),
@@ -46,6 +47,41 @@ function filtrosBanco() {
   return JSON.parse(String(form.get('avancados')))
 }
 
+function campoBanco(rotulo: string, escopo: ParentNode) {
+  return [...escopo.querySelectorAll('label')].find(label => label.textContent?.trim() === rotulo)?.control as HTMLInputElement | undefined
+}
+
+function abrirGrupoBanco(titulo: string) {
+  return act(async () => {
+    [...host!.querySelectorAll<HTMLButtonElement>('h2 button')].find(b => b.querySelector('strong')?.textContent === titulo)!.click()
+  })
+}
+
+async function gerarSugestoesBanco(...sugestoes: SugestaoBanco[]) {
+  sugerirFiltrosBancoAcao.mockResolvedValueOnce({ ok: true, valor: { sugestoes } })
+  await clicar('Sugerir filtros com IA')
+  const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
+  await mudarTexto(painel.querySelector<HTMLInputElement>('[name="produto"]')!, 'QS-T-001')
+  await act(async () => painel.querySelector<HTMLElement>('[role="option"]')!.click())
+  await clicar('Gerar sugestões', painel)
+  return painel
+}
+
+function opcaoBanco(painel: Element, titulo: string) {
+  return [...painel.querySelectorAll<HTMLElement>('[role="group"]')].find(grupo =>
+    document.getElementById(grupo.getAttribute('aria-labelledby') ?? '')?.textContent === titulo,
+  )!
+}
+
+const lojasGames: SugestaoBanco = {
+  titulo: 'Lojas de games', descricao: 'Compram projetores para revenda.',
+  cnaes: [{ codigo: '4763601', descricao: 'Comércio varejista de brinquedos e artigos recreativos' }],
+  perfilEmpresa: {
+    portes: { valor: ['ME', 'EPP'], motivo: 'Podem revender em volumes menores.' },
+    contato: { valor: 'email', motivo: 'Permite enviar o catálogo.' },
+  },
+}
+
 test('Banco exibe o botão desativado e Em breve por padrão', async () => {
   await abrirBanco()
   const botao = [...host!.querySelectorAll('button')].find(b => b.textContent?.trim() === 'Sugerir filtros com IA')
@@ -86,6 +122,91 @@ test('aplica a opção escolhida ao Banco sem submeter a busca e preserva os cam
     cnaes: ['4321500'], palavras: ['empresa existente'], situacoes: ['ativa'], contato: 'telefoneoucelular',
     regioes: [{ estado: 'SP', cidade: 'São Paulo', bairros: ['Brás'] }],
   })
+})
+
+test('Banco aplica somente o perfil marcado no público escolhido e muda o modo de abertura', async () => {
+  await abrirBanco(true)
+  await abrirGrupoBanco('Perfil da empresa')
+  await act(async () => campoBanco('DEMAIS', host!)!.click())
+  const painel = await gerarSugestoesBanco(lojasGames, {
+    titulo: 'Distribuidores', descricao: 'Compram projetores por caixa.',
+    cnaes: [{ codigo: '4649499', descricao: 'Comércio atacadista de outros artigos de uso pessoal' }],
+    perfilEmpresa: { aberturaUltimosDias: { valor: 60, motivo: 'Lojas novas estão montando o catálogo.' } },
+  })
+  expect(painel.textContent).toContain('Podem revender em volumes menores.')
+  const lojas = opcaoBanco(painel, 'Lojas de games')
+  const distribuidores = opcaoBanco(painel, 'Distribuidores')
+  expect(lojas).toBeDefined()
+  expect(distribuidores).toBeDefined()
+  const porte = campoBanco('Porte sugerido: ME, EPP', lojas)!
+  expect(porte.checked).toBe(false)
+  await act(async () => porte.click())
+  await act(async () => distribuidores.querySelector<HTMLInputElement>('input[type="radio"]')!.click())
+  const abertura = campoBanco('Data de abertura sugerida: Últimos 60 dias', distribuidores)!
+  expect(abertura.checked).toBe(false)
+  await act(async () => abertura.click())
+  await act(async () => lojas.querySelector<HTMLInputElement>('input[type="radio"]')!.click())
+  expect(campoBanco('Porte sugerido: ME, EPP', lojas)?.checked).toBe(true)
+  await act(async () => distribuidores.querySelector<HTMLInputElement>('input[type="radio"]')!.click())
+  expect(campoBanco('Data de abertura sugerida: Últimos 60 dias', distribuidores)?.checked).toBe(true)
+  await clicar('Aplicar filtros', painel)
+  expect(filtrosBanco()).toMatchObject({ cnaes: ['4649499'], portes: ['DEMAIS'], aberturaUltimosDias: '60', contato: 'telefoneoucelular' })
+  expect(host!.querySelector<HTMLSelectElement>('#modo-abertura-banco')?.value).toBe('ultimosDias')
+  expect(buscarEmpresasAcao).not.toHaveBeenCalled()
+})
+
+test('Banco bloqueia capital inválido e mantém o limite do rascunho quando o campo fica vazio', async () => {
+  await abrirBanco(true)
+  await abrirGrupoBanco('Capital e data de abertura')
+  await mudarTexto(campoBanco('Capital máximo (R$, sem centavos)', host!)!, '500')
+  const painel = await gerarSugestoesBanco(lojasGames)
+  const minimo = campoBanco('Capital mínimo (R$, sem centavos)', painel)
+  const maximo = campoBanco('Capital máximo (R$, sem centavos)', painel)
+  expect(minimo?.value).toBe('')
+  expect(maximo?.value).toBe('')
+  const aplicar = [...painel.querySelectorAll('button')].find(botao => botao.textContent === 'Aplicar filtros')!
+  await mudarTexto(minimo!, '100,50')
+  expect(aplicar.disabled).toBe(true)
+  expect(painel.querySelector('[role="alert"]')?.textContent).toMatch(/capital/i)
+  await mudarTexto(minimo!, '501')
+  expect(aplicar.disabled).toBe(true)
+  await mudarTexto(minimo!, '250')
+  expect(aplicar.disabled).toBe(false)
+  await act(async () => minimo!.form!.requestSubmit())
+  expect(filtrosBanco().capitalMinimo).toBe('')
+  expect(sugerirFiltrosBancoAcao).toHaveBeenCalledExactlyOnceWith({ produto: { sku: 'QS-T-001' } })
+  await clicar('Aplicar filtros', painel)
+  expect(filtrosBanco()).toMatchObject({ capitalMinimo: '250', capitalMaximo: '500' })
+  expect(buscarEmpresasAcao).not.toHaveBeenCalled()
+})
+
+test('Banco mostra quais filtros do rascunho o MEI substitui e bloqueia uma combinação incompatível', async () => {
+  await abrirBanco(true)
+  await abrirGrupoBanco('Perfil da empresa')
+  await act(async () => campoBanco('ME', host!)!.click())
+  await act(async () => campoBanco('Excluir optantes do MEI', host!)!.click())
+  await mudarTexto(campoBanco('Exclusão do MEI a partir de', host!)!, '2024-01-01')
+  const painel = await gerarSugestoesBanco({
+    ...lojasGames,
+    perfilEmpresa: {
+      mei: { valor: 'somente', motivo: 'Podem comprar em pequenos lotes.' },
+      regime: { valor: 'fora_simples', motivo: 'Segmenta operações maiores.' },
+    },
+  })
+  const mei = campoBanco('MEI sugerido: Somente MEI', painel)
+  expect(mei?.checked).toBe(false)
+  await act(async () => mei!.click())
+  expect(painel.textContent).toContain('Filtros do rascunho que serão substituídos')
+  expect(filtrosBanco()).toMatchObject({ portes: ['ME'], excluirMei: true, meiExclusaoDe: '2024-01-01' })
+  const regime = campoBanco('Regime tributário sugerido: Fora do Simples Nacional', painel)!
+  await act(async () => regime.click())
+  const aplicar = [...painel.querySelectorAll('button')].find(botao => botao.textContent === 'Aplicar filtros')!
+  expect(aplicar.disabled).toBe(true)
+  expect(painel.querySelector('[role="alert"]')?.textContent).toMatch(/MEI|Simples/i)
+  await act(async () => regime.click())
+  await clicar('Aplicar filtros', painel)
+  expect(filtrosBanco()).toMatchObject({ portes: ['MEI'], excluirMei: false, meiExclusaoDe: '', meiExclusaoAte: '' })
+  expect(buscarEmpresasAcao).not.toHaveBeenCalled()
 })
 
 test.each([

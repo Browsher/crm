@@ -29,7 +29,16 @@ export function AssistenteIaEmBreve() {
   </div>
 }
 
-type Props<T extends PublicoSugerido> = {
+type RevisaoPreparada = { aplicar: (() => void) | null; aviso?: ReactNode }
+
+type Revisao<T, Selecao> = {
+  selecaoInicial: Selecao
+  tituloDetalhes: string
+  conteudo: (sugestao: T, selecao: Selecao, alterar: (proxima: Selecao) => void) => ReactNode
+  preparar: (sugestao: T, selecao: Selecao, regioes?: RegiaoAssistente[]) => RevisaoPreparada
+}
+
+type Props<T extends PublicoSugerido, Selecao> = {
   bloqueado: boolean
   contexto?: ReactNode
   orientacao: string
@@ -39,10 +48,12 @@ type Props<T extends PublicoSugerido> = {
   pedirFechar: () => void
   gerarAcao: (entrada: EntradaAssistente) => Promise<ResultadoAssistente<T>>
   detalhes: (sugestao: T) => { rotulo: string; valor: ReactNode }[]
-  aoAplicar: (sugestao: T, regioes?: RegiaoAssistente[]) => void
-}
+} & (
+  | { revisao?: never; aoAplicar: (sugestao: T, regioes?: RegiaoAssistente[]) => void }
+  | { revisao: Revisao<T, Selecao>; aoAplicar?: never }
+)
 
-export function AssistenteIaBusca<T extends PublicoSugerido>(props: Props<T>) {
+export function AssistenteIaBusca<T extends PublicoSugerido, Selecao = never>(props: Props<T, Selecao>) {
   const [aberto, setAberto] = useState(false)
   const fechar = useCallback(() => setAberto(false), [])
 
@@ -52,14 +63,13 @@ export function AssistenteIaBusca<T extends PublicoSugerido>(props: Props<T>) {
         <Sparkles aria-hidden="true" /><span>{ROTULO}</span>
       </Button>
     </DialogTrigger>
-    {aberto && <EditorAssistente {...props} fechar={fechar}
-      aoAplicar={(sugestao, regioes) => { props.aoAplicar(sugestao, regioes); fechar() }} />}
+    {aberto && <EditorAssistente {...props} fechar={fechar} />}
   </Dialog>
 }
 
-function EditorAssistente<T extends PublicoSugerido>({
-  contexto, orientacao, regioesAtuais, limiteRegioes, fechar, informarEdicao, pedirFechar, gerarAcao, detalhes, aoAplicar,
-}: Props<T> & { fechar: () => void }) {
+function EditorAssistente<T extends PublicoSugerido, Selecao>({
+  contexto, orientacao, regioesAtuais, limiteRegioes, fechar, informarEdicao, pedirFechar, gerarAcao, detalhes, aoAplicar, revisao,
+}: Props<T, Selecao> & { fechar: () => void }) {
   const [produto, setProduto] = useState<ProdutoProspeccao | null>(null)
   const [outroProduto, setOutroProduto] = useState(false)
   const [descricao, setDescricao] = useState('')
@@ -72,10 +82,11 @@ function EditorAssistente<T extends PublicoSugerido>({
   const proximaLinha = useRef(regioesAtuais.length || 1)
   const [dados, setDados] = useState<SugestoesBusca<T> | null>(null)
   const [escolhida, setEscolhida] = useState(0)
+  const [selecoes, setSelecoes] = useState<Partial<Record<number, Selecao>>>({})
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, setPendente] = useState(false)
   const enviando = useRef(false)
-  const revisao = useRef(0)
+  const geracao = useRef(0)
   const moverFoco = useRef(false)
   const alvoFoco = useRef<HTMLElement | null>(null)
   const tituloSugestoes = useRef<HTMLLegendElement>(null)
@@ -113,7 +124,7 @@ function EditorAssistente<T extends PublicoSugerido>({
   }, [dados])
 
   function invalidar() {
-    revisao.current += 1
+    geracao.current += 1
     setDados(null)
     setErro(null)
   }
@@ -140,7 +151,7 @@ function EditorAssistente<T extends PublicoSugerido>({
     // O portal separa os formulários no DOM, mas o evento React sobe até o formulário de origem.
     evento.stopPropagation()
     if (enviando.current || !produtoEntrada) return
-    const pedido = revisao.current
+    const pedido = geracao.current
     const { publico, especialidade, detalhes } = refinamento
     enviando.current = true
     setPendente(true)
@@ -154,15 +165,16 @@ function EditorAssistente<T extends PublicoSugerido>({
         ...(detalhes.trim() && { detalhes: detalhes.trim() }),
         ...((regioes.length > 0 || regioesEditadas) && { regioes }),
       })
-      if (pedido !== revisao.current) return
+      if (pedido !== geracao.current) return
       if (resultado.ok) {
         setDados(resultado.valor)
         setEscolhida(0)
+        setSelecoes({})
       } else {
         setErro(resultado.motivo)
       }
     } catch {
-      if (pedido === revisao.current) {
+      if (pedido === geracao.current) {
         setErro('Não foi possível gerar sugestões. Tente novamente ou preencha os critérios manualmente.')
       }
     } finally {
@@ -172,12 +184,25 @@ function EditorAssistente<T extends PublicoSugerido>({
   }
 
   const atual = dados?.sugestoes[escolhida]
+  const preparada = atual && revisao ? revisao.preparar(atual, selecoes[escolhida] ?? revisao.selecaoInicial, regioesParaAplicar) : null
+
+  function aplicar() {
+    if (pendente || !atual) return
+    if (preparada) {
+      if (!preparada.aplicar) return
+      preparada.aplicar()
+    } else {
+      aoAplicar?.(atual, regioesParaAplicar)
+    }
+    fechar()
+  }
+
   return <PainelSobrepostoCrm titulo={ROTULO}
     descricao={<><span>Escolha um produto para encontrar públicos para prospectar.</span>{contexto && <><br />{contexto}</>}</>}
     aoFechar={pedirFechar} fecharBloqueado={pendente} ocupado={pendente} rodape={<div className={styles.rodape}>
       <span className="sr-only" role="status">{pendente ? 'Gerando sugestões.' : ''}</span>
       <span className={styles.ajuda}>{orientacao}</span>
-      <Button type="button" disabled={pendente || !atual} onClick={() => { if (atual) aoAplicar(atual, regioesParaAplicar) }}>Aplicar filtros</Button>
+      <Button type="button" disabled={pendente || !atual || preparada?.aplicar === null} onClick={aplicar}>Aplicar filtros</Button>
     </div>}>
     <form className={styles.formulario} onSubmit={gerar}>
       {produto ? <section className={styles.produtoSelecionado}>
@@ -259,15 +284,35 @@ function EditorAssistente<T extends PublicoSugerido>({
     {dados && <fieldset className={styles.sugestoes}>
       <legend ref={tituloSugestoes} tabIndex={-1}>Sugestões de público</legend>
       <p className={styles.ajuda} role="status">{dados.sugestoes.length} {dados.sugestoes.length === 1 ? 'opção disponível' : 'opções disponíveis'}. Escolha uma para preencher o formulário.</p>
-      <PreviaRegioesAssistente regioes={regioesParaAplicar ?? regioes} />
-      {dados.sugestoes.map((sugestao, indice) => <label key={indice} className={styles.opcao}>
-        <Choice type="radio" name={grupo} value={indice} checked={escolhida === indice} onChange={() => setEscolhida(indice)} />
-        <span>
-          <strong>{sugestao.titulo}</strong>
-          <span className={styles.ajuda}>{sugestao.descricao}</span>
-          <span className={styles.detalhes}>{detalhes(sugestao).map(({ rotulo, valor }) => <span key={rotulo}><span className={styles.ajuda}>{rotulo}</span><span>{valor}</span></span>)}</span>
-        </span>
-      </label>)}
+      {!revisao && <PreviaRegioesAssistente regioes={regioesParaAplicar ?? regioes} />}
+      {dados.sugestoes.map((sugestao, indice) => {
+        const ativa = escolhida === indice
+        const titulo = `${grupo}-opcao-${indice}`
+        const descricaoOpcao = `${titulo}-descricao`
+        const radio = <Choice type="radio" name={grupo} value={indice} checked={ativa} onChange={() => setEscolhida(indice)}
+          aria-labelledby={revisao ? titulo : undefined} aria-describedby={revisao ? descricaoOpcao : undefined} />
+        const detalhesOpcao = <span className={styles.detalhes}>{detalhes(sugestao).map(({ rotulo, valor }) =>
+          <span key={rotulo}><span className={styles.ajuda}>{rotulo}</span><span>{valor}</span></span>)}</span>
+        if (revisao) return <div key={indice} className={styles.opcaoRevisavel} role="group" aria-labelledby={titulo}>
+          <label className={styles.opcaoCabecalho}>
+            {radio}
+            <span><strong id={titulo}>{sugestao.titulo}</strong><span id={descricaoOpcao} className={styles.ajuda}>{sugestao.descricao}</span></span>
+          </label>
+          <section className={styles.opcaoSecao}>
+            <h3>{revisao.tituloDetalhes}</h3>
+            {detalhesOpcao}
+            {ativa && <PreviaRegioesAssistente regioes={regioesParaAplicar ?? regioes} />}
+          </section>
+          {ativa && <>
+            {revisao.conteudo(sugestao, selecoes[indice] ?? revisao.selecaoInicial, proxima => setSelecoes(atuais => ({ ...atuais, [indice]: proxima })))}
+            {preparada?.aviso}
+          </>}
+        </div>
+        return <label key={indice} className={styles.opcao}>
+          {radio}
+          <span><strong>{sugestao.titulo}</strong><span className={styles.ajuda}>{sugestao.descricao}</span>{detalhesOpcao}</span>
+        </label>
+      })}
     </fieldset>}
   </PainelSobrepostoCrm>
 }
