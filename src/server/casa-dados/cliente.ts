@@ -81,14 +81,17 @@ export function normalizarRespostaCasa(valor: unknown, f: FiltrosBusca): Resulta
 export function criarClienteCasaDados(chave: string | undefined, fetcher: typeof fetch = fetch): ClienteBusca & { validar(f: FiltrosBusca): boolean } {
   return {
     validar: f => prepararConsultaCasa(f).ok,
-    async buscar(f) {
+    async buscar(f, cnpjsExcluidos = []) {
       if (!chave?.trim() || /[\r\n]/.test(chave)) return { ok: false, motivo: 'nao_configurado' }
       const consulta = prepararConsultaCasa(f)
       if (!consulta.ok) return { ok: false, motivo: 'resposta_invalida' }
+      const pedido = cnpjsExcluidos.length
+        ? { ...consulta.pedido, excluir: { cnpj: cnpjsExcluidos } }
+        : consulta.pedido
       const signal = AbortSignal.timeout(25_000)
       try {
         const r = await fetcher(URL_PESQUISA, { method: 'POST', headers: { 'Content-Type': 'application/json', 'api-key': chave.trim() },
-          body: JSON.stringify(consulta.pedido), cache: 'no-store', redirect: 'error', signal })
+          body: JSON.stringify(pedido), cache: 'no-store', redirect: 'error', signal })
         if (!r.ok) {
           const motivo: FalhaFornecedor = r.status === 401 ? 'credencial_invalida' : r.status === 403 ? 'sem_creditos' : r.status === 429 ? 'fornecedor_ocupado' : 'fornecedor_indisponivel'
           await r.body?.cancel()

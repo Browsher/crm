@@ -18,7 +18,10 @@ export type EmpresaEncontrada = {
 export type FalhaFornecedor = 'nao_configurado' | 'credencial_invalida' | 'sem_creditos' | 'fornecedor_ocupado' |
   'fornecedor_indisponivel' | 'tempo_esgotado' | 'resposta_invalida' | 'cnae_nao_encontrado'
 export type ResultadoFornecedor = { ok: true; empresas: EmpresaEncontrada[] } | { ok: false; motivo: FalhaFornecedor }
-export type ClienteBusca = { validar?(filtros: FiltrosBusca): boolean; buscar(filtros: FiltrosBusca): Promise<ResultadoFornecedor> }
+export type ClienteBusca = {
+  validar?(filtros: FiltrosBusca): boolean
+  buscar(filtros: FiltrosBusca, cnpjsExcluidos?: readonly string[]): Promise<ResultadoFornecedor>
+}
 export type BuscaSalva = {
   inclusao_automatica_concluida?: boolean
   fornecedor?: 'CNPJ.biz' | 'Casa dos Dados'

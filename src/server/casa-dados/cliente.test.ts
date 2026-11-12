@@ -13,6 +13,25 @@ test('faz uma única chamada completa com chave apenas no header e origem fixa',
   expect(fetcher.mock.calls[0][0]).toBe('https://api.casadosdados.com.br/v5/cnpj/pesquisa?tipo_resultado=completo')
   expect(fetcher.mock.calls[0][1]).toMatchObject({ method: 'POST', headers: { 'api-key': 'chave-teste' }, redirect: 'error', cache: 'no-store' })
   expect(fetcher.mock.calls[0][1].body).not.toContain('chave-teste')
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).not.toHaveProperty('excluir')
+})
+test('envia os CNPJs excluídos à Casa dos Dados antes de ler o retorno', async () => {
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ total: 0, cnpjs: [] }))
+  const cnpjs = ['11222333000181', '99887766000105']
+  expect(await criarClienteCasaDados('chave-teste', fetcher).buscar(filtros(), cnpjs)).toEqual({ ok: true, empresas: [] })
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(fetcher.mock.calls[0][1].body)).toMatchObject({
+    limite: 1,
+    mais_filtros: { excluir_empresas_visualizadas: true },
+    excluir: { cnpj: cnpjs },
+  })
+})
+test('rejeição do filtro pelo fornecedor não dispara consulta sem exclusões', async () => {
+  const fetcher = vi.fn().mockResolvedValue(new Response('{}', { status: 400 }))
+  expect(await criarClienteCasaDados('chave-teste', fetcher).buscar(filtros(), ['11222333000181'])).toEqual({
+    ok: false, motivo: 'fornecedor_indisponivel',
+  })
+  expect(fetcher).toHaveBeenCalledTimes(1)
 })
 test('normaliza o contrato completo observado, inclusive datas com horário e contatos estruturados', () => {
   const r = normalizarRespostaCasa(resposta(), filtros())

@@ -12,6 +12,7 @@ const empresa = { cnpj: '11222333000181', razao_social: 'Armarinhos fictício LT
 const segunda = { ...empresa, cnpj: '99887766000105', razao_social: 'Segunda fictícia LTDA', telefone: '11977776666', telefones: ['11977776666'], email: 'segunda@exemplo.test' }
 const call = <T extends QueryResultRow = QueryResultRow>(u: string, sql: string, params: unknown[] = []) => banco.comoUsuario(u, e => e<T>(sql, params)).then(r => r.linhas)
 const reservar = (id: string, legado = false, u = vendedor) => call(u, `SELECT ${legado ? 'busca_empresa_reservar' : 'busca_empresa_reservar_casa'}($1,$2,$3) resultado`, [id, 'Armarinhos Brás', JSON.stringify(filtros)])
+const reservarComExclusoes = (id: string, u = vendedor) => call(u, 'SELECT * FROM busca_empresa_reservar_casa_com_exclusoes($1,$2,$3)', [id, 'Armarinhos Brás', JSON.stringify(filtros)])
 const concluir = (id: string, empresas: unknown[] = [empresa]) => call(vendedor, 'SELECT busca_empresa_concluir($1,$2,NULL)', [id, JSON.stringify(empresas)])
 const importar = (id: string, cnpjs = [empresa.cnpj]) => call<{ grupo_id: string; inseridas: number; vinculadas: number }>(vendedor, 'SELECT * FROM busca_empresa_importar($1,$2)', [id, cnpjs])
 
@@ -41,6 +42,39 @@ test('reserva Casa mantém UUID e cota, com fornecedor persistido', async () => 
   expect(await banco.sql('SELECT fornecedor,quantidade FROM busca_empresa WHERE id=$1', [id])).toEqual([{ fornecedor: 'Casa dos Dados', quantidade: 2 }])
   expect(await banco.sql('SELECT count(*)::int n FROM busca_empresa')).toEqual([{ n: 1 }])
   await expect(reservar(id, false, outro)).rejects.toMatchObject({ code: '42501' })
+})
+
+test('busca nova exclui entregas do Banco de todos os vendedores, inclusive Sem interesse', async () => {
+  const busca = randomUUID()
+  await reservar(busca)
+  await concluir(busca)
+  await importar(busca)
+  const googleCnpj = '11444777000161'
+  const manualCnpj = '12345678000195'
+  const inseridas = await banco.sql<{ cnpj: string; id: string }>(
+    'INSERT INTO empresa(cnpj,razao_social,telefone) VALUES ($1,\'Banco\',\'11955554444\'),($2,\'Google\',\'11944443333\'),($3,\'Manual\',\'11933332222\') RETURNING cnpj,id',
+    [segunda.cnpj, googleCnpj, manualCnpj],
+  )
+  await banco.sql("INSERT INTO empresa_vinculo(empresa_id,vendedor_id,origem_inicial,arquivada_em) VALUES ($1,$2,'banco',now()),($3,$2,'google',NULL)",
+    [inseridas.find(e => e.cnpj === segunda.cnpj)!.id, outro, inseridas.find(e => e.cnpj === googleCnpj)!.id])
+
+  const id = randomUUID()
+  await expect(reservarComExclusoes(id)).resolves.toEqual([{ resultado: 'ok', cnpjs_excluidos: [empresa.cnpj, segunda.cnpj] }])
+  await expect(reservarComExclusoes(id)).resolves.toEqual([{ resultado: 'repetida', cnpjs_excluidos: [] }])
+  await expect(reservarComExclusoes(id, outro)).rejects.toMatchObject({ code: '42501' })
+  await expect(reservarComExclusoes(randomUUID(), gestor)).rejects.toMatchObject({ code: '42501' })
+  expect(await banco.sql('SELECT quantidade,filtros FROM busca_empresa WHERE id=$1', [id])).toEqual([{ quantidade: 2, filtros }])
+})
+
+test('reserva Casa devolve lista vazia quando não há entregas ou a busca é bloqueada', async () => {
+  const busca = randomUUID()
+  await expect(reservarComExclusoes(busca)).resolves.toEqual([{ resultado: 'ok', cnpjs_excluidos: [] }])
+  await concluir(busca)
+  await importar(busca)
+  await call(gestor, 'SELECT busca_empresa_limite_definir($1,2,false)', [vendedor])
+  await expect(reservarComExclusoes(randomUUID())).resolves.toEqual([{ resultado: 'limite', cnpjs_excluidos: [] }])
+  await call(gestor, 'SELECT busca_empresa_limite_definir($1,20,true)', [vendedor])
+  await expect(reservarComExclusoes(randomUUID())).resolves.toEqual([{ resultado: 'pausada', cnpjs_excluidos: [] }])
 })
 
 test('operação antiga continua CNPJ.biz e não pode ser reetiquetada como Casa', async () => {

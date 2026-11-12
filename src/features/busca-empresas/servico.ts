@@ -16,7 +16,7 @@ export async function iniciarBusca(
   const reserva = await deps.repo.reservar(chave, nome.trim(), validacao.filtros)
   if (!reserva.ok) return reserva
   if (reserva.repetida) return { ok: true, id: chave }
-  const resultado = await deps.cliente.buscar(validacao.filtros)
+  const resultado = await deps.cliente.buscar(validacao.filtros, reserva.cnpjsExcluidos)
   await deps.repo.concluir(chave, resultado)
   return { ok: true, id: chave }
 }
