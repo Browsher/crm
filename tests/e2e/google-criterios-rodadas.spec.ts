@@ -16,6 +16,24 @@ async function entrar(page: Page, email: string) {
   await expect(page).not.toHaveURL(/login/)
 }
 
+test('assistente de filtros mostra Em breve no desktop e no celular', async ({ page }) => {
+  await entrar(page, 'vendedore2e@teste.local')
+  const data = new Date()
+  data.setUTCDate(data.getUTCDate() + 14)
+  await page.goto('/fila/google?semana=' + semanaDe(hojeEmSaoPaulo(data))![0])
+  await page.getByRole('button', { name: 'Editar planejamento', exact: true }).click()
+  for (const viewport of [{ width: 1366, height: 820 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport)
+    const dia = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: /^segunda-feira/ }) })
+    const assistente = dia.getByRole('button', { name: 'Sugerir filtros com IA', exact: true })
+    await assistente.scrollIntoViewIfNeeded()
+    await expect(assistente).toBeVisible()
+    await expect(assistente).toBeDisabled()
+    await expect(dia.getByText('Em breve', { exact: true })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+})
+
 test('planejamento, cópia histórica, sexta 17h, lotes condicionais e auditoria privada', async ({ page, request, browser }, info) => {
   test.setTimeout(150000)
   const banco = bancoGruposDoHarness()

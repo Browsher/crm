@@ -9,6 +9,8 @@ import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { type PlanoGoogle, type PlanoEntrada } from '@/src/features/google/tipos'
 import { normalizarCriterios, criteriosVazios } from '@/src/lib/google/criterios'
+import { aplicarSugestaoAoPlano } from '@/src/lib/google/assistente-ia'
+import { AssistenteIaGoogle } from './assistente-ia'
 import { salvarSemanaAcao, type EstadoPlano } from './acoes'
 import { DialogoCriterios } from './criterios'
 import { EspelharPlanejamento } from './espelhar'
@@ -23,7 +25,7 @@ function entrada(dia: string, plano?: PlanoGoogle): PlanoEntrada {
   const criterios = normalizarCriterios(plano?.criterios)
   return { dia, nicho: plano?.nicho ?? '', bairro: plano?.bairro ?? '', cidade: plano?.cidade ?? '', uf: plano?.uf ?? '', criterios: criterios.ok ? criterios.valor : criteriosVazios() }
 }
-export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { dias: string[]; planos: PlanoGoogle[]; hoje: string; rotinaIniciada?: boolean; historico?: PlanoGoogle[] }) {
+export function PlanejamentoSemanal({ dias, planos, hoje, historico = [], assistenteIaDisponivel = false }: { dias: string[]; planos: PlanoGoogle[]; hoje: string; rotinaIniciada?: boolean; historico?: PlanoGoogle[]; assistenteIaDisponivel?: boolean }) {
   const [editando, setEditando] = useState(false)
   const [rascunho, setRascunho] = useState<PlanoEntrada[]>([])
   const [baseline, setBaseline] = useState('')
@@ -82,7 +84,12 @@ export function PlanejamentoSemanal({ dias, planos, hoje, historico = [] }: { di
           const editavel = editando && dia > hoje
           const rotulo = diaDaSemana(dia) + ', ' + dataCurta(dia)
           return <tr key={dia} data-hoje={dia === hoje ? true : undefined}><th scope="row"><span className={styles.data}>{diaDaSemana(dia)}<time dateTime={dia}>{dataCurta(dia)}</time>{dia === hoje && <Badge>Hoje</Badge>}</span></th>
-            <td><div className={styles.nichoCelula}>{editavel ? <Input aria-label={'Nicho de ' + rotulo} name={'nicho-' + dia} maxLength={100} value={p.nicho} onChange={e => alterar(dia, { nicho: e.target.value })} disabled={pendente} /> : <span>{p.nicho || <span className={styles.ajuda}>Não definido</span>}</span>}{(editavel || p.nicho) && <DialogoCriterios dia={dia} valor={p.criterios ?? criteriosVazios()} leitura={!editavel || pendente} informarEdicao={setDialogo} pedirFechar={() => pedir('dialogo')} onAplicar={criterios => alterar(dia, { criterios })} />}</div></td>
+            <td><div className={styles.nichoCelula}>
+              {editavel ? <Input aria-label={'Nicho de ' + rotulo} name={'nicho-' + dia} maxLength={100} value={p.nicho} onChange={e => alterar(dia, { nicho: e.target.value })} disabled={pendente} /> : <span>{p.nicho || <span className={styles.ajuda}>Não definido</span>}</span>}
+              {(editavel || p.nicho) && <DialogoCriterios dia={dia} valor={p.criterios ?? criteriosVazios()} leitura={!editavel || pendente} informarEdicao={setDialogo} pedirFechar={() => pedir('dialogo')} onAplicar={criterios => alterar(dia, { criterios })} />}
+              {editavel && <AssistenteIaGoogle dia={dia} disponivel={assistenteIaDisponivel} bloqueado={pendente} informarEdicao={setDialogo} pedirFechar={() => pedir('dialogo')}
+                aoAplicar={(sugestao, regiao) => alterar(dia, aplicarSugestaoAoPlano(p, sugestao, regiao))} />}
+            </div></td>
             <td>{editavel ? <Input aria-label={'Bairro de ' + rotulo} name={'bairro-' + dia} maxLength={100} value={p.bairro} onChange={e => alterar(dia, { bairro: e.target.value })} disabled={pendente} /> : p.nicho ? p.bairro || 'Cidade inteira' : 'Não definido'}</td>
             <td>{editavel ? <div className={styles.cidadeUf}><Input aria-label={'Cidade de ' + rotulo} name={'cidade-' + dia} maxLength={100} value={p.cidade} onChange={e => alterar(dia, { cidade: e.target.value })} disabled={pendente} /><NativeSelect aria-label={'UF de ' + rotulo} name={'uf-' + dia} value={p.uf} onChange={e => alterar(dia, { uf: e.target.value })} disabled={pendente}><option value="">UF</option>{ufs.map(uf => <option key={uf}>{uf}</option>)}</NativeSelect></div> : p.cidade ? p.cidade + ' / ' + p.uf : 'Não definido'}</td>
             <td>{p.nicho && p.cidade && p.uf ? p.nicho + ' · ' + (p.bairro || p.cidade) + ' / ' + p.uf : <span className={styles.ajuda}>Montado automaticamente</span>}

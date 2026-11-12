@@ -8,10 +8,82 @@ import type { PlanoGoogle } from '@/src/features/google/tipos'
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 const { salvarSemanaAcao } = vi.hoisted(() => ({ salvarSemanaAcao: vi.fn(async () => ({ erro: null, salvo: true })) }))
 vi.mock('./acoes', () => ({ salvarSemanaAcao, copiarPlanoAcao: async () => ({ erro: null, salvo: true }), sincronizarPlanoAcao: async () => ({ erro: null }) }))
+const { sugerirFiltrosGoogleAcao } = vi.hoisted(() => ({ sugerirFiltrosGoogleAcao: vi.fn() }))
+vi.mock('./sugestoes-ia', () => ({ sugerirFiltrosGoogleAcao }))
 const elemento = document.createElement('div')
 document.body.append(elemento)
 let raiz: ReturnType<typeof createRoot> | undefined
 afterEach(async () => { await act(async () => raiz?.unmount()); elemento.replaceChildren() })
+
+test('assistente fica Em breve e indisponível nos dias editáveis por padrão', async () => {
+  await abrirSemana()
+  await clicar('Editar planejamento')
+  const botao = Array.from(elemento.querySelectorAll('button')).find(b => b.textContent === 'Sugerir filtros com IA')
+  expect(botao?.disabled).toBe(true)
+  expect(elemento.textContent).toContain('Em breve')
+  expect(document.querySelector('[data-painel-lateral]')).toBeNull()
+})
+
+test('assistente abre na lateral e aplica só a opção escolhida ao rascunho daquele dia', async () => {
+  salvarSemanaAcao.mockClear()
+  sugerirFiltrosGoogleAcao.mockResolvedValueOnce({ ok: true, valor: {
+    regiao: { cidade: 'São Paulo', uf: 'SP', bairro: 'Brás' },
+    sugestoes: [
+      { titulo: 'Lojas', descricao: 'Revenda de câmeras.', nicho: 'Lojas de segurança', termos: 'CFTV' },
+      { titulo: 'Instaladores', descricao: 'Instalam câmeras.', nicho: 'Instalação de câmeras', termos: 'monitoramento' },
+    ],
+  } })
+  const plano = { dia: '2026-10-23', nicho: 'Lojas', cidade: 'Santos', bairro: '', uf: 'SP', criterios: { excluir: 'lojas de usados' } } as PlanoGoogle
+  raiz = createRoot(elemento)
+  await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-22', '2026-10-23', '2026-10-26']} planos={[plano]} hoje="2026-10-22" assistenteIaDisponivel />))
+  await clicar('Editar planejamento')
+  const linhas = elemento.querySelectorAll('tbody tr')
+  expect(linhas[0].textContent).not.toContain('Sugerir filtros com IA')
+  await clicar('Sugerir filtros com IA', linhas[1])
+  const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
+  expect(painel.textContent).toContain('O que você quer vender?')
+  await alterarTexto(painel, 'descricao', 'Quero vender câmeras Wi-Fi no Brás, em São Paulo.')
+  await clicar('Gerar sugestões', painel)
+  expect(painel.querySelectorAll('input[type="radio"]')).toHaveLength(2)
+  await act(async () => painel.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click())
+  await clicar('Aplicar filtros', painel)
+  expect(painel.isConnected).toBe(false)
+  expect(salvarSemanaAcao).not.toHaveBeenCalled()
+  const rascunho = JSON.parse(elemento.querySelector<HTMLInputElement>('input[name="dias"]')!.value)
+  expect(rascunho[0]).toMatchObject({ dia: '2026-10-23', nicho: 'Instalação de câmeras', cidade: 'São Paulo', uf: 'SP', bairro: 'Brás', criterios: { termos: 'monitoramento', excluir: 'lojas de usados' } })
+  expect(rascunho[1]).toMatchObject({ dia: '2026-10-26', nicho: '', cidade: '' })
+})
+
+test('uma geração pendente bloqueia envio duplicado e falha invalida as sugestões anteriores', async () => {
+  salvarSemanaAcao.mockClear()
+  sugerirFiltrosGoogleAcao.mockClear()
+  sugerirFiltrosGoogleAcao.mockResolvedValueOnce({ ok: true, valor: {
+    sugestoes: [{ titulo: 'Lojas', descricao: 'Revenda de câmeras.', nicho: 'Lojas', termos: 'CFTV' }],
+  } })
+  let concluir!: (resultado: { ok: false; motivo: string }) => void
+  sugerirFiltrosGoogleAcao.mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
+  raiz = createRoot(elemento)
+  await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-23']} planos={[]} hoje="2026-10-22" assistenteIaDisponivel />))
+  await clicar('Editar planejamento')
+  await clicar('Sugerir filtros com IA')
+  const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
+  await alterarTexto(painel, 'descricao', 'Quero vender câmeras.')
+  await clicar('Gerar sugestões', painel)
+  const formulario = painel.querySelector('form')!
+  const enviar = () => formulario.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  await act(async () => { enviar(); enviar() })
+  expect(sugerirFiltrosGoogleAcao).toHaveBeenCalledTimes(2)
+  expect(painel.querySelector('input[type="radio"]')).toBeNull()
+  expect(Array.from(painel.querySelectorAll('button')).find(b => b.textContent === 'Aplicar filtros')?.disabled).toBe(true)
+  await act(async () => concluir({ ok: false, motivo: 'Assistente indisponível.' }))
+  expect(painel.querySelector('[role="alert"]')?.textContent).toContain('Assistente indisponível.')
+  expect(elemento.querySelector<HTMLInputElement>('input[name^="nicho-"]')?.value).toBe('')
+  expect(salvarSemanaAcao).not.toHaveBeenCalled()
+  await clicar('Fechar', painel)
+  expect(document.querySelector('[data-slot="dialog-content"]')?.textContent).toContain('Descartar alterações?')
+  await clicar('Descartar alterações')
+  expect(painel.isConnected).toBe(false)
+})
 
 test('layout segue a prévia com cinco colunas e critérios junto do nicho',async()=>{
   raiz=createRoot(elemento)
