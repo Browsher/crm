@@ -45,22 +45,6 @@
 .grupoEspelho > legend { font-size:14px; font-weight:600; padding:0 8px; }
 .tituloGrupo { margin:0; font-size:16px; line-height:24px; font-weight:600; }
 .editorCriterios textarea:focus::placeholder { opacity:0; }
-.iaEmBreve, .iaRodape, .iaRegiao { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
-.iaEmBreve > button { white-space:normal; }
-.iaRodape { justify-content:space-between; width:100%; }
-.iaRodape > .ajuda { flex:1 1 180px; }
-.iaGerar { display:flex; justify-content:flex-end; }
-.iaSugestoes { display:grid; gap:8px; min-width:0; padding:0; margin:0; border:0; }
-.iaSugestoes legend { margin-bottom:4px; font-size:16px; font-weight:600; }
-.iaSugestoes p { margin:0; }
-.iaRegiao { padding:8px 12px; background:var(--ui-muted); border-radius:6px; }
-.iaRegiao > span { color:var(--ui-muted-foreground); }
-.iaOpcao { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:10px; padding:12px; border:1px solid var(--ui-border); border-radius:8px; cursor:pointer; overflow-wrap:anywhere; }
-.iaOpcao:has(:checked) { border-color:var(--ring); background:var(--ui-success-background); }
-.iaOpcao > input { margin-top:2px; }
-.iaOpcao > span { display:grid; gap:3px; }
-.iaDetalhes { display:grid; gap:3px; margin-top:5px; font-size:13px; }
-.iaDetalhes > span { display:flex; flex-wrap:wrap; gap:3px 8px; }
 .gradeNumeros { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
 .entregas { display:grid; gap:16px; min-width:0; }
 .entrega { display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,.8fr) auto; align-items:center; gap:24px; padding:var(--card-padding); min-width:0; }

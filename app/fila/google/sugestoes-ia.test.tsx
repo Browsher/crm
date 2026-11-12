@@ -20,6 +20,7 @@ beforeEach(() => {
   vi.stubEnv('CRM_GOOGLE_IA_ATIVA', '1')
   vi.stubEnv('ANTHROPIC_API_KEY', 'chave-ficticia')
   vi.stubEnv('CRM_GOOGLE_IA_MODELO', '')
+  vi.stubEnv('CRM_ASSISTENTE_IA_MODELO', '')
   vi.stubGlobal('fetch', requisicao)
 })
 afterEach(() => {

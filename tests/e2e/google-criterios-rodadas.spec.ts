@@ -16,20 +16,35 @@ async function entrar(page: Page, email: string) {
   await expect(page).not.toHaveURL(/login/)
 }
 
-test('assistente de filtros mostra Em breve no desktop e no celular', async ({ page }) => {
+test('assistente de filtros mostra Em breve no Google e no Banco, no desktop e no celular', async ({ page }) => {
   await entrar(page, 'vendedore2e@teste.local')
   const data = new Date()
   data.setUTCDate(data.getUTCDate() + 14)
   await page.goto('/fila/google?semana=' + semanaDe(hojeEmSaoPaulo(data))![0])
   await page.getByRole('button', { name: 'Editar planejamento', exact: true }).click()
-  for (const viewport of [{ width: 1366, height: 820 }, { width: 390, height: 844 }]) {
+  const tamanhos = [{ width: 1366, height: 820 }, { width: 390, height: 844 }]
+  for (const viewport of tamanhos) {
     await page.setViewportSize(viewport)
     const dia = page.getByRole('row').filter({ has: page.getByRole('rowheader', { name: /^segunda-feira/ }) })
     const assistente = dia.getByRole('button', { name: 'Sugerir filtros com IA', exact: true })
     await assistente.scrollIntoViewIfNeeded()
     await expect(assistente).toBeVisible()
     await expect(assistente).toBeDisabled()
-    await expect(dia.getByText('Em breve', { exact: true })).toBeVisible()
+    const selo = dia.getByText('Em breve', { exact: true })
+    await selo.scrollIntoViewIfNeeded()
+    await expect(selo).toBeInViewport()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+  await page.goto('/fila/buscar?fonte=banco')
+  await expect(page.getByRole('heading', { name: 'Banco de empresas', exact: true })).toBeVisible()
+  for (const viewport of tamanhos) {
+    await page.setViewportSize(viewport)
+    const assistente = page.getByRole('button', { name: 'Sugerir filtros com IA', exact: true })
+    const selo = page.getByText('Em breve', { exact: true })
+    await selo.scrollIntoViewIfNeeded()
+    await expect(assistente).toBeDisabled()
+    await expect(assistente).toBeInViewport()
+    await expect(selo).toBeInViewport()
     await expect(page.getByRole('dialog')).toHaveCount(0)
   }
 })
