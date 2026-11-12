@@ -1,16 +1,70 @@
-.emBreve, .rodape, .regiao { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.emBreve, .rodape { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .emBreve > button { white-space:normal; }
 .rodape { justify-content:space-between; width:100%; }
 .rodape > .ajuda { flex:1 1 180px; }
 .ajuda { color:var(--ui-muted-foreground); font-size:12px; line-height:18px; }
 .formulario, .formulario label { display:grid; gap:8px; min-width:0; }
 .formulario { gap:16px; }
+.formulario label { font-size:13px; font-weight:500; }
+.buscaProduto { display:grid; gap:8px; min-width:0; }
+.buscaProduto > button, .campoRegioes > button { justify-self:start; }
+.tituloBusca, .produtoSelecionado { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
+.tituloBusca label, .produtoSelecionado h3 { font-size:15px; font-weight:600; }
+.listaProdutos {
+  max-height:min(280px, 42dvh);
+  overflow:auto;
+  overscroll-behavior:contain;
+  margin:0;
+  padding:4px;
+  list-style:none;
+  border:1px solid var(--ui-border);
+  border-radius:var(--radius-card);
+  background:var(--ui-background);
+}
+.listaProdutos ul { list-style:none; margin:0; padding:0; }
+.listaProdutos [role="option"] {
+  display:grid;
+  align-content:center;
+  min-height:44px;
+  gap:2px;
+  padding:7px 10px;
+  border:1px solid transparent;
+  border-radius:6px;
+  cursor:pointer;
+  overflow-wrap:anywhere;
+}
+.listaProdutos [role="option"]:hover { background:var(--ui-muted); }
+.listaProdutos [aria-selected="true"] { border-color:var(--ring); background:var(--ui-muted); }
+.listaProdutos small, .familia { color:var(--ui-muted-foreground); font-size:12px; line-height:18px; }
+.familia { display:block; padding:6px 10px; background:var(--ui-muted); border-radius:6px; }
+.listaProdutos [role="group"] + [role="group"] { margin-top:4px; }
+.produtoSelecionado { padding:12px; border:1px solid var(--ui-border); border-radius:var(--radius-card); background:var(--ui-muted); }
+.produtoSelecionado > div { flex:1 1 190px; min-width:0; }
+.produtoSelecionado h3, .produtoSelecionado p { margin:0; overflow-wrap:anywhere; }
+.produtoSelecionado p { margin-top:4px; }
+.produtoReconhecido { white-space:normal; text-align:left; height:auto; }
+.campoRegioes, .linhaRegiao, .camposRefinamento { display:grid; gap:10px; min-width:0; }
+.campoRegioes { margin:0; padding:0; border:0; }
+.campoRegioes legend { margin-bottom:6px; font-size:15px; font-weight:600; }
+.campoRegioes p { margin:0; }
+.linhaRegiao { padding:10px 12px; border:1px solid var(--ui-border); border-radius:var(--radius-card); }
+.linhaRegiao > button { justify-self:start; }
+.camposRegiao { display:grid; grid-template-columns:minmax(94px, auto) minmax(0, 1fr); align-items:end; gap:10px; }
+.camposRegiao > label:last-child { grid-column:1 / -1; }
+.refinar { border-block:1px solid var(--ui-border); }
+.refinar h3 { margin:0; }
+.refinar h3 button { justify-content:space-between; width:100%; padding-inline:4px; font-weight:600; }
+.refinar h3 button[aria-expanded="true"] svg { transform:rotate(180deg); }
+.camposRefinamento { padding-block:4px 12px; }
+.camposRefinamento[hidden] { display:none; }
 .gerar { display:flex; justify-content:flex-end; }
-.sugestoes { display:grid; gap:8px; min-width:0; padding:0; margin:0; border:0; }
+.formulario + [role="alert"], .sugestoes { margin-top:16px; }
+.sugestoes { display:grid; gap:8px; min-width:0; padding:0; margin-inline:0; margin-bottom:0; border:0; }
 .sugestoes legend { margin-bottom:4px; font-size:16px; font-weight:600; }
 .sugestoes p { margin:0; }
-.regiao { padding:8px 12px; background:var(--ui-muted); border-radius:6px; }
-.regiao > span { color:var(--ui-muted-foreground); }
+.previaRegioes { display:grid; gap:5px; padding:8px 12px; background:var(--ui-muted); border-radius:6px; overflow-wrap:anywhere; }
+.previaRegioes > div { display:flex; align-items:center; gap:8px; }
+.previaRegioes ul { margin:0; padding-inline-start:24px; list-style:disc; }
 .opcao { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:10px; padding:12px; border:1px solid var(--ui-border); border-radius:8px; cursor:pointer; overflow-wrap:anywhere; }
 .opcao:has(:checked) { border-color:var(--ring); background:var(--ui-success-background); }
 .opcao > input { margin-top:2px; }

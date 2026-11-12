@@ -41,16 +41,17 @@ test('assistente abre na lateral e aplica só a opção escolhida ao rascunho da
   expect(linhas[0].textContent).not.toContain('Sugerir filtros com IA')
   await clicar('Sugerir filtros com IA', linhas[1])
   const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
-  expect(painel.textContent).toContain('O que você quer vender?')
+  await clicar('Outro produto', painel)
   await alterarTexto(painel, 'descricao', 'Quero vender câmeras Wi-Fi no Brás, em São Paulo.')
   await clicar('Gerar sugestões', painel)
+  expect(painel.textContent).toContain('Santos')
   expect(painel.querySelectorAll('input[type="radio"]')).toHaveLength(2)
   await act(async () => painel.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click())
   await clicar('Aplicar filtros', painel)
   expect(painel.isConnected).toBe(false)
   expect(salvarSemanaAcao).not.toHaveBeenCalled()
   const rascunho = JSON.parse(elemento.querySelector<HTMLInputElement>('input[name="dias"]')!.value)
-  expect(rascunho[0]).toMatchObject({ dia: '2026-10-23', nicho: 'Instalação de câmeras', cidade: 'São Paulo', uf: 'SP', bairro: 'Brás', criterios: { termos: 'monitoramento', excluir: 'lojas de usados' } })
+  expect(rascunho[0]).toMatchObject({ dia: '2026-10-23', nicho: 'Instalação de câmeras', cidade: 'Santos', uf: 'SP', bairro: '', criterios: { termos: 'monitoramento', excluir: 'lojas de usados' } })
   expect(rascunho[1]).toMatchObject({ dia: '2026-10-26', nicho: '', cidade: '' })
 })
 
@@ -67,6 +68,7 @@ test('uma geração pendente bloqueia envio duplicado e falha invalida as sugest
   await clicar('Editar planejamento')
   await clicar('Sugerir filtros com IA')
   const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
+  await clicar('Outro produto', painel)
   await alterarTexto(painel, 'descricao', 'Quero vender câmeras.')
   await clicar('Gerar sugestões', painel)
   const formulario = painel.querySelector('form')!
@@ -83,6 +85,85 @@ test('uma geração pendente bloqueia envio duplicado e falha invalida as sugest
   expect(document.querySelector('[data-slot="dialog-content"]')?.textContent).toContain('Descartar alterações?')
   await clicar('Descartar alterações')
   expect(painel.isConnected).toBe(false)
+})
+
+test('escolhe produto do catálogo pelo teclado e gera com o refinamento recolhido', async () => {
+  sugerirFiltrosGoogleAcao.mockClear()
+  sugerirFiltrosGoogleAcao.mockResolvedValueOnce({ ok: true, valor: {
+    sugestoes: [{ titulo: 'Distribuidores', descricao: 'Compram para revenda.', nicho: 'Distribuidores de cuidados pessoais', tipos: ['distribuidor'] }],
+  } })
+  const painel = await abrirAssistenteGoogle()
+  expect(painel.querySelector('[name="cidade"]')).toBeNull()
+  expect(painel.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true)
+  const busca = painel.querySelector<HTMLInputElement>('[role="combobox"]')!
+  await act(async () => busca.focus())
+  const familias = Array.from(painel.querySelectorAll('[role="listbox"] [role="group"]')).map(grupo => grupo.getAttribute('aria-label'))
+  expect(familias).toEqual(expect.arrayContaining(['Higiene e bem-estar', 'Informática e armazenamento', 'Pet']))
+  await alterarTexto(painel, 'produto', 'massageador')
+  expect(painel.querySelector('[role="listbox"]')?.textContent).toContain('QS-030')
+  await act(async () => {
+    busca.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+  })
+  const opcao = document.getElementById(busca.getAttribute('aria-activedescendant')!)
+  expect(opcao?.textContent).toContain('QS-030')
+  await act(async () => {
+    busca.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  })
+  expect(painel.textContent).toContain('QS-030')
+  expect(painel.querySelector('[name="cidade"]')).not.toBeNull()
+  expect(painel.querySelector('[name="especialidade"]')).toBeNull()
+  await alterarTexto(painel, 'cidade', 'Santos')
+  await clicar('Gerar sugestões', painel)
+  expect(sugerirFiltrosGoogleAcao).toHaveBeenCalledWith({
+    produto: { sku: 'QS-030' }, regioes: [{ estado: '', cidade: 'Santos', bairros: [] }],
+  })
+  expect(painel.textContent).toContain('Distribuidor')
+  await clicar('Aplicar filtros', painel)
+  expect(JSON.parse(elemento.querySelector<HTMLInputElement>('input[name="dias"]')!.value)[0]).toMatchObject({
+    cidade: 'Santos', uf: '', bairro: '', criterios: { tipos: ['distribuidor'] },
+  })
+})
+
+test('trocar o SKU descarta resposta atrasada e refinamentos, preservando a região', async () => {
+  sugerirFiltrosGoogleAcao.mockClear()
+  let concluir!: (resultado: unknown) => void
+  sugerirFiltrosGoogleAcao.mockReturnValueOnce(new Promise(resolve => { concluir = resolve }))
+  sugerirFiltrosGoogleAcao.mockResolvedValueOnce({ ok: true, valor: {
+    sugestoes: [{ titulo: 'Papelarias e informática', descricao: 'Compram para revenda.', nicho: 'Lojas de informática' }],
+  } })
+  const painel = await abrirAssistenteGoogle()
+  await selecionarProduto(painel, 'QS-030')
+  await alterarTexto(painel, 'cidade', 'Santos')
+  await clicar('Refinar busca', painel)
+  expect(painel.querySelector<HTMLSelectElement>('[name="especialidade"]')?.textContent).toContain('Aparelhos de cuidados pessoais')
+  await alterarTexto(painel, 'detalhes', 'Atendimento a instaladores')
+  await clicar('Gerar sugestões', painel)
+  await clicar('Trocar produto', painel)
+  await selecionarProduto(painel, '128GB-V')
+  await act(async () => concluir({ ok: true, valor: {
+    sugestoes: [{ titulo: 'Público atrasado', descricao: 'Produto anterior.', nicho: 'Lojas antigas' }],
+  } }))
+  expect(painel.textContent).not.toContain('Público atrasado')
+  expect(painel.querySelector<HTMLInputElement>('[name="cidade"]')?.value).toBe('Santos')
+  expect(painel.querySelector('[name="detalhes"]')).toBeNull()
+  await clicar('Refinar busca', painel)
+  expect(painel.querySelector<HTMLTextAreaElement>('[name="detalhes"]')?.value).toBe('')
+  expect(painel.querySelector<HTMLSelectElement>('[name="especialidade"]')?.textContent).toContain('Cartões de memória')
+  await clicar('Gerar sugestões', painel)
+  expect(sugerirFiltrosGoogleAcao).toHaveBeenLastCalledWith({
+    produto: { sku: '128GB-V' }, regioes: [{ estado: '', cidade: 'Santos', bairros: [] }],
+  })
+})
+
+test('sugere o SKU reconhecido na descrição de outro produto', async () => {
+  const painel = await abrirAssistenteGoogle()
+  await clicar('Outro produto', painel)
+  await alterarTexto(painel, 'descricao', 'IC-8177')
+  const selecionar = Array.from(painel.querySelectorAll('button')).find(b => b.textContent?.startsWith('Selecionar ') && b.textContent.includes('IC-8177'))
+  expect(selecionar).toBeDefined()
+  await act(async () => selecionar!.click())
+  expect(painel.querySelector('[name="descricao"]')).toBeNull()
+  expect(painel.textContent).toContain('IC-8177')
 })
 
 test('layout segue a prévia com cinco colunas e critérios junto do nicho',async()=>{
@@ -172,10 +253,23 @@ test('critérios preservam os três grupos e o rodapé aplica apenas ao rascunho
 })
 function alterarTexto(onde: ParentNode, nome: string, valor: string) {
   return act(async () => {
-    const campo = onde.querySelector<HTMLTextAreaElement>(`textarea[name="${nome}"]`)!
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(campo, valor)
+    const campo = onde.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[name="${nome}"]`)!
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(campo), 'value')!.set!.call(campo, valor)
     campo.dispatchEvent(new Event('input', { bubbles: true }))
   })
+}
+async function abrirAssistenteGoogle() {
+  raiz = createRoot(elemento)
+  await act(async () => raiz!.render(<PlanejamentoSemanal dias={['2026-10-23']} planos={[]} hoje="2026-10-22" assistenteIaDisponivel />))
+  await clicar('Editar planejamento')
+  await clicar('Sugerir filtros com IA')
+  return document.querySelector('[role="dialog"][data-painel-lateral]')!
+}
+async function selecionarProduto(painel: Element, sku: string) {
+  await alterarTexto(painel, 'produto', sku)
+  const opcao = Array.from(painel.querySelectorAll<HTMLElement>('[role="option"]')).find(elemento => elemento.textContent?.includes(sku))
+  expect(opcao).toBeDefined()
+  await act(async () => opcao!.click())
 }
 function clicar(rotulo: string, onde: ParentNode = document) {
   return act(async () => {

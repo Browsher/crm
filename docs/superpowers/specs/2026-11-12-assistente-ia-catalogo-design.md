@@ -1,6 +1,6 @@
 # Catálogo de produtos no assistente de prospecção
 
-Proposta para revisão comercial. O vendedor escolhe um produto da QS Importação por nome ou SKU, informa onde prospectar e recebe sugestões aplicáveis ao formulário do Google ou do Banco de empresas.
+O vendedor escolhe um produto da QS Importação por nome ou SKU, informa onde prospectar e recebe sugestões aplicáveis ao formulário do Google ou do Banco de empresas.
 
 ## Produtos disponíveis
 
@@ -10,7 +10,7 @@ Proposta de manutenção: versionar no CRM um catálogo enxuto com SKU, nome com
 
 ## Painel lateral
 
-1. **Escolher produto**. Ao abrir, o painel mostra o campo pesquisável por SKU ou nome e a opção **Outro produto**. O resultado identifica cada SKU no formato “Massageador tartaruga · QS-030”. Ao selecionar, aparece a ficha curta do item e são liberados a região, o refinamento e o botão **Gerar sugestões**. Em **Outro produto**, uma descrição válida libera região e detalhes.
+1. **Escolher produto**. Ao abrir, o painel mostra o campo pesquisável por SKU ou nome e a opção **Outro produto**. A lista mostra todas as famílias e agrupa produtos da mesma linha, como as câmeras de segurança. Cada SKU aparece uma vez. O resultado identifica cada SKU no formato “Massageador tartaruga · QS-030”. Ao selecionar, aparece a ficha curta do item e são liberados a região, o refinamento e o botão **Gerar sugestões**. Em **Outro produto**, uma descrição válida libera região e detalhes.
 2. **Região**. Aparece após a escolha do SKU ou a descrição de outro produto. Usa os componentes e valores existentes de UF, cidade e bairro, com bairro opcional. Aproveita a região já preenchida no formulário. No Banco, mostra as regiões atuais e mantém todas por padrão ao aplicar a sugestão. Uma edição explícita no painel substitui o conjunto pelo conjunto revisado pelo vendedor, que aparece inteiro antes de aplicar. Se não houver região, a sugestão ainda pode ser gerada. As validações de localização do formulário permanecem na etapa de busca ou salvamento.
 3. **Refinar busca**. Seção recolhida por padrão. Deixa a geração direta a partir do produto e da região e concentra os campos opcionais abaixo.
    - **Público-alvo**. Mostra quem pode comprar o item, como lojistas, distribuidores ou instaladores de câmeras. Sem seleção, apresenta até três públicos distintos, com prioridade para compradores de revenda, conforme o catálogo de venda por caixa fechada. Quando o vendedor escolher um público, as sugestões respeitam essa escolha.
@@ -25,7 +25,7 @@ Usar esta lista para preparar as opções de cada SKU. Por exemplo, um ferro a v
 
 - **Câmeras de segurança e cabo**. CFTV residencial, CFTV comercial, monitoramento e acessórios de instalação.
 - **Minicâmeras e foto/vídeo**. Foto e vídeo, eletrônicos portáteis.
-- **Áudio, vídeo e projeção**. Projeção, home theater e acessórios para TV.
+- **Áudio, vídeo e projeção**. Streaming e TV, home theater e acessórios para TV no NTV. Projeção, karaokê e games nos projetores. Os usos comerciais podem coexistir no mesmo SKU e a ficha diferencia os acessórios de cada modelo.
 - **Informática e armazenamento**. Periféricos, cartões de memória e suprimentos de informática.
 - **Acessórios para celular**. Acessórios para smartphone e suportes veiculares, conforme a ficha.
 - **Utilidades de cozinha**. Utensílios de cozinha, acessórios para vinho e embalagem e conservação.
@@ -44,7 +44,7 @@ Cada linha mostra uma família e seus SKUs. Os códigos abaixo representam a ati
 | --- | --- | --- | --- |
 | Câmeras de segurança e cabo | ES-P9, ES-S6, IC-8177, IC-A31B, IC-A35, IC-A38, IC-A58, IC-A6-5V, IC-A8, IC-A8-5V, IC-Q10, QS-003 | Lojas de segurança eletrônica, distribuidores de CFTV, instaladores de câmeras. Termos como CFTV, câmeras Wi-Fi, câmera 4G ou acessórios de instalação conforme o SKU. | Loja **4759-8/99**. Atacado **4649-4/01**. Instalação **4321-5/00** e monitoramento **8020-0/01** em perfis separados, quando pertinentes. |
 | Minicâmeras e foto/vídeo | QS-C-001, QS-C-002, QS-C-003 | Lojas de eletrônicos e de equipamentos de foto e vídeo. Termos como minicâmera e gravador de vídeo portátil. | Varejo de áudio e vídeo **4753-9/00**. Atacado de aparelhos eletrônicos **4649-4/02**. |
-| Áudio, vídeo e projeção | NTV, QS-T-001, QS-T-002 | Lojas de áudio e vídeo, de eletrônicos e distribuidores. TV box ou projetor conforme o SKU. | Varejo **4753-9/00**. Atacado **4649-4/02**. |
+| Áudio, vídeo e projeção | NTV, QS-T-001, QS-T-002 | Lojas de áudio e vídeo, de eletrônicos e distribuidores. Para os projetores, também lojas de games quando o vendedor escolher esse público ou especialidade. | Varejo **4753-9/00**. Atacado **4649-4/02**. Para lojas de games, **4763-6/01**, que também abrange brinquedos e outros artigos recreativos. |
 | Informática e armazenamento | 128GB-V, 32GB-V, 64GB-V, MN-TEC, QS-011 | Lojas e distribuidores de informática. Termos como microSD, periféricos, mini teclado ou mouse conforme o SKU. | Varejo **4751-2/01**. Atacado de equipamentos **4651-6/01** e de suprimentos **4651-6/02**, conforme o público. |
 | Acessórios para celular | QS-010 | Lojas de acessórios para celular e revendas de telefonia. Termos como suporte para celular e acessórios para smartphone. | Varejo de telefonia **4752-1/00** como candidato, com escopo mais amplo que acessórios. |
 | Utilidades de cozinha | QS-001, QS-008, QS-009, QS-027 | Lojas de utilidades domésticas, atacadistas de utensílios de cozinha e armarinhos com seção de utilidades. Termos como utensílios, acessórios para vinho ou selador de embalagens conforme o SKU. | Varejo de utilidades **4759-8/99**. Atacado **4649-4/99**. O Google permite procurar armarinhos pelo mix de produtos. |

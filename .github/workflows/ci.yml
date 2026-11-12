@@ -62,6 +62,9 @@ jobs:
       - name: Jornadas no navegador
         run: npm run test:e2e -- --sem-build
 
+      - name: Assistente de prospecção no navegador
+        run: npm run test:e2e -- --sem-build --assistente
+
       - name: Relatório das falhas no navegador
         if: failure()
         uses: actions/upload-artifact@v4

@@ -84,3 +84,39 @@ test('falha de créditos deixa mensagem útil e não repete a solicitação', as
   expect(await sugerirFiltrosGoogleAcao(descricao)).toEqual({ ok: false, motivo: 'O assistente está indisponível no momento. Você pode preencher os critérios manualmente.' })
   expect(requisicao).toHaveBeenCalledTimes(1)
 })
+
+test('usa apenas a ficha do SKU escolhido e só aplica o tipo explícito compatível', async () => {
+  requisicao.mockResolvedValueOnce(resposta(JSON.stringify({ ...dados, sugestoes: [
+    { titulo: 'Distribuidores de aparelhos elétricos', descricao: 'Compram aparelhos de cuidados pessoais para revenda.', nicho: 'Distribuidores de aparelhos elétricos',
+      termos: 'cuidados pessoais, massageador recarregável', perfil: 'distribuidores', excluir: 'lojas com atendimento físico' },
+    { ...sugestoes[1], perfil: 'instaladores' },
+  ] })))
+  const resultado = await sugerirFiltrosGoogleAcao({
+    produto: { sku: 'QS-030' }, publico: 'distribuidores', especialidade: 'Aparelhos de cuidados pessoais',
+    regioes: [{ estado: 'SP', cidade: 'São Paulo', bairros: [] }],
+  })
+  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [
+    { tipos: ['distribuidor'], nicho: expect.stringMatching(/aparelhos de cuidados pessoais/i), termos: 'cuidados pessoais, massageador recarregável' },
+  ] } })
+  if (resultado.ok) {
+    expect(resultado.valor.sugestoes).toHaveLength(1)
+    expect(resultado.valor.sugestoes[0].excluir).toBeUndefined()
+    expect(resultado.valor.regiao).toBeUndefined()
+  }
+  const corpo = JSON.parse(String(requisicao.mock.calls[0][1]?.body))
+  expect(corpo.messages[0].content).toMatch(/QS-030.*Massag/i)
+  expect(corpo.messages[0].content).not.toMatch(/IC-8177|preco|gtin/i)
+})
+
+test('característica sem fio na descrição livre não autoriza excluir lojas', async () => {
+  requisicao.mockResolvedValueOnce(resposta(JSON.stringify({ sugestoes: [{ ...sugestoes[0], excluir: 'lojas físicas' }] })))
+  const resultado = await sugerirFiltrosGoogleAcao('Quero vender aspirador sem fio.')
+  expect(resultado).toMatchObject({ ok: true })
+  if (resultado.ok) expect(resultado.valor.sugestoes[0].excluir).toBeUndefined()
+})
+
+test('aplica apenas exclusões pedidas pelo vendedor', async () => {
+  requisicao.mockResolvedValueOnce(resposta(JSON.stringify({ sugestoes: [{ ...sugestoes[0], excluir: 'lojas físicas, academias' }] })))
+  const resultado = await sugerirFiltrosGoogleAcao({ produto: { descricao }, detalhes: 'Excluir academias.' })
+  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [{ excluir: 'academias' }] } })
+})

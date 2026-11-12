@@ -58,7 +58,7 @@ test('não permite aplicar CNAE ausente do catálogo oficial', async () => {
 
 test('preserva códigos com zero inicial e separa atividade principal da secundária', async () => {
   requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['0111301'], cnaesSecundarios: ['4755502'] }]))
-  expect(await sugerirFiltrosBancoAcao(descricao + ' Inclua atividades secundárias.')).toMatchObject({ ok: true, valor: {
+  expect(await sugerirFiltrosBancoAcao({ produto: { descricao: 'Quero empresas de cultivo de arroz' }, detalhes: 'Inclua armarinho como atividade secundária.' })).toMatchObject({ ok: true, valor: {
     sugestoes: [{ cnaes: [{ codigo: '0111301' }], cnaesSecundarios: [{ codigo: '4755502' }] }],
   } })
 })
@@ -113,4 +113,71 @@ test('CNAEs de iluminação e instalação funcionam com a rede do IBGE indispon
     ] },
   })
   expect(requisicao).toHaveBeenCalledTimes(1)
+})
+
+test('limita os CNAEs a cada perfil do SKU, exibe o escopo e envia somente a ficha escolhida', async () => {
+  requisicao.mockResolvedValueOnce(resposta([
+    { ...lojas, perfil: 'lojas', cnaes: ['4759899', '4649401', '4751201'] },
+    { ...lojas, titulo: 'Distribuidores', perfil: 'distribuidores', cnaes: ['4649401'] },
+  ]))
+  const entrada = { produto: { sku: 'IC-8177' }, publico: 'lojas', regioes: [{ estado: 'SP', cidade: 'São Paulo', bairros: ['Brás', 'Sé'] }] }
+  const resultado = await sugerirFiltrosBancoAcao(entrada)
+  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [
+    { cnaes: [{ codigo: '4759899', amplo: true, motivo: expect.any(String) }] },
+  ] } })
+  if (resultado.ok) {
+    expect(resultado.valor.sugestoes).toHaveLength(1)
+    expect(resultado.valor.regiao).toBeUndefined()
+  }
+  const [, requisitada] = requisicao.mock.calls[0]
+  const corpo = JSON.parse(String(requisitada?.body))
+  expect(corpo.messages[0].content).toContain('IC-8177')
+  expect(corpo.messages[0].content).toContain('4759899')
+  expect(corpo.messages[0].content).toContain('Brás')
+  expect(corpo.messages[0].content).not.toMatch(/QS-030|preco|gtin/i)
+})
+
+test('rejeita seleção inválida ou sem CNAE pertinente antes de consumir crédito', async () => {
+  for (const produto of [
+    { produto: { sku: '128GB' } },
+    { produto: { sku: 'IC-8177' }, especialidade: 'Higiene bucal' },
+    { produto: { sku: 'QS-030' }, publico: 'lojas' },
+  ]) expect(await sugerirFiltrosBancoAcao(produto)).toMatchObject({ ok: false })
+  expect(requisicao).not.toHaveBeenCalled()
+})
+
+test('rejeita CNAE oficial sem relação com o público do produto fora do catálogo', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['0111301'] }]))
+  expect(await sugerirFiltrosBancoAcao({ produto: { descricao: 'Quero vender fitas LED para lojas de iluminação em SP.' } })).toMatchObject({ ok: false, motivo: expect.stringContaining('CNAE') })
+})
+
+test('descrição livre respeita o público explícito e não transforma exclusão em CNAE candidato', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['4754703', '4649406', '4763601'] }]))
+  expect(await sugerirFiltrosBancoAcao({
+    produto: { descricao: 'Fitas LED' }, publico: 'Lojistas de iluminação',
+    detalhes: 'Excluir lojas de brinquedos.',
+  })).toMatchObject({ ok: true, valor: { sugestoes: [
+    { cnaes: [{ codigo: '4754703' }] },
+  ] } })
+})
+
+test('pedido de evitar secundários não aplica CNAEs secundários', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['4754703'], cnaesSecundarios: ['4649406'] }]))
+  expect(await sugerirFiltrosBancoAcao('Quero vender fitas LED. Não inclua CNAEs secundários.')).toMatchObject({
+    ok: true, valor: { sugestoes: [{ cnaesSecundarios: [] }] },
+  })
+})
+
+test('restringe palavras empresariais ao trecho em que o vendedor pede o filtro de nome', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['4754703'], palavras: ['LED', 'lâmpadas', 'Comercial'] }]))
+  expect(await sugerirFiltrosBancoAcao('Fitas LED e lâmpadas para lojas de iluminação com Comercial no nome.')).toMatchObject({
+    ok: true, valor: { sugestoes: [{ palavras: ['Comercial'] }] },
+  })
+})
+
+test('reconhece pet shop em descrição livre e aceita seu CNAE oficial', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['4789004'] }]))
+  expect(await sugerirFiltrosBancoAcao('Quero vender ração para pet shops.')).toMatchObject({
+    ok: true, valor: { sugestoes: [{ cnaes: [{ codigo: '4789004' }] }] },
+  })
 })
