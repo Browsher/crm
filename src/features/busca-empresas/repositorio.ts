@@ -4,6 +4,10 @@ import { comoUsuario } from '@/src/server/db/como-usuario'
 import type { BuscaSalva, FiltrosBusca, LimiteBusca, ResultadoFornecedor } from './tipos'
 
 export type FalhaBanco = 'sem_permissao' | 'operacao_invalida' | 'empresa_repetida'
+type ReservaBusca =
+  | { ok: true; repetida: true }
+  | { ok: true; repetida: false; cnpjsExcluidos: string[] }
+  | { ok: false; motivo: FalhaBanco | 'limite' | 'pausada' }
 export type ResumoBusca = Omit<BuscaSalva, 'empresas'> & { retornadas: number }
 export type RepositorioBusca = Pick<ReturnType<typeof repositorioBusca>, 'reservar' | 'concluir'>
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
@@ -23,11 +27,12 @@ const LIMITES = `SELECT u.id AS usuario_id,u.nome AS vendedor,coalesce(l.limite_
 export function repositorioBusca(usuarioId: string) {
   const executar = <T extends QueryResultRow,>(sql: string, params: unknown[] = []) => comoUsuario(usuarioId, e => e<T>(sql, params)).then(r => r.linhas)
   return {
-    async reservar(chave: string, nome: string, filtros: FiltrosBusca): Promise<{ ok: true; repetida: boolean } | { ok: false; motivo: FalhaBanco | 'limite' | 'pausada' }> {
+    async reservar(chave: string, nome: string, filtros: FiltrosBusca): Promise<ReservaBusca> {
       try {
-        const [r] = await executar<{ resultado: 'ok' | 'repetida' | 'limite' | 'pausada' }>(
-          'SELECT busca_empresa_reservar_casa($1,$2,$3) AS resultado', [chave, nome, JSON.stringify(filtros)])
-        if (r.resultado === 'ok' || r.resultado === 'repetida') return { ok: true, repetida: r.resultado === 'repetida' }
+        const [r] = await executar<{ resultado: 'ok' | 'repetida' | 'limite' | 'pausada'; cnpjs_excluidos: string[] }>(
+          'SELECT * FROM busca_empresa_reservar_casa_com_exclusoes($1,$2,$3)', [chave, nome, JSON.stringify(filtros)])
+        if (r.resultado === 'ok') return { ok: true, repetida: false, cnpjsExcluidos: r.cnpjs_excluidos }
+        if (r.resultado === 'repetida') return { ok: true, repetida: true }
         return { ok: false, motivo: r.resultado }
       } catch (erro) { return { ok: false, motivo: motivo(erro) } }
     },

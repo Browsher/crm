@@ -4,7 +4,7 @@ import type { RepositorioBusca } from './repositorio'
 
 const entrada = { palavra: 'iluminação', uf: 'SP', quantidade: '2' }
 const chave = '11111111-1111-4111-8111-111111111111'
-function dependencias(reserva: unknown = { ok: true, repetida: false }) {
+function dependencias(reserva: unknown = { ok: true, repetida: false, cnpjsExcluidos: [] }) {
   const ordem: string[] = []
   const repo = {
     reservar: vi.fn(async () => { ordem.push('reservar'); return reserva }),
@@ -22,6 +22,13 @@ test('mesma chave retorna histórico sem emitir uma segunda requisição', async
   const deps = dependencias({ ok: true, repetida: true })
   expect(await iniciarBusca(deps, chave, 'Lojas SP', entrada)).toEqual({ ok: true, id: chave })
   expect(deps.ordem).toEqual(['reservar'])
+})
+test('a busca recebe as exclusões do banco, não as enviadas pelo vendedor', async () => {
+  const cnpjsExcluidos = ['11222333000181', '99887766000105']
+  const deps = dependencias({ ok: true, repetida: false, cnpjsExcluidos })
+  const resultado = await iniciarBusca(deps, chave, 'Lojas SP', { ...entrada, cnpjsExcluidos: ['12345678000195'] })
+  expect(resultado).toEqual({ ok: true, id: chave })
+  expect(deps.cliente.buscar).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ quantidade: 2 }), cnpjsExcluidos)
 })
 test.each(['limite', 'pausada', 'sem_permissao'])('bloqueio %s não chega ao fornecedor', async motivo => {
   const deps = dependencias({ ok: false, motivo })
