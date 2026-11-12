@@ -40,26 +40,24 @@ test('Banco fica desativado quando a chave Claude ainda não foi configurada', a
   expect(requisicao).not.toHaveBeenCalled()
 })
 
-test('só devolve CNAE confirmado pelo IBGE e não consulta o provedor de empresas', async () => {
+test('confirma apenas CNAEs oficiais sem depender da API do IBGE ou consultar empresas', async () => {
   requisicao.mockResolvedValueOnce(resposta())
-  requisicao.mockResolvedValueOnce(Response.json([{ id: '4755502', descricao: 'COMERCIO VAREJISTA DE ARTIGOS DE ARMARINHO' }]))
   expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: true, valor: {
     regiao, sugestoes: [{ titulo: lojas.titulo, cnaes: [{ codigo: '4755502', descricao: 'COMERCIO VAREJISTA DE ARTIGOS DE ARMARINHO' }] }],
   } })
-  expect(requisicao).toHaveBeenCalledTimes(2)
-  expect(requisicao.mock.calls.map(([url]) => new URL(String(url)).hostname)).toEqual(['api.anthropic.com', 'servicodados.ibge.gov.br'])
+  expect(requisicao).toHaveBeenCalledTimes(1)
+  expect(String(requisicao.mock.calls[0][0])).toBe('https://api.anthropic.com/v1/messages')
   expect(JSON.parse(String(requisicao.mock.calls[0][1]?.body))).toMatchObject({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: descricao }] })
 })
 
-test('erro do catálogo não permite aplicar CNAE não confirmado', async () => {
-  requisicao.mockResolvedValueOnce(resposta())
-  requisicao.mockRejectedValueOnce(new Error('catálogo indisponível'))
+test('não permite aplicar CNAE ausente do catálogo oficial', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['9999999'] }]))
   expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false, motivo: expect.stringContaining('CNAE') })
+  expect(requisicao).toHaveBeenCalledTimes(1)
 })
 
 test('preserva códigos com zero inicial e separa atividade principal da secundária', async () => {
   requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['0111301'], cnaesSecundarios: ['4755502'] }]))
-  requisicao.mockResolvedValueOnce(Response.json([{ id: '0111301', descricao: 'Cultivo de arroz' }, { id: '4755502', descricao: 'Armarinho' }]))
   expect(await sugerirFiltrosBancoAcao(descricao + ' Inclua atividades secundárias.')).toMatchObject({ ok: true, valor: {
     sugestoes: [{ cnaes: [{ codigo: '0111301' }], cnaesSecundarios: [{ codigo: '4755502' }] }],
   } })
@@ -67,16 +65,14 @@ test('preserva códigos com zero inicial e separa atividade principal da secund�
 
 test('Banco ignora restrições de nome e CNAE secundário quando o vendedor não pede', async () => {
   requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['4755502'], cnaesSecundarios: ['0111301'], palavras: ['armarinhos'] }]))
-  requisicao.mockResolvedValueOnce(Response.json({ id: '4755502', descricao: 'Armarinho' }))
   expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: true, valor: {
     sugestoes: [{ cnaes: [{ codigo: '4755502' }], cnaesSecundarios: [], palavras: [] }],
   } })
-  expect(String(requisicao.mock.calls[1][0])).toMatch(/subclasses\/4755502$/)
+  expect(requisicao).toHaveBeenCalledTimes(1)
 })
 
 test('Banco preserva a localização se a UF sugerida conflita com a UF explícita', async () => {
   requisicao.mockResolvedValueOnce(resposta([lojas], { cidade: 'Santo Antônio', uf: 'SP', bairro: '' }))
-  requisicao.mockResolvedValueOnce(Response.json({ id: '4755502', descricao: 'Armarinho' }))
   const resultado = await sugerirFiltrosBancoAcao('Quero vender para armarinhos em Santo Antônio, RN.')
   expect(resultado.ok).toBe(true)
   if (resultado.ok) expect(resultado.valor.regiao).toBeUndefined()
@@ -84,7 +80,6 @@ test('Banco preserva a localização se a UF sugerida conflita com a UF explíci
 
 test('não coloca dois bairros no mesmo campo de localização', async () => {
   requisicao.mockResolvedValueOnce(resposta([lojas], { ...regiao, bairro: 'Brás, Sé' }))
-  requisicao.mockResolvedValueOnce(Response.json({ id: '4755502', descricao: 'Armarinho' }))
   const resultado = await sugerirFiltrosBancoAcao('Quero vender para armarinhos no Brás, Sé, em São Paulo.')
   expect(resultado.ok).toBe(true)
   if (resultado.ok) expect(resultado.valor.regiao).toBeUndefined()
@@ -92,7 +87,6 @@ test('não coloca dois bairros no mesmo campo de localização', async () => {
 
 test('alternativas de títulos diferentes com os mesmos filtros confirmados aparecem uma vez', async () => {
   requisicao.mockResolvedValueOnce(resposta([lojas, { ...lojas, titulo: 'Comércio varejista', cnaes: ['4755502'] }]))
-  requisicao.mockResolvedValueOnce(Response.json({ id: '4755502', descricao: 'Armarinho' }))
   const resultado = await sugerirFiltrosBancoAcao(descricao)
   expect(resultado.ok).toBe(true)
   if (resultado.ok) expect(resultado.valor.sugestoes.map(s => s.titulo)).toEqual(['Armarinhos'])
@@ -102,6 +96,21 @@ test('palavra citada para filtrar pelo nome pode ser aplicada sem consultar o IB
   requisicao.mockResolvedValueOnce(resposta([{ titulo: 'Lojas', descricao: 'Lojas de armarinho.', palavras: ['armarinho', 'outra'] }]))
   expect(await sugerirFiltrosBancoAcao('Quero vender para lojas que tenham armarinho no nome.')).toMatchObject({
     ok: true, valor: { sugestoes: [{ palavras: ['armarinho'] }] },
+  })
+  expect(requisicao).toHaveBeenCalledTimes(1)
+})
+
+test('CNAEs de iluminação e instalação funcionam com a rede do IBGE indisponível', async () => {
+  requisicao.mockResolvedValueOnce(resposta([
+    { titulo: 'Lojas de iluminação', descricao: 'Revendedores de fitas LED.', cnaes: ['4754703'] },
+    { titulo: 'Instaladores', descricao: 'Usam fitas LED em projetos.', cnaes: ['4321500'] },
+  ]))
+  requisicao.mockRejectedValue(new Error('A rede só deve ser usada para Claude'))
+  expect(await sugerirFiltrosBancoAcao('Quero vender fitas LED no Brás, em São Paulo, SP.')).toMatchObject({
+    ok: true, valor: { regiao, sugestoes: [
+      { cnaes: [{ codigo: '4754703', descricao: 'COMÉRCIO VAREJISTA DE ARTIGOS DE ILUMINAÇÃO' }] },
+      { cnaes: [{ codigo: '4321500', descricao: 'INSTALAÇÃO E MANUTENÇÃO ELÉTRICA' }] },
+    ] },
   })
   expect(requisicao).toHaveBeenCalledTimes(1)
 })
