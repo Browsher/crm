@@ -172,7 +172,7 @@ test('repositório real lê somente a busca própria e informa o consumo de São
   await configurar(4)
   const repo = repositorioBusca(vendedor)
   const id = randomUUID()
-  expect(await repo.reservar(id, 'Lojas SP', filtros)).toEqual({ ok: true, repetida: false })
+  expect(await repo.reservar(id, 'Lojas SP', filtros)).toEqual({ ok: true, repetida: false, cnpjsExcluidos: [] })
   await repo.concluir(id, { ok: true, empresas: [empresa] })
   expect(await repo.ler(id)).toMatchObject({ id, estado: 'concluida', empresas: [empresa] })
   expect(await repositorioBusca(outro).ler(id)).toBeNull()
@@ -208,6 +208,33 @@ test('serviço e cliente HTTP com banco real emitem uma chamada para duas submis
   expect(await repo.ler(id)).toMatchObject({ estado: 'concluida', empresas: [{ cnpj: empresa.cnpj, telefone: empresa.telefone }] })
   expect(await repo.importar(id, [empresa.cnpj])).toMatchObject({ ok: true, inseridas: 1, vinculadas: 1 })
 })
+
+test('busca Casa exclui no HTTP a empresa já entregue pelo Banco a outro vendedor', async () => {
+  const { repositorioBusca } = await import('@/src/features/busca-empresas/repositorio')
+  const { iniciarBusca } = await import('@/src/features/busca-empresas/servico')
+  const { criarClienteCasaDados } = await import('@/src/server/casa-dados/cliente')
+  await configurar(2)
+  const primeiraBusca = randomUUID()
+  await reservar(primeiraBusca)
+  await concluir(primeiraBusca)
+  expect((await importar(primeiraBusca))[0]).toMatchObject({ inseridas: 1, vinculadas: 1 })
+  await chamar(gestor, 'SELECT busca_empresa_limite_definir($1,$2,false)', [outro, 2])
+
+  const pedidos: unknown[] = []
+  const fetcher: typeof fetch = async (_url, opcoes) => {
+    pedidos.push(JSON.parse(String(opcoes?.body)))
+    return Response.json({ total: 0, cnpjs: [] })
+  }
+  const repo = repositorioBusca(outro)
+  const deps = { repo, cliente: criarClienteCasaDados('somente-fixture', fetcher), configurado: true }
+  const id = randomUUID()
+  const resultados = await Promise.all([iniciarBusca(deps, id, 'Lojas SP', filtros), iniciarBusca(deps, id, 'Lojas SP', filtros)])
+  expect(resultados).toEqual([{ ok: true, id }, { ok: true, id }])
+  expect(pedidos).toEqual([expect.objectContaining({ limite: 2, excluir: { cnpj: [empresa.cnpj] } })])
+  expect(await repo.ler(id)).toMatchObject({ estado: 'concluida', filtros, empresas: [] })
+  expect(await repo.meuLimite()).toMatchObject({ limite_diario: 2, usado: 2 })
+})
+
 test('quota anterior à meia-noite de São Paulo não reduz o limite do novo dia', async () => {
   const { repositorioBusca } = await import('@/src/features/busca-empresas/repositorio')
   await configurar(2)
