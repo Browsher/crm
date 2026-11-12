@@ -4,3 +4,4 @@
 @media(prefers-reduced-motion:reduce){.grupo h2 svg{transition:none}}
 
 .nomeLista{display:grid;gap:8px;font-size:14px}
+.assistente{justify-self:start;min-width:0}

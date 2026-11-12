@@ -1,0 +1,19 @@
+.emBreve, .rodape, .regiao { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.emBreve > button { white-space:normal; }
+.rodape { justify-content:space-between; width:100%; }
+.rodape > .ajuda { flex:1 1 180px; }
+.ajuda { color:var(--ui-muted-foreground); font-size:12px; line-height:18px; }
+.formulario, .formulario label { display:grid; gap:8px; min-width:0; }
+.formulario { gap:16px; }
+.gerar { display:flex; justify-content:flex-end; }
+.sugestoes { display:grid; gap:8px; min-width:0; padding:0; margin:0; border:0; }
+.sugestoes legend { margin-bottom:4px; font-size:16px; font-weight:600; }
+.sugestoes p { margin:0; }
+.regiao { padding:8px 12px; background:var(--ui-muted); border-radius:6px; }
+.regiao > span { color:var(--ui-muted-foreground); }
+.opcao { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:10px; padding:12px; border:1px solid var(--ui-border); border-radius:8px; cursor:pointer; overflow-wrap:anywhere; }
+.opcao:has(:checked) { border-color:var(--ring); background:var(--ui-success-background); }
+.opcao > input { margin-top:2px; }
+.opcao > span { display:grid; gap:3px; }
+.detalhes { display:grid; gap:3px; margin-top:5px; font-size:13px; }
+.detalhes > span { display:flex; flex-wrap:wrap; gap:3px 8px; }

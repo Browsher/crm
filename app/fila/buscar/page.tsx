@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { exigir } from '@/src/server/autenticacao/guarda'
+import { assistenteIaDisponivel } from '@/src/server/assistente-ia'
 import { repositorioBusca } from '@/src/features/busca-empresas/repositorio'
 import { HistoricoBuscas } from '@/src/components/crm/historico-buscas'
 import { EmpresasBancoRecentes } from './empresas-recentes'
@@ -46,7 +47,8 @@ export default async function PaginaBuscar({ searchParams }: { searchParams: Pro
             {limite?.pausado ? <p className={styles.aviso}>Suas buscas estão pausadas pelo gestor.</p> : restante === 0 ? <p className={styles.aviso}>Sem limite disponível. Solicite ao gestor a liberação ou aguarde o próximo dia.</p> : null}
           </aside>
           {params.inclusao === 'pendente' && <p role="alert">Sua pesquisa ficou salva. A inclusão automática ficou pendente; use Concluir inclusão nos resultados, sem refazer a busca.</p>}
-          <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} buscaConcluidaId={busca?.id} />
+          <FormularioBusca bloqueado={bloqueado} restante={restante} chaveInicial={randomUUID()} buscaConcluidaId={busca?.id}
+            assistenteIaDisponivel={assistenteIaDisponivel('banco')} />
           {busca && <Card className={styles.painel}><h2>{busca.nome}</h2>
             <p className={styles.ajuda}>{busca.filtros.quantidade} solicitadas · {busca.empresas.length} retornadas.</p>
             <div className="flex flex-wrap gap-2">
