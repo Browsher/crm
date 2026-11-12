@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { CnaeConfirmado, SugestaoBanco } from '@/src/lib/assistente-ia-banco'
 import type { ResultadoAssistente } from '@/src/lib/assistente-ia'
 import { camposPublico, esquemaSugestoes, normalizarTexto, sugerirPublicos, textoCurto } from '@/src/server/assistente-ia'
+import catalogoIbge from './cnae-ibge.json'
 
 const codigoCnae = z.string().refine(codigo => /^[0-9]{7}$/.test(codigo))
 const codigosCnae = z.array(codigoCnae).refine(codigos => codigos.length <= 3)
@@ -19,24 +20,13 @@ const INSTRUCOES = [
   'Palavras são restrições à razão social ou ao nome fantasia, não à descrição do segmento. Use até três palavras somente quando o vendedor pedir filtro no nome da empresa.',
   'Um público precisa ter ao menos um CNAE ou uma palavra-chave de nome utilizável. Use apenas os filtros relevantes.',
 ]
-const CNAE_IBGE = 'https://servicodados.ibge.gov.br/api/v2/cnae/subclasses/'
-const registro = z.object({ id: codigoCnae, descricao: textoCurto(500) })
-const catalogo = z.union([z.array(registro), registro])
+const descricoesCnae: Readonly<Partial<Record<string, string>>> = catalogoIbge
 
-async function consultarCnaes(codigos: string[]): Promise<Map<string, string>> {
-  if (!codigos.length) return new Map()
-  try {
-    const resposta = await fetch(CNAE_IBGE + encodeURIComponent(codigos.sort().join('|')), {
-      next: { revalidate: 86_400 }, signal: AbortSignal.timeout(4_000),
-    })
-    if (!resposta.ok) return new Map()
-    const dados = catalogo.safeParse(await resposta.json())
-    if (!dados.success) return new Map()
-    const registros = Array.isArray(dados.data) ? dados.data : [dados.data]
-    return new Map(registros.map(({ id, descricao }) => [id, descricao]))
-  } catch {
-    return new Map()
-  }
+function confirmarCnaes(lista: string[] = []): CnaeConfirmado[] {
+  return [...new Set(lista)].flatMap(codigo => {
+    const descricao = descricoesCnae[codigo]
+    return descricao ? [{ codigo, descricao }] : []
+  })
 }
 
 export async function sugerirFiltrosBanco(descricao: string): Promise<ResultadoAssistente<SugestaoBanco>> {
@@ -53,17 +43,12 @@ export async function sugerirFiltrosBanco(descricao: string): Promise<ResultadoA
       return Boolean(termo) && texto.includes(' ' + termo + ' ')
     }) : undefined,
   }))
-  const codigos = new Set(candidatas.flatMap(s => [...(s.cnaes ?? []), ...(s.cnaesSecundarios ?? [])]))
-  const descricoes = await consultarCnaes([...codigos])
-  const confirmados = (lista: string[] = []): CnaeConfirmado[] => [...new Set(lista)].flatMap(codigo => {
-    const descricao = descricoes.get(codigo)
-    return descricao ? [{ codigo, descricao }] : []
-  })
+  const temCnaes = candidatas.some(s => s.cnaes?.length || s.cnaesSecundarios?.length)
   const assinaturas = new Set<string>()
   const sugestoes = candidatas.map(s => ({
     ...s,
-    cnaes: confirmados(s.cnaes),
-    cnaesSecundarios: confirmados(s.cnaesSecundarios?.filter(codigo => !s.cnaes?.includes(codigo))),
+    cnaes: confirmarCnaes(s.cnaes),
+    cnaesSecundarios: confirmarCnaes(s.cnaesSecundarios?.filter(codigo => !s.cnaes?.includes(codigo))),
     palavras: [...new Set(s.palavras)],
   })).filter(s => {
     if (!s.palavras.length && !s.cnaes.length && !s.cnaesSecundarios.length) return false
@@ -77,8 +62,8 @@ export async function sugerirFiltrosBanco(descricao: string): Promise<ResultadoA
     return true
   })
 
-  if (!sugestoes.length) return { ok: false, motivo: codigos.size
-    ? 'Não foi possível confirmar um CNAE no IBGE. Você pode revisar a descrição ou preencher os filtros manualmente.'
+  if (!sugestoes.length) return { ok: false, motivo: temCnaes
+    ? 'Nenhum CNAE sugerido consta no catálogo oficial. Você pode revisar a descrição ou preencher os filtros manualmente.'
     : 'Nenhum filtro aplicável encontrado. Descreva o produto ou o público que você quer prospectar.' }
   return { ok: true, valor: { ...resultado.valor, sugestoes } }
 }
