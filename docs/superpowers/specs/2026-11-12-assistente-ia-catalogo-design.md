@@ -10,12 +10,31 @@ Proposta de manutenção: versionar no CRM um catálogo enxuto com SKU, nome com
 
 ## Painel lateral
 
-1. **Produto**. Campo pesquisável por nome ou SKU, com identificação no formato “Massageador tartaruga · QS-030”. Uma seleção por vez. **Outro produto** abre a descrição livre já usada pelo assistente.
-2. **Região**. Usa os componentes e valores existentes de UF, cidade e bairro, com bairro opcional. Abre com a região já preenchida no formulário. No Banco, mostra as regiões atuais e mantém todas por padrão ao aplicar a sugestão. Uma edição explícita no painel substitui o conjunto pelo conjunto revisado pelo vendedor, que aparece inteiro antes de aplicar. Se não houver região, a sugestão ainda pode ser gerada. As validações de localização do formulário permanecem na etapa de busca ou salvamento.
-3. **Público-alvo**. Opcional. Exibe os públicos da família selecionada, como lojas, distribuidores e, para câmeras de segurança, instaladores ou empresas de monitoramento. Em **Sugerir públicos**, apresenta até três públicos diferentes, com prioridade para compradores de revenda, conforme o catálogo de venda por caixa fechada.
-4. **Detalhes da busca**. Campo opcional para orientar a prospecção, por exemplo “prefiro lojas com atendimento a instaladores”. Se o vendedor quiser usar uma palavra no nome empresarial no Banco ou incluir atividades secundárias, a sugestão deve informar explicitamente a restrição que será aplicada.
+1. **Escolher produto**. Ao abrir, o painel mostra o campo pesquisável por SKU ou nome e a opção **Outro produto**. O resultado identifica cada SKU no formato “Massageador tartaruga · QS-030”. Ao selecionar, aparece a ficha curta do item e são liberados a região, o refinamento e o botão **Gerar sugestões**. Em **Outro produto**, uma descrição válida libera região e detalhes.
+2. **Região**. Aparece após a escolha do SKU ou a descrição de outro produto. Usa os componentes e valores existentes de UF, cidade e bairro, com bairro opcional. Aproveita a região já preenchida no formulário. No Banco, mostra as regiões atuais e mantém todas por padrão ao aplicar a sugestão. Uma edição explícita no painel substitui o conjunto pelo conjunto revisado pelo vendedor, que aparece inteiro antes de aplicar. Se não houver região, a sugestão ainda pode ser gerada. As validações de localização do formulário permanecem na etapa de busca ou salvamento.
+3. **Refinar busca**. Seção recolhida por padrão. Deixa a geração direta a partir do produto e da região e concentra os campos opcionais abaixo.
+   - **Público-alvo**. Mostra quem pode comprar o item, como lojistas, distribuidores ou instaladores de câmeras. Sem seleção, apresenta até três públicos distintos, com prioridade para compradores de revenda, conforme o catálogo de venda por caixa fechada. Quando o vendedor escolher um público, as sugestões respeitam essa escolha.
+   - **Especialidade do negócio**. Mostra em que o comprador atua. Sugere poucas opções ligadas ao SKU e ao público. Por exemplo, para uma câmera residencial, **CFTV residencial**. Para o massageador QS-030, **Aparelhos de cuidados pessoais**. Exibe o campo quando houver opção útil e mantém a escolha em branco por padrão.
+   - **Detalhes da busca**. Campo opcional para orientar a prospecção, por exemplo “prefiro lojas com atendimento a instaladores”. Se o vendedor pedir uma palavra no nome empresarial no Banco ou atividades secundárias, a sugestão informa a restrição antes de aplicar.
 
-**Gerar sugestões** mostra cards com público, motivo e filtros. **Aplicar filtros** preenche só o rascunho. Mantém as validações, o fluxo de confirmação, as ações existentes de salvar e buscar e a origem atual do formulário. Na alteração de produto, região, público ou detalhes, invalidar os cards antigos para que uma resposta atrasada de Claude não possa ser aplicada ao novo contexto.
+**Gerar sugestões** mostra cards com público, motivo e filtros. **Aplicar filtros** preenche só o rascunho. Mantém as validações, o fluxo de confirmação, as ações existentes de salvar e buscar e a origem atual do formulário. Ao trocar o SKU, preserva a região e limpa público, especialidade e detalhes ligados ao produto anterior. Ao trocar o público, limpa a especialidade se ela deixar de ser compatível. Alterações em produto, região ou refinamentos invalidam os cards e descartam respostas atrasadas do contexto anterior.
+
+### Especialidades iniciais por família
+
+Usar esta lista para preparar as opções de cada SKU. Por exemplo, um ferro a vapor oferece **Cuidados com roupas** e um aspirador oferece **Limpeza doméstica**.
+
+- **Câmeras de segurança e cabo**. CFTV residencial, CFTV comercial, monitoramento e acessórios de instalação.
+- **Minicâmeras e foto/vídeo**. Foto e vídeo, eletrônicos portáteis.
+- **Áudio, vídeo e projeção**. Projeção, home theater e acessórios para TV.
+- **Informática e armazenamento**. Periféricos, cartões de memória e suprimentos de informática.
+- **Acessórios para celular**. Acessórios para smartphone e suportes veiculares, conforme a ficha.
+- **Utilidades de cozinha**. Utensílios de cozinha, acessórios para vinho e embalagem e conservação.
+- **Eletroportáteis**. Limpeza doméstica e cuidados com roupas.
+- **Higiene e bem-estar**. Aparelhos de cuidados pessoais e higiene bucal.
+- **Pet**. Passeio e hidratação de cães e higiene pet.
+- **Acessórios automotivos**. Organização veicular e infladores e acessórios para pneus.
+- **Ferramentas e jardim**. Ferramentas portáteis e irrigação e conexões.
+- **Brinquedos**. Quebra-cabeças e jogos de lógica.
 
 ## Mapa inicial de públicos
 
@@ -42,6 +61,7 @@ Fontes da classificação: [Subclasses oficiais do IBGE](https://servicodados.ib
 
 - **Google**. Sugere nicho, termos adicionais e produtos de interesse que ajudem a identificar o segmento. Pode marcar um tipo de negócio compatível com o público escolhido explicitamente pelo vendedor e com as opções atuais do Google, pois o tipo marcado pode excluir empresas. Exibe a região escolhida. Exclusões e outras preferências dependem de pedido expresso e devem ser visíveis no card antes de aplicar.
 - **Banco**. Mostra atividade principal com código e descrição oficial. Usa CNAEs secundários e palavras no nome empresarial só mediante indicação do vendedor. Os critérios de situação, porte, contatos, quantidade e demais opções do formulário são preservados. O nome do produto não vira automaticamente palavra da razão social ou do nome fantasia.
+- **Especialidade**. No Google, orienta nicho e termos. No Banco, ajuda a selecionar CNAEs compatíveis. Quando uma especialidade não tiver representação exata no CNAE, o card informa o alcance efetivo do código e pode indicar o Google para a procura específica.
 - **Relevância**. Para um SKU conhecido no Banco, o servidor fornece candidatos limitados ao perfil escolhido, com código, descrição oficial e motivo do vínculo. Confere novamente se os códigos devolvidos estão na lista daquele perfil e no catálogo oficial. Um código de escopo amplo pode aparecer com aviso de menor precisão quando uma nota ou descritor oficial cobrir a atividade do público, como varejo de sistemas de segurança. Se houver só afinidade, como varejo de produtos de bem-estar sem uma atividade que cubra o perfil, omite a opção e indica o Google.
 - **Descrição livre**. Se o texto corresponder a um SKU ou a um nome inequívoco, o painel pode sugerir a seleção. Em caso de ambiguidade, pede a função do produto ou o público. Para produtos fora do catálogo, os candidatos do Banco vêm de uma seleção do catálogo oficial com relação documentada ao público. Sem candidatos confiáveis, o vendedor recebe orientação para detalhar o público ou usar os filtros manuais. A validação usa o catálogo local.
 
@@ -49,4 +69,4 @@ Fontes da classificação: [Subclasses oficiais do IBGE](https://servicodados.ib
 
 - Comparar o catálogo importado com a lista publicável. Confirmar 40 SKUs únicos, os mesmos 40 no mapa e nenhuma imagem ou informação de preço enviada ao provedor.
 - Validar os códigos do mapa no catálogo oficial versionado, inclusive a rejeição de um código válido fora do perfil. Testar os SKUs QS-030, IC-8177, QS-023 e 128GB-V nas duas origens. Testar também o fluxo de descrição livre e a falta de candidatos.
-- No navegador, conferir pesquisa de SKU e nome, navegação por teclado, celular, manter região e filtros existentes, resposta atrasada, erro e aplicar sem salvar ou iniciar busca. Testes automatizados simulam Claude.
+- No navegador, conferir pesquisa de SKU e nome, desbloqueio dos campos depois da escolha, geração com o refinamento recolhido, especialidades de dois SKUs da mesma família, troca de SKU com região preservada e limpeza do contexto anterior, navegação por teclado, celular, resposta atrasada, erro e aplicar sem salvar ou iniciar busca. Testes automatizados simulam Claude.
