@@ -41,8 +41,7 @@ test('assistente abre na lateral e aplica só a opção escolhida ao rascunho da
   expect(linhas[0].textContent).not.toContain('Sugerir filtros com IA')
   await clicar('Sugerir filtros com IA', linhas[1])
   const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
-  await clicar('Outro produto', painel)
-  await alterarTexto(painel, 'descricao', 'Quero vender câmeras Wi-Fi no Brás, em São Paulo.')
+  await selecionarProduto(painel, 'IC-8177')
   await clicar('Gerar sugestões', painel)
   expect(painel.textContent).toContain('Santos')
   expect(painel.querySelectorAll('input[type="radio"]')).toHaveLength(2)
@@ -68,8 +67,7 @@ test('uma geração pendente bloqueia envio duplicado e falha invalida as sugest
   await clicar('Editar planejamento')
   await clicar('Sugerir filtros com IA')
   const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
-  await clicar('Outro produto', painel)
-  await alterarTexto(painel, 'descricao', 'Quero vender câmeras.')
+  await selecionarProduto(painel, 'IC-8177')
   await clicar('Gerar sugestões', painel)
   const formulario = painel.querySelector('form')!
   const enviar = () => formulario.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
@@ -155,15 +153,17 @@ test('trocar o SKU descarta resposta atrasada e refinamentos, preservando a regi
   })
 })
 
-test('sugere o SKU reconhecido na descrição de outro produto', async () => {
+test('exige um produto do catálogo mesmo quando a busca por nome não encontra opções', async () => {
+  sugerirFiltrosGoogleAcao.mockClear()
   const painel = await abrirAssistenteGoogle()
-  await clicar('Outro produto', painel)
-  await alterarTexto(painel, 'descricao', 'IC-8177')
-  const selecionar = Array.from(painel.querySelectorAll('button')).find(b => b.textContent?.startsWith('Selecionar ') && b.textContent.includes('IC-8177'))
-  expect(selecionar).toBeDefined()
-  await act(async () => selecionar!.click())
-  expect(painel.querySelector('[name="descricao"]')).toBeNull()
+  await alterarTexto(painel, 'produto', 'sku-inexistente')
+  expect(painel.textContent).not.toContain('Outro produto')
+  expect(painel.querySelector('[role="status"]')?.textContent).toBe('Nenhum produto encontrado. Confira o nome ou SKU.')
+  expect(painel.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true)
+  expect(sugerirFiltrosGoogleAcao).not.toHaveBeenCalled()
+  await selecionarProduto(painel, 'IC-8177')
   expect(painel.textContent).toContain('IC-8177')
+  expect(painel.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false)
 })
 
 test('layout segue a prévia com cinco colunas e critérios junto do nicho',async()=>{

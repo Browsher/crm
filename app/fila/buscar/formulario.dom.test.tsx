@@ -124,7 +124,6 @@ test('Banco alterna o robô entre escolha, geração e recuperação com CNAEs d
 
 test('aplica a opção escolhida ao Banco sem submeter a busca e preserva os campos omitidos', async () => {
   sugerirFiltrosBancoAcao.mockResolvedValueOnce({ ok: true, valor: {
-    regiao: { cidade: 'São Paulo', uf: 'SP', bairro: 'Brás' },
     sugestoes: [
       { titulo: 'Revendedores', descricao: 'Compram para revenda.', cnaes: [{ codigo: '4755502', descricao: 'Armarinhos' }] },
       { titulo: 'Instaladores', descricao: 'Compram para instalações.', cnaes: [{ codigo: '4321500', descricao: 'Instalação e manutenção elétrica' }] },
@@ -139,8 +138,12 @@ test('aplica a opção escolhida ao Banco sem submeter a busca e preserva os cam
   await mudarTexto(input('CNAEs principais'), '4755-5/02')
   await clicar('Sugerir filtros com IA')
   const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
-  await clicar('Outro produto', painel)
-  await mudarTexto(painel.querySelector('textarea')!, 'Quero vender câmeras no Brás, em São Paulo.')
+  expect(painel.textContent).not.toContain('Outro produto')
+  await mudarTexto(painel.querySelector<HTMLInputElement>('[name="produto"]')!, 'IC-8177')
+  await act(async () => painel.querySelector<HTMLElement>('[role="option"]')!.click())
+  await escolherEstado(painel.querySelector<HTMLSelectElement>('select[name="estado"]')!, 'SP')
+  await mudarTexto(campoBanco('Cidade', painel)!, 'São Paulo')
+  await mudarTexto(campoBanco('Bairros (opcional)', painel)!, 'Brás')
   await clicar('Gerar sugestões', painel)
   expect(painel.textContent).toContain('Instalação e manutenção elétrica')
   await act(async () => painel.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click())
