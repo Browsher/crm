@@ -109,9 +109,10 @@ export async function sugerirFiltrosBanco(entrada: EntradaAssistente | string): 
   function alternativaDoCatalogo(falha: Extract<ResultadoAssistente<SugestaoBanco>, { ok: false }>): ResultadoAssistente<SugestaoBanco> {
     if (valor.origem !== 'catalogo' || valor.detalhes || !perfis.length) return falha
     return { ok: true, valor: {
+      fonte: 'catalogo',
       sugestoes: perfis.slice(0, 3).map(({ titulo, cnaes }) => ({
         titulo,
-        descricao: 'CNAEs do catálogo. O perfil de comprador por IA está indisponível nesta geração.',
+        descricao: 'Atividade verificada no catálogo.',
         cnaes,
       })),
     } }

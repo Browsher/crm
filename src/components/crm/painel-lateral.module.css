@@ -17,6 +17,8 @@
 }
 .cabecalho > div { min-width: 0; }
 .painel .cabecalho h2 { font-size: 19px; line-height: 1.35; font-weight: 650; overflow-wrap: anywhere; scroll-margin-top: 76px; }
+.tituloComIcone { display: flex; align-items: center; gap: 10px; }
+.tituloComIcone > span:last-child { min-width: 0; }
 .cabecalho h2:focus { outline: none; }
 .cabecalho > button { flex: none; }
 .painel .cabecalho .descricao { color: var(--muted-foreground); font-size: 13px; margin-top: 4px; }

@@ -1,5 +1,86 @@
 .emBreve, .rodape { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .emBreve > button { white-space:normal; }
+.mascote {
+  position: relative;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+}
+.mascote::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 19px;
+  width: 2px;
+  height: 10px;
+  background: #758291;
+}
+.mascote::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8fd0b9;
+}
+.visorMascote {
+  position: absolute;
+  inset: 13px 2px 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 3px solid #384652;
+  border-radius: 10px;
+  background: #8fd0b9;
+  color: #14352f;
+  box-shadow: 0 0 0 1px #758291, -2px 1px 0 #384652, 2px 1px 0 #384652;
+}
+.visorMascote > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.mascote[data-mascote-assistente="gerando"] .visorMascote {
+  background: #163c30;
+  color: #a0d9bd;
+  gap: 3px;
+}
+.mascote[data-mascote-assistente="gerando"] .visorMascote > span { width: 4px; height: 4px; }
+.mascote[data-mascote-assistente="catalogo"] .visorMascote > span {
+  width: 7px;
+  height: 4px;
+  border: 2px solid currentColor;
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+}
+.mascote[data-mascote-assistente="catalogo"] .visorMascote::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: -5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-warning);
+}
+.geracaoMascote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  color: var(--ui-muted-foreground);
+  font-size: 13px;
+}
+.geracaoMascote svg { flex: none; color: var(--primary); }
+@media (prefers-reduced-motion: no-preference) {
+  .geracaoMascote svg { animation: girarIndicador 1s linear infinite; }
+}
+@keyframes girarIndicador { to { transform: rotate(1turn); } }
 .rodape { justify-content:space-between; width:100%; }
 .rodape > .ajuda { flex:1 1 180px; }
 .ajuda { color:var(--ui-muted-foreground); font-size:12px; line-height:18px; }

@@ -61,12 +61,13 @@ export function PainelLateralCrm({ titulo, descricao, rotulo, id, className, ...
 }
 
 type PropsSobreposto = Omit<Props, 'id'> & {
+  iconeTitulo?: ReactNode
   aoSair?: () => void
   onOpenAutoFocus?: ComponentProps<typeof DialogContent>['onOpenAutoFocus']
   onCloseAutoFocus?: ComponentProps<typeof DialogContent>['onCloseAutoFocus']
 }
 
-export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSair, onOpenAutoFocus, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
+export function PainelSobrepostoCrm({ titulo, iconeTitulo, descricao, rotulo, className, aoSair, onOpenAutoFocus, onCloseAutoFocus, ...moldura }: PropsSobreposto) {
   const cabecalho = useRef<HTMLHeadingElement>(null)
   const tema = useTemaCrm()
 
@@ -79,6 +80,7 @@ export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSa
   return <DialogContent lateral theme={tema} showCloseButton={false}
     data-painel-lateral data-painel-composicao="padrao"
     {...(rotulo ? { 'aria-label': rotulo, 'aria-labelledby': undefined } : {})}
+    {...(!descricao ? { 'aria-describedby': undefined } : {})}
     className={[styles.painel, className].filter(Boolean).join(' ')}
     onOpenAutoFocus={evento => {
       onOpenAutoFocus?.(evento)
@@ -87,7 +89,9 @@ export function PainelSobrepostoCrm({ titulo, descricao, rotulo, className, aoSa
       cabecalho.current?.focus({ preventScroll: true })
     }}
     onCloseAutoFocus={onCloseAutoFocus} onEscapeKeyDown={pedirFechamento} onInteractOutside={pedirFechamento}>
-    <MolduraPainel {...moldura} titulo={<DialogTitle ref={cabecalho} tabIndex={-1}>{titulo}</DialogTitle>}
+    <MolduraPainel {...moldura} titulo={<DialogTitle ref={cabecalho} tabIndex={-1} className={iconeTitulo ? styles.tituloComIcone : undefined}>
+      {iconeTitulo}{iconeTitulo ? <span>{titulo}</span> : titulo}
+    </DialogTitle>}
       descricao={descricao && <DialogDescription asChild><div className={styles.descricao}>{descricao}</div></DialogDescription>} />
   </DialogContent>
 }
