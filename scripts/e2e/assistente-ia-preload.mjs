@@ -21,7 +21,17 @@ globalThis.fetch = async (input, init) => {
   }
   if (pedido.produto.sku === 'IC-8177' && pedido.regioes.length === 2) {
     const perfil = pedido.perfis.find(p => p.id === 'lojas' && p.cnaes.some(c => c.codigo === '4759899'))
-    if (perfil) return responder({ perfil: perfil.id, titulo: perfil.titulo, descricao: 'Revenda de câmeras para segurança residencial.', cnaes: ['4759899'] })
+    if (perfil) return responder({
+      perfil: perfil.id, titulo: perfil.titulo, descricao: 'Revenda de câmeras para segurança residencial.', cnaes: ['4759899'],
+      perfilEmpresa: {
+        portes: { valor: ['ME', 'EPP'], motivo: 'Recorte para lojas pequenas de segurança.' },
+        mei: { valor: 'excluir', motivo: 'Segmentação para esta campanha de revenda.' },
+        regime: { valor: 'simples', motivo: 'Recorte cadastral opcional para este público.' },
+        estabelecimento: { valor: 'matriz', motivo: 'Buscar o estabelecimento principal.' },
+        aberturaUltimosDias: { valor: 365, motivo: 'Opção para prospectar empresas recentes.' },
+        contato: { valor: 'celular', motivo: 'Facilita o primeiro contato por telefone móvel.' },
+      },
+    })
   }
   if (pedido.produto.sku === 'QS-023' && pedido.perfis.length === 1) {
     const [perfil] = pedido.perfis

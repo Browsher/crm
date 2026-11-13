@@ -1,0 +1,9 @@
+.formulario { min-width:0; padding-top:12px; border-top:1px solid var(--ui-border); }
+.perfil { display:grid; gap:10px; min-width:0; margin:0; padding:0; border:0; }
+.perfil legend { padding:0; margin:0 0 6px; font-size:14px; font-weight:600; }
+.hipotese label { display:flex; gap:8px; align-items:flex-start; cursor:pointer; font-size:13px; line-height:18px; }
+.hipotese p { padding-inline-start:26px; }
+.ajuda { color:var(--ui-muted-foreground); font-size:12px; line-height:18px; }
+.capital { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:6px 12px; }
+.capital label { display:grid; gap:5px; min-width:0; font-size:13px; font-weight:500; }
+.capital p { grid-column:1 / -1; }

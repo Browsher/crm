@@ -7,11 +7,34 @@ import { candidatosCnaeLivre, cnaeOficial } from './candidatos-cnae'
 
 const codigoCnae = z.string().refine(codigo => /^[0-9]{7}$/.test(codigo))
 const codigosCnae = z.array(codigoCnae).refine(codigos => codigos.length <= 3)
+const motivoPerfil = textoCurto(100)
+
+// O contrato do Claude é fechado, mas extras e campos inválidos não descartam os CNAEs.
+const campoPerfil = <T extends z.ZodType>(valor: T) => z.object({ valor, motivo: motivoPerfil })
+  .meta({ additionalProperties: false }).optional().catch(undefined)
+
+const perfilEmpresa = z.object({
+  portes: campoPerfil(z.array(z.enum(['ME', 'EPP', 'DEMAIS']))
+    .refine(portes => portes.length > 0 && new Set(portes).size === portes.length)),
+  mei: campoPerfil(z.enum(['qualquer', 'somente', 'excluir'])),
+  regime: campoPerfil(z.enum(['qualquer', 'simples', 'fora_simples'])),
+  estabelecimento: campoPerfil(z.enum(['matriz', 'filial'])),
+  aberturaUltimosDias: campoPerfil(z.number()
+    .refine(dias => Number.isInteger(dias) && dias >= 1 && dias <= 2147483647).meta({ type: 'integer' })),
+  contato: campoPerfil(z.enum(['email', 'celular', 'celulareemail', 'telefone', 'telefoneoucelular', 'telefoneoucelulareemail'])),
+}).meta({ additionalProperties: false }).transform(perfil => {
+  for (const campo of Object.keys(perfil) as (keyof typeof perfil)[]) {
+    if (perfil[campo] === undefined) delete perfil[campo]
+  }
+  return Object.keys(perfil).length ? perfil : undefined
+}).optional().catch(undefined)
+
 const schema = esquemaSugestoes(z.strictObject({
   ...camposPublico,
   cnaes: codigosCnae.optional(),
   cnaesSecundarios: codigosCnae.optional(),
   palavras: z.array(textoCurto(100)).refine(palavras => palavras.length <= 3 && palavras.every(palavra => !palavra.includes(','))).optional(),
+  perfilEmpresa,
 }))
 
 const INSTRUCOES = [
@@ -23,6 +46,9 @@ const INSTRUCOES = [
   'Use exclusivamente os CNAEs candidatos fornecidos. Quando houver perfis do catálogo, informe perfil com o id exato do perfil correspondente e use somente os códigos daquele perfil.',
   'Para descrição livre, use a lista de CNAEs principais apenas no campo cnaes e a lista de CNAEs secundários apenas em cnaesSecundarios.',
   'Com um SKU do catálogo, priorize quem pode comprar para revenda. Uma especialidade é uma preferência comercial e o CNAE pode representar uma atividade mais abrangente.',
+  'Em perfilEmpresa, proponha porte, MEI ou participação no Simples Nacional como hipóteses de segmentação úteis para cada público. MEI é um filtro separado de portes. Não trate dados cadastrais como prova de capacidade de compra.',
+  'Sugira matriz ou filial, idade em dias ou contato disponível somente quando ajudarem o objetivo. Omita campos sem proposta e evite recortes incompatíveis.',
+  'Para cada filtro de perfil, inclua valor e um motivo comercial de até 100 caracteres. Não sugira capital social, quantidade de resultados ou seleção automática.',
 ]
 
 const SEM_CANDIDATOS = {
@@ -95,7 +121,9 @@ export async function sugerirFiltrosBanco(entrada: EntradaAssistente | string): 
     if (assinaturas.has(assinatura)) return []
     assinaturas.add(assinatura)
     if (perfil) perfisUsados.add(perfil.id)
-    return [{ titulo: perfil?.titulo ?? s.titulo, descricao: s.descricao, cnaes, cnaesSecundarios, palavras }]
+    return [{ titulo: perfil?.titulo ?? s.titulo, descricao: s.descricao, cnaes, cnaesSecundarios, palavras,
+      ...(s.perfilEmpresa && { perfilEmpresa: s.perfilEmpresa }),
+    }]
   })
 
   if (!sugestoes.length) return SEM_CANDIDATOS

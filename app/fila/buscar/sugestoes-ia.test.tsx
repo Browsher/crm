@@ -50,6 +50,71 @@ test('confirma apenas CNAEs oficiais sem depender da API do IBGE ou consultar em
   expect(JSON.parse(String(requisicao.mock.calls[0][1]?.body))).toMatchObject({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: descricao }] })
 })
 
+test('devolve filtros opcionais de perfil com o motivo comercial de cada um', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, perfilEmpresa: {
+    portes: { valor: ['ME', 'EPP'], motivo: '  Podem comprar para revenda em caixa.  ' },
+    mei: { valor: 'excluir', motivo: 'Priorizar pedidos maiores.' },
+    regime: { valor: 'simples', motivo: 'É um recorte para a campanha atual.' },
+    estabelecimento: { valor: 'matriz', motivo: 'A matriz pode centralizar as compras.' },
+    aberturaUltimosDias: { valor: 90, motivo: 'Lojas novas podem estar formando estoque.' },
+    contato: { valor: 'celulareemail', motivo: 'Permite contato por dois canais.' },
+  } }]))
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: true, valor: { sugestoes: [{
+    cnaes: [{ codigo: '4755502' }],
+    perfilEmpresa: {
+      portes: { valor: ['ME', 'EPP'], motivo: 'Podem comprar para revenda em caixa.' },
+      mei: { valor: 'excluir', motivo: 'Priorizar pedidos maiores.' },
+      regime: { valor: 'simples', motivo: 'É um recorte para a campanha atual.' },
+      estabelecimento: { valor: 'matriz', motivo: 'A matriz pode centralizar as compras.' },
+      aberturaUltimosDias: { valor: 90, motivo: 'Lojas novas podem estar formando estoque.' },
+      contato: { valor: 'celulareemail', motivo: 'Permite contato por dois canais.' },
+    },
+  }] } })
+})
+
+test('pede ao Claude somente os campos de perfil suportados, com valor e motivo', async () => {
+  requisicao.mockResolvedValueOnce(resposta())
+  await sugerirFiltrosBancoAcao(descricao)
+
+  const corpo = JSON.parse(String(requisicao.mock.calls[0][1]?.body))
+  const publico = corpo.output_config.format.schema.properties.sugestoes.items
+  const perfil = publico.properties.perfilEmpresa
+  expect(publico.required).not.toContain('perfilEmpresa')
+  expect(perfil).toMatchObject({ additionalProperties: false })
+  expect(Object.keys(perfil.properties)).toEqual(['portes', 'mei', 'regime', 'estabelecimento', 'aberturaUltimosDias', 'contato'])
+  for (const campo of Object.values(perfil.properties)) {
+    expect(campo).toMatchObject({ additionalProperties: false, required: ['valor', 'motivo'] })
+  }
+})
+
+test('descarta capital, seleção automática e filtros inválidos sem perder perfil válido nem CNAEs', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, perfilEmpresa: {
+    portes: { valor: ['ME', 'MEI'], motivo: 'Recorte sugerido.' },
+    regime: { valor: 'Lucro Real', motivo: 'Recorte sugerido.' },
+    contato: { valor: 'telefoneoucelularouemail', motivo: 'Recorte sugerido.' },
+    estabelecimento: { valor: 'filial', motivo: '   ' },
+    aberturaUltimosDias: { valor: 12.5, motivo: 'Buscar novas empresas.' },
+    mei: { valor: 'qualquer', motivo: 'Considerar todos os públicos.', checked: true, default: true },
+    capitalMinimo: 10000,
+  } }]))
+
+  const resultado = await sugerirFiltrosBancoAcao(descricao)
+  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [{ cnaes: [{ codigo: '4755502' }] }] } })
+  if (resultado.ok) expect(resultado.valor.sugestoes[0].perfilEmpresa).toStrictEqual({
+    mei: { valor: 'qualquer', motivo: 'Considerar todos os públicos.' },
+  })
+})
+
+test.each([undefined, 'perfil inválido', { capitalMaximo: 10000 }, { aberturaUltimosDias: { valor: 2147483648, motivo: 'Recorte sugerido.' } }])(
+  'preserva a sugestão por CNAE quando o perfil está ausente ou sem campos válidos (%j)', async perfilEmpresa => {
+    requisicao.mockResolvedValueOnce(resposta([{ ...lojas, perfilEmpresa }]))
+    const resultado = await sugerirFiltrosBancoAcao(descricao)
+    expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [{ cnaes: [{ codigo: '4755502' }] }] } })
+    if (resultado.ok) expect(resultado.valor.sugestoes[0]).not.toHaveProperty('perfilEmpresa')
+  },
+)
+
 test('não permite aplicar CNAE ausente do catálogo oficial', async () => {
   requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['9999999'] }]))
   expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false, motivo: expect.stringContaining('CNAE') })
@@ -117,13 +182,18 @@ test('CNAEs de iluminação e instalação funcionam com a rede do IBGE indispon
 
 test('limita os CNAEs a cada perfil do SKU, exibe o escopo e envia somente a ficha escolhida', async () => {
   requisicao.mockResolvedValueOnce(resposta([
-    { ...lojas, perfil: 'lojas', cnaes: ['4759899', '4649401', '4751201'] },
+    { ...lojas, perfil: 'lojas', cnaes: ['4759899', '4649401', '4751201'], perfilEmpresa: {
+      portes: { valor: ['EPP'], motivo: 'Podem revender o produto em escala regional.' },
+    } },
     { ...lojas, titulo: 'Distribuidores', perfil: 'distribuidores', cnaes: ['4649401'] },
   ]))
   const entrada = { produto: { sku: 'IC-8177' }, publico: 'lojas', regioes: [{ estado: 'SP', cidade: 'São Paulo', bairros: ['Brás', 'Sé'] }] }
   const resultado = await sugerirFiltrosBancoAcao(entrada)
   expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [
-    { cnaes: [{ codigo: '4759899', amplo: true, motivo: expect.any(String) }] },
+    {
+      cnaes: [{ codigo: '4759899', amplo: true, motivo: expect.any(String) }],
+      perfilEmpresa: { portes: { valor: ['EPP'], motivo: 'Podem revender o produto em escala regional.' } },
+    },
   ] } })
   if (resultado.ok) {
     expect(resultado.valor.sugestoes).toHaveLength(1)

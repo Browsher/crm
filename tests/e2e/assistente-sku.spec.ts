@@ -54,7 +54,7 @@ for (const width of [1366, 390]) {
     await expect(page.getByRole('button', { name: 'Salvar planejamento', exact: true })).toBeVisible()
   })
 
-  test(`Banco aplica CNAE do comprador e mantém duas regiões (${width}px)`, async ({ page }, info) => {
+  test(`Banco aplica o perfil aprovado e o capital digitado, mantendo duas regiões (${width}px)`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 844 })
     await entrar(page, 'redesigne2e')
     await page.goto('/fila/buscar?fonte=banco')
@@ -74,6 +74,25 @@ for (const width of [1366, 390]) {
     await painel.getByRole('button', { name: 'Gerar sugestões' }).click()
     await expect(painel.getByText(/4759899/)).toBeVisible()
     await expect(painel.getByText(/escopo amplo|CNAE amplo|atividade ampla/i)).toBeVisible()
+    const porte = painel.getByRole('checkbox', { name: /^Porte sugerido/ })
+    const mei = painel.getByRole('checkbox', { name: /^MEI sugerido/ })
+    const regime = painel.getByRole('checkbox', { name: /^Regime tributário sugerido/ })
+    const contato = painel.getByRole('checkbox', { name: /^Contato disponível sugerido/ })
+    const abertura = painel.getByRole('checkbox', { name: /^Data de abertura sugerida/ })
+    const minimo = painel.getByLabel('Capital mínimo (R$, sem centavos)', { exact: true })
+    const maximo = painel.getByLabel('Capital máximo (R$, sem centavos)', { exact: true })
+    for (const opcao of [porte, mei, regime, contato, abertura]) await expect(opcao).not.toBeChecked()
+    await expect(minimo).toHaveValue('')
+    await expect(maximo).toHaveValue('')
+    await porte.check()
+    await mei.check()
+    await regime.check()
+    await abertura.check()
+    await minimo.fill('20000')
+    await maximo.fill('10000')
+    await expect(painel.getByText(/capital mínimo deve ser menor ou igual/i)).toBeVisible()
+    await expect(painel.getByRole('button', { name: 'Aplicar filtros' })).toBeDisabled()
+    await maximo.fill('100000')
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await page.screenshot({ path: info.outputPath('banco-assistente.png'), animations: 'disabled' })
     await painel.getByRole('button', { name: 'Aplicar filtros' }).click()
@@ -81,6 +100,13 @@ for (const width of [1366, 390]) {
     await expect(page.getByRole('textbox', { name: 'CNAEs principais', exact: true })).toHaveValue('4759899')
     await expect(page.getByRole('textbox', { name: 'Cidade 1', exact: true })).toHaveValue('Santos')
     await expect(page.getByRole('textbox', { name: 'Cidade 2', exact: true })).toHaveValue('Campinas')
+    const filtros = await page.locator('input[name="avancados"]').evaluate((campo: HTMLInputElement) => JSON.parse(campo.value))
+    expect(filtros).toMatchObject({
+      cnaes: ['4759899'], portes: ['ME', 'EPP'], excluirMei: true, regimes: ['Simples Nacional'],
+      capitalMinimo: '20000', capitalMaximo: '100000', aberturaUltimosDias: '365', contato: 'telefoneoucelular',
+    })
+    await page.getByRole('button', { name: 'Capital e data de abertura', exact: true }).click()
+    await expect(page.getByLabel('Abertas nos últimos dias', { exact: true })).toHaveValue('365')
     expect(await consultas()).toBe(antes)
   })
 
