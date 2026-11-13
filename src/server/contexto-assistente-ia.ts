@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { LIMITE_DESCRICAO_IA, type EntradaAssistente } from '@/src/lib/assistente-ia'
 import { obterProdutoProspeccao, perfisDoProduto } from '@/src/lib/assistente-ia-catalogo'
+import { perfisBancoParaSugestao } from '@/src/lib/assistente-ia-cnaes-banco'
 import { ESTADOS_BR } from '@/src/lib/banco-empresas'
 
 const texto = (maximo: number) => z.string().trim().max(maximo)
@@ -17,7 +18,7 @@ const entradaSchema = z.strictObject({
   })).max(20).optional(),
 })
 
-export function prepararContextoAssistente(entrada: EntradaAssistente | string) {
+export function prepararContextoAssistente(entrada: EntradaAssistente | string, origem: 'google' | 'banco' = 'google') {
   const validada = entradaSchema.safeParse(typeof entrada === 'string' ? { produto: { descricao: entrada } } : entrada)
   if (!validada.success) return { ok: false, motivo: 'Confira o produto, a região e os detalhes da busca. Use até 600 caracteres em cada campo de texto livre.' } as const
 
@@ -45,9 +46,10 @@ export function prepararContextoAssistente(entrada: EntradaAssistente | string) 
 
   const ficha = obterProdutoProspeccao(produto.sku)
   if (!ficha) return { ok: false, motivo: 'Escolha um SKU disponível no catálogo.' } as const
-  const perfis = perfisDoProduto(ficha).filter(perfil => (!publico || perfil.id === publico) &&
-    (!especialidade || perfil.especialidades.includes(especialidade)) &&
-    (perfil.id !== 'lojas_games' || publico === perfil.id || especialidade === 'Games'))
+  const perfis = origem === 'banco' ? perfisBancoParaSugestao(ficha, publico, especialidade)
+    : perfisDoProduto(ficha).filter(perfil => (!publico || perfil.id === publico) &&
+      (!especialidade || perfil.especialidades.includes(especialidade)) &&
+      (perfil.id !== 'lojas_games' || publico === perfil.id || especialidade === 'Games'))
   if (!perfis.length) return { ok: false, motivo: 'Escolha um público e uma especialidade compatíveis com o produto.' } as const
   return { ok: true, valor: {
     origem: 'catalogo',

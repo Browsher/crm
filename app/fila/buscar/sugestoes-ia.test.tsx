@@ -141,9 +141,40 @@ test('rejeita seleção inválida ou sem CNAE pertinente antes de consumir créd
   for (const produto of [
     { produto: { sku: '128GB' } },
     { produto: { sku: 'IC-8177' }, especialidade: 'Higiene bucal' },
-    { produto: { sku: 'QS-030' }, publico: 'lojas' },
+    { produto: { sku: 'QS-030' }, publico: 'lojas_games' },
   ]) expect(await sugerirFiltrosBancoAcao(produto)).toMatchObject({ ok: false })
   expect(requisicao).not.toHaveBeenCalled()
+})
+
+test('envia somente os públicos prioritários por padrão e rejeita um CNAE de expansão devolvido pela IA', async () => {
+  requisicao.mockResolvedValueOnce(resposta([
+    { ...lojas, perfil: 'lojas', cnaes: ['4789004', '4623109'] },
+    { ...lojas, perfil: 'atacado_racao', cnaes: ['4623109'] },
+  ]))
+  expect(await sugerirFiltrosBancoAcao({ produto: { sku: 'QS-023' } })).toMatchObject({ ok: true, valor: {
+    sugestoes: [{ cnaes: [{ codigo: '4789004' }], cnaesSecundarios: [] }],
+  } })
+  const pedido = JSON.parse(JSON.parse(String(requisicao.mock.calls[0][1]?.body)).messages[0].content)
+  expect(pedido.perfis.map((perfil: { cnaes: { codigo: string }[] }) => perfil.cnaes.map(cnae => cnae.codigo)))
+    .toEqual([['4789004'], ['4649499']])
+})
+
+test('aceita expansão selecionada como atividade principal e limita a escolha ao mesmo SKU', async () => {
+  requisicao.mockResolvedValueOnce(resposta([
+    { ...lojas, perfil: 'atacado_racao', cnaes: ['4623109'], cnaesSecundarios: ['4623109'] },
+  ]))
+  expect(await sugerirFiltrosBancoAcao({ produto: { sku: 'QS-023' }, publico: 'atacado_racao' })).toMatchObject({ ok: true, valor: {
+    sugestoes: [{ cnaes: [{ codigo: '4623109' }], cnaesSecundarios: [] }],
+  } })
+  expect(await sugerirFiltrosBancoAcao({ produto: { sku: 'QS-030' }, publico: 'atacado_racao' })).toMatchObject({ ok: false })
+  expect(requisicao).toHaveBeenCalledTimes(1)
+})
+
+test('oferece lojas de eletroportáteis para o massageador no Banco', async () => {
+  requisicao.mockResolvedValueOnce(resposta([{ ...lojas, perfil: 'lojas', cnaes: ['4753900', '4773300'] }]))
+  expect(await sugerirFiltrosBancoAcao({ produto: { sku: 'QS-030' }, publico: 'lojas' })).toMatchObject({ ok: true, valor: {
+    sugestoes: [{ titulo: 'Lojas de eletroportáteis', cnaes: [{ codigo: '4753900' }] }],
+  } })
 })
 
 test('rejeita CNAE oficial sem relação com o público do produto fora do catálogo', async () => {
