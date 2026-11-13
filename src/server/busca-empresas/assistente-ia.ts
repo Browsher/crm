@@ -72,7 +72,7 @@ function confirmarCnaes(lista: string[] = [], permitidos: CnaeConfirmado[]): Cna
 
 export async function sugerirFiltrosBanco(entrada: EntradaAssistente | string): Promise<ResultadoAssistente<SugestaoBanco>> {
   if (!assistenteIaDisponivel('banco')) return { ok: false, motivo: 'O assistente de filtros estará disponível em breve.' }
-  const contexto = prepararContextoAssistente(entrada)
+  const contexto = prepararContextoAssistente(entrada, 'banco')
   if (!contexto.ok) return contexto
 
   const valor = contexto.valor

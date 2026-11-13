@@ -5,6 +5,7 @@ import { AssistenteIaBusca, AssistenteIaEmBreve } from '@/src/components/crm/ass
 import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import type { RegiaoAssistente } from '@/src/lib/assistente-ia'
 import { prepararAplicacaoSugestaoBanco, type CnaeConfirmado, type SelecaoPerfilBanco, type SugestaoBanco } from '@/src/lib/assistente-ia-banco'
+import { perfisBancoDoProduto } from '@/src/lib/assistente-ia-cnaes-banco'
 import type { FiltrosBanco } from '@/src/lib/banco-empresas'
 import { useGuardaEdicao, type Edicao } from '../google/guarda-edicao'
 import { RevisaoPerfilBanco } from './revisao-perfil-banco'
@@ -39,6 +40,7 @@ function AssistenteBancoAtivo({ bloqueado, filtrosAtuais, regioesAtuais, aoAplic
     <AssistenteIaBusca<SugestaoBanco, SelecaoPerfilBanco> bloqueado={bloqueado} regioesAtuais={regioesAtuais} limiteRegioes={20} gerarAcao={sugerirFiltrosBancoAcao}
       informarEdicao={setEdicao} pedirFechar={() => pedir('dialogo')}
       orientacao="Os filtros escolhidos serão preenchidos no formulário de busca."
+      perfisBanco={perfisBancoDoProduto}
       revisao={{
         tituloDetalhes: 'Atividade e região',
         selecaoInicial: SELECAO_INICIAL,

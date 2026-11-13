@@ -12,13 +12,14 @@ import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Textarea } from '@/src/components/ui/textarea'
 import { LIMITE_DESCRICAO_IA, type EntradaAssistente, type PublicoSugerido, type RegiaoAssistente, type ResultadoAssistente, type SugestoesBusca } from '@/src/lib/assistente-ia'
-import { perfisDoProduto, reconhecerProdutoProspeccao, type ProdutoProspeccao } from '@/src/lib/assistente-ia-catalogo'
+import { perfisDoProduto, reconhecerProdutoProspeccao, type PerfilProspeccao, type ProdutoProspeccao } from '@/src/lib/assistente-ia-catalogo'
 import { BuscaProdutoAssistente } from './assistente-ia-produto'
 import { linhaRegiaoVazia, PreviaRegioesAssistente, RegioesAssistente, regioesPreenchidas, type LinhaRegiaoAssistente } from './assistente-ia-regioes'
 import styles from './assistente-ia-busca.module.css'
 
 const ROTULO = 'Sugerir filtros com IA'
 const REFINAMENTO_INICIAL = { publico: '', especialidade: '', detalhes: '' }
+type PerfilPublico = PerfilProspeccao & { expansao?: boolean }
 
 export function AssistenteIaEmBreve() {
   return <div className={styles.emBreve}>
@@ -44,6 +45,7 @@ type Props<T extends PublicoSugerido, Selecao> = {
   orientacao: string
   regioesAtuais: RegiaoAssistente[]
   limiteRegioes: 1 | 20
+  perfisBanco?: (produto: ProdutoProspeccao) => readonly PerfilPublico[]
   informarEdicao: (edicao: { alterado: boolean; pendente: boolean; fechar: () => void } | null) => void
   pedirFechar: () => void
   gerarAcao: (entrada: EntradaAssistente) => Promise<ResultadoAssistente<T>>
@@ -68,6 +70,7 @@ export function AssistenteIaBusca<T extends PublicoSugerido, Selecao = never>(pr
 }
 
 function EditorAssistente<T extends PublicoSugerido, Selecao>({
+  perfisBanco,
   contexto, orientacao, regioesAtuais, limiteRegioes, fechar, informarEdicao, pedirFechar, gerarAcao, detalhes, aoAplicar, revisao,
 }: Props<T, Selecao> & { fechar: () => void }) {
   const [produto, setProduto] = useState<ProdutoProspeccao | null>(null)
@@ -95,7 +98,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
   const produtoEntrada = produto ? { sku: produto.sku } : outroProduto && descricao.trim() ? { descricao: descricao.trim() } : null
   const alterado = Boolean(produtoEntrada || regioesEditadas)
   const reconhecido = outroProduto ? reconhecerProdutoProspeccao(descricao) : undefined
-  const perfis = produto ? perfisDoProduto(produto) : []
+  const perfis: readonly PerfilPublico[] = produto ? (perfisBanco ?? perfisDoProduto)(produto) : []
   const publicoEscolhido = perfis.find(perfil => perfil.id === refinamento.publico)
   const especialidades = produto?.especialidades.filter(especialidade => !publicoEscolhido || publicoEscolhido.especialidades.includes(especialidade)) ?? []
   const regioes = regioesPreenchidas(linhas, limiteRegioes)
@@ -244,12 +247,19 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
             onClick={() => setRefinar(aberto => !aberto)}>Refinar busca<ChevronDown aria-hidden="true" /></Button></h3>
           <div id={grupo + '-refinar'} hidden={!refinar} className={styles.camposRefinamento}>
             {refinar && <>
-              {produto ? <label>Público-alvo
-                <NativeSelect name="publico" value={refinamento.publico} onChange={evento => mudarPublico(evento.target.value)}>
-                  <option value="">Sugerir públicos</option>
-                  {perfis.map(perfil => <option key={perfil.id} value={perfil.id}>{perfil.rotulo}</option>)}
+              {produto ? <div className="grid gap-2">
+                <label htmlFor={grupo + '-publico'}>Público-alvo</label>
+                <NativeSelect id={grupo + '-publico'} name="publico" value={refinamento.publico}
+                  aria-describedby={perfisBanco ? grupo + '-publico-ajuda' : undefined}
+                  onChange={evento => mudarPublico(evento.target.value)}>
+                  <option value="">{perfisBanco ? 'Sugerir públicos prioritários' : 'Sugerir públicos'}</option>
+                  {perfisBanco ? <>
+                    <optgroup label="Prioritários">{perfis.filter(perfil => !perfil.expansao).map(opcaoPublico)}</optgroup>
+                    <optgroup label="Expansão">{perfis.filter(perfil => perfil.expansao).map(opcaoPublico)}</optgroup>
+                  </> : perfis.map(opcaoPublico)}
                 </NativeSelect>
-              </label> : <label>Público-alvo (opcional)
+                {perfisBanco && <span id={grupo + '-publico-ajuda'} className={styles.ajuda}>Escolha um público em Expansão para testar outros canais de venda.</span>}
+              </div> : <label>Público-alvo (opcional)
                 <Input name="publico" value={refinamento.publico} maxLength={100}
                   onChange={evento => mudarPublico(evento.target.value)} />
               </label>}
@@ -315,4 +325,8 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
       })}
     </fieldset>}
   </PainelSobrepostoCrm>
+}
+
+function opcaoPublico(perfil: PerfilProspeccao) {
+  return <option key={perfil.id} value={perfil.id}>{perfil.rotulo}</option>
 }
