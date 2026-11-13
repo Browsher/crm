@@ -23,6 +23,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   vi.resetAllMocks()
 })
 
@@ -48,6 +49,70 @@ test('confirma apenas CNAEs oficiais sem depender da API do IBGE ou consultar em
   expect(requisicao).toHaveBeenCalledTimes(1)
   expect(String(requisicao.mock.calls[0][0])).toBe('https://api.anthropic.com/v1/messages')
   expect(JSON.parse(String(requisicao.mock.calls[0][1]?.body))).toMatchObject({ model: 'claude-haiku-5-5', messages: [{ role: 'user', content: descricao }] })
+})
+
+test('dá ao Claude tempo adicional para a primeira geração com o esquema estruturado', async () => {
+  const prazo = vi.spyOn(AbortSignal, 'timeout')
+  requisicao.mockResolvedValueOnce(resposta())
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: true })
+  expect(prazo).toHaveBeenCalledWith(30_000)
+  expect(requisicao).toHaveBeenCalledTimes(1)
+})
+
+test('recupera uma sobrecarga do Claude com uma segunda tentativa do mesmo pedido', async () => {
+  const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockResolvedValueOnce(new Response(null, {
+    status: 529, headers: { 'request-id': 'req_sobrecarga', 'retry-after': '0' },
+  })).mockResolvedValueOnce(resposta())
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: true })
+  expect(requisicao).toHaveBeenCalledTimes(2)
+  expect(requisicao.mock.calls[1][1]?.body).toBe(requisicao.mock.calls[0][1]?.body)
+  expect(requisicao.mock.calls[1][1]?.signal).toBe(requisicao.mock.calls[0][1]?.signal)
+  expect(aviso).toHaveBeenCalledWith('assistente_ia_falha', expect.objectContaining({
+    origem: 'banco', etapa: 'http', status: 529, requisicao: 'req_sobrecarga', repetir: true,
+  }))
+})
+
+test('diferencia uma resposta cortada do Claude de um erro de rede', async () => {
+  const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockResolvedValueOnce(Response.json({ stop_reason: 'max_tokens', content: [] }, {
+    headers: { 'request-id': 'req_resposta_cortada' },
+  }))
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false })
+  expect(requisicao).toHaveBeenCalledTimes(1)
+  expect(aviso).toHaveBeenCalledWith('assistente_ia_falha', expect.objectContaining({
+    etapa: 'limite_tokens', requisicao: 'req_resposta_cortada',
+  }))
+})
+
+test('respeita uma janela de rate limit curta e limita a repetição a uma tentativa', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockImplementation(async () => new Response(null, { status: 429, headers: { 'retry-after': '0' } }))
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false })
+  expect(requisicao).toHaveBeenCalledTimes(2)
+})
+
+test.each([undefined, '30'])('não repete HTTP 429 quando a espera é ausente ou excede o prazo curto (%j)', async espera => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockResolvedValueOnce(new Response(null, { status: 429, headers: espera ? { 'retry-after': espera } : {} }))
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false })
+  expect(requisicao).toHaveBeenCalledTimes(1)
+})
+
+test('registra timeout sem expor o pedido e sem repetir uma chamada de resultado desconhecido', async () => {
+  const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockRejectedValueOnce(new DOMException('mensagem interna do provedor', 'TimeoutError'))
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false })
+  expect(requisicao).toHaveBeenCalledTimes(1)
+  expect(aviso).toHaveBeenCalledWith('assistente_ia_falha', expect.objectContaining({
+    origem: 'banco', etapa: 'timeout', tentativa: 1,
+  }))
+  expect(JSON.stringify(aviso.mock.calls)).not.toMatch(/mensagem interna|armarinhos|chave-ficticia/i)
 })
 
 test('devolve filtros opcionais de perfil com o motivo comercial de cada um', async () => {
