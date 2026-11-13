@@ -23,6 +23,12 @@ globalThis.fetch = async (input, init) => {
     const perfil = pedido.perfis.find(p => p.id === 'lojas' && p.cnaes.some(c => c.codigo === '4759899'))
     if (perfil) return responder({ perfil: perfil.id, titulo: perfil.titulo, descricao: 'Revenda de câmeras para segurança residencial.', cnaes: ['4759899'] })
   }
+  if (pedido.produto.sku === 'QS-023' && pedido.perfis.length === 1) {
+    const [perfil] = pedido.perfis
+    if (perfil.id === 'atacado_racao' && perfil.cnaes[0]?.codigo === '4623109') return responder({
+      perfil: perfil.id, titulo: perfil.titulo, descricao: 'Distribuição de ração com linha de acessórios pet.', cnaes: ['4623109'],
+    })
+  }
   return Response.json({ erro: 'Dados da chamada não correspondem às expectativas do teste.' }, { status: 422 })
 }
 

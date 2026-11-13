@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AssistenteIaBusca, AssistenteIaEmBreve } from '@/src/components/crm/assistente-ia-busca'
 import type { RegiaoAssistente } from '@/src/lib/assistente-ia'
 import type { CnaeConfirmado, SugestaoBanco } from '@/src/lib/assistente-ia-banco'
+import { perfisBancoDoProduto } from '@/src/lib/assistente-ia-cnaes-banco'
 import { useGuardaEdicao, type Edicao } from '../google/guarda-edicao'
 import { sugerirFiltrosBancoAcao } from './sugestoes-ia'
 
@@ -33,6 +34,7 @@ function AssistenteBancoAtivo({ bloqueado, regioesAtuais, aoAplicar }: Omit<Prop
     <AssistenteIaBusca bloqueado={bloqueado} regioesAtuais={regioesAtuais} limiteRegioes={20} gerarAcao={sugerirFiltrosBancoAcao}
       informarEdicao={setEdicao} pedirFechar={() => pedir('dialogo')} aoAplicar={aoAplicar}
       orientacao="Preenche o formulário para você revisar antes de buscar."
+      perfisBanco={perfisBancoDoProduto}
       detalhes={sugestao => [
         ...(sugestao.cnaes?.length ? [{ rotulo: 'CNAEs principais', valor: descreverCnaes(sugestao.cnaes) }] : []),
         ...(sugestao.cnaesSecundarios?.length ? [{ rotulo: 'CNAEs secundários', valor: descreverCnaes(sugestao.cnaesSecundarios) }] : []),
