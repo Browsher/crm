@@ -26,6 +26,7 @@ for (const width of [1366, 390]) {
     await dia.getByRole('button', { name: 'Sugerir filtros com IA', exact: true }).click()
     const painel = page.getByRole('dialog', { name: 'Sugerir filtros com IA' })
     await expect(painel).toBeVisible()
+    await expect(painel.locator('header [data-mascote-assistente]')).toHaveCount(0)
     await expect(painel.getByText('Refinar busca', { exact: true })).toHaveCount(0)
     const escolherProduto = painel.getByRole('combobox', { name: 'Escolher produto' })
     await escolherProduto.fill('QS-T-001')
@@ -73,6 +74,8 @@ for (const width of [1366, 390]) {
     await painel.getByRole('option', { name: /IC-8177/ }).click()
     await painel.getByRole('button', { name: 'Gerar sugestões' }).click()
     await expect(painel.getByText(/4759899/)).toBeVisible()
+    await expect(painel.locator('header [data-mascote-assistente]')).toHaveAttribute('data-mascote-assistente', 'padrao')
+    await expect(painel.getByText('Você ainda pode aplicar os CNAEs do catálogo.', { exact: true })).toHaveCount(0)
     await expect(painel.getByText(/escopo amplo|CNAE amplo|atividade ampla/i)).toBeVisible()
     const porte = painel.getByRole('checkbox', { name: /^Porte sugerido/ })
     const mei = painel.getByRole('checkbox', { name: /^MEI sugerido/ })
@@ -133,20 +136,41 @@ for (const width of [1366, 390]) {
     await expect(page.getByRole('textbox', { name: 'CNAEs secundários', exact: true })).toHaveValue('')
   })
 
-  test(`Banco mantém os CNAEs do catálogo quando Claude devolve JSON inválido (${width}px)`, async ({ page }) => {
+  test(`Banco mantém os CNAEs do catálogo quando Claude devolve JSON inválido (${width}px)`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 844 })
     await entrar(page, 'redesigne2e')
     await page.goto('/fila/buscar?fonte=banco')
+    await page.getByRole('combobox', { name: /Tema/ }).selectOption(width === 390 ? 'dark' : 'light')
     await page.getByRole('button', { name: 'Sugerir filtros com IA', exact: true }).click()
     const painel = page.getByRole('dialog', { name: 'Sugerir filtros com IA' })
+    const mascote = painel.locator('header [data-mascote-assistente]')
+    await expect(mascote).toHaveAttribute('data-mascote-assistente', 'padrao')
+    await painel.screenshot({ path: info.outputPath('mascote-inicial.png'), animations: 'disabled' })
     await painel.getByRole('combobox', { name: 'Escolher produto' }).fill('QS-026')
     await painel.getByRole('option', { name: /QS-026/ }).click()
-    await painel.getByRole('button', { name: 'Gerar sugestões' }).click()
+    let liberarEnvio!: () => void
+    const envio = new Promise<void>(resolve => { liberarEnvio = resolve })
+    await page.route(url => url.pathname === '/fila/buscar', async route => {
+      if (route.request().method() === 'POST' && route.request().headers()['next-action']) await envio
+      await route.continue()
+    })
+    try {
+      await painel.getByRole('button', { name: 'Gerar sugestões' }).click()
+      await expect(mascote).toHaveAttribute('data-mascote-assistente', 'gerando')
+      await expect(painel.locator('p', { hasText: 'Preparando sugestões para este produto…' })).toBeVisible()
+      await expect(painel.getByRole('button', { name: 'Aplicar filtros' })).toBeDisabled()
+      await painel.screenshot({ path: info.outputPath('mascote-gerando.png'), animations: 'disabled' })
+    } finally {
+      liberarEnvio()
+    }
     const petShops = painel.getByRole('group', { name: 'Pet shops', exact: true })
-    await expect(petShops.getByText(/CNAEs do catálogo/)).toBeVisible()
+    await expect(mascote).toHaveAttribute('data-mascote-assistente', 'catalogo')
+    await expect(painel.getByText('Você ainda pode aplicar os CNAEs do catálogo.', { exact: true })).toBeVisible()
     await expect(petShops.getByRole('checkbox')).toHaveCount(0)
     await expect(painel.getByRole('radio')).toHaveCount(2)
     await expect(painel.getByText(/4623109/)).toHaveCount(0)
+    await expect.poll(() => painel.locator('[data-painel-corpo]').evaluate(corpo => corpo.scrollWidth - corpo.clientWidth)).toBeLessThanOrEqual(0)
+    await painel.screenshot({ path: info.outputPath('mascote-catalogo.png'), animations: 'disabled' })
     await painel.getByRole('button', { name: 'Aplicar filtros' }).click()
     await expect(painel).toHaveCount(0)
     await expect(page.getByRole('textbox', { name: 'CNAEs principais', exact: true })).toHaveValue('4789004')

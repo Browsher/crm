@@ -41,6 +41,7 @@ function AssistenteBancoAtivo({ bloqueado, filtrosAtuais, regioesAtuais, aoAplic
       informarEdicao={setEdicao} pedirFechar={() => pedir('dialogo')}
       orientacao="Os filtros escolhidos serão preenchidos no formulário de busca."
       perfisBanco={perfisBancoDoProduto}
+      exibirMascote
       revisao={{
         tituloDetalhes: 'Atividade e região',
         selecaoInicial: SELECAO_INICIAL,

@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useId, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { ChevronDown, Sparkles } from 'lucide-react'
+import { ChevronDown, LoaderCircle, Sparkles } from 'lucide-react'
 import { PainelSobrepostoCrm } from '@/src/components/crm/painel-lateral'
-import { Alert } from '@/src/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/src/components/ui/alert'
 import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 import { Choice } from '@/src/components/ui/choice'
@@ -19,7 +19,18 @@ import styles from './assistente-ia-busca.module.css'
 
 const ROTULO = 'Sugerir filtros com IA'
 const REFINAMENTO_INICIAL = { publico: '', especialidade: '', detalhes: '' }
+const MENSAGEM_GERANDO = 'Preparando sugestões para este produto…'
+const MENSAGEM_CATALOGO = 'Você ainda pode aplicar os CNAEs do catálogo.'
+const MENSAGEM_PERFIL_INDISPONIVEL = 'Perfil de comprador temporariamente indisponível.'
 type PerfilPublico = PerfilProspeccao & { expansao?: boolean }
+
+function MascoteAssistente({ estado }: { estado: 'padrao' | 'gerando' | 'catalogo' }) {
+  return <span className={styles.mascote} data-mascote-assistente={estado} aria-hidden="true">
+    <span className={styles.visorMascote}>
+      <span /><span /><span hidden={estado !== 'gerando'} />
+    </span>
+  </span>
+}
 
 export function AssistenteIaEmBreve() {
   return <div className={styles.emBreve}>
@@ -46,6 +57,7 @@ type Props<T extends PublicoSugerido, Selecao> = {
   regioesAtuais: RegiaoAssistente[]
   limiteRegioes: 1 | 20
   perfisBanco?: (produto: ProdutoProspeccao) => readonly PerfilPublico[]
+  exibirMascote?: boolean
   informarEdicao: (edicao: { alterado: boolean; pendente: boolean; fechar: () => void } | null) => void
   pedirFechar: () => void
   gerarAcao: (entrada: EntradaAssistente) => Promise<ResultadoAssistente<T>>
@@ -70,7 +82,7 @@ export function AssistenteIaBusca<T extends PublicoSugerido, Selecao = never>(pr
 }
 
 function EditorAssistente<T extends PublicoSugerido, Selecao>({
-  perfisBanco,
+  perfisBanco, exibirMascote,
   contexto, orientacao, regioesAtuais, limiteRegioes, fechar, informarEdicao, pedirFechar, gerarAcao, detalhes, aoAplicar, revisao,
 }: Props<T, Selecao> & { fechar: () => void }) {
   const [produto, setProduto] = useState<ProdutoProspeccao | null>(null)
@@ -187,6 +199,14 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
   }
 
   const atual = dados?.sugestoes[escolhida]
+  const somenteCatalogo = dados?.fonte === 'catalogo'
+  const gerando = exibirMascote ? MENSAGEM_GERANDO : 'Gerando sugestões.'
+  const mensagemStatus = pendente ? gerando : exibirMascote && somenteCatalogo
+    ? `${MENSAGEM_PERFIL_INDISPONIVEL} ${MENSAGEM_CATALOGO}`
+    : ''
+  const orientacaoInicial = exibirMascote ? 'Escolha um produto para receber sugestões de filtros.' : 'Escolha um produto para encontrar públicos para prospectar.'
+  const mostrarOrientacao = !exibirMascote || !produtoEntrada
+  const descricaoPainel = mostrarOrientacao ? <>{orientacaoInicial}{contexto && <><br />{contexto}</>}</> : contexto
   const preparada = atual && revisao ? revisao.preparar(atual, selecoes[escolhida] ?? revisao.selecaoInicial, regioesParaAplicar) : null
 
   function aplicar() {
@@ -201,9 +221,10 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
   }
 
   return <PainelSobrepostoCrm titulo={ROTULO}
-    descricao={<><span>Escolha um produto para encontrar públicos para prospectar.</span>{contexto && <><br />{contexto}</>}</>}
+    iconeTitulo={exibirMascote && <MascoteAssistente estado={pendente ? 'gerando' : somenteCatalogo ? 'catalogo' : 'padrao'} />}
+    descricao={descricaoPainel}
     aoFechar={pedirFechar} fecharBloqueado={pendente} ocupado={pendente} rodape={<div className={styles.rodape}>
-      <span className="sr-only" role="status">{pendente ? 'Gerando sugestões.' : ''}</span>
+      <span className="sr-only" role="status">{mensagemStatus}</span>
       <span className={styles.ajuda}>{orientacao}</span>
       <Button type="button" disabled={pendente || !atual || preparada?.aplicar === null} onClick={aplicar}>Aplicar filtros</Button>
     </div>}>
@@ -290,10 +311,17 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
         <Sparkles aria-hidden="true" /><span>{pendente ? 'Gerando sugestões…' : 'Gerar sugestões'}</span>
       </Button></div>
     </form>
+    {exibirMascote && pendente && <p className={styles.geracaoMascote} aria-hidden="true">
+      <LoaderCircle size={18} /><span>{MENSAGEM_GERANDO}</span>
+    </p>}
     {erro && <Alert role="alert" variant="danger">{erro}</Alert>}
     {dados && <fieldset className={styles.sugestoes}>
       <legend ref={tituloSugestoes} tabIndex={-1}>Sugestões de público</legend>
       <p className={styles.ajuda} role="status">{dados.sugestoes.length} {dados.sugestoes.length === 1 ? 'opção disponível' : 'opções disponíveis'}. Escolha uma para preencher o formulário.</p>
+      {exibirMascote && somenteCatalogo && <Alert variant="warning" role="note">
+        <AlertTitle>{MENSAGEM_CATALOGO}</AlertTitle>
+        <AlertDescription>{MENSAGEM_PERFIL_INDISPONIVEL}</AlertDescription>
+      </Alert>}
       {!revisao && <PreviaRegioesAssistente regioes={regioesParaAplicar ?? regioes} />}
       {dados.sugestoes.map((sugestao, indice) => {
         const ativa = escolhida === indice

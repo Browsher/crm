@@ -89,6 +89,39 @@ test('Banco exibe o botão desativado e Em breve por padrão', async () => {
   expect(botao?.parentElement?.textContent).toContain('Em breve')
 })
 
+test('Banco alterna o robô entre escolha, geração e recuperação com CNAEs do catálogo', async () => {
+  let responder!: (valor: unknown) => void
+  sugerirFiltrosBancoAcao.mockReturnValueOnce(new Promise(resolve => { responder = resolve }))
+  await abrirBanco(true)
+  await clicar('Sugerir filtros com IA')
+  const painel = document.querySelector('[role="dialog"][data-painel-lateral]')!
+  const mascote = () => painel.querySelector('header [data-mascote-assistente]')
+  const aplicar = [...painel.querySelectorAll('button')].find(botao => botao.textContent === 'Aplicar filtros')!
+  const status = painel.querySelector('footer [role="status"]')!
+  expect(mascote()?.getAttribute('data-mascote-assistente')).toBe('padrao')
+  expect(mascote()?.getAttribute('aria-hidden')).toBe('true')
+  expect(painel.textContent).toContain('Escolha um produto para receber sugestões de filtros.')
+  expect(aplicar.disabled).toBe(true)
+
+  await mudarTexto(painel.querySelector<HTMLInputElement>('[name="produto"]')!, 'QS-T-001')
+  await act(async () => painel.querySelector<HTMLElement>('[role="option"]')!.click())
+  await clicar('Gerar sugestões', painel)
+  expect(mascote()?.getAttribute('data-mascote-assistente')).toBe('gerando')
+  expect(status.textContent).toBe('Preparando sugestões para este produto…')
+  expect(aplicar.disabled).toBe(true)
+
+  await act(async () => responder({ ok: true, valor: { fonte: 'catalogo', sugestoes: [
+    { titulo: lojasGames.titulo, descricao: 'Atividade verificada no catálogo.', cnaes: lojasGames.cnaes },
+  ] } }))
+  expect(mascote()?.getAttribute('data-mascote-assistente')).toBe('catalogo')
+  expect(painel.querySelector('[role="note"]')?.textContent).toContain('Você ainda pode aplicar os CNAEs do catálogo.')
+  expect(status.textContent).toBe('Perfil de comprador temporariamente indisponível. Você ainda pode aplicar os CNAEs do catálogo.')
+  expect(aplicar.disabled).toBe(false)
+  await clicar('Aplicar filtros', painel)
+  expect(filtrosBanco().cnaes).toEqual(['4763601'])
+  expect(buscarEmpresasAcao).not.toHaveBeenCalled()
+})
+
 test('aplica a opção escolhida ao Banco sem submeter a busca e preserva os campos omitidos', async () => {
   sugerirFiltrosBancoAcao.mockResolvedValueOnce({ ok: true, valor: {
     regiao: { cidade: 'São Paulo', uf: 'SP', bairro: 'Brás' },

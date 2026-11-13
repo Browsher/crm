@@ -209,7 +209,7 @@ test('usa somente o CNAE verificado do público complementar escolhido quando a 
   }))
 
   const resultado = await sugerirFiltrosBancoAcao({ produto: { sku: 'QS-023' }, publico: 'atacado_racao' })
-  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [{
+  expect(resultado).toMatchObject({ ok: true, valor: { fonte: 'catalogo', sugestoes: [{
     titulo: 'Atacadistas de alimentos para animais',
     descricao: expect.stringContaining('catálogo'),
     cnaes: [{ codigo: '4623109' }],

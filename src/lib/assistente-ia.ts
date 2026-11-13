@@ -18,7 +18,11 @@ export type RegiaoSugerida = {
 }
 
 export type PublicoSugerido = { titulo: string; descricao: string }
-export type SugestoesBusca<T extends PublicoSugerido> = { sugestoes: T[]; regiao?: RegiaoSugerida }
+export type SugestoesBusca<T extends PublicoSugerido> = {
+  sugestoes: T[]
+  regiao?: RegiaoSugerida
+  fonte?: 'catalogo'
+}
 export type ResultadoAssistente<T extends PublicoSugerido> =
   | { ok: true; valor: SugestoesBusca<T> }
   | { ok: false; motivo: string }
