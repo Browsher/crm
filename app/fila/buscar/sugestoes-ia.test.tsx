@@ -186,6 +186,70 @@ test('não permite aplicar CNAE ausente do catálogo oficial', async () => {
   expect(requisicao).toHaveBeenCalledTimes(1)
 })
 
+test('aproveita o CNAE válido mesmo quando a mesma resposta contém uma região, um filtro e outro público inválidos', async () => {
+  requisicao.mockResolvedValueOnce(resposta([
+    { titulo: 'x'.repeat(91), descricao: 'Sugestão com texto acima do limite.', cnaes: ['4755502'] },
+    { ...lojas, cnaes: ['4755502', '4755-5/02'], palavras: ['não autorizado, outro termo'] },
+  ], { ...regiao, uf: 'ZZ' }))
+
+  const resultado = await sugerirFiltrosBancoAcao(descricao)
+  expect(resultado).toMatchObject({ ok: true, valor: {
+    sugestoes: [{ cnaes: [{ codigo: '4755502' }], palavras: [] }],
+  } })
+  if (resultado.ok) {
+    expect(resultado.valor.sugestoes).toHaveLength(1)
+    expect(resultado.valor.regiao).toBeUndefined()
+  }
+})
+
+test('usa somente o CNAE verificado do público complementar escolhido quando a resposta está ilegível', async () => {
+  const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockResolvedValueOnce(Response.json({
+    stop_reason: 'end_turn', content: [{ type: 'text', text: '{resposta ilegível' }],
+  }))
+
+  const resultado = await sugerirFiltrosBancoAcao({ produto: { sku: 'QS-023' }, publico: 'atacado_racao' })
+  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [{
+    titulo: 'Atacadistas de alimentos para animais',
+    descricao: expect.stringContaining('catálogo'),
+    cnaes: [{ codigo: '4623109' }],
+  }] } })
+  if (resultado.ok) {
+    expect(resultado.valor.sugestoes).toHaveLength(1)
+    expect(resultado.valor.sugestoes[0]).not.toHaveProperty('perfilEmpresa')
+  }
+  expect(requisicao).toHaveBeenCalledTimes(1)
+  expect(aviso).toHaveBeenCalledWith('assistente_ia_falha', expect.objectContaining({ etapa: 'json_invalido' }))
+})
+
+test('registra o campo fora do formato sem copiar valores devolvidos pelo Claude', async () => {
+  const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockResolvedValueOnce(Response.json({
+    stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ sugestoes: 'conteúdo privado simulado' }) }],
+  }))
+
+  expect(await sugerirFiltrosBancoAcao(descricao)).toMatchObject({ ok: false })
+  expect(aviso).toHaveBeenCalledWith('assistente_ia_falha', expect.objectContaining({
+    etapa: 'formato_invalido', campos: [{ caminho: 'sugestoes', codigo: 'invalid_type' }],
+  }))
+  expect(JSON.stringify(aviso.mock.calls)).not.toContain('conteúdo privado simulado')
+})
+
+test('a alternativa automática fica nos prioritários e respeita pedidos de refinamento em texto', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  requisicao.mockImplementation(async () => new Response(null, { status: 401 }))
+  const produto = { sku: 'QS-023' }
+  const resultado = await sugerirFiltrosBancoAcao({ produto })
+  expect(resultado).toMatchObject({ ok: true, valor: { sugestoes: [
+    { cnaes: [{ codigo: '4789004' }] },
+    { cnaes: [{ codigo: '4649499' }] },
+  ] } })
+  if (resultado.ok) expect(resultado.valor.sugestoes).toHaveLength(2)
+
+  expect(await sugerirFiltrosBancoAcao({ produto, detalhes: 'Somente CNAEs secundários.' }))
+    .toMatchObject({ ok: false })
+})
+
 test('preserva códigos com zero inicial e separa atividade principal da secundária', async () => {
   requisicao.mockResolvedValueOnce(resposta([{ ...lojas, cnaes: ['0111301'], cnaesSecundarios: ['4755502'] }]))
   expect(await sugerirFiltrosBancoAcao({ produto: { descricao: 'Quero empresas de cultivo de arroz' }, detalhes: 'Inclua armarinho como atividade secundária.' })).toMatchObject({ ok: true, valor: {

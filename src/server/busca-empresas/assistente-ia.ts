@@ -6,7 +6,10 @@ import { mensagemCatalogo, prepararContextoAssistente } from '@/src/server/conte
 import { candidatosCnaeLivre, cnaeOficial } from './candidatos-cnae'
 
 const codigoCnae = z.string().refine(codigo => /^[0-9]{7}$/.test(codigo))
-const codigosCnae = z.array(codigoCnae).refine(codigos => codigos.length <= 3)
+const codigosCnae = z.array(codigoCnae.optional().catch(undefined))
+  .transform(codigos => [...new Set(codigos.filter(codigo => codigo !== undefined))].slice(0, 3))
+  .optional().catch(undefined)
+const palavra = textoCurto(100).refine(termo => !termo.includes(','))
 const motivoPerfil = textoCurto(100)
 
 // O contrato do Claude é fechado, mas extras e campos inválidos não descartam os CNAEs.
@@ -31,11 +34,13 @@ const perfilEmpresa = z.object({
 
 const schema = esquemaSugestoes(z.strictObject({
   ...camposPublico,
-  cnaes: codigosCnae.optional(),
-  cnaesSecundarios: codigosCnae.optional(),
-  palavras: z.array(textoCurto(100)).refine(palavras => palavras.length <= 3 && palavras.every(palavra => !palavra.includes(','))).optional(),
+  cnaes: codigosCnae,
+  cnaesSecundarios: codigosCnae,
+  palavras: z.array(palavra.optional().catch(undefined))
+    .transform(palavras => [...new Set(palavras.filter(termo => termo !== undefined))].slice(0, 3))
+    .optional().catch(undefined),
   perfilEmpresa,
-}))
+}), true)
 
 const INSTRUCOES = [
   'Ajude um vendedor a prospectar empresas no Banco de empresas brasileiro.',
@@ -100,7 +105,18 @@ export async function sugerirFiltrosBanco(entrada: EntradaAssistente | string): 
   ] : INSTRUCOES
   const resultado = await sugerirPublicos('banco', mensagem, schema, instrucoes,
     publico => [publico.perfil, publico.titulo, publico.cnaes?.join(' '), publico.cnaesSecundarios?.join(' '), publico.palavras?.join(' ')].join(' '), valor.descricaoRegiao)
-  if (!resultado.ok) return resultado
+
+  function alternativaDoCatalogo(falha: Extract<ResultadoAssistente<SugestaoBanco>, { ok: false }>): ResultadoAssistente<SugestaoBanco> {
+    if (valor.origem !== 'catalogo' || valor.detalhes || !perfis.length) return falha
+    return { ok: true, valor: {
+      sugestoes: perfis.slice(0, 3).map(({ titulo, cnaes }) => ({
+        titulo,
+        descricao: 'CNAEs do catálogo. O perfil de comprador por IA está indisponível nesta geração.',
+        cnaes,
+      })),
+    } }
+  }
+  if (!resultado.ok) return alternativaDoCatalogo(resultado)
 
   const assinaturas = new Set<string>()
   const perfisUsados = new Set<string>()
@@ -126,6 +142,6 @@ export async function sugerirFiltrosBanco(entrada: EntradaAssistente | string): 
     }]
   })
 
-  if (!sugestoes.length) return SEM_CANDIDATOS
+  if (!sugestoes.length) return alternativaDoCatalogo(SEM_CANDIDATOS)
   return { ok: true, valor: { ...resultado.valor, sugestoes } }
 }

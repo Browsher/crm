@@ -27,14 +27,18 @@ export function assistenteIaDisponivel(origem: Origem): boolean {
 export const textoCurto = (limite: number, minimo = 1) => z.string().trim().refine(texto =>
   texto.length >= minimo && texto.length <= limite && !/[\u0000-\u001f\u007f-\u009f]/u.test(texto))
 
-export function esquemaSugestoes<T extends PublicoSugerido>(publico: z.ZodType<T>) {
+export function esquemaSugestoes<T extends PublicoSugerido>(publico: z.ZodType<T>, aceitarParcial = false) {
+  const regiao = z.strictObject({
+    cidade: textoCurto(100),
+    uf: z.enum(ESTADOS_BR),
+    bairro: textoCurto(100, 0).optional(),
+  }).optional()
   return z.strictObject({
-    regiao: z.strictObject({
-      cidade: textoCurto(100),
-      uf: z.enum(ESTADOS_BR),
-      bairro: textoCurto(100, 0).optional(),
-    }).optional(),
-    sugestoes: z.array(publico).refine(sugestoes => sugestoes.length <= 3),
+    regiao: aceitarParcial ? regiao.catch(undefined) : regiao,
+    sugestoes: aceitarParcial
+      ? z.array(publico.optional().catch(undefined))
+        .transform(sugestoes => sugestoes.filter(sugestao => sugestao !== undefined).slice(0, 3))
+      : z.array(publico).refine(sugestoes => sugestoes.length <= 3),
   })
 }
 
@@ -104,7 +108,9 @@ export async function sugerirPublicos<T extends PublicoSugerido>(
   let requisicao: string | undefined
   let etapa = 'preparacao'
 
-  function registrarFalha(etapa: string, detalhes: { status?: number; repetir?: boolean } = {}) {
+  function registrarFalha(etapa: string, detalhes: {
+    status?: number; repetir?: boolean; campos?: { caminho: string; codigo: string }[]
+  } = {}) {
     console.warn('assistente_ia_falha', {
       origem, etapa, tentativa, requisicao, duracaoMs: Math.round(performance.now() - inicio), ...detalhes,
     })
@@ -157,9 +163,13 @@ export async function sugerirPublicos<T extends PublicoSugerido>(
     }
     const texto = mensagem.data.content.find(bloco => bloco.type === 'text')?.text
     if (!texto) return registrarFalha(etapa)
+    etapa = 'json_invalido'
+    const json: unknown = JSON.parse(texto)
     etapa = 'formato_invalido'
-    const dados = schema.safeParse(JSON.parse(texto))
-    if (!dados.success) return registrarFalha(etapa)
+    const dados = schema.safeParse(json)
+    if (!dados.success) return registrarFalha(etapa, {
+      campos: dados.error.issues.slice(0, 5).map(({ path, code }) => ({ caminho: path.join('.'), codigo: code })),
+    })
     const vistos = new Set<string>()
     const sugestoes = dados.data.sugestoes.filter(publico => {
       const chave = normalizarTexto(chavePublico(publico))

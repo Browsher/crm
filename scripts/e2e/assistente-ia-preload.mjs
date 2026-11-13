@@ -39,6 +39,9 @@ globalThis.fetch = async (input, init) => {
       perfil: perfil.id, titulo: perfil.titulo, descricao: 'Distribuição de ração com linha de acessórios pet.', cnaes: ['4623109'],
     })
   }
+  if (pedido.produto.sku === 'QS-026') {
+    return Response.json({ stop_reason: 'end_turn', content: [{ type: 'text', text: '{resposta inválida' }] })
+  }
   return Response.json({ erro: 'Dados da chamada não correspondem às expectativas do teste.' }, { status: 422 })
 }
 
