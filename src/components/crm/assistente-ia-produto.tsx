@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useId, useState, type KeyboardEvent, type Ref } from 'react'
-import { Button } from '@/src/components/ui/button'
 import { Input } from '@/src/components/ui/input'
 import { pesquisarProdutosProspeccao, type ProdutoProspeccao } from '@/src/lib/assistente-ia-catalogo'
 import styles from './assistente-ia-busca.module.css'
@@ -9,10 +8,9 @@ import styles from './assistente-ia-busca.module.css'
 type Props = {
   inputRef: Ref<HTMLInputElement>
   selecionar: (produto: ProdutoProspeccao) => void
-  outroProduto: () => void
 }
 
-export function BuscaProdutoAssistente({ inputRef, selecionar, outroProduto }: Props) {
+export function BuscaProdutoAssistente({ inputRef, selecionar }: Props) {
   const [consulta, setConsulta] = useState('')
   const [aberta, setAberta] = useState(false)
   const [ativa, setAtiva] = useState(-1)
@@ -73,10 +71,7 @@ export function BuscaProdutoAssistente({ inputRef, selecionar, outroProduto }: P
   }
 
   return <div className={styles.buscaProduto}>
-    <div className={styles.tituloBusca}>
-      <label id={id + '-rotulo'} htmlFor={id + '-campo'}>Escolher produto</label>
-      <Button type="button" variant="outline" size="sm" onClick={outroProduto}>Outro produto</Button>
-    </div>
+    <label className={styles.tituloBusca} id={id + '-rotulo'} htmlFor={id + '-campo'}>Escolher produto</label>
     <Input id={id + '-campo'} name="produto" ref={inputRef} value={consulta} placeholder="Busque por nome ou SKU" autoComplete="off"
       role="combobox" aria-autocomplete="list" aria-expanded={aberta && produtos.length > 0}
       aria-controls={aberta && produtos.length ? id + '-lista' : undefined} aria-activedescendant={idAtivo}
@@ -90,6 +85,6 @@ export function BuscaProdutoAssistente({ inputRef, selecionar, outroProduto }: P
         <strong className={styles.familia} aria-hidden="true">{familia}</strong>
         <ul role="presentation">{grupo.map(opcao)}</ul>
       </li>) : produtos.map(opcao)}
-    </ul> : <p className={styles.ajuda} role="status">Nenhum produto encontrado. Confira o nome ou SKU, ou escolha Outro produto.</p>)}
+    </ul> : <p className={styles.ajuda} role="status">Nenhum produto encontrado. Confira o nome ou SKU.</p>)}
   </div>
 }

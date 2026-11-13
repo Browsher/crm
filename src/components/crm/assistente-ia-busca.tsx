@@ -8,11 +8,10 @@ import { Badge } from '@/src/components/ui/badge'
 import { Button } from '@/src/components/ui/button'
 import { Choice } from '@/src/components/ui/choice'
 import { Dialog, DialogTrigger } from '@/src/components/ui/dialog'
-import { Input } from '@/src/components/ui/input'
 import { NativeSelect } from '@/src/components/ui/native-select'
 import { Textarea } from '@/src/components/ui/textarea'
 import { LIMITE_DESCRICAO_IA, type EntradaAssistente, type PublicoSugerido, type RegiaoAssistente, type ResultadoAssistente, type SugestoesBusca } from '@/src/lib/assistente-ia'
-import { perfisDoProduto, reconhecerProdutoProspeccao, type PerfilProspeccao, type ProdutoProspeccao } from '@/src/lib/assistente-ia-catalogo'
+import { perfisDoProduto, type PerfilProspeccao, type ProdutoProspeccao } from '@/src/lib/assistente-ia-catalogo'
 import { BuscaProdutoAssistente } from './assistente-ia-produto'
 import { linhaRegiaoVazia, PreviaRegioesAssistente, RegioesAssistente, regioesPreenchidas, type LinhaRegiaoAssistente } from './assistente-ia-regioes'
 import styles from './assistente-ia-busca.module.css'
@@ -86,8 +85,6 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
   contexto, orientacao, regioesAtuais, limiteRegioes, fechar, informarEdicao, pedirFechar, gerarAcao, detalhes, aoAplicar, revisao,
 }: Props<T, Selecao> & { fechar: () => void }) {
   const [produto, setProduto] = useState<ProdutoProspeccao | null>(null)
-  const [outroProduto, setOutroProduto] = useState(false)
-  const [descricao, setDescricao] = useState('')
   const [refinar, setRefinar] = useState(false)
   const [refinamento, setRefinamento] = useState(REFINAMENTO_INICIAL)
   const [linhas, setLinhas] = useState<LinhaRegiaoAssistente[]>(() => regioesAtuais.length
@@ -107,18 +104,12 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
   const tituloSugestoes = useRef<HTMLLegendElement>(null)
   const definirAlvoFoco = useCallback((elemento: HTMLElement | null) => { alvoFoco.current = elemento }, [])
   const grupo = useId()
-  const produtoEntrada = produto ? { sku: produto.sku } : outroProduto && descricao.trim() ? { descricao: descricao.trim() } : null
-  const alterado = Boolean(produtoEntrada || regioesEditadas)
-  const reconhecido = outroProduto ? reconhecerProdutoProspeccao(descricao) : undefined
+  const alterado = Boolean(produto || regioesEditadas)
   const perfis: readonly PerfilPublico[] = produto ? (perfisBanco ?? perfisDoProduto)(produto) : []
   const publicoEscolhido = perfis.find(perfil => perfil.id === refinamento.publico)
   const especialidades = produto?.especialidades.filter(especialidade => !publicoEscolhido || publicoEscolhido.especialidades.includes(especialidade)) ?? []
   const regioes = regioesPreenchidas(linhas, limiteRegioes)
-  const sugerida = dados?.regiao
-  const regioesParaAplicar = regioesEditadas ? regioes
-    : outroProduto && !regioes.length && sugerida
-      ? [{ estado: sugerida.uf, cidade: sugerida.cidade, bairros: sugerida.bairro ? [sugerida.bairro] : [] }]
-      : undefined
+  const regioesParaAplicar = regioesEditadas ? regioes : undefined
 
   useLayoutEffect(() => {
     informarEdicao({ alterado, pendente, fechar })
@@ -130,7 +121,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
       moverFoco.current = false
       alvoFoco.current?.focus({ preventScroll: true })
     }
-  }, [produto, outroProduto])
+  }, [produto])
 
   useLayoutEffect(() => {
     if (!dados) return
@@ -144,12 +135,10 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
     setErro(null)
   }
 
-  function mudarProduto(proximo: ProdutoProspeccao | null, livre = false) {
+  function mudarProduto(proximo: ProdutoProspeccao | null) {
     invalidar()
     moverFoco.current = true
     setProduto(proximo)
-    setOutroProduto(livre)
-    setDescricao('')
     setRefinar(false)
     setRefinamento(REFINAMENTO_INICIAL)
   }
@@ -165,7 +154,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
     evento.preventDefault()
     // O portal separa os formulários no DOM, mas o evento React sobe até o formulário de origem.
     evento.stopPropagation()
-    if (enviando.current || !produtoEntrada) return
+    if (enviando.current || !produto) return
     const pedido = geracao.current
     const { publico, especialidade, detalhes } = refinamento
     enviando.current = true
@@ -174,7 +163,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
     setErro(null)
     try {
       const resultado = await gerarAcao({
-        produto: produtoEntrada,
+        produto: { sku: produto.sku },
         ...(publico.trim() && { publico: publico.trim() }),
         ...(especialidade && { especialidade }),
         ...(detalhes.trim() && { detalhes: detalhes.trim() }),
@@ -205,7 +194,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
     ? `${MENSAGEM_PERFIL_INDISPONIVEL} ${MENSAGEM_CATALOGO}`
     : ''
   const orientacaoInicial = exibirMascote ? 'Escolha um produto para receber sugestões de filtros.' : 'Escolha um produto para encontrar públicos para prospectar.'
-  const mostrarOrientacao = !exibirMascote || !produtoEntrada
+  const mostrarOrientacao = !exibirMascote || !produto
   const descricaoPainel = mostrarOrientacao ? <>{orientacaoInicial}{contexto && <><br />{contexto}</>}</> : contexto
   const preparada = atual && revisao ? revisao.preparar(atual, selecoes[escolhida] ?? revisao.selecaoInicial, regioesParaAplicar) : null
 
@@ -232,18 +221,8 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
       {produto ? <section className={styles.produtoSelecionado}>
         <div><h3 ref={definirAlvoFoco} tabIndex={-1}>{produto.nome} · {produto.sku}</h3><p className={styles.ajuda}>{produto.ficha}</p></div>
         <Button type="button" variant="outline" size="sm" onClick={() => mudarProduto(null)}>Trocar produto</Button>
-      </section> : outroProduto ? <div className={styles.buscaProduto}>
-        <label>O que você quer vender?
-          <Textarea ref={definirAlvoFoco} name="descricao" rows={2} maxLength={LIMITE_DESCRICAO_IA} value={descricao} required
-            placeholder="Descreva o produto, sua função ou quem costuma comprar."
-            onChange={evento => { setDescricao(evento.target.value); invalidar() }} />
-        </label>
-        {reconhecido && <Button type="button" variant="outline" size="sm" className={styles.produtoReconhecido} onClick={() => mudarProduto(reconhecido)}>
-          Selecionar {reconhecido.nome} · {reconhecido.sku}
-        </Button>}
-        <Button type="button" variant="ghost" size="sm" onClick={() => mudarProduto(null)}>Escolher no catálogo</Button>
-      </div> : <BuscaProdutoAssistente inputRef={definirAlvoFoco} selecionar={mudarProduto} outroProduto={() => mudarProduto(null, true)} />}
-      {produtoEntrada && <>
+      </section> : <BuscaProdutoAssistente inputRef={definirAlvoFoco} selecionar={mudarProduto} />}
+      {produto && <>
         <RegioesAssistente linhas={linhas} limite={limiteRegioes}
           aoEditar={(id, campo, valor) => {
             const dependentes = limiteRegioes === 1 ? {}
@@ -268,7 +247,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
             onClick={() => setRefinar(aberto => !aberto)}>Refinar busca<ChevronDown aria-hidden="true" /></Button></h3>
           <div id={grupo + '-refinar'} hidden={!refinar} className={styles.camposRefinamento}>
             {refinar && <>
-              {produto ? <div className="grid gap-2">
+              <div className="grid gap-2">
                 <label htmlFor={grupo + '-publico'}>Público-alvo</label>
                 <NativeSelect id={grupo + '-publico'} name="publico" value={refinamento.publico}
                   aria-describedby={perfisBanco ? grupo + '-publico-ajuda' : undefined}
@@ -280,10 +259,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
                   </> : perfis.map(opcaoPublico)}
                 </NativeSelect>
                 {perfisBanco && <span id={grupo + '-publico-ajuda'} className={styles.ajuda}>Escolha um público em Expansão para testar outros canais de venda.</span>}
-              </div> : <label>Público-alvo (opcional)
-                <Input name="publico" value={refinamento.publico} maxLength={100}
-                  onChange={evento => mudarPublico(evento.target.value)} />
-              </label>}
+              </div>
               {especialidades.length > 0 && <label>Especialidade do negócio
                 <NativeSelect name="especialidade" value={refinamento.especialidade} onChange={evento => {
                   const especialidade = evento.target.value
@@ -307,7 +283,7 @@ function EditorAssistente<T extends PublicoSugerido, Selecao>({
           </div>
         </section>
       </>}
-      <div className={styles.gerar}><Button type="submit" variant="outline" disabled={pendente || !produtoEntrada}>
+      <div className={styles.gerar}><Button type="submit" variant="outline" disabled={pendente || !produto}>
         <Sparkles aria-hidden="true" /><span>{pendente ? 'Gerando sugestões…' : 'Gerar sugestões'}</span>
       </Button></div>
     </form>

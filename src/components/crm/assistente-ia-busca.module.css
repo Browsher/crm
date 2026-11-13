@@ -89,8 +89,8 @@
 .formulario label { font-size:13px; font-weight:500; }
 .buscaProduto { display:grid; gap:8px; min-width:0; }
 .buscaProduto > button, .campoRegioes > button { justify-self:start; }
-.tituloBusca, .produtoSelecionado { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
-.tituloBusca label, .produtoSelecionado h3 { font-size:15px; font-weight:600; }
+.produtoSelecionado { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; }
+.tituloBusca, .produtoSelecionado h3 { font-size:15px; font-weight:600; }
 .listaProdutos {
   max-height:min(280px, 42dvh);
   overflow:auto;
@@ -123,7 +123,6 @@
 .produtoSelecionado > div { flex:1 1 190px; min-width:0; }
 .produtoSelecionado h3, .produtoSelecionado p { margin:0; overflow-wrap:anywhere; }
 .produtoSelecionado p { margin-top:4px; }
-.produtoReconhecido { white-space:normal; text-align:left; height:auto; }
 .campoRegioes, .linhaRegiao, .camposRefinamento { display:grid; gap:10px; min-width:0; }
 .campoRegioes { margin:0; padding:0; border:0; }
 .campoRegioes legend { margin-bottom:6px; font-size:15px; font-weight:600; }
