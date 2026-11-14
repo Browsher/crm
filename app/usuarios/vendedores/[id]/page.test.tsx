@@ -2,8 +2,9 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Pagina from './page'
 
-const mocks = vi.hoisted(() => ({ exigir: vi.fn(), ler: vi.fn() }))
+const mocks = vi.hoisted(() => ({ exigir: vi.fn(), ler: vi.fn(), atividade: vi.fn() }))
 vi.mock('@/src/server/autenticacao/guarda', () => ({ exigir: mocks.exigir }))
+vi.mock('@/src/features/gestao/atividade', () => ({ lerAtividadeGestao: mocks.atividade }))
 vi.mock('@/src/features/gestao/perfil-vendedor', async importOriginal => ({
   ...await importOriginal<typeof import('@/src/features/gestao/perfil-vendedor')>(), lerPerfilVendedor: mocks.ler,
 }))
@@ -11,6 +12,7 @@ vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('404') } }
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.exigir.mockResolvedValue({ usuarioId:'gestor' })
+  mocks.atividade.mockResolvedValue({ eventos: [], total: 0 })
   mocks.ler.mockResolvedValue({ id:'vendedor', nome:'Ana', email:'ana@teste.local', pagina:1, clientes:0,totalEmpresas:0,
     atrasados:0, hoje:0, contatosHoje:0, empresas:[], atividade:[] })
 })
@@ -21,12 +23,23 @@ test('gestor vê os acionadores e o perfil começa sem painel aberto', async () 
   expect(html).toContain('Ana')
   expect(html).toContain('<strong>Empresas</strong>')
   expect(html).toContain('<strong>Atendimentos</strong>')
+  expect(html).toContain('Atividade recente')
+  expect(mocks.atividade).toHaveBeenCalledWith('gestor', expect.objectContaining({ vendedorId: 'vendedor' }), 'destaques')
   expect(html).not.toContain('role="dialog"')
   expect(html).not.toContain('Nenhuma empresa vinculada')
   expect(html).not.toContain('Nenhum atendimento registrado')
   expect(html).toContain('href="/usuarios"')
   expect(html).not.toContain('<form')
   expect(html).not.toContain('href="/empresas/')
+})
+
+test('perfil aberto pela Gestão mantém a origem no botão Voltar e ao atualizar', async () => {
+  const html = renderToStaticMarkup(await Pagina({ params: Promise.resolve({ id: 'vendedor' }),
+    searchParams: Promise.resolve({ origem: 'gestao' }),
+  }))
+  expect(html).toContain('Voltar para Gestão')
+  expect(html).toContain('href="/gestao"')
+  expect(html).toContain('pagina=1&amp;origem=gestao')
 })
 test('alvo recusado vira 404', async () => {
   mocks.ler.mockResolvedValue(null)

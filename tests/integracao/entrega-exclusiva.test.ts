@@ -138,7 +138,10 @@ test('venda e entrega concorrentes conservam vínculo e responsável sem ciclo d
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [id, a])
   const [{ id: negociacao }] = await banco.sql<{ id: string }>('INSERT INTO negociacao(empresa_id,vendedor_id) VALUES($1,$2) RETURNING id', [id, a])
   const google = await prepararGoogle(b)
-  const [venda] = await Promise.all([call(a, 'SELECT funil_venda_registrar($1,$2,current_date,100,NULL) r', [negociacao, randomUUID()]), google.entregar()])
+  const [venda] = await Promise.all([
+    call(a, "SELECT funil_venda_registrar($1,$2,(now() AT TIME ZONE 'America/Sao_Paulo')::date,100,NULL) r", [negociacao, randomUUID()]),
+    google.entregar(),
+  ])
   expect(venda).toEqual([{ r: 'ok' }])
   expect(await banco.sql('SELECT vendedor_id FROM empresa_fila')).toEqual([{ vendedor_id: a }])
   expect(await banco.sql('SELECT vendedor_id FROM empresa_vinculo')).toEqual([{ vendedor_id: a }])

@@ -16,4 +16,6 @@ const MENSAGENS: Record<MotivoBusca, string> = {
   limite: 'O limite diário de empresas consultadas foi atingido. Reduza a quantidade ou solicite ajuste ao gestor.',
   pausada: 'O gestor pausou suas buscas de empresas.',
 }
-export function mensagemBusca(motivo: MotivoBusca): string { return MENSAGENS[motivo] ?? 'Não foi possível concluir a busca.' }
+export function mensagemBusca(motivo: string): string {
+  return Object.hasOwn(MENSAGENS, motivo) ? MENSAGENS[motivo as MotivoBusca] : 'Não foi possível concluir a busca.'
+}

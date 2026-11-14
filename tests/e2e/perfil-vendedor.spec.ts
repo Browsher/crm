@@ -44,7 +44,7 @@ test('gestor abre perfil em Usuários, consulta carteira e histórico e volta à
   await page.getByLabel('Senha', { exact:true }).fill('Senha-e2e-2026')
   await page.getByRole('button', { name:'Entrar', exact:true }).click()
   await expect(page).toHaveURL('/gestao')
-  await expect(page.locator('main a[href*="/vendedores/"]')).toHaveCount(0)
+  await expect(page.getByRole('link', { name:'Ver perfil de Carlos Almeida' })).toHaveAttribute('href', `/usuarios/vendedores/${vendedorId}?origem=gestao`)
   await page.getByRole('link', { name:'Usuários',exact:true }).click()
   await expect(page).toHaveURL('/usuarios')
   const recorte = 'busca=Carlos+Almeida&papel=vendedor&situacao=ativos'

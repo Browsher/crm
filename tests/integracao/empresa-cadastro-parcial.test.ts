@@ -5,7 +5,8 @@ import { lerMinhasEmpresas } from '@/src/features/fila/consulta'
 import { lerPerfilEmpresa } from '@/src/features/empresas/perfil'
 import { lerFunil, lerNegociacao } from '@/src/features/funil/consulta'
 import { lerPerfilVendedor } from '@/src/features/gestao/perfil-vendedor'
-import { lerDashboard } from '@/src/features/gestao/consulta'
+import { lerAtividadeGestao } from '@/src/features/gestao/atividade'
+import { FILTROS_ATIVIDADE } from '@/src/lib/atividade-gestao'
 
 let banco: BancoDeTeste
 beforeAll(async () => { banco = await criarBancoDeTeste() })
@@ -63,7 +64,7 @@ test('cadastro parcial conserva nome, UUID e nulos na carteira, funil e gestão'
   expect(await lerFunil(vendedor)).toMatchObject([{ empresaId: id, nome: 'Câmeras Comerciais' }])
   expect(await lerNegociacao(vendedor, negociacaoId)).toMatchObject({ empresaId: id, nome: 'Câmeras Comerciais', cnpj: null })
   expect(await lerPerfilVendedor(gestor, vendedor)).toMatchObject({ empresas: [{ id, nome: 'Câmeras Comerciais', cnpj: null }], atividade: [{ empresaId: id, empresa: 'Câmeras Comerciais' }] })
-  expect(await lerDashboard(gestor)).toMatchObject({ atividade: [{ empresa: 'Câmeras Comerciais' }] })
+  expect(await lerAtividadeGestao(gestor, FILTROS_ATIVIDADE)).toMatchObject({ eventos: [{ empresa: 'Câmeras Comerciais' }] })
 })
 
 test('identificação parcial não concede escrita nem leitura administrativa ao vendedor', async () => {

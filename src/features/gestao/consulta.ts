@@ -9,10 +9,9 @@ export type ResumoVendedor = {
   hoje: number
   contatosHoje: number
 }
-export type Atividade = { id: string; vendedor: string; empresa: string; tipo: string; natureza: 'contato' | 'atividade_sem_ligacao'; em: string }
-export type Dashboard = { vendedores: ResumoVendedor[]; disponiveis: number; atividade: Atividade[] }
+export type Dashboard = { vendedores: ResumoVendedor[]; disponiveis: number }
 
-// Uma instrução mantém estoque, equipe e atividade no mesmo snapshot.
+// Uma instrução mantém estoque e equipe no mesmo snapshot.
 // A autorização no SQL também protege chamadas que não passam pela página.
 export async function lerDashboard(usuarioId: string): Promise<Dashboard | null> {
   return comoUsuario(usuarioId, async executar => {
@@ -47,15 +46,9 @@ export async function lerDashboard(usuarioId: string): Promise<Dashboard | null>
             AND c.criado_em >= (d.hoje::timestamp AT TIME ZONE 'America/Sao_Paulo')
             AND c.criado_em < ((d.hoje+1)::timestamp AT TIME ZONE 'America/Sao_Paulo')) AS "contatosHoje"
         FROM ativos a CROSS JOIN dia d
-      ), recentes AS (
-        SELECT c.id,a.nome AS vendedor,coalesce(e.razao_social,e.nome_fantasia) AS empresa,c.tipo,CASE WHEN c.tipo='nao_liguei' THEN 'atividade_sem_ligacao' ELSE 'contato' END AS natureza,c.criado_em AS em
-        FROM contato c JOIN ativos a ON a.id=c.criado_por JOIN empresa e ON e.id=c.empresa_id
-        WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id)
-        ORDER BY c.criado_em DESC,c.id DESC LIMIT 10
       )
       SELECT jsonb_build_object(
         'vendedores',coalesce((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.nome,r.id) FROM resumos r),'[]'::jsonb),
-        'atividade',coalesce((SELECT jsonb_agg(to_jsonb(r) ORDER BY r.em DESC,r.id DESC) FROM recentes r),'[]'::jsonb),
         'disponiveis',(SELECT count(*)::int FROM empresa e
           WHERE NOT EXISTS(SELECT 1 FROM empresa_arquivo WHERE empresa_id=e.id) AND NOT EXISTS(SELECT 1 FROM empresa_vinculo v WHERE v.empresa_id=e.id)
             AND NOT EXISTS(SELECT 1 FROM empresa_vinculo_pendencia p WHERE p.empresa_id=e.id)
