@@ -55,7 +55,6 @@ test('somente ativos, com zero explícito e ordem por nome', async () => {
     { id: bia, nome: 'Bia', clientes: 0, oportunidades: 0, atrasados: 0, hoje: 0, contatosHoje: 0 },
   ])
   expect(r?.disponiveis).toBe(0)
-  expect(r?.atividade).toEqual([])
 })
 test('recusa vendedor, usuário inexistente e gestor desativado', async () => {
   expect(await lerDashboard(ana)).toBeNull()
@@ -81,8 +80,6 @@ test('último retorno por empresa, contatos por autor e limite do dia de São Pa
     { id: ana, nome: 'Ana', clientes: 2, oportunidades: 0, atrasados: 1, hoje: 1, contatosHoje: 1 },
     { id: bia, nome: 'Bia', clientes: 1, oportunidades: 0, atrasados: 0, hoje: 0, contatosHoje: 2 },
   ])
-  expect(r?.atividade.every(item => item.vendedor !== 'Inativo')).toBe(true)
-  expect(r?.atividade).toHaveLength(6)
 })
 test('estoque exclui vínculos permanentes e grupo inativo, ignora reserva e descanso legados', async () => {
   const livre = await empresa()
@@ -98,16 +95,14 @@ test('estoque exclui vínculos permanentes e grupo inativo, ignora reserva e des
   expect((await lerDashboard(gestor))?.disponiveis).toBe(3)
   expect((await lerDashboard(gestor))?.vendedores[0].clientes).toBe(1)
 })
-test('atividade limitada a dez, ordenada, preserva vários registros da mesma empresa', async () => {
+test('contagem de contatos preserva vários registros da mesma empresa', async () => {
   const id = await empresa(ana)
   for (let i = 0; i < 12; i++) await contato(id, ana, null, 'interessado', i)
   const r = await lerDashboard(gestor)
-  expect(r?.atividade).toHaveLength(10)
   expect(r?.vendedores[0].contatosHoje).toBe(12)
   expect(r?.vendedores[0].clientes).toBe(1)
-  expect(r!.atividade.map(item => item.em)).toEqual([...r!.atividade.map(item => item.em)].sort().reverse())
 })
-test('desativar retira card e atividade sem apagar empresa nem contato', async () => {
+test('desativar retira vendedor do resumo sem apagar empresa nem contato', async () => {
   const id = await empresa(ana)
   await contato(id, ana, -1)
   expect((await lerDashboard(gestor))?.vendedores[0].clientes).toBe(1)
@@ -115,7 +110,6 @@ test('desativar retira card e atividade sem apagar empresa nem contato', async (
     await banco.sql('UPDATE usuario SET ativo=false WHERE id=$1', [ana])
     const r = await lerDashboard(gestor)
     expect(r?.vendedores.map(v => v.id)).toEqual([bia])
-    expect(r?.atividade).toEqual([])
     expect(await banco.sql('SELECT vendedor_id FROM empresa_fila WHERE empresa_id=$1', [id])).toEqual([{ vendedor_id: ana }])
     expect(await banco.sql('SELECT count(*)::int AS n FROM contato WHERE empresa_id=$1', [id])).toEqual([{ n: 1 }])
   } finally { await banco.sql('UPDATE usuario SET ativo=true WHERE id=$1', [ana]) }
@@ -136,21 +130,18 @@ test('agenda cancelada não reaparece no gestor, prospecção não é cliente e 
   await contato(id,ana,-1,'nao_liguei',1)
   let r = await lerDashboard(gestor)
   expect(r?.vendedores.find(v=>v.id===ana)).toMatchObject({ clientes:0, oportunidades:1, atrasados:1, contatosHoje:0 })
-  expect(r?.atividade[0]).toMatchObject({ tipo:'nao_liguei', natureza:'atividade_sem_ligacao' })
   await banco.sql('UPDATE empresa_vinculo SET agenda_contato_id=NULL,arquivada_em=now() WHERE empresa_id=$1',[id])
   expect((await lerDashboard(gestor))?.vendedores.find(v=>v.id===ana)).toMatchObject({ oportunidades:0 })
   await banco.sql("UPDATE negociacao SET encerrada_em=now(),encerramento='sem_interesse' WHERE empresa_id=$1",[id])
   await banco.sql('UPDATE empresa_vinculo SET arquivada_em=NULL WHERE empresa_id=$1',[id])
   r=await lerDashboard(gestor)
   expect(r?.vendedores.find(v=>v.id===ana)).toMatchObject({ atrasados:0,hoje:0,contatosHoje:0 })
-  expect(r?.atividade).toHaveLength(1)
 })
 
-test('fonte inativa retira tarefa do gestor sem apagar cliente e atividade', async () => {
+test('fonte inativa retira tarefa do gestor sem apagar cliente', async () => {
   const id=await empresa(ana)
   await contato(id,ana,-1)
   await banco.sql('UPDATE grupo_importacao SET ativo=false WHERE id IN (SELECT grupo_id FROM grupo_importacao_empresa WHERE empresa_id=$1)',[id])
   const r=await lerDashboard(gestor)
   expect(r?.vendedores.find(v=>v.id===ana)).toMatchObject({ clientes:1,atrasados:0,hoje:0 })
-  expect(r?.atividade).toHaveLength(1)
 })

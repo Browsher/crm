@@ -19,6 +19,7 @@ type Props = {
   vendedorId: string
   nome: string
   recorte: RecorteUsuarios
+  origem?: 'gestao'
   empresas: readonly EmpresaDoVendedor[]
   eventos: readonly EventoHistoricoComercial[]
   pagina: number
@@ -32,7 +33,7 @@ function ControlePagina({ href, children }: { href?: string; children: string })
     : <Button type="button" size="sm" variant="outline" disabled>{children}</Button>
 }
 
-export function PaineisPerfil({ vendedorId, nome, recorte, empresas, eventos, pagina, totalEmpresas, porPagina }: Props) {
+export function PaineisPerfil({ vendedorId, nome, recorte, origem, empresas, eventos, pagina, totalEmpresas, porPagina }: Props) {
   const [consulta, setConsulta] = useState<Consulta | null>(null)
   const [filtro, setFiltro] = useState<FiltroHistoricoComercial>('todos')
   const [expandidos, setExpandidos] = useState(() => new Set<string>())
@@ -58,7 +59,7 @@ export function PaineisPerfil({ vendedorId, nome, recorte, empresas, eventos, pa
 
   const paginas = Math.ceil(totalEmpresas / porPagina)
   const paginaVazia = empresas.length === 0 && totalEmpresas > 0
-  const endereco = (p: number) => urlPerfilUsuario(vendedorId, recorte, p)
+  const endereco = (p: number) => urlPerfilUsuario(vendedorId, recorte, p, origem)
   const primeiro = (pagina - 1) * porPagina + 1
   const ultimo = primeiro + empresas.length - 1
   const rodape = consulta === 'empresas' && paginas > 1 && !paginaVazia ? <nav aria-label="Páginas das empresas" className={styles.paginacao}>

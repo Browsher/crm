@@ -42,9 +42,10 @@ export function urlUsuarios(recorte: RecorteUsuarios) {
   return query ? '/usuarios?' + query : '/usuarios'
 }
 
-export function urlPerfilUsuario(id: string, recorte: RecorteUsuarios, paginaPerfil?: number) {
+export function urlPerfilUsuario(id: string, recorte: RecorteUsuarios, paginaPerfil?: number, origem?: 'gestao') {
   const query = parametros(recorte, true)
   if (paginaPerfil !== undefined) query.set('pagina', String(paginaPerfil))
+  if (origem) query.set('origem', origem)
   const caminho = '/usuarios/vendedores/' + encodeURIComponent(id)
   return query.size ? caminho + '?' + query : caminho
 }

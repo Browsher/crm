@@ -17,13 +17,9 @@
 .tabela th:first-child { width: 30%; }
 .vendedor { display: flex; align-items: center; gap: 12px; }
 .vendedor h3 { font-size: 14px; line-height: 21px; font-weight: 600; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.vendedor a { text-decoration: underline; text-underline-offset: 3px; }
 .avatar { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--success-background); color: var(--success); font-size: 12px; }
 .alerta { color: var(--warning); }
-.atividade { list-style: none; margin: 24px 0 0; padding: 0; }
-.atividade li { padding: 16px 0; display: grid; gap: 8px; }
-.atividade li + li { border-top: 1px solid var(--border); }
-.atividade li > div { min-width: 0; overflow-wrap: anywhere; }
-.atividade span, .atividade time { color: var(--muted-foreground); font-size: 12px; line-height: 18px; }
 .atalhos { display: flex; flex-wrap: wrap; gap: 12px; }
 @media (max-width: 1400px) { .paineis { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 1100px) { .resumo { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
