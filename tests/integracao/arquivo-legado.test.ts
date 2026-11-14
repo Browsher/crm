@@ -91,9 +91,9 @@ test('sem vínculo e pendência preservam atribuição original, sem inventar do
   expect(inventario.linhas[0].r.dados.pendencias.some(p => p.empresaId === semDono.id)).toBe(false)
   const cliente = await alvo('Venda sintética')
   await banco.sql('INSERT INTO empresa_fila(empresa_id,vendedor_id) VALUES($1,$2)', [cliente.id,c.vendedorId])
-  await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave,observacao) VALUES($1,$2,CURRENT_DATE,12345,$3,\'Venda original\')', [cliente.id,c.vendedorId,randomUUID()])
+  const [{ hoje }] = await banco.sql<{ hoje: string }>("SELECT ((now() AT TIME ZONE 'America/Sao_Paulo')::date)::text AS hoje")
+  await banco.sql('INSERT INTO venda(empresa_id,autor_id,data,valor_centavos,chave,observacao) VALUES($1,$2,$3,12345,$4,\'Venda original\')', [cliente.id,c.vendedorId,hoje,randomUUID()])
   const chave = randomUUID()
-  const hoje = (await banco.sql<{ hoje: string }>("SELECT CURRENT_DATE::text AS hoje"))[0].hoje
   const vender = (key: string) => banco.comoUsuario(c.vendedorId, e => e<{ r: string }>('SELECT carteira_venda_registrar($1,$2,$3,7890,NULL) AS r', [cliente.id,key,hoje]))
   expect((await vender(chave)).linhas[0].r).toBe('ok')
   const original = await banco.sql('SELECT * FROM venda WHERE empresa_id=$1', [cliente.id])
